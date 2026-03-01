@@ -1,9 +1,13 @@
 // TTS Component Styles
 
+* {
+    font-family: 'Inter', sans-serif;
+}
+
 textarea {
     font-size: 16px; // Prevent iOS zoom
     line-height: 1.6;
-    font-family: inherit;
+    font-family: 'Inter', sans-serif;
 
     &::-webkit-scrollbar {
         width: 6px;
@@ -13,14 +17,22 @@ textarea {
         background: #475569;
         border-radius: 3px;
     }
+
+    @media (prefers-color-scheme: light) {
+        &::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+        }
+    }
 }
 
 select {
     font-size: 16px; // Prevent iOS zoom
+    font-family: 'Inter', sans-serif;
 }
 
 button {
     min-height: 44px; // Accessible touch target
+    font-family: 'Inter', sans-serif;
 
     &:disabled {
         pointer-events: none;
