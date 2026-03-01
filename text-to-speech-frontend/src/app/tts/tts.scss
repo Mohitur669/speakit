@@ -1,0 +1,41 @@
+// TTS Component Styles
+
+textarea {
+    font-size: 16px; // Prevent iOS zoom
+    line-height: 1.6;
+    font-family: inherit;
+
+    &::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: #475569;
+        border-radius: 3px;
+    }
+}
+
+select {
+    font-size: 16px; // Prevent iOS zoom
+}
+
+button {
+    min-height: 44px; // Accessible touch target
+
+    &:disabled {
+        pointer-events: none;
+    }
+}
+
+audio {
+    width: 100%;
+}
+
+// Mobile optimizations
+@media (max-width: 640px) {
+
+    textarea,
+    select {
+        font-size: 16px;
+    }
+}

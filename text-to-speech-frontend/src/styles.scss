@@ -1,1 +1,75 @@
-/* You can add global styles to this file, and also import other style files */
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #0a0e1a;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 4px;
+
+    &:hover {
+        background: #475569;
+    }
+}
+
+/* Form elements */
+textarea,
+select,
+input {
+    font-family: inherit;
+}
+
+textarea::placeholder,
+input::placeholder {
+    color: #64748b;
+}
+
+/* Selection */
+::selection {
+    background-color: #f59e0b;
+    color: #0a0e1a;
+}
+
+/* Smooth transitions */
+button,
+select,
+textarea,
+input {
+    transition: all 0.2s ease;
+}
+
+button:active:not(:disabled) {
+    transform: scale(0.98);
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
