@@ -2,11 +2,12 @@ import { Component, OnInit, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TtsService, Voice } from '../services/tts';
+import { ToastComponent } from '../components/toast.component';
 
 @Component({
   selector: 'app-tts',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ToastComponent],
   templateUrl: './tts.html',
   styleUrls: ['./tts.scss']
 })
@@ -19,6 +20,11 @@ export class TtsComponent implements OnInit {
   audioUrl: string | null = null;
   loading = false;
   error = '';
+  isPlaying = false;
+  isDarkMode = true;
+  toastMessage = '';
+  toastType: 'success' | 'error' = 'success';
+  showToast = false;
 
   currentTime = 0;
   duration = 0;
@@ -30,6 +36,9 @@ export class TtsComponent implements OnInit {
       next: (voices) => this.voices = voices,
       error: () => this.error = 'Failed to load voices'
     });
+    // Initialize dark mode state from localStorage or system preference
+    const isDark = localStorage['theme'] === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    this.isDarkMode = isDark;
   }
 
   convert(): void {
@@ -42,7 +51,7 @@ export class TtsComponent implements OnInit {
       next: (blob) => {
         this.audioUrl = URL.createObjectURL(blob);
         this.loading = false;
-        setTimeout(() => this.audioPlayerRef?.nativeElement.play(), 100);
+        this.showNotification('✓ Conversion successful!');
       },
       error: () => {
         this.error = 'Conversion failed. Please try again.';
@@ -57,6 +66,7 @@ export class TtsComponent implements OnInit {
     a.href = this.audioUrl;
     a.download = 'speech.mp3';
     a.click();
+    this.showNotification('✓ File downloaded successfully!');
   }
 
   onTimeUpdate(event: Event): void {
@@ -76,5 +86,37 @@ export class TtsComponent implements OnInit {
     if (audio && audio.duration) {
       audio.currentTime = ratio * audio.duration;
     }
+  }
+
+  togglePlayPause(): void {
+    const audio = this.audioPlayerRef?.nativeElement;
+    if (!audio) return;
+
+    if (this.isPlaying) {
+      audio.pause();
+    } else {
+      audio.play();
+    }
+    this.isPlaying = !this.isPlaying;
+  }
+
+  toggleDarkMode(): void {
+    this.isDarkMode = !this.isDarkMode;
+    if (this.isDarkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage['theme'] = 'dark';
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage['theme'] = 'light';
+    }
+  }
+
+  showNotification(message: string, type: 'success' | 'error' = 'success'): void {
+    this.toastMessage = message;
+    this.toastType = type;
+    this.showToast = true;
+    setTimeout(() => {
+      this.showToast = false;
+    }, 3000);
   }
 }

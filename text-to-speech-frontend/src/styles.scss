@@ -2,6 +2,7 @@
 
 * {
     box-sizing: border-box;
+    font-family: 'Inter', sans-serif;
 }
 
 html {
@@ -11,24 +12,41 @@ html {
 body {
     margin: 0;
     padding: 0;
+    font-family: 'Inter', sans-serif;
 }
 
-/* Scrollbar */
+/* Light mode scrollbar */
 ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-    background: #0a0e1a;
+    background: #f8fafc;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #334155;
+    background: #cbd5e1;
     border-radius: 4px;
 
     &:hover {
-        background: #475569;
+        background: #94a3b8;
+    }
+}
+
+/* Dark mode scrollbar */
+html.dark {
+    ::-webkit-scrollbar-track {
+        background: #0a0e1a;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: #334155;
+        border-radius: 4px;
+
+        &:hover {
+            background: #475569;
+        }
     }
 }
 
@@ -36,16 +54,26 @@ body {
 textarea,
 select,
 input {
-    font-family: inherit;
+    font-family: 'Inter', sans-serif;
 }
 
 textarea::placeholder,
 input::placeholder {
+    color: #94a3b8;
+}
+
+html.dark textarea::placeholder,
+html.dark input::placeholder {
     color: #64748b;
 }
 
 /* Selection */
 ::selection {
+    background-color: #f59e0b;
+    color: #0a0e1a;
+}
+
+html.dark ::selection {
     background-color: #f59e0b;
     color: #0a0e1a;
 }
