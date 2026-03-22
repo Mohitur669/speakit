@@ -1,10 +1,12 @@
 package com.tts.controller;
 
+import com.tts.aspect.RateLimited;
 import com.tts.dto.TtsRequest;
 import com.tts.service.PollyService;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
@@ -20,8 +22,9 @@ public class TtsController {
         this.pollyService = pollyService;
     }
 
+    @RateLimited
     @PostMapping("/synthesize")
-    public ResponseEntity<byte[]> synthesize(@RequestBody TtsRequest request) throws Exception {
+    public ResponseEntity<byte[]> synthesize(@Valid @RequestBody TtsRequest request) throws Exception {
         InputStream audioStream = pollyService.synthesizeSpeech(
                 request.getText(), request.getVoiceId(), request.getOutputFormat()
         );
@@ -37,6 +40,7 @@ public class TtsController {
         return new ResponseEntity<>(audioBytes, headers, HttpStatus.OK);
     }
 
+    @RateLimited
     @GetMapping("/voices")
     public ResponseEntity<List<Map<String, String>>> getVoices() {
         List<Map<String, String>> voices = pollyService.getAvailableVoices()

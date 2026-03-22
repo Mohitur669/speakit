@@ -28,10 +28,14 @@ function isVoiceArray(obj: any): obj is Voice[] {
 
 @Injectable({ providedIn: 'root' })
 export class TtsService {
-  private baseUrl = 'http://localhost:8080/api/tts';
+  // Prefer runtime-injected API URL set by public/runtime-env.js (generated at build)
+  private baseUrl: string;
   private voicesCache: Voice[] | null = null;
 
   constructor(private http: HttpClient) {
+    const runtimeApi = (window as any).__env && (window as any).__env.API_URL;
+    const apiRoot = runtimeApi ? String(runtimeApi) : 'http://localhost:8080';
+    this.baseUrl = apiRoot.replace(/\/$/, '') + '/api/tts';
     this.loadCachedVoices();
   }
 
