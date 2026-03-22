@@ -1,1 +1,3 @@
-window.__env = { API_URL: 'http://localhost:8080' };
+window.__env = {
+    API_URL: 'https://text-to-speech-java-backend.onrender.com'
+};
