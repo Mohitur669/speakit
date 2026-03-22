@@ -1,9 +1,8 @@
 {
-  "version": 2,
-  "builds": [
-    { "src": "package.json", "use": "@vercel/static-build", "config": { "distDir": "dist/text-to-speech-frontend" } }
-  ],
-  "routes": [
-    { "src": "/(.*)", "dest": "/index.html" }
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
   ]
 }
