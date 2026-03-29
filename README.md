@@ -189,7 +189,7 @@ docker run -p 8080:8080 \
 ### 3. Frontend Setup (Angular)
 
 ```bash
-cd ../text-to-speech-frontend
+cd ../frontend
 npm install
 ```
 
@@ -240,7 +240,7 @@ cd backend
 ./mvnw spring-boot:run
 
 # Terminal 2 — Frontend
-cd text-to-speech-frontend
+cd frontend
 npm start
 ```
 

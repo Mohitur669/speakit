@@ -8,10 +8,10 @@ Vercel deployment notes
 
 - Vercel CLI (deploy from this folder):
   ```bash
-  cd text-to-speech-frontend
+  cd frontend
   npm i
   vercel --prod
   ```
-  When prompted, set the Output Directory to `dist/text-to-speech-frontend`.
+  When prompted, set the Output Directory to `dist/frontend`.
 
 - Alternatively set `API_URL` in the Vercel dashboard (Project → Settings → Environment Variables) and use the `vercel-build` command from the dashboard build step.
