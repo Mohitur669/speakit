@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { tap, catchError } from 'rxjs/operators';
+import { environment } from '../../environments/environment';
 
 export interface Voice {
   id: string;
@@ -33,9 +34,9 @@ export class TtsService {
   private voicesCache: Voice[] | null = null;
 
   constructor(private http: HttpClient) {
-    const runtimeApi = (window as any).__env && (window as any).__env.API_URL;
-    const apiRoot = runtimeApi ? String(runtimeApi) : 'http://localhost:8080';
-    this.baseUrl = apiRoot.replace(/\/$/, '') + '/api/tts';
+    const env = (window as any).__env;
+    const apiRoot = (env?.API_URL || environment.apiUrl || 'http://localhost:8080').replace(/\/$/, '');
+    this.baseUrl = `${apiRoot}/api/tts`;
     this.loadCachedVoices();
   }
 
