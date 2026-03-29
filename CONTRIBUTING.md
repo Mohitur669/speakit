@@ -2,25 +2,47 @@
 
 Thank you for your interest in contributing to SpeakIt! We welcome bug reports, feature requests, documentation improvements, and code contributions.
 
-## Get Started
+All changes must go through a feature branch — direct commits to `main` are not accepted.
 
-1. Fork the repository
-2. Clone your fork:
+---
+
+## Workflow
+
+1. **Fork** the repository.
+
+2. **Create a feature branch** from `main`:
+
    ```bash
-   git clone https://github.com/Mohitur669/speakit.git
-   cd speakit
+   git checkout -b feature/your-feature-name
    ```
-3. Always create a feature branch (do not work on `main`):
+
+3. **Make your changes** with clear, focused commits using [Conventional Commits](https://www.conventionalcommits.org/) format:
+
    ```bash
-   git checkout -b feature/<short-description>
+   git commit -m "feat: add SSML markup support to synthesis request"
+   git commit -m "fix: correct audio blob MIME type handling in Safari"
+   git commit -m "docs: update environment variable reference table"
    ```
 
-## Style
+4. **Test locally** against both the Angular frontend and the Spring Boot backend before pushing.
 
-- Backend: Java 21, Spring Boot, Lombok, standard conventions (`mvnw test`)
-- Frontend: Angular 21, TypeScript, following existing style in `src/app`
-- Keep changes focused and scoped
-- Add tests for behavior changes
+5. **Push your branch** and open a Pull Request against `main`:
+   ```bash
+   git push origin feature/your-feature-name
+   ```
+   Include a clear description of what was changed and why.
+
+> Branches not following the `feature/*` naming convention will be asked to rename before merging.
+
+---
+
+## Code Style
+
+- **Frontend:** Follow the [Angular Style Guide](https://angular.dev/style-guide). Run `ng lint` before committing.
+- **Backend:** Follow standard Java/Spring Boot conventions. Ensure the project builds cleanly with `./mvnw verify`.
+- **Commits:** Use [Conventional Commits](https://www.conventionalcommits.org/) — prefixes: `feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, `test:`.
+
+---
 
 ## Submitting Changes
 
@@ -29,11 +51,15 @@ Thank you for your interest in contributing to SpeakIt! We welcome bug reports, 
 3. Describe the problem, solution, and test coverage
 4. Link related issues if present
 
+---
+
 ## Branching and Reviews
 
 - Use descriptive commit messages
 - Follow conventional commit style if possible
 - Address review feedback promptly
+
+---
 
 ## Code of Conduct
 
