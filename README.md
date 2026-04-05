@@ -148,6 +148,9 @@ AWS_ACCESS_KEY_ID=your-access-key-id
 AWS_SECRET_ACCESS_KEY=your-secret-access-key
 AWS_REGION=us-east-1
 CORS_ALLOWED_ORIGIN=http://localhost:4200
+RATE_LIMIT_CAPACITY=5
+RATE_LIMIT_REFILL_TOKENS=5
+RATE_LIMIT_REFILL_DURATION_MINUTES=1
 ```
 
 > **Note:** For production, set `CORS_ALLOWED_ORIGIN` to your deployed frontend URL (e.g. `https://mohitur-speakit.vercel.app`).
@@ -172,6 +175,9 @@ docker run -p 8080:8080 \
   -e AWS_SECRET_ACCESS_KEY=your-secret-access-key \
   -e AWS_REGION=us-east-1 \
   -e CORS_ALLOWED_ORIGIN=http://localhost:4200 \
+  -e RATE_LIMIT_CAPACITY=5
+  -e RATE_LIMIT_REFILL_TOKENS=5
+  -e RATE_LIMIT_REFILL_DURATION_MINUTES=1
   mohitur/speakit:backend
 ```
 
