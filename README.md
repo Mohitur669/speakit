@@ -175,8 +175,8 @@ docker run -p 8080:8080 \
   -e AWS_SECRET_ACCESS_KEY=your-secret-access-key \
   -e AWS_REGION=us-east-1 \
   -e CORS_ALLOWED_ORIGIN=http://localhost:4200 \
-  -e RATE_LIMIT_CAPACITY=5
-  -e RATE_LIMIT_REFILL_TOKENS=5
+  -e RATE_LIMIT_CAPACITY=5 \
+  -e RATE_LIMIT_REFILL_TOKENS=5 \
   -e RATE_LIMIT_REFILL_DURATION_MINUTES=1
   mohitur/speakit:backend
 ```
@@ -233,6 +233,9 @@ AWS_ACCESS_KEY_ID=your-access-key-id
 AWS_SECRET_ACCESS_KEY=your-secret-access-key
 AWS_REGION=your-region
 CORS_ALLOWED_ORIGIN=http://localhost
+RATE_LIMIT_CAPACITY=5
+RATE_LIMIT_REFILL_TOKENS=5
+RATE_LIMIT_REFILL_DURATION_MINUTES=1
 ```
 
 #### Option A — Build from source
@@ -270,8 +273,10 @@ docker compose down
 | `AWS_SECRET_ACCESS_KEY` | Backend `.env`            | AWS IAM secret key                       |
 | `AWS_REGION`            | Backend `.env`            | AWS region for Polly (e.g. `us-east-1`)  |
 | `CORS_ALLOWED_ORIGIN`   | Backend `.env`            | Allowed frontend origin for CORS headers |
+| `RATE_LIMIT_CAPACITY`  | Backend `.env` | API call limit          |
+| `RATE_LIMIT_REFILL_TOKENS`  | Backend `.env` | Refill tokens after duration renews          |
+| `RATE_LIMIT_REFILL_DURATION_MINUTES`  | Backend `.env` | Applies rate limit for this duration          |
 | `window.__env.API_URL`  | Frontend `runtime-env.js` | Base URL of the Spring Boot API          |
-
 ---
 
 ## Usage
