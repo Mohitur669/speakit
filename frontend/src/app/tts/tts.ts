@@ -43,19 +43,46 @@ export class TtsComponent implements OnInit {
 
   convert(): void {
     if (!this.text.trim()) return;
+
     this.loading = true;
     this.error = '';
-    this.audioUrl = null;
+
+    // Clean previous audio URL (prevents memory leak)
+    if (this.audioUrl) {
+      URL.revokeObjectURL(this.audioUrl);
+      this.audioUrl = null;
+    }
 
     this.ttsService.synthesize(this.text, this.selectedVoice).subscribe({
       next: (blob) => {
-        this.audioUrl = URL.createObjectURL(blob);
+
+        // ✅ Detect correct mime type (important for ogg/mp3 switching)
+        const mimeType = blob.type || 'audio/mpeg';
+        const audioBlob = new Blob([blob], { type: mimeType });
+
+        this.audioUrl = URL.createObjectURL(audioBlob);
+
         this.loading = false;
         this.showNotification('✓ Conversion successful!');
       },
-      error: () => {
-        this.error = 'Conversion failed. Please try again.';
+
+      error: (err) => {
         this.loading = false;
+
+        // If backend sends structured JSON error
+        if (err.error?.type === 'TTS_ERROR') {
+          this.error = err.error.message;
+          return;
+        }
+
+        // Fallback for blob/plain-text errors (streaming case)
+        if (err.error instanceof Blob) {
+          err.error.text().then((text: string) => {
+            this.error = text || 'Conversion failed. Try another voice.';
+          });
+        } else {
+          this.error = 'Conversion failed. Try another voice.';
+        }
       }
     });
   }

@@ -97,10 +97,10 @@ export class TtsService {
     }
   }
 
-  synthesize(text: string, voiceId: string): Observable<Blob> {
+  synthesize(text: string, voiceId: string, format: string = 'mp3'): Observable<Blob> {
     return this.http.post(
-      `${this.baseUrl}/synthesize`,
-      { text, voiceId, outputFormat: 'mp3' },
+      `${this.baseUrl}/synthesize-stream`,
+      { text, voiceId, outputFormat: format },
       { responseType: 'blob' }
     );
   }

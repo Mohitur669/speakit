@@ -31,6 +31,16 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.TOO_MANY_REQUESTS);
     }
 
+    @ExceptionHandler(SpeechConversionException.class)
+    public ResponseEntity<Map<String, String>> handleSpeechConversion(SpeechConversionException ex) {
+
+        Map<String, String> error = new HashMap<>();
+        error.put("type", "TTS_ERROR");
+        error.put("message", ex.getMessage());
+
+        return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> handleGeneralException(Exception ex) {
         Map<String, String> error = new HashMap<>();

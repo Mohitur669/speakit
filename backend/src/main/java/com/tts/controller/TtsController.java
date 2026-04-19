@@ -3,6 +3,9 @@ package com.tts.controller;
 import com.tts.aspect.RateLimited;
 import com.tts.dto.TtsRequest;
 import com.tts.service.PollyService;
+import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,6 +17,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/tts")
+@Slf4j
 public class TtsController {
 
     private final PollyService pollyService;
@@ -24,20 +28,58 @@ public class TtsController {
 
     @RateLimited
     @PostMapping("/synthesize")
-    public ResponseEntity<byte[]> synthesize(@Valid @RequestBody TtsRequest request) throws Exception {
-        InputStream audioStream = pollyService.synthesizeSpeech(
-                request.getText(), request.getVoiceId(), request.getOutputFormat()
+    public ResponseEntity<byte[]> synthesize(@Valid @RequestBody TtsRequest request) {
+
+        try (InputStream audioStream = pollyService.synthesizeSpeech(
+                request.getText(),
+                request.getVoiceId(),
+                request.getOutputFormat()
+        )) {
+
+            byte[] audioBytes = audioStream.readAllBytes();
+
+            MediaType mediaType = getMediaType(request.getOutputFormat());
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(mediaType);
+            headers.setContentDisposition(
+                    ContentDisposition.attachment()
+                            .filename("speech." + request.getOutputFormat())
+                            .build()
+            );
+
+            return new ResponseEntity<>(audioBytes, headers, HttpStatus.OK);
+
+        } catch (Exception e) {
+            log.debug("TTS failed for voice={} format={}", request.getVoiceId(), request.getOutputFormat(), e);
+
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(("TTS failed: " + e.getMessage()).getBytes());
+        }
+    }
+
+    // helper method
+    private MediaType getMediaType(String format) {
+        return switch (format.toLowerCase()) {
+            case "mp3" -> MediaType.parseMediaType("audio/mpeg");
+            case "ogg" -> MediaType.parseMediaType("audio/ogg");
+            case "pcm" -> MediaType.parseMediaType("audio/wave");
+            default -> MediaType.APPLICATION_OCTET_STREAM;
+        };
+    }
+
+    // speech synthesize without buffer
+    @PostMapping("/synthesize-stream")
+    public ResponseEntity<InputStreamResource> synthesizeStream(@Valid @RequestBody TtsRequest request) {
+
+        InputStream stream = pollyService.synthesizeSpeech(
+                request.getText(),
+                request.getVoiceId(),
+                request.getOutputFormat()
         );
 
-        byte[] audioBytes = audioStream.readAllBytes();
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.parseMediaType("audio/mpeg"));
-        headers.setContentDisposition(
-                ContentDisposition.attachment().filename("speech.mp3").build()
-        );
-
-        return new ResponseEntity<>(audioBytes, headers, HttpStatus.OK);
+        return ResponseEntity.ok()
+                .contentType(getMediaType(request.getOutputFormat()))
+                .body(new InputStreamResource(stream));
     }
 
     @RateLimited
