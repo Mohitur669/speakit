@@ -1,135 +1,151 @@
-<div
-    class="min-h-screen bg-white dark:bg-[#0a0e1a] text-slate-900 dark:text-slate-200 font-body px-4 py-8 lg:py-12 transition-colors duration-300">
+<div class="min-h-screen bg-slate-50 dark:bg-[#0a0e1a] transition-colors duration-500 overflow-x-hidden">
+    <app-navbar></app-navbar>
 
-    <!-- Header -->
-    <div class="max-w-3xl mx-auto mb-10 lg:mb-14">
-        <div class="flex items-center justify-between gap-4 mb-2">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 rounded-lg bg-amber-500 flex items-center justify-center text-xl shrink-0">
-                    🎙
+    <div class="w-full px-6 sm:px-10 lg:px-16 py-12 lg:py-16 animate-slide-up">
+        <!-- Ultra-Wide Main Workspace -->
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-10 items-start">
+            
+            <!-- Sidebar Controls -->
+            <div class="lg:col-span-1 space-y-8 sticky top-24">
+                <div class="bg-white dark:bg-[#0f1528] rounded-[2.5rem] p-8 border border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none">
+                    <h3 class="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-8">Audio Intelligence</h3>
+                    
+                    <div class="space-y-8">
+                        <!-- Engine Selection (SaaS Tab Style) -->
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-500 mb-3 uppercase tracking-widest text-center">Engine Technology</label>
+                            <div class="grid grid-cols-2 p-1 bg-slate-100 dark:bg-[#0a0e1a] rounded-2xl border border-slate-200 dark:border-slate-800">
+                                <button (click)="setEngine('neural')" 
+                                    [ngClass]="selectedEngine === 'neural' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-lg' : 'text-slate-500 hover:text-slate-700'"
+                                    class="flex flex-col items-center py-3 rounded-xl transition-all relative">
+                                    <span class="text-xs font-black uppercase tracking-tighter">Neural</span>
+                                    <span class="text-[8px] font-bold opacity-60">Premium</span>
+                                    <!-- Lock Icon for non-premium -->
+                                    <span *ngIf="!voices.some(v => v.isNeural)" class="absolute top-1 right-2 text-[10px]">🔒</span>
+                                </button>
+                                <button (click)="setEngine('standard')" 
+                                    [ngClass]="selectedEngine === 'standard' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-lg' : 'text-slate-500 hover:text-slate-700'"
+                                    class="flex flex-col items-center py-3 rounded-xl transition-all">
+                                    <span class="text-xs font-black uppercase tracking-tighter">Standard</span>
+                                    <span class="text-[8px] font-bold opacity-60">Classic</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Voice Selection -->
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-500 mb-3 uppercase tracking-widest">Narrative Voice</label>
+                            <div class="relative">
+                                <select [(ngModel)]="selectedVoice"
+                                    [disabled]="filteredVoices.length === 0"
+                                    class="w-full bg-slate-50 dark:bg-[#0a0e1a] border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-2xl px-5 py-4 focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 transition-all cursor-pointer font-bold text-sm disabled:opacity-50 appearance-none">
+                                    <option *ngFor="let voice of filteredVoices" [value]="voice.id">
+                                        {{ voice.name }} — {{ voice.gender }}
+                                    </option>
+                                    <option *ngIf="filteredVoices.length === 0" value="">No voices available</option>
+                                </select>
+                                <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-40 text-xs">▼</div>
+                            </div>
+                        </div>
+
+                        <div class="p-6 rounded-3xl bg-amber-500/5 border border-amber-500/10 transition-all">
+                            <div class="flex items-center gap-3 mb-3">
+                                <span class="text-xl">✨</span>
+                                <span class="text-xs font-black text-amber-600 dark:text-amber-500 uppercase tracking-widest">Status</span>
+                            </div>
+                            <p class="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
+                                {{ selectedEngine === 'neural' ? 'Using next-gen deep learning for maximum realism.' : 'Standard voices are highly compatible and cost-efficient.' }}
+                            </p>
+                        </div>
+                    </div>
                 </div>
-                <h1 class="font-body text-4xl lg:text-5xl font-bold text-slate-900 dark:text-white">
-                    Speak<span class="text-amber-400">IT</span>
-                </h1>
-            </div>
-            <!-- Dark Mode Toggle -->
-            <button (click)="toggleDarkMode()"
-                class="p-2 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors">
-                <span *ngIf="isDarkMode" class="text-xl">☀️</span>
-                <span *ngIf="!isDarkMode" class="text-xl">🌙</span>
-            </button>
-        </div>
-        <p class="text-slate-600 dark:text-slate-400 font-body text-xs lg:text-sm mt-2 ml-16">
-            Text-to-Speech with AWS Polly
-        </p>
-    </div>
 
-    <!-- Main Content -->
-    <div class="max-w-3xl mx-auto space-y-6">
-
-        <!-- Text Input Card -->
-        <div
-            class="bg-slate-50 dark:bg-[#0f1528] border border-slate-200 dark:border-slate-700 rounded-xl p-5 lg:p-6 transition-all duration-200">
-            <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 font-body">
-                Your Text
-            </label>
-            <textarea [(ngModel)]="text" placeholder="Type or paste your text here..." rows="7" maxlength="3000"
-                class="w-full bg-white dark:bg-[#0a0e1a] text-slate-900 dark:text-slate-100 placeholder-slate-500 text-base rounded-lg border border-slate-300 dark:border-slate-600 p-4 focus:outline-none focus:border-amber-500 resize-none transition-colors font-body"></textarea>
-            <div class="flex justify-between items-center mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                <span class="font-body text-xs text-slate-600 dark:text-slate-500">{{ text.length }} / 3000</span>
-                <div class="w-40 h-2 bg-slate-300 dark:bg-slate-700 rounded-full overflow-hidden">
-                    <div class="h-full bg-amber-500 transition-all duration-300"
-                        [style.width.%]="(text.length / 3000) * 100">
+                <!-- Export Card -->
+                <div *ngIf="audioUrl" class="bg-slate-900 dark:bg-white rounded-[2.5rem] p-8 shadow-2xl animate-fade-in group cursor-pointer" (click)="download()">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Export Ready</h3>
+                            <p class="text-white dark:text-slate-900 font-black text-lg tracking-tight">Studio Master MP3</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-2xl bg-white/10 dark:bg-slate-900/5 flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
+                            📥
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Voice Selector -->
-        <div class="bg-slate-50 dark:bg-[#0f1528] border border-slate-200 dark:border-slate-700 rounded-xl p-5 lg:p-6">
-            <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 font-body">
-                Voice
-            </label>
-            <select [(ngModel)]="selectedVoice"
-                class="w-full bg-white dark:bg-[#0a0e1a] border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-slate-100 rounded-lg px-4 py-3 focus:outline-none focus:border-amber-500 transition-colors cursor-pointer font-body">
-                <option *ngFor="let voice of voices" [value]="voice.id">
-                    {{ voice.name }} — {{ voice.gender }}
-                </option>
-            </select>
-        </div>
+            <!-- Expanded Editor Area -->
+            <div class="lg:col-span-3 space-y-10">
+                <div class="bg-white dark:bg-[#0f1528] rounded-[3rem] p-10 lg:p-16 border border-slate-200 dark:border-slate-800 shadow-2xl shadow-slate-200/40 dark:shadow-none">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
+                        <div>
+                            <h2 class="text-5xl font-black text-slate-900 dark:text-white tracking-tightest mb-2">Studio Editor</h2>
+                            <p class="text-slate-500 dark:text-slate-400 font-medium">Draft your script and transform it into cinematic audio.</p>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <span class="px-5 py-2 rounded-full bg-slate-100 dark:bg-slate-800 text-[11px] font-black text-slate-500 uppercase tracking-widest border border-slate-200 dark:border-slate-700">
+                                {{ text.length }} / 3000 chars
+                            </span>
+                        </div>
+                    </div>
 
-        <!-- Convert Button -->
-        <button (click)="convert()" [disabled]="loading || !text.trim()" class="w-full py-4 px-6 rounded-lg font-body font-semibold text-lg transition-all duration-200
-                bg-amber-500 hover:bg-amber-600 text-white
-                disabled:opacity-50 disabled:cursor-not-allowed
-                active:scale-95 flex items-center justify-center gap-3">
-            <span *ngIf="!loading" class="flex items-center gap-3">
-                <span>🔊</span>
-                <span class="hidden sm:inline">Convert to Speech</span>
-                <span class="sm:hidden">Generate</span>
-            </span>
-            <span *ngIf="loading" class="flex items-center gap-3">
-                <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-                </svg>
-                <span class="hidden sm:inline">Generating...</span>
-            </span>
-        </button>
+                    <textarea [(ngModel)]="text" 
+                        placeholder="Start typing or paste your content here..." 
+                        rows="15" 
+                        maxlength="3000"
+                        class="w-full bg-slate-50/30 dark:bg-[#0a0e1a]/30 text-slate-900 dark:text-slate-100 placeholder-slate-400 text-2xl lg:text-3xl rounded-[2rem] border border-slate-100 dark:border-slate-800 p-10 focus:outline-none focus:ring-8 focus:ring-amber-500/5 focus:border-amber-500/30 resize-none transition-all leading-[1.4] font-medium"></textarea>
 
-        <!-- Error Message -->
-        <div *ngIf="error"
-            class="bg-red-100 dark:bg-red-950 border border-red-300 dark:border-red-700 text-red-800 dark:text-red-200 rounded-lg px-5 py-4">
-            <p class="font-body text-sm">{{ error }}</p>
-        </div>
+                    <div class="mt-12">
+                        <button (click)="convert()" [disabled]="loading || !text.trim() || !selectedVoice" 
+                            class="w-full py-7 bg-amber-500 hover:bg-amber-600 text-white rounded-[2rem] font-black text-3xl transition-all active:scale-[0.98] shadow-2xl shadow-amber-500/30 flex items-center justify-center gap-4 disabled:opacity-50 disabled:cursor-not-allowed group">
+                            <span *ngIf="!loading" class="flex items-center gap-4">
+                                <span class="group-hover:rotate-12 transition-transform">🎙</span> Synthesize Audio
+                            </span>
+                            <span *ngIf="loading" class="flex items-center gap-4">
+                                <svg class="animate-spin h-8 w-8 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                                </svg>
+                                Studio Rendering...
+                            </span>
+                        </button>
+                    </div>
 
-        <!-- Audio Player -->
-        <div *ngIf="audioUrl"
-            class="bg-slate-50 dark:bg-[#0f1528] border border-amber-300 dark:border-amber-600 rounded-xl p-5 lg:p-6 space-y-4">
-
-            <h3 class="text-sm font-semibold text-amber-600 dark:text-amber-400 font-body">Audio Output</h3>
-
-            <!-- Audio element -->
-            <audio #audioPlayer [src]="audioUrl" (timeupdate)="onTimeUpdate($event)" (play)="isPlaying = true"
-                (pause)="isPlaying = false" (ended)="isPlaying = false"></audio>
-
-            <!-- Progress Bar -->
-            <div class="space-y-2">
-                <div class="h-2 bg-slate-300 dark:bg-slate-700 rounded-full cursor-pointer overflow-hidden transition-all hover:h-3"
-                    (click)="seekAudio($event)">
-                    <div class="h-full bg-amber-500 rounded-full transition-all duration-100"
-                        [style.width.%]="progressPercent">
+                    <!-- Error Alert -->
+                    <div *ngIf="error" class="mt-8 p-6 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 text-red-600 dark:text-red-400 rounded-[2rem] text-lg font-bold animate-shake flex items-center gap-4">
+                        <span class="text-2xl">⚠️</span> {{ error }}
                     </div>
                 </div>
-                <div class="flex justify-between text-xs text-slate-600 dark:text-slate-500 font-body">
-                    <span>{{ currentTime | number:'1.0-0' }}s</span>
-                    <span>{{ duration | number:'1.0-0' }}s</span>
+
+                <!-- Expanded Player Card -->
+                <div *ngIf="audioUrl" class="bg-white dark:bg-[#0f1528] rounded-[3.5rem] p-10 lg:p-14 border border-slate-200 dark:border-slate-800 shadow-2xl animate-slide-up">
+                    <div class="flex flex-col md:flex-row items-center gap-10">
+                        <button (click)="togglePlayPause()" 
+                            class="w-24 h-24 rounded-[2rem] bg-amber-500 hover:bg-amber-600 text-white flex items-center justify-center text-4xl transition-all active:scale-90 shadow-2xl shadow-amber-500/40 transform hover:-rotate-3">
+                            <span *ngIf="isPlaying">⏸</span>
+                            <span *ngIf="!isPlaying" class="ml-1">▶</span>
+                        </button>
+                        
+                        <div class="flex-1 w-full space-y-6">
+                            <div class="flex justify-between items-end">
+                                <div>
+                                    <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-1">Studio Master</h4>
+                                    <p class="text-slate-900 dark:text-white font-black text-2xl tracking-tight">Preview Output</p>
+                                </div>
+                                <span class="text-sm font-black text-slate-500 font-mono">{{ currentTime | number:'1.0-0' }}s / {{ duration | number:'1.0-0' }}s</span>
+                            </div>
+                            <div class="h-6 bg-slate-100 dark:bg-slate-800 rounded-full cursor-pointer overflow-hidden group relative border-4 border-white dark:border-slate-900 shadow-inner" (click)="seekAudio($event)">
+                                <div class="h-full bg-gradient-to-r from-amber-400 to-amber-600 rounded-full transition-all duration-100" [style.width.%]="progressPercent"></div>
+                                <div class="absolute top-0 left-0 w-full h-full opacity-0 group-hover:opacity-10 bg-white transition-opacity"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <audio #audioPlayer [src]="audioUrl" (timeupdate)="onTimeUpdate($event)" (play)="isPlaying = true" (pause)="isPlaying = false" (ended)="isPlaying = false"></audio>
                 </div>
             </div>
-
-            <!-- Controls -->
-            <div class="grid grid-cols-2 gap-3">
-                <button (click)="togglePlayPause()"
-                    class="py-3 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-body font-semibold transition-colors active:scale-95">
-                    <span *ngIf="isPlaying">⏸ Pause</span>
-                    <span *ngIf="!isPlaying">▶ Play</span>
-                </button>
-                <button (click)="download()"
-                    class="py-3 rounded-lg bg-slate-700 hover:bg-slate-600 dark:bg-slate-700 dark:hover:bg-slate-600 text-white font-body font-semibold transition-colors active:scale-95">
-                    ⬇ Download
-                </button>
-            </div>
         </div>
-
     </div>
 
-    <!-- Footer -->
-    <div class="max-w-3xl mx-auto mt-16 text-center text-slate-500 dark:text-slate-600 text-xs font-body">
-        <p>Built with Angular + Spring Boot + AWS Polly</p>
-    </div>
-
-    <!-- Toast Notification Component -->
-    <app-toast [message]="toastMessage" [type]="toastType" [visible]="showToast">
-    </app-toast>
-
+    <!-- Global Toast Component -->
+    <app-toast [message]="toastMessage" [type]="toastType" [visible]="showToast"></app-toast>
 </div>

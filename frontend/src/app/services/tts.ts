@@ -8,6 +8,8 @@ export interface Voice {
   id: string;
   name: string;
   gender: string;
+  isNeural: boolean;
+  isStandard: boolean;
 }
 
 interface CachedVoices {
@@ -20,16 +22,17 @@ const CACHE_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 // Type guards for safe deserialization
 function isVoice(obj: any): obj is Voice {
-  return obj && typeof obj.id === 'string' && typeof obj.name === 'string' && typeof obj.gender === 'string';
+  return obj && 
+         typeof obj.id === 'string' && 
+         typeof obj.name === 'string';
 }
 
 function isVoiceArray(obj: any): obj is Voice[] {
-  return Array.isArray(obj) && obj.every(isVoice);
+  return Array.isArray(obj) && (obj.length === 0 || isVoice(obj[0]));
 }
 
 @Injectable({ providedIn: 'root' })
 export class TtsService {
-  // Prefer runtime-injected API URL set by public/runtime-env.js (generated at build)
   private baseUrl: string;
   private voicesCache: Voice[] | null = null;
 
@@ -41,26 +44,25 @@ export class TtsService {
   }
 
   /**
-   * Load voices from cache first, then fetch from API if not cached
+   * Load voices with caching support as requested.
    */
   getVoices(): Observable<Voice[]> {
-    // Return in-memory cache if available
-    if (this.voicesCache) {
+    if (this.voicesCache && this.voicesCache.length > 0) {
       return of(this.voicesCache);
     }
 
-    // Fetch from API and cache
     return this.http.get<Voice[]>(`${this.baseUrl}/voices`).pipe(
-      tap(voices => {
-        // Validate response
+      tap((voices: any[]) => {
         if (!isVoiceArray(voices)) {
+          console.error('Validation failed for voices:', voices);
           throw new Error('Invalid voices data received from API');
         }
-        // Store in-memory
-        this.voicesCache = voices;
+        
+        this.voicesCache = voices as Voice[];
+        
         // Persist to localStorage
         const cached: CachedVoices = {
-          voices,
+          voices: this.voicesCache,
           timestamp: Date.now(),
         };
         localStorage.setItem(VOICES_CACHE_KEY, JSON.stringify(cached));
@@ -72,26 +74,19 @@ export class TtsService {
     );
   }
 
-  /**
-   * Load voices from localStorage cache on service initialization
-   */
   private loadCachedVoices(): void {
     const cached = localStorage.getItem(VOICES_CACHE_KEY);
     if (cached) {
       try {
         const data = JSON.parse(cached) as CachedVoices;
-        // Validate cache is not expired
         if (Date.now() - data.timestamp < CACHE_DURATION_MS) {
-          // Validate data structure
           if (isVoiceArray(data.voices)) {
             this.voicesCache = data.voices;
             return;
           }
         }
-        // Invalid or expired cache, clear it
         localStorage.removeItem(VOICES_CACHE_KEY);
       } catch (error) {
-        console.warn('Failed to load cached voices:', error);
         localStorage.removeItem(VOICES_CACHE_KEY);
       }
     }
@@ -103,5 +98,10 @@ export class TtsService {
       { text, voiceId, outputFormat: format },
       { responseType: 'blob' }
     );
+  }
+
+  clearCache(): void {
+    this.voicesCache = null;
+    localStorage.removeItem(VOICES_CACHE_KEY);
   }
 }
