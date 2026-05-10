@@ -1,4 +1,4 @@
-import { Component, OnInit, ElementRef, ViewChild, inject } from '@angular/core';
+import { Component, OnInit, ElementRef, ViewChild, inject, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TtsService, Voice } from '../services/tts';
@@ -22,10 +22,12 @@ export class TtsComponent implements OnInit {
   themeService = inject(ThemeService);
 
   text = '';
-  selectedEngine: 'standard' | 'neural' = 'standard';
-  selectedVoice = '';
+  selectedVoiceId = '';
   voices: Voice[] = [];
   filteredVoices: Voice[] = [];
+  currentFilter: 'All' | 'Standard' | 'Neural' = 'All';
+
+  isDropdownOpen = false;
   audioUrl: string | null = null;
   loading = false;
   error = '';
@@ -38,65 +40,92 @@ export class TtsComponent implements OnInit {
   currentTime = 0;
   duration = 0;
 
+  @HostListener('document:click')
+  onDocumentClick() {
+    this.isDropdownOpen = false;
+  }
+
   ngOnInit(): void {
     this.refreshVoices();
+  }
+
+  get userCanUseNeural(): boolean {
+    return this.authService.hasNaturalAccess();
   }
 
   refreshVoices(): void {
     this.ttsService.getVoices().subscribe({
       next: (voices) => {
         this.voices = voices;
+        // Default logic: If user has premium access, show All, else Standard
+        this.currentFilter = this.userCanUseNeural ? 'All' : 'Standard';
+        this.applyFilter();
         
-        // Auto-engine selection logic
-        const hasNeuralVoices = voices.some(v => v.isNeural === true);
-        if (hasNeuralVoices) {
-            this.selectedEngine = 'neural';
-        } else {
-            this.selectedEngine = 'standard';
+        if (this.filteredVoices.length > 0 && !this.selectedVoiceId) {
+          this.selectedVoiceId = this.filteredVoices[0].id;
         }
-
-        this.filterByEngine();
       },
-      error: () => this.error = 'Failed to load studio voices. Please refresh.'
+      error: () => this.error = 'Failed to load studio voices.'
     });
   }
 
-  filterByEngine(): void {
-    const isNeuralRequest = this.selectedEngine === 'neural';
-    
-    this.filteredVoices = this.voices.filter(v => {
-      // Force boolean check for reliability
-      const supportsNeural = v.isNeural === true || (v as any).isNeural === 'true';
-      const supportsStandard = v.isStandard === true || (v as any).isStandard === 'true';
-      
-      return isNeuralRequest ? supportsNeural : supportsStandard;
-    });
+  applyFilter(): void {
+    switch (this.currentFilter) {
+      case 'Standard':
+        this.filteredVoices = this.voices.filter(v => v.isStandard === true);
+        break;
+      case 'Neural':
+        this.filteredVoices = this.voices.filter(v => v.isNeural === true);
+        break;
+      case 'All':
+      default:
+        this.filteredVoices = [...this.voices];
+        break;
+    }
 
+    // Smart Re-selection
     if (this.filteredVoices.length > 0) {
-      const currentExists = this.filteredVoices.find(v => v.id === this.selectedVoice);
+      const currentExists = this.filteredVoices.find(v => v.id === this.selectedVoiceId);
       if (!currentExists) {
-        this.selectedVoice = this.filteredVoices[0].id;
+        this.selectedVoiceId = this.filteredVoices[0].id;
       }
     } else {
-      this.selectedVoice = '';
+      this.selectedVoiceId = '';
     }
   }
 
-  setEngine(engine: 'standard' | 'neural'): void {
-    const hasNeuralSupport = this.voices.some(v => v.isNeural === true || (v as any).isNeural === 'true');
-    
-    if (engine === 'neural' && !hasNeuralSupport) {
-      this.showNotification('⚠️ Neural Engine requires Premium Access', 'error');
+  setFilter(filter: 'All' | 'Standard' | 'Neural'): void {
+    if (filter === 'Neural' && !this.userCanUseNeural) {
+      this.showNotification('⚡ Neural voices require a Pro plan', 'error');
       return;
     }
-    
-    this.selectedEngine = engine;
-    this.filterByEngine();
+    this.currentFilter = filter;
+    this.applyFilter();
+  }
+
+  voiceBadge(voice: Voice): string {
+    if (voice.isNeural && voice.isStandard) return 'Neural + Standard';
+    if (voice.isNeural) return 'Neural';
+    if (voice.isStandard) return 'Standard';
+    return '';
+  }
+
+  get selectedVoice(): Voice | undefined {
+    return this.voices.find(v => v.id === this.selectedVoiceId);
+  }
+
+  toggleDropdown(event: MouseEvent): void {
+    event.stopPropagation();
+    this.isDropdownOpen = !this.isDropdownOpen;
+  }
+
+  selectVoice(voiceId: string): void {
+    this.selectedVoiceId = voiceId;
+    this.isDropdownOpen = false;
   }
 
   convert(): void {
-    if (!this.text.trim() || !this.selectedVoice) return;
-
+    if (!this.text.trim() || !this.selectedVoiceId) return;
     this.loading = true;
     this.error = '';
 
@@ -105,17 +134,16 @@ export class TtsComponent implements OnInit {
       this.audioUrl = null;
     }
 
-    this.ttsService.synthesize(this.text, this.selectedVoice).subscribe({
+    this.ttsService.synthesize(this.text, this.selectedVoiceId).subscribe({
       next: (blob) => {
-        const mimeType = blob.type || 'audio/mpeg';
-        const audioBlob = new Blob([blob], { type: mimeType });
+        const audioBlob = new Blob([blob], { type: blob.type || 'audio/mpeg' });
         this.audioUrl = URL.createObjectURL(audioBlob);
         this.loading = false;
-        this.showNotification('✓ Master generated successfully');
+        this.showNotification('✓ Render Successful');
       },
       error: (err) => {
         this.loading = false;
-        this.error = 'Synthesis failed. Please try a different voice.';
+        this.error = 'Synthesis failed.';
       }
     });
   }
@@ -124,9 +152,9 @@ export class TtsComponent implements OnInit {
     if (!this.audioUrl) return;
     const a = document.createElement('a');
     a.href = this.audioUrl;
-    a.download = `speakit-export-${Date.now()}.mp3`;
+    a.download = `speakit-master-${Date.now()}.mp3`;
     a.click();
-    this.showNotification('✓ Exporting MP3...');
+    this.showNotification('✓ Download Started');
   }
 
   onTimeUpdate(event: Event): void {
@@ -141,22 +169,16 @@ export class TtsComponent implements OnInit {
 
   seekAudio(event: MouseEvent): void {
     const bar = event.currentTarget as HTMLElement;
-    const ratio = event.offsetX / bar.clientWidth;
     const audio = this.audioPlayerRef?.nativeElement;
     if (audio && audio.duration) {
-      audio.currentTime = ratio * audio.duration;
+      audio.currentTime = (event.offsetX / bar.clientWidth) * audio.duration;
     }
   }
 
   togglePlayPause(): void {
     const audio = this.audioPlayerRef?.nativeElement;
     if (!audio) return;
-
-    if (this.isPlaying) {
-      audio.pause();
-    } else {
-      audio.play();
-    }
+    this.isPlaying ? audio.pause() : audio.play();
     this.isPlaying = !this.isPlaying;
   }
 

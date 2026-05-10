@@ -14,16 +14,10 @@ import software.amazon.awssdk.services.polly.model.*;
 
 import java.io.InputStream;
 import java.util.List;
-import java.util.Set;
 
 @Service
 @Slf4j
 public class PollyService {
-
-    // Neural-only or problematic voices
-    private static final Set<String> NEURAL_VOICES = Set.of(
-            "Kevin", "Danielle", "Gregory", "Ruth", "Stephen"
-    );
 
     @Value("${aws.accessKeyId}")
     private String accessKeyId;
@@ -50,23 +44,24 @@ public class PollyService {
     }
 
     public InputStream synthesizeSpeech(String text, String voiceId, String outputFormat, boolean hasNaturalAccess) {
+        
+        // Find voice in cache to check capabilities
+        List<Voice> voices = getAvailableVoices();
+        Voice voice = voices.stream()
+                .filter(v -> v.id().toString().equals(voiceId))
+                .findFirst()
+                .orElse(null);
 
-        // Try NEURAL first if user has access AND voice supports it
-        if (hasNaturalAccess) {
-            // Check if voice supports NEURAL dynamically or via the NEURAL_VOICES set
-            // It's better to check the actual voice capabilities if possible, but for simplicity:
-            if (NEURAL_VOICES.contains(voiceId)) {
-                try {
-                    log.info("Using NEURAL engine for premium user, voice={}", voiceId);
-                    return synthesize(text, voiceId, outputFormat, Engine.NEURAL);
-                } catch (Exception e) {
-                    log.warn("Neural failed for voice={}, falling back to STANDARD", voiceId, e);
-                }
-            }
+        Engine engine = Engine.STANDARD;
+        
+        if (hasNaturalAccess && voice != null && voice.supportedEngines().contains(Engine.NEURAL)) {
+            engine = Engine.NEURAL;
+            log.info("Server Enforced: Using NEURAL engine for premium user, voice={}", voiceId);
+        } else {
+            log.info("Server Enforced: Using STANDARD engine for voice={}", voiceId);
         }
 
-        log.info("Using STANDARD engine for voice={}", voiceId);
-        return synthesize(text, voiceId, outputFormat, Engine.STANDARD);
+        return synthesize(text, voiceId, outputFormat, engine);
     }
 
     private InputStream synthesize(String text, String voiceId, String outputFormat, Engine engine) {
@@ -82,7 +77,6 @@ public class PollyService {
             ResponseInputStream<SynthesizeSpeechResponse> responseStream =
                     pollyClient.synthesizeSpeech(request);
 
-            // Optional but useful: validate response
             SynthesizeSpeechResponse response = responseStream.response();
 
             if (response == null || response.requestCharacters() == null) {

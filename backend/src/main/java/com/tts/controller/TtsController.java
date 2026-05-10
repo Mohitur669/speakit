@@ -48,7 +48,6 @@ public class TtsController {
         )) {
 
             byte[] audioBytes = audioStream.readAllBytes();
-
             MediaType mediaType = getMediaType(request.getOutputFormat());
 
             HttpHeaders headers = new HttpHeaders();
@@ -63,12 +62,10 @@ public class TtsController {
 
         } catch (Exception e) {
             log.debug("TTS failed for voice={} format={}", request.getVoiceId(), request.getOutputFormat(), e);
-
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(("TTS failed: " + e.getMessage()).getBytes());
         }
     }
 
-    // helper method
     private MediaType getMediaType(String format) {
         return switch (format.toLowerCase()) {
             case "mp3" -> MediaType.parseMediaType("audio/mpeg");
@@ -78,7 +75,6 @@ public class TtsController {
         };
     }
 
-    // speech synthesize without buffer
     @PostMapping("/synthesize-stream")
     public ResponseEntity<InputStreamResource> synthesizeStream(@Valid @RequestBody TtsRequest request) {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -109,19 +105,22 @@ public class TtsController {
         List<Map<String, Object>> voices = pollyService.getAvailableVoices()
                 .stream()
                 .map(v -> {
-                    boolean supportsNeural = v.supportedEngines().contains(Engine.NEURAL);
-                    boolean supportsStandard = v.supportedEngines().contains(Engine.STANDARD);
-                    boolean canUseNeural = hasNaturalAccess && supportsNeural;
-                    
                     Map<String, Object> map = new HashMap<>();
                     map.put("id", v.id().toString());
                     map.put("name", v.name());
                     map.put("gender", v.genderAsString());
-                    map.put("isNeural", canUseNeural);
-                    map.put("isStandard", supportsStandard);
+                    map.put("isNeural", v.supportedEngines().contains(Engine.NEURAL));
+                    map.put("isStandard", v.supportedEngines().contains(Engine.STANDARD));
                     return map;
                 })
-                .filter(v -> (boolean)v.get("isNeural") || (boolean)v.get("isStandard"))
+                .filter(v -> {
+                    // Regular users ONLY see voices that support Standard
+                    if (!hasNaturalAccess) {
+                        return (boolean) v.get("isStandard");
+                    }
+                    // Premium users see everything
+                    return true;
+                })
                 .collect(Collectors.toList());
         return ResponseEntity.ok(voices);
     }

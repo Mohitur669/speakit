@@ -59,6 +59,8 @@ public class AuthService {
         var jwtToken = jwtService.generateToken(userDetails);
         return AuthResponse.builder()
                 .token(jwtToken)
+                .username(user.getUsername())
+                .hasNaturalVoiceAccess(user.isHasNaturalVoiceAccess())
                 .build();
     }
 

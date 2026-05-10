@@ -22,8 +22,8 @@ const CACHE_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 // Type guards for safe deserialization
 function isVoice(obj: any): obj is Voice {
-  return obj && 
-         typeof obj.id === 'string' && 
+  return obj &&
+         typeof obj.id === 'string' &&
          typeof obj.name === 'string';
 }
 
@@ -57,9 +57,9 @@ export class TtsService {
           console.error('Validation failed for voices:', voices);
           throw new Error('Invalid voices data received from API');
         }
-        
+
         this.voicesCache = voices as Voice[];
-        
+
         // Persist to localStorage
         const cached: CachedVoices = {
           voices: this.voicesCache,

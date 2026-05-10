@@ -6,6 +6,8 @@ import { TtsService } from './tts';
 
 export interface AuthResponse {
   token: string;
+  username: string;
+  hasNaturalVoiceAccess: boolean;
 }
 
 @Injectable({
@@ -17,21 +19,22 @@ export class AuthService {
   // Use signals for reactive state
   currentUser = signal<string | null>(localStorage.getItem('username'));
   token = signal<string | null>(localStorage.getItem('token'));
+  hasNaturalAccess = signal<boolean>(localStorage.getItem('hasNaturalAccess') === 'true');
 
-  // Use inject to avoid circular dependency if TtsService also needs AuthService
+  // Use inject to avoid circular dependency
   private ttsService = inject(TtsService);
 
   constructor(private http: HttpClient) {}
 
   register(credentials: { username: string; email: string; password: string }): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.apiUrl}/register`, credentials).pipe(
-      tap(res => this.setSession(res.token, credentials.username))
+      tap(res => this.setSession(res))
     );
   }
 
   login(credentials: { username: string; password: string }): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.apiUrl}/login`, credentials).pipe(
-      tap(res => this.setSession(res.token, credentials.username))
+      tap(res => this.setSession(res))
     );
   }
 
@@ -42,17 +45,21 @@ export class AuthService {
   logout() {
     localStorage.removeItem('token');
     localStorage.removeItem('username');
+    localStorage.removeItem('hasNaturalAccess');
     this.ttsService.clearCache();
     this.token.set(null);
     this.currentUser.set(null);
+    this.hasNaturalAccess.set(false);
   }
 
-  private setSession(token: string, username: string) {
+  private setSession(res: AuthResponse) {
     this.ttsService.clearCache();
-    localStorage.setItem('token', token);
-    localStorage.setItem('username', username);
-    this.token.set(token);
-    this.currentUser.set(username);
+    localStorage.setItem('token', res.token);
+    localStorage.setItem('username', res.username);
+    localStorage.setItem('hasNaturalAccess', String(res.hasNaturalVoiceAccess));
+    this.token.set(res.token);
+    this.currentUser.set(res.username);
+    this.hasNaturalAccess.set(res.hasNaturalVoiceAccess);
   }
 
   isLoggedIn(): boolean {
