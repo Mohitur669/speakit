@@ -2,17 +2,20 @@ const fs = require('fs');
 const path = require('path');
 
 const isProd = process.env.NODE_ENV === 'production';
-const apiUrl = isProd
-    ? (process.env.API_URL || '')
-    : 'http://localhost:8080';
 
-const content = `window.__env = { API_URL: '${apiUrl}' };`;
+const envConfig = {
+    API_URL: process.env.API_URL || (isProd ? '' : 'http://localhost:8080'),
+    SUPABASE_URL: process.env.SUPABASE_URL || '',
+    SUPABASE_KEY: process.env.SUPABASE_KEY || ''
+};
+
+const content = `window.__env = ${JSON.stringify(envConfig, null, 2)};`;
 
 const outPath = path.join(__dirname, '../public/runtime-env.js');
 fs.writeFileSync(outPath, content);
 
 console.log('=== runtime-env.js generated ===');
-console.log('isProd:', isProd);
-console.log('API_URL env var:', process.env.API_URL);
-console.log('Generated content:', content);
+console.log('Environment:', isProd ? 'Production' : 'Development');
+console.log('API_URL:', envConfig.API_URL);
+console.log('SUPABASE_URL:', envConfig.SUPABASE_URL);
 console.log('Output path:', outPath);

@@ -37,9 +37,11 @@ import { ThemeService } from '../services/theme';
                 <div class="flex items-center gap-5 pl-4 border-l border-slate-200 dark:border-slate-800">
                   <div class="hidden sm:flex flex-col items-end">
                     <span class="text-sm font-black text-slate-900 dark:text-white tracking-tight">{{ user }}</span>
-                    <div *ngIf="authService.hasNaturalAccess()" class="flex items-center gap-1.5">
-                      <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                      <span class="text-[10px] text-amber-600 dark:text-amber-500 uppercase font-black tracking-widest">Premium Studio</span>
+                    <div class="flex items-center gap-1.5">
+                      <span class="w-1.5 h-1.5 rounded-full" [ngClass]="authService.hasNaturalAccess() ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'"></span>
+                      <span class="text-[10px] uppercase font-black tracking-widest" [ngClass]="authService.hasNaturalAccess() ? 'text-amber-600 dark:text-amber-500' : 'text-emerald-600 dark:text-emerald-500'">
+                        {{ authService.hasNaturalAccess() ? 'Premium Studio' : 'Standard Studio' }}
+                      </span>
                     </div>
                   </div>
                   <button (click)="logout()" 

@@ -1,4 +1,8 @@
+const env = (window as any).__env || {};
+
 export const environment = {
   production: false,
-  apiUrl: 'http://localhost:8080'
+  apiUrl: env.API_URL || '',
+  supabaseUrl: env.SUPABASE_URL || '',
+  supabaseKey: env.SUPABASE_KEY || '',
 };
