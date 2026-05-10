@@ -7,10 +7,27 @@ services:
     ports:
       - "8080:8080"
     environment:
+      # AWS Polly Credentials
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - AWS_REGION=${AWS_REGION}
-      - CORS_ALLOWED_ORIGIN=${CORS_ALLOWED_ORIGIN}
+      
+      # Database Configuration (Supabase PostgreSQL)
+      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
+      
+      # Security & JWT
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRATION=${JWT_EXPIRATION}
+      
+      # Backend CORS
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+      
+      # Rate Limiting
+      - RATE_LIMIT_CAPACITY=${RATE_LIMIT_CAPACITY:-5}
+      - RATE_LIMIT_REFILL_TOKENS=${RATE_LIMIT_REFILL_TOKENS:-5}
+      - RATE_LIMIT_REFILL_DURATION_MINUTES=${RATE_LIMIT_REFILL_DURATION_MINUTES:-1}
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/tts/voices || exit 1"]
@@ -26,6 +43,12 @@ services:
     container_name: speakit-frontend
     ports:
       - "4200:80"
+    environment:
+      # Runtime Configuration (Injected via public/runtime-env.js)
+      - API_URL=${API_URL:-http://localhost:8080}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - NODE_ENV=production
     depends_on:
       backend:
         condition: service_healthy
