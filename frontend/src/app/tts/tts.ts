@@ -22,11 +22,11 @@ export class TtsComponent implements OnInit {
   themeService = inject(ThemeService);
 
   text = '';
+  currentFilter: 'All' | 'Standard' | 'Neural' = 'All';
   selectedVoiceId = '';
   voices: Voice[] = [];
   filteredVoices: Voice[] = [];
-  currentFilter: 'All' | 'Standard' | 'Neural' = 'All';
-
+  
   isDropdownOpen = false;
   audioUrl: string | null = null;
   loading = false;
@@ -49,6 +49,10 @@ export class TtsComponent implements OnInit {
     this.refreshVoices();
   }
 
+  public checkAccess(val: any): boolean {
+    return val === true || val === 'true';
+  }
+
   get userCanUseNeural(): boolean {
     return this.authService.hasNaturalAccess();
   }
@@ -57,7 +61,6 @@ export class TtsComponent implements OnInit {
     this.ttsService.getVoices().subscribe({
       next: (voices) => {
         this.voices = voices;
-        // Default logic: If user has premium access, show All, else Standard
         this.currentFilter = this.userCanUseNeural ? 'All' : 'Standard';
         this.applyFilter();
         
@@ -83,7 +86,6 @@ export class TtsComponent implements OnInit {
         break;
     }
 
-    // Smart Re-selection
     if (this.filteredVoices.length > 0) {
       const currentExists = this.filteredVoices.find(v => v.id === this.selectedVoiceId);
       if (!currentExists) {
@@ -104,7 +106,7 @@ export class TtsComponent implements OnInit {
   }
 
   voiceBadge(voice: Voice): string {
-    if (voice.isNeural && voice.isStandard) return 'Neural + Standard';
+    if (voice.isNeural && voice.isStandard) return 'Standard + Neural';
     if (voice.isNeural) return 'Neural';
     if (voice.isStandard) return 'Standard';
     return '';
