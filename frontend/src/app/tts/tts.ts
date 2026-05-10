@@ -1,27 +1,36 @@
-import { Component, OnInit, ElementRef, ViewChild } from '@angular/core';
+import { Component, OnInit, ElementRef, ViewChild, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TtsService, Voice } from '../services/tts';
+import { AuthService } from '../services/auth';
+import { ThemeService } from '../services/theme';
 import { ToastComponent } from '../components/toast.component';
+import { NavbarComponent } from '../components/navbar.component';
 
 @Component({
   selector: 'app-tts',
   standalone: true,
-  imports: [CommonModule, FormsModule, ToastComponent],
+  imports: [CommonModule, FormsModule, ToastComponent, NavbarComponent],
   templateUrl: './tts.html',
   styleUrls: ['./tts.scss']
 })
 export class TtsComponent implements OnInit {
   @ViewChild('audioPlayer') audioPlayerRef!: ElementRef<HTMLAudioElement>;
 
+  ttsService = inject(TtsService);
+  authService = inject(AuthService);
+  themeService = inject(ThemeService);
+
   text = '';
-  selectedVoice = 'Joanna';
+  selectedEngine: 'standard' | 'neural' = 'standard';
+  selectedVoice = '';
   voices: Voice[] = [];
+  filteredVoices: Voice[] = [];
   audioUrl: string | null = null;
   loading = false;
   error = '';
   isPlaying = false;
-  isDarkMode = true;
+  
   toastMessage = '';
   toastType: 'success' | 'error' = 'success';
   showToast = false;
@@ -29,25 +38,68 @@ export class TtsComponent implements OnInit {
   currentTime = 0;
   duration = 0;
 
-  constructor(private ttsService: TtsService) {}
-
   ngOnInit(): void {
+    this.refreshVoices();
+  }
+
+  refreshVoices(): void {
     this.ttsService.getVoices().subscribe({
-      next: (voices) => this.voices = voices,
-      error: () => this.error = 'Failed to load voices'
+      next: (voices) => {
+        this.voices = voices;
+        
+        // Auto-engine selection logic
+        const hasNeuralVoices = voices.some(v => v.isNeural === true);
+        if (hasNeuralVoices) {
+            this.selectedEngine = 'neural';
+        } else {
+            this.selectedEngine = 'standard';
+        }
+
+        this.filterByEngine();
+      },
+      error: () => this.error = 'Failed to load studio voices. Please refresh.'
     });
-    // Initialize dark mode state from localStorage or system preference
-    const isDark = localStorage['theme'] === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    this.isDarkMode = isDark;
+  }
+
+  filterByEngine(): void {
+    const isNeuralRequest = this.selectedEngine === 'neural';
+    
+    this.filteredVoices = this.voices.filter(v => {
+      // Force boolean check for reliability
+      const supportsNeural = v.isNeural === true || (v as any).isNeural === 'true';
+      const supportsStandard = v.isStandard === true || (v as any).isStandard === 'true';
+      
+      return isNeuralRequest ? supportsNeural : supportsStandard;
+    });
+
+    if (this.filteredVoices.length > 0) {
+      const currentExists = this.filteredVoices.find(v => v.id === this.selectedVoice);
+      if (!currentExists) {
+        this.selectedVoice = this.filteredVoices[0].id;
+      }
+    } else {
+      this.selectedVoice = '';
+    }
+  }
+
+  setEngine(engine: 'standard' | 'neural'): void {
+    const hasNeuralSupport = this.voices.some(v => v.isNeural === true || (v as any).isNeural === 'true');
+    
+    if (engine === 'neural' && !hasNeuralSupport) {
+      this.showNotification('⚠️ Neural Engine requires Premium Access', 'error');
+      return;
+    }
+    
+    this.selectedEngine = engine;
+    this.filterByEngine();
   }
 
   convert(): void {
-    if (!this.text.trim()) return;
+    if (!this.text.trim() || !this.selectedVoice) return;
 
     this.loading = true;
     this.error = '';
 
-    // Clean previous audio URL (prevents memory leak)
     if (this.audioUrl) {
       URL.revokeObjectURL(this.audioUrl);
       this.audioUrl = null;
@@ -55,34 +107,15 @@ export class TtsComponent implements OnInit {
 
     this.ttsService.synthesize(this.text, this.selectedVoice).subscribe({
       next: (blob) => {
-
-        // ✅ Detect correct mime type (important for ogg/mp3 switching)
         const mimeType = blob.type || 'audio/mpeg';
         const audioBlob = new Blob([blob], { type: mimeType });
-
         this.audioUrl = URL.createObjectURL(audioBlob);
-
         this.loading = false;
-        this.showNotification('✓ Conversion successful!');
+        this.showNotification('✓ Master generated successfully');
       },
-
       error: (err) => {
         this.loading = false;
-
-        // If backend sends structured JSON error
-        if (err.error?.type === 'TTS_ERROR') {
-          this.error = err.error.message;
-          return;
-        }
-
-        // Fallback for blob/plain-text errors (streaming case)
-        if (err.error instanceof Blob) {
-          err.error.text().then((text: string) => {
-            this.error = text || 'Conversion failed. Try another voice.';
-          });
-        } else {
-          this.error = 'Conversion failed. Try another voice.';
-        }
+        this.error = 'Synthesis failed. Please try a different voice.';
       }
     });
   }
@@ -91,9 +124,9 @@ export class TtsComponent implements OnInit {
     if (!this.audioUrl) return;
     const a = document.createElement('a');
     a.href = this.audioUrl;
-    a.download = 'speech.mp3';
+    a.download = `speakit-export-${Date.now()}.mp3`;
     a.click();
-    this.showNotification('✓ File downloaded successfully!');
+    this.showNotification('✓ Exporting MP3...');
   }
 
   onTimeUpdate(event: Event): void {
@@ -125,17 +158,6 @@ export class TtsComponent implements OnInit {
       audio.play();
     }
     this.isPlaying = !this.isPlaying;
-  }
-
-  toggleDarkMode(): void {
-    this.isDarkMode = !this.isDarkMode;
-    if (this.isDarkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage['theme'] = 'dark';
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage['theme'] = 'light';
-    }
   }
 
   showNotification(message: string, type: 'success' | 'error' = 'success'): void {

@@ -1,10 +1,10 @@
 import { Component } from '@angular/core';
-import { TtsComponent } from './tts/tts';
+import { RouterOutlet } from '@angular/router';
 
 @Component({
 	selector: 'app-root',
 	standalone: true,
-	imports: [TtsComponent],
-	template: `<app-tts></app-tts>`
+	imports: [RouterOutlet],
+	template: `<router-outlet></router-outlet>`
 })
 export class App {}

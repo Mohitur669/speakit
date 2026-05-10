@@ -3,14 +3,18 @@ package com.tts.controller;
 import com.tts.aspect.RateLimited;
 import com.tts.dto.TtsRequest;
 import com.tts.service.PollyService;
+import com.tts.repository.UserRepository;
+import com.tts.entity.User;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.*;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import software.amazon.awssdk.services.polly.model.Engine;
 
 import jakarta.validation.Valid;
 import java.io.InputStream;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -21,19 +25,26 @@ import java.util.stream.Collectors;
 public class TtsController {
 
     private final PollyService pollyService;
+    private final UserRepository userRepository;
 
-    public TtsController(PollyService pollyService) {
+    public TtsController(PollyService pollyService, UserRepository userRepository) {
         this.pollyService = pollyService;
+        this.userRepository = userRepository;
     }
 
     @RateLimited
     @PostMapping("/synthesize")
     public ResponseEntity<byte[]> synthesize(@Valid @RequestBody TtsRequest request) {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        boolean hasNaturalAccess = userRepository.findByUsername(username)
+                .map(User::isHasNaturalVoiceAccess)
+                .orElse(false);
 
         try (InputStream audioStream = pollyService.synthesizeSpeech(
                 request.getText(),
                 request.getVoiceId(),
-                request.getOutputFormat()
+                request.getOutputFormat(),
+                hasNaturalAccess
         )) {
 
             byte[] audioBytes = audioStream.readAllBytes();
@@ -70,11 +81,16 @@ public class TtsController {
     // speech synthesize without buffer
     @PostMapping("/synthesize-stream")
     public ResponseEntity<InputStreamResource> synthesizeStream(@Valid @RequestBody TtsRequest request) {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        boolean hasNaturalAccess = userRepository.findByUsername(username)
+                .map(User::isHasNaturalVoiceAccess)
+                .orElse(false);
 
         InputStream stream = pollyService.synthesizeSpeech(
                 request.getText(),
                 request.getVoiceId(),
-                request.getOutputFormat()
+                request.getOutputFormat(),
+                hasNaturalAccess
         );
 
         return ResponseEntity.ok()
@@ -84,14 +100,28 @@ public class TtsController {
 
     @RateLimited
     @GetMapping("/voices")
-    public ResponseEntity<List<Map<String, String>>> getVoices() {
-        List<Map<String, String>> voices = pollyService.getAvailableVoices()
+    public ResponseEntity<List<Map<String, Object>>> getVoices() {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        boolean hasNaturalAccess = userRepository.findByUsername(username)
+                .map(User::isHasNaturalVoiceAccess)
+                .orElse(false);
+
+        List<Map<String, Object>> voices = pollyService.getAvailableVoices()
                 .stream()
-                .map(v -> Map.of(
-                        "id", v.id().toString(),
-                        "name", v.name(),
-                        "gender", v.genderAsString()
-                ))
+                .map(v -> {
+                    boolean supportsNeural = v.supportedEngines().contains(Engine.NEURAL);
+                    boolean supportsStandard = v.supportedEngines().contains(Engine.STANDARD);
+                    boolean canUseNeural = hasNaturalAccess && supportsNeural;
+                    
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("id", v.id().toString());
+                    map.put("name", v.name());
+                    map.put("gender", v.genderAsString());
+                    map.put("isNeural", canUseNeural);
+                    map.put("isStandard", supportsStandard);
+                    return map;
+                })
+                .filter(v -> (boolean)v.get("isNeural") || (boolean)v.get("isStandard"))
                 .collect(Collectors.toList());
         return ResponseEntity.ok(voices);
     }

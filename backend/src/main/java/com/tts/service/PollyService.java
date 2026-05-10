@@ -3,7 +3,6 @@ package com.tts.service;
 import com.tts.exception.SpeechConversionException;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
@@ -36,6 +35,9 @@ public class PollyService {
     private String region;
 
     private PollyClient pollyClient;
+    private List<Voice> cachedVoices;
+    private long lastCacheUpdate = 0;
+    private static final long CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
     @PostConstruct
     public void init() {
@@ -47,21 +49,23 @@ public class PollyService {
                 .build();
     }
 
-    public InputStream synthesizeSpeech(String text, String voiceId, String outputFormat) {
+    public InputStream synthesizeSpeech(String text, String voiceId, String outputFormat, boolean hasNaturalAccess) {
 
-        // Try NEURAL first if applicable
-        if (NEURAL_VOICES.contains(voiceId)) {
-            try {
-                log.info("Trying NEURAL engine for voice={}", voiceId);
-                return synthesize(text, voiceId, outputFormat, Engine.NEURAL);
-            } catch (Exception e) {
-                log.warn("Neural failed for voice={}, falling back to STANDARD", voiceId, e);
+        // Try NEURAL first if user has access AND voice supports it
+        if (hasNaturalAccess) {
+            // Check if voice supports NEURAL dynamically or via the NEURAL_VOICES set
+            // It's better to check the actual voice capabilities if possible, but for simplicity:
+            if (NEURAL_VOICES.contains(voiceId)) {
+                try {
+                    log.info("Using NEURAL engine for premium user, voice={}", voiceId);
+                    return synthesize(text, voiceId, outputFormat, Engine.NEURAL);
+                } catch (Exception e) {
+                    log.warn("Neural failed for voice={}, falling back to STANDARD", voiceId, e);
+                }
             }
-        } else {
-            log.info("Trying NORMAL engine for voice={}", voiceId);
         }
 
-        // Fallback or default
+        log.info("Using STANDARD engine for voice={}", voiceId);
         return synthesize(text, voiceId, outputFormat, Engine.STANDARD);
     }
 
@@ -94,9 +98,21 @@ public class PollyService {
     }
 
     public List<Voice> getAvailableVoices() {
-        DescribeVoicesRequest request = DescribeVoicesRequest.builder()
-                .languageCode(LanguageCode.EN_US)
-                .build();
-        return pollyClient.describeVoices(request).voices();
+        if (cachedVoices != null && (System.currentTimeMillis() - lastCacheUpdate < CACHE_DURATION)) {
+            return cachedVoices;
+        }
+
+        try {
+            DescribeVoicesRequest request = DescribeVoicesRequest.builder()
+                    .languageCode(LanguageCode.EN_US)
+                    .build();
+            cachedVoices = pollyClient.describeVoices(request).voices();
+            lastCacheUpdate = System.currentTimeMillis();
+            log.info("Polly voices cache updated. Found {} voices.", cachedVoices.size());
+            return cachedVoices;
+        } catch (Exception e) {
+            log.error("Failed to fetch voices from Polly", e);
+            return cachedVoices != null ? cachedVoices : List.of();
+        }
     }
 }
