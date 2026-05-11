@@ -9,51 +9,51 @@ import { ThemeService } from '../services/theme';
   standalone: true,
   imports: [CommonModule, RouterLink],
   template: `
-    <nav class="sticky top-0 z-50 w-full bg-white/80 dark:bg-[#0a0e1a]/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors duration-300">
-      <div class="w-full px-6 sm:px-10 lg:px-16">
-        <div class="flex justify-between h-20 items-center">
+    <nav class="sticky top-0 z-50 w-full bg-white/80 dark:bg-[#090b11]/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors duration-300">
+      <div class="max-w-7xl mx-auto px-6 lg:px-8">
+        <div class="flex justify-between h-16 items-center">
           <!-- Logo -->
-          <div class="flex items-center gap-3 cursor-pointer group" routerLink="/">
-            <div class="w-12 h-12 rounded-2xl bg-amber-500 flex items-center justify-center text-2xl shadow-xl shadow-amber-500/20 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500">
+          <div class="flex items-center gap-2 cursor-pointer group" routerLink="/">
+            <div class="w-9 h-9 rounded-xl bg-amber-500 flex items-center justify-center text-xl shadow-lg shadow-amber-500/20 group-hover:scale-105 transition-all duration-300">
               🎙
             </div>
-            <span class="text-3xl font-black text-slate-900 dark:text-white tracking-tightest">
+            <span class="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
               Speak<span class="text-amber-500">IT</span>
             </span>
           </div>
 
           <!-- Actions -->
-          <div class="flex items-center gap-6">
+          <div class="flex items-center gap-4">
             <!-- Theme Toggle -->
             <button (click)="themeService.toggleTheme()" 
-              class="p-3 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 transition-all active:scale-90 border border-transparent hover:border-slate-200 dark:hover:border-slate-600 shadow-sm">
-              <span *ngIf="themeService.isDarkMode()" class="text-2xl">☀️</span>
-              <span *ngIf="!themeService.isDarkMode()" class="text-2xl">🌙</span>
+              class="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 transition-all active:scale-90 border border-transparent shadow-sm">
+              <span *ngIf="themeService.isDarkMode()" class="text-lg">☀️</span>
+              <span *ngIf="!themeService.isDarkMode()" class="text-lg">🌙</span>
             </button>
 
             <!-- Auth/Profile -->
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-3">
               <ng-container *ngIf="authService.currentUser() as user; else guest">
-                <div class="flex items-center gap-5 pl-4 border-l border-slate-200 dark:border-slate-800">
+                <div class="flex items-center gap-4 pl-4 border-l border-slate-200 dark:border-slate-800">
                   <div class="hidden sm:flex flex-col items-end">
-                    <span class="text-sm font-black text-slate-900 dark:text-white tracking-tight">{{ user }}</span>
-                    <div class="flex items-center gap-1.5">
-                      <span class="w-1.5 h-1.5 rounded-full" [ngClass]="authService.hasNaturalAccess() ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'"></span>
-                      <span class="text-[10px] uppercase font-black tracking-widest" [ngClass]="authService.hasNaturalAccess() ? 'text-amber-600 dark:text-amber-500' : 'text-emerald-600 dark:text-emerald-500'">
-                        {{ authService.hasNaturalAccess() ? 'Premium Studio' : 'Standard Studio' }}
+                    <span class="text-xs font-bold text-slate-900 dark:text-white tracking-tight">{{ user }}</span>
+                    <div class="flex items-center gap-1">
+                      <span class="w-1 h-1 rounded-full" [ngClass]="authService.hasNaturalAccess() ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'"></span>
+                      <span class="text-[9px] uppercase font-bold tracking-widest text-slate-500">
+                        {{ authService.hasNaturalAccess() ? 'Premium' : 'Standard' }}
                       </span>
                     </div>
                   </div>
                   <button (click)="logout()" 
-                    class="px-6 py-3 text-sm font-black text-white bg-slate-900 dark:bg-white dark:text-slate-900 rounded-2xl hover:opacity-90 transition-all active:scale-95 shadow-xl shadow-slate-900/10 dark:shadow-white/5">
+                    class="px-4 py-2 text-xs font-bold text-white bg-slate-900 dark:bg-white dark:text-slate-900 rounded-lg hover:opacity-90 transition-all active:scale-95 shadow-md">
                     Sign Out
                   </button>
                 </div>
               </ng-container>
               <ng-template #guest>
-                <div class="flex items-center gap-5">
-                  <a routerLink="/login" class="text-sm font-black text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors uppercase tracking-widest">Log In</a>
-                  <a routerLink="/signup" class="px-8 py-3.5 bg-amber-500 hover:bg-amber-600 text-white text-sm font-black rounded-2xl transition-all active:scale-95 shadow-2xl shadow-amber-500/30 uppercase tracking-widest">
+                <div class="flex items-center gap-4">
+                  <a routerLink="/login" class="text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors uppercase tracking-widest">Log In</a>
+                  <a routerLink="/signup" class="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl transition-all active:scale-95 shadow-lg shadow-amber-500/20 uppercase tracking-widest">
                     Join Studio
                   </a>
                 </div>
@@ -66,7 +66,6 @@ import { ThemeService } from '../services/theme';
   `,
   styles: [`
     :host { font-family: 'Inter', sans-serif; }
-    .tracking-tightest { letter-spacing: -0.05em; }
   `]
 })
 export class NavbarComponent {
