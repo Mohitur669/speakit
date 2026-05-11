@@ -5,6 +5,7 @@ import com.tts.dto.TtsRequest;
 import com.tts.service.PollyService;
 import com.tts.repository.UserRepository;
 import com.tts.entity.User;
+import com.tts.util.Sanitizer;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.*;
@@ -40,33 +41,38 @@ public class TtsController {
                 .map(User::isHasNaturalVoiceAccess)
                 .orElse(false);
 
+        String sanitizedText = Sanitizer.sanitize(request.getText());
+        String sanitizedVoiceId = Sanitizer.sanitize(request.getVoiceId());
+        String sanitizedOutputFormat = Sanitizer.sanitize(request.getOutputFormat());
+
         try (InputStream audioStream = pollyService.synthesizeSpeech(
-                request.getText(),
-                request.getVoiceId(),
-                request.getOutputFormat(),
+                sanitizedText,
+                sanitizedVoiceId,
+                sanitizedOutputFormat,
                 hasNaturalAccess
         )) {
 
             byte[] audioBytes = audioStream.readAllBytes();
-            MediaType mediaType = getMediaType(request.getOutputFormat());
+            MediaType mediaType = getMediaType(sanitizedOutputFormat);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(mediaType);
             headers.setContentDisposition(
                     ContentDisposition.attachment()
-                            .filename("speech." + request.getOutputFormat())
+                            .filename("speech." + sanitizedOutputFormat)
                             .build()
             );
 
             return new ResponseEntity<>(audioBytes, headers, HttpStatus.OK);
 
         } catch (Exception e) {
-            log.debug("TTS failed for voice={} format={}", request.getVoiceId(), request.getOutputFormat(), e);
+            log.debug("TTS failed for voice={} format={}", sanitizedVoiceId, sanitizedOutputFormat, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(("TTS failed: " + e.getMessage()).getBytes());
         }
     }
 
     private MediaType getMediaType(String format) {
+        if (format == null) return MediaType.APPLICATION_OCTET_STREAM;
         return switch (format.toLowerCase()) {
             case "mp3" -> MediaType.parseMediaType("audio/mpeg");
             case "ogg" -> MediaType.parseMediaType("audio/ogg");
@@ -82,15 +88,19 @@ public class TtsController {
                 .map(User::isHasNaturalVoiceAccess)
                 .orElse(false);
 
+        String sanitizedText = Sanitizer.sanitize(request.getText());
+        String sanitizedVoiceId = Sanitizer.sanitize(request.getVoiceId());
+        String sanitizedOutputFormat = Sanitizer.sanitize(request.getOutputFormat());
+
         InputStream stream = pollyService.synthesizeSpeech(
-                request.getText(),
-                request.getVoiceId(),
-                request.getOutputFormat(),
+                sanitizedText,
+                sanitizedVoiceId,
+                sanitizedOutputFormat,
                 hasNaturalAccess
         );
 
         return ResponseEntity.ok()
-                .contentType(getMediaType(request.getOutputFormat()))
+                .contentType(getMediaType(sanitizedOutputFormat))
                 .body(new InputStreamResource(stream));
     }
 
