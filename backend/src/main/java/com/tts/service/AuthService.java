@@ -5,6 +5,7 @@ import com.tts.dto.AuthResponse;
 import com.tts.entity.User;
 import com.tts.repository.UserRepository;
 import com.tts.security.JwtService;
+import com.tts.util.Sanitizer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -22,9 +23,12 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
 
     public AuthResponse register(AuthRequest request) {
+        String sanitizedUsername = Sanitizer.sanitize(request.getUsername());
+        String sanitizedEmail = Sanitizer.sanitize(request.getEmail());
+
         var user = User.builder()
-                .username(request.getUsername())
-                .email(request.getEmail())
+                .username(sanitizedUsername)
+                .email(sanitizedEmail)
                 .password(passwordEncoder.encode(request.getPassword()))
                 .hasNaturalVoiceAccess(false)
                 .build();
@@ -34,8 +38,10 @@ public class AuthService {
     }
 
     public AuthResponse login(AuthRequest request) {
+        String sanitizedIdentifier = Sanitizer.sanitize(request.getUsername());
+
         // Find user by username or email
-        var user = userRepository.findByUsernameOrEmail(request.getUsername(), request.getUsername())
+        var user = userRepository.findByUsernameOrEmail(sanitizedIdentifier, sanitizedIdentifier)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         authenticationManager.authenticate(
@@ -62,12 +68,5 @@ public class AuthService {
                 .username(user.getUsername())
                 .hasNaturalVoiceAccess(user.isHasNaturalVoiceAccess())
                 .build();
-    }
-
-    public void forgotPassword(String email) {
-        var user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User with this email not found"));
-        // logic for sending reset link would go here
-        System.out.println("Password reset requested for: " + email);
     }
 }

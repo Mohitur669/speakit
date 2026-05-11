@@ -29,10 +29,7 @@ import { NavbarComponent } from '../components/navbar.component';
                   class="block w-full px-5 py-4 bg-slate-50 dark:bg-[#0a0e1a] text-slate-900 dark:text-white border border-slate-100 dark:border-slate-800 rounded-2xl focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all placeholder-slate-400">
               </div>
               <div>
-                <div class="flex items-center justify-between mb-2">
-                  <label class="block text-xs font-black text-slate-400 uppercase tracking-widest">Password</label>
-                  <button type="button" (click)="onForgot()" class="text-[10px] text-amber-500 hover:text-amber-400 font-black uppercase tracking-tighter transition-colors">Forgot password?</button>
-                </div>
+                <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Password</label>
                 <input [(ngModel)]="password" name="password" type="password" required 
                   placeholder="••••••••"
                   class="block w-full px-5 py-4 bg-slate-50 dark:bg-[#0a0e1a] text-slate-900 dark:text-white border border-slate-100 dark:border-slate-800 rounded-2xl focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all placeholder-slate-400">
@@ -85,20 +82,6 @@ export class LoginComponent {
         this.error = 'Invalid credentials. Please try again.';
         this.loading = false;
       }
-    });
-  }
-
-  onForgot() {
-    if (!this.username.includes('@')) {
-      this.error = 'Please enter your email to reset password.';
-      return;
-    }
-    this.authService.forgotPassword(this.username).subscribe({
-      next: () => {
-        this.error = '';
-        alert('Reset instructions sent to your email.');
-      },
-      error: () => this.error = 'Account not found with this email.'
     });
   }
 }
