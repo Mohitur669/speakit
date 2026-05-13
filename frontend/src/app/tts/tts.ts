@@ -26,13 +26,14 @@ export class TtsComponent implements OnInit {
   selectedVoiceId = '';
   voices: Voice[] = [];
   filteredVoices: Voice[] = [];
-  
+  filterOptions: ('All' | 'Standard' | 'Neural')[] = ['All', 'Standard', 'Neural'];
+
   isDropdownOpen = false;
   audioUrl: string | null = null;
   loading = false;
   error = '';
   isPlaying = false;
-  
+
   toastMessage = '';
   toastType: 'success' | 'error' = 'success';
   showToast = false;
@@ -49,10 +50,6 @@ export class TtsComponent implements OnInit {
     this.refreshVoices();
   }
 
-  public checkAccess(val: any): boolean {
-    return val === true || val === 'true';
-  }
-
   get userCanUseNeural(): boolean {
     return this.authService.hasNaturalAccess();
   }
@@ -63,12 +60,12 @@ export class TtsComponent implements OnInit {
         this.voices = voices;
         this.currentFilter = this.userCanUseNeural ? 'All' : 'Standard';
         this.applyFilter();
-        
+
         if (this.filteredVoices.length > 0 && !this.selectedVoiceId) {
           this.selectedVoiceId = this.filteredVoices[0].id;
         }
       },
-      error: () => this.error = 'Failed to load studio voices.'
+      error: () => this.error = 'Failed to load voices.'
     });
   }
 
@@ -80,10 +77,8 @@ export class TtsComponent implements OnInit {
       case 'Neural':
         this.filteredVoices = this.voices.filter(v => v.isNeural === true);
         break;
-      case 'All':
       default:
         this.filteredVoices = [...this.voices];
-        break;
     }
 
     if (this.filteredVoices.length > 0) {
@@ -98,18 +93,11 @@ export class TtsComponent implements OnInit {
 
   setFilter(filter: 'All' | 'Standard' | 'Neural'): void {
     if (filter === 'Neural' && !this.userCanUseNeural) {
-      this.showNotification('⚡ Neural voices require a Pro plan', 'error');
+      this.showNotification('Neural voices require a Pro subscription', 'error');
       return;
     }
     this.currentFilter = filter;
     this.applyFilter();
-  }
-
-  voiceBadge(voice: Voice): string {
-    if (voice.isNeural && voice.isStandard) return 'Standard + Neural';
-    if (voice.isNeural) return 'Neural';
-    if (voice.isStandard) return 'Standard';
-    return '';
   }
 
   get selectedVoice(): Voice | undefined {
@@ -141,11 +129,11 @@ export class TtsComponent implements OnInit {
         const audioBlob = new Blob([blob], { type: blob.type || 'audio/mpeg' });
         this.audioUrl = URL.createObjectURL(audioBlob);
         this.loading = false;
-        this.showNotification('✓ Render Successful');
+        this.showNotification('Audio generated successfully');
       },
-      error: (err) => {
+      error: () => {
         this.loading = false;
-        this.error = 'Synthesis failed.';
+        this.error = 'Failed to generate audio. Please try again.';
       }
     });
   }
@@ -154,9 +142,9 @@ export class TtsComponent implements OnInit {
     if (!this.audioUrl) return;
     const a = document.createElement('a');
     a.href = this.audioUrl;
-    a.download = `speakit-master-${Date.now()}.mp3`;
+    a.download = `speakit-${Date.now()}.mp3`;
     a.click();
-    this.showNotification('✓ Download Started');
+    this.showNotification('Download started');
   }
 
   onTimeUpdate(event: Event): void {

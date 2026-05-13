@@ -10,61 +10,90 @@ import { NavbarComponent } from '../components/navbar.component';
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink, NavbarComponent],
   template: `
-    <div class="min-h-[calc(100-5rem)] bg-slate-50 dark:bg-[#090b11] transition-colors duration-500 font-body">
+    <div class="min-h-screen bg-primary-50 dark:bg-primary-950">
       <app-navbar></app-navbar>
 
       <div class="flex items-center justify-center px-4 py-16">
-        <div class="max-w-md w-full space-y-8 p-8 lg:p-10 bg-white dark:bg-[#0f172a] rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none animate-slide-up">
-          <div class="text-center">
-            <h2 class="text-3xl font-bold text-slate-900 dark:text-white tracking-tight mb-2">Create Account</h2>
-            <p class="text-slate-500 dark:text-slate-400 text-sm font-medium leading-relaxed">Start transforming your content into speech today.</p>
+        <div class="w-full max-w-md animate-fade-in">
+          <!-- Card -->
+          <div class="bg-white dark:bg-primary-900 rounded-2xl border border-primary-200 dark:border-primary-700 shadow-xl overflow-hidden">
+            <!-- Header -->
+            <div class="p-8 pb-0">
+              <h1 class="text-2xl font-bold text-primary-900 dark:text-white mb-2">Create your account</h1>
+              <p class="text-primary-500 dark:text-primary-400">Start creating professional voiceovers today</p>
+            </div>
+
+            <!-- Form -->
+            <div class="p-8">
+              <form (submit)="onSubmit()" class="space-y-6">
+                <!-- Username -->
+                <div>
+                  <label class="block text-sm font-medium text-primary-700 dark:text-primary-300 mb-2">Username</label>
+                  <input [(ngModel)]="username" name="username" type="text" required
+                    placeholder="johndoe"
+                    class="w-full px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all">
+                </div>
+
+                <!-- Email -->
+                <div>
+                  <label class="block text-sm font-medium text-primary-700 dark:text-primary-300 mb-2">Email</label>
+                  <input [(ngModel)]="email" name="email" type="email" required
+                    placeholder="you@example.com"
+                    class="w-full px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all">
+                </div>
+
+                <!-- Password -->
+                <div>
+                  <label class="block text-sm font-medium text-primary-700 dark:text-primary-300 mb-2">Password</label>
+                  <input [(ngModel)]="password" name="password" type="password" required
+                    placeholder="••••••••"
+                    class="w-full px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all">
+                  <p class="text-xs text-primary-400 mt-2">Must be at least 8 characters</p>
+                </div>
+
+                <!-- Error -->
+                <div *ngIf="error" class="p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30">
+                  <p class="text-sm text-red-600 dark:text-red-400 flex items-center gap-2">
+                    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    {{ error }}
+                  </p>
+                </div>
+
+                <!-- Submit -->
+                <button type="submit" [disabled]="loading"
+                  class="w-full py-3 px-4 rounded-xl font-semibold text-white bg-brand-blue hover:bg-brand-blue/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center justify-center gap-2">
+                  <svg *ngIf="loading" class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                  </svg>
+                  {{ loading ? 'Creating account...' : 'Create account' }}
+                </button>
+              </form>
+
+              <!-- Divider -->
+              <div class="relative my-8">
+                <div class="absolute inset-0 flex items-center">
+                  <div class="w-full border-t border-primary-200 dark:border-primary-700"></div>
+                </div>
+                <div class="relative flex justify-center">
+                  <span class="px-4 text-sm text-primary-400 bg-white dark:bg-primary-900">or</span>
+                </div>
+              </div>
+
+              <!-- Sign in link -->
+              <p class="text-center text-primary-500 dark:text-primary-400">
+                Already have an account?
+                <a routerLink="/login" class="font-semibold text-brand-blue hover:text-brand-blue/80 transition-colors">Sign in</a>
+              </p>
+            </div>
           </div>
-          
-          <form class="mt-8 space-y-5" (submit)="onSubmit()">
-            <div class="space-y-4">
-              <div>
-                <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5 ml-1">Username</label>
-                <input [(ngModel)]="username" name="username" type="text" required 
-                  placeholder="johndoe"
-                  class="block w-full px-4 py-3 bg-slate-50 dark:bg-[#1e293b] text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/10 focus:border-amber-500 transition-all placeholder-slate-400 text-sm">
-              </div>
-              <div>
-                <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5 ml-1">Email Address</label>
-                <input [(ngModel)]="email" name="email" type="email" required 
-                  placeholder="john@example.com"
-                  class="block w-full px-4 py-3 bg-slate-50 dark:bg-[#1e293b] text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/10 focus:border-amber-500 transition-all placeholder-slate-400 text-sm">
-              </div>
-              <div>
-                <label class="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5 ml-1">Password</label>
-                <input [(ngModel)]="password" name="password" type="password" required 
-                  placeholder="••••••••"
-                  class="block w-full px-4 py-3 bg-slate-50 dark:bg-[#1e293b] text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500/10 focus:border-amber-500 transition-all placeholder-slate-400 text-sm">
-              </div>
-            </div>
 
-            <div *ngIf="error" class="text-red-500 text-xs font-bold text-center bg-red-50 dark:bg-red-900/10 p-3 rounded-xl border border-red-100 dark:border-red-900/20 animate-shake">
-              {{ error }}
-            </div>
-
-            <button type="submit" [disabled]="loading"
-              class="w-full py-3.5 bg-amber-500 hover:bg-amber-600 text-white dark:text-slate-900 rounded-xl font-bold text-base transition-all active:scale-[0.98] shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2">
-              <svg *ngIf="loading" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-              </svg>
-              {{ loading ? 'Creating Account...' : 'Get Started' }}
-            </button>
-
-            <div class="relative py-2">
-              <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-slate-100 dark:border-slate-800"></div></div>
-              <div class="relative flex justify-center text-[10px] font-bold uppercase tracking-widest"><span class="bg-white dark:bg-[#0f172a] px-3 text-slate-400">Already a member?</span></div>
-            </div>
-
-            <p class="text-center text-slate-500 dark:text-slate-400 text-sm font-medium">
-              Already have an account? 
-              <a routerLink="/login" class="text-slate-900 dark:text-white font-bold ml-1 hover:underline">Sign In</a>
-            </p>
-          </form>
+          <!-- Trust note -->
+          <p class="text-center text-sm text-primary-400 mt-6">
+            By creating an account, you agree to our Terms of Service and Privacy Policy.
+          </p>
         </div>
       </div>
     </div>
@@ -85,8 +114,8 @@ export class SignupComponent {
     this.error = '';
     this.authService.register({ username: this.username, email: this.email, password: this.password }).subscribe({
       next: () => this.router.navigate(['/tts']),
-      error: (err) => {
-        this.error = 'Registration failed. Username or email taken.';
+      error: () => {
+        this.error = 'Unable to create account. Username or email may already be in use.';
         this.loading = false;
       }
     });
