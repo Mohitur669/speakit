@@ -8,81 +8,251 @@ import { NavbarComponent } from '../components/navbar.component';
   standalone: true,
   imports: [CommonModule, RouterLink, NavbarComponent],
   template: `
-    <div class="min-h-screen bg-white dark:bg-[#090b11] transition-colors duration-500 overflow-x-hidden relative font-body">
+    <div class="min-h-screen bg-primary-50 dark:bg-primary-950">
       <app-navbar></app-navbar>
 
-      <!-- Premium Hero Section -->
-      <main class="relative pt-16 md:pt-28 pb-32">
-        
-        <!-- Subtle Ambient Background -->
-        <div class="absolute inset-0 overflow-hidden pointer-events-none -z-10">
-          <div class="absolute -top-[10%] -right-[10%] w-[60vw] h-[60vw] bg-amber-500/5 dark:bg-amber-500/[0.03] rounded-full blur-[100px]"></div>
-          <div class="absolute -bottom-[10%] -left-[10%] w-[50vw] h-[50vw] bg-indigo-500/5 dark:bg-indigo-500/[0.03] rounded-full blur-[100px]"></div>
-        </div>
+      <!-- Hero Section -->
+      <section class="relative pt-16 md:pt-24 pb-20 md:pb-32 overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-b from-primary-100/50 dark:from-primary-900/50 to-transparent -z-10"></div>
+        <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-brand-blue/5 dark:bg-brand-blue/10 rounded-full blur-[120px] -z-10"></div>
 
-        <div class="max-w-7xl mx-auto px-6 lg:px-8 text-center">
-          
-          <!-- Floating Badge -->
-          <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/5 dark:bg-white/5 border border-slate-900/10 dark:border-white/10 text-slate-900 dark:text-white text-[10px] md:text-xs font-bold uppercase tracking-wider mb-8 animate-fade-in">
-            <span class="flex h-2 w-2 relative">
-              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-              <span class="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-            </span>
-            New: Neural Engine 3.0
-          </div>
-
-          <!-- Hero Heading -->
-          <h1 class="text-4xl sm:text-6xl lg:text-7xl font-bold text-slate-900 dark:text-white mb-8 tracking-tight leading-[1.1] md:leading-[1.05]">
-            <span class="block animate-slide-up" style="animation-delay: 0.1s">The soul of human speech.</span>
-            <span class="block text-amber-500 animate-slide-up" style="animation-delay: 0.3s">Powered by AI.</span>
-          </h1>
-
-          <!-- Subtitle -->
-          <p class="text-base md:text-lg lg:text-xl text-slate-500 dark:text-slate-400 max-w-2xl mx-auto mb-12 leading-relaxed font-medium animate-slide-up" style="animation-delay: 0.5s">
-            Create lifelike voiceovers in seconds. Experience high-fidelity audio that captures every nuance, emotion, and inflection for your content.
-          </p>
-
-          <!-- Primary CTAs -->
-          <div class="flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up" style="animation-delay: 0.7s">
-            <a routerLink="/signup" class="w-full sm:w-auto px-8 py-3.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-base transition-all hover:scale-[1.02] active:scale-95 shadow-lg shadow-amber-500/20">
-              Get Started Free
-            </a>
-            <a routerLink="/login" class="w-full sm:w-auto px-8 py-3.5 text-slate-900 dark:text-white font-bold text-base hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl transition-all border border-slate-200 dark:border-white/10">
-              View Showcase
-            </a>
-          </div>
-
-          <!-- Feature Grid -->
-          <div class="mt-32 md:mt-48 grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 text-left">
-            
-            <!-- Feature 1 -->
-            <div class="p-8 rounded-3xl bg-white dark:bg-[#0f172a] border border-slate-100 dark:border-slate-800 hover:border-amber-500/30 transition-all group shadow-sm animate-slide-up" style="animation-delay: 0.9s">
-              <div class="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-2xl mb-6 group-hover:scale-110 transition-transform">🎭</div>
-              <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-3 tracking-tight">Emotional AI</h3>
-              <p class="text-slate-500 dark:text-slate-400 leading-relaxed text-sm font-medium">Voices that don't just speak, they perform. Natural inflections for stories that resonate with your audience.</p>
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div class="text-center max-w-3xl mx-auto">
+            <!-- Badge -->
+            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-primary-900 border border-primary-200 dark:border-primary-800 shadow-sm mb-8 animate-fade-in">
+              <span class="relative flex h-2 w-2">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-500 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-accent-500"></span>
+              </span>
+              <span class="text-sm font-medium text-primary-600 dark:text-primary-300">Now with Neural Voice Engine</span>
             </div>
 
-            <!-- Feature 2 -->
-            <div class="p-8 rounded-3xl bg-white dark:bg-[#0f172a] border border-slate-100 dark:border-slate-800 hover:border-indigo-500/30 transition-all group shadow-sm animate-slide-up" style="animation-delay: 1.1s">
-              <div class="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center text-2xl mb-6 group-hover:scale-110 transition-transform">🌐</div>
-              <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-3 tracking-tight">Global Reach</h3>
-              <p class="text-slate-500 dark:text-slate-400 leading-relaxed text-sm font-medium">Access 300+ voices across 30+ languages. Professional localization is now just one click away.</p>
-            </div>
+            <!-- Headline -->
+            <h1 class="text-4xl sm:text-5xl md:text-6xl font-bold text-primary-900 dark:text-white tracking-tight leading-[1.1] mb-6 animate-slide-up">
+              Transform text into
+              <span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-blue to-brand-purple"> natural speech</span>
+            </h1>
 
-            <!-- Feature 3 -->
-            <div class="p-8 rounded-3xl bg-white dark:bg-[#0f172a] border border-slate-100 dark:border-slate-800 hover:border-emerald-500/30 transition-all group shadow-sm animate-slide-up" style="animation-delay: 1.3s">
-              <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-2xl mb-6 group-hover:scale-110 transition-transform">⚡</div>
-              <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-3 tracking-tight">Instant Export</h3>
-              <p class="text-slate-500 dark:text-slate-400 leading-relaxed text-sm font-medium">Real-time streaming and master-quality MP3 exports. Built for creators who value speed and quality.</p>
-            </div>
+            <!-- Subheadline -->
+            <p class="text-lg sm:text-xl text-primary-500 dark:text-primary-400 max-w-2xl mx-auto mb-10 animate-slide-up stagger-1">
+              Professional AI voice generation for content creators, developers, and businesses.
+            </p>
 
+            <!-- CTAs -->
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up stagger-2">
+              <a routerLink="/signup" class="w-full sm:w-auto px-8 py-3.5 text-base font-semibold text-white bg-brand-blue hover:bg-brand-blue/90 rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2">
+                Start Free Trial
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
+              </a>
+              <a routerLink="/login" class="w-full sm:w-auto px-8 py-3.5 text-base font-semibold text-primary-700 dark:text-primary-200 bg-white dark:bg-primary-900 hover:bg-primary-100 dark:hover:bg-primary-800 border border-primary-200 dark:border-primary-700 rounded-xl transition-all flex items-center justify-center gap-2">
+                View Demo
+              </a>
+            </div>
           </div>
         </div>
-      </main>
+      </section>
+
+      <!-- Trust Section -->
+      <div class="py-12 bg-white dark:bg-primary-900 border-y border-primary-100 dark:border-primary-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <p class="text-sm text-primary-400 dark:text-primary-500 mb-8 text-center">Trusted by 50,000+ creators worldwide</p>
+
+          <!-- Row 1 - Left to Right -->
+          <div class="relative overflow-hidden mb-3">
+            <div class="flex animate-marquee whitespace-nowrap">
+              <div class="flex items-center gap-16 px-8 opacity-30">
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">TechCrunch</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Product Hunt</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Y Combinator</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">The Verge</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Wired</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Forbes</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Fast Company</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Bloomberg</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Engadget</span>
+              </div>
+              <div class="flex items-center gap-16 px-8 opacity-30">
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">TechCrunch</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Product Hunt</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Y Combinator</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">The Verge</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Wired</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Forbes</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Fast Company</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Bloomberg</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Engadget</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Row 2 - Right to Left -->
+          <div class="relative overflow-hidden mb-3">
+            <div class="flex animate-marquee-reverse whitespace-nowrap">
+              <div class="flex items-center gap-16 px-8 opacity-50">
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Mashable</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">CNET</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">VentureBeat</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Ars Technica</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">PC Magazine</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Inc.</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Business Insider</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">MIT Tech Review</span>
+              </div>
+              <div class="flex items-center gap-16 px-8 opacity-50">
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Mashable</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">CNET</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">VentureBeat</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Ars Technica</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">PC Magazine</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Inc.</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Business Insider</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">MIT Tech Review</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Row 3 - Left to Right (fast) -->
+          <div class="relative overflow-hidden">
+            <div class="flex animate-marquee-fast whitespace-nowrap">
+              <div class="flex items-center gap-16 px-8 opacity-20">
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">The Next Web</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Smashing Magazine</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">CSS-Tricks</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Dev.to</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap"> HackerNoon</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">ProductHunt</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">G2</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Capterra</span>
+              </div>
+              <div class="flex items-center gap-16 px-8 opacity-20">
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">The Next Web</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Smashing Magazine</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">CSS-Tricks</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Dev.to</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap"> HackerNoon</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">ProductHunt</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">G2</span>
+                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Capterra</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Features Section -->
+      <section id="features" class="py-20 md:py-32 bg-primary-50 dark:bg-primary-950">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div class="text-center max-w-2xl mx-auto mb-16">
+            <h2 class="text-3xl sm:text-4xl font-bold text-primary-900 dark:text-white mb-4">Everything you need for voice creation</h2>
+            <p class="text-lg text-primary-500 dark:text-primary-400">From podcasts to audiobooks, create studio-quality voiceovers in minutes.</p>
+          </div>
+
+          <div class="grid md:grid-cols-3 gap-8">
+            <div class="group p-8 rounded-2xl bg-white dark:bg-primary-900 border border-primary-200 dark:border-primary-700 hover:shadow-lg hover:border-brand-blue/30 transition-all">
+              <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-blue to-brand-purple flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+              </div>
+              <h3 class="text-xl font-semibold text-primary-900 dark:text-white mb-3">300+ Natural Voices</h3>
+              <p class="text-primary-500 dark:text-primary-400">Access a vast library of lifelike voices across 30+ languages and accents.</p>
+            </div>
+
+            <div class="group p-8 rounded-2xl bg-white dark:bg-primary-900 border border-primary-200 dark:border-primary-700 hover:shadow-lg hover:border-accent-500/30 transition-all">
+              <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-accent-500 to-emerald-400 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+              </div>
+              <h3 class="text-xl font-semibold text-primary-900 dark:text-white mb-3">Lightning Fast</h3>
+              <p class="text-primary-500 dark:text-primary-400">Generate high-quality audio in seconds with our optimized neural engine.</p>
+            </div>
+
+            <div class="group p-8 rounded-2xl bg-white dark:bg-primary-900 border border-primary-200 dark:border-primary-700 hover:shadow-lg hover:border-purple-500/30 transition-all">
+              <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+              </div>
+              <h3 class="text-xl font-semibold text-primary-900 dark:text-white mb-3">MP3 Export</h3>
+              <p class="text-primary-500 dark:text-primary-400">Download your audio in industry-standard MP3 format.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Stats Section -->
+      <section class="py-16 bg-brand-blue">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
+            <div class="text-center"><div class="text-3xl sm:text-4xl font-bold text-white mb-2">300+</div><div class="text-sm text-white/70">Premium Voices</div></div>
+            <div class="text-center"><div class="text-3xl sm:text-4xl font-bold text-white mb-2">30+</div><div class="text-sm text-white/70">Languages</div></div>
+            <div class="text-center"><div class="text-3xl sm:text-4xl font-bold text-white mb-2">50K+</div><div class="text-sm text-white/70">Active Users</div></div>
+            <div class="text-center"><div class="text-3xl sm:text-4xl font-bold text-white mb-2">4.9</div><div class="text-sm text-white/70">User Rating</div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Pricing Section -->
+      <section id="pricing" class="py-20 md:py-32 bg-primary-50 dark:bg-primary-950">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div class="text-center max-w-2xl mx-auto mb-16">
+            <h2 class="text-3xl sm:text-4xl font-bold text-primary-900 dark:text-white mb-4">Simple, transparent pricing</h2>
+            <p class="text-lg text-primary-500 dark:text-primary-400">Start free, upgrade when you need more.</p>
+          </div>
+
+          <div class="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            <div class="p-8 rounded-2xl bg-white dark:bg-primary-900 border border-primary-200 dark:border-primary-700">
+              <div class="text-sm font-medium text-primary-500 mb-2">Free</div>
+              <div class="flex items-baseline gap-1 mb-6">
+                <span class="text-4xl font-bold text-primary-900 dark:text-white">$0</span>
+                <span class="text-primary-400">/month</span>
+              </div>
+              <ul class="space-y-4 mb-8">
+                <li class="flex items-center gap-3 text-primary-600 dark:text-primary-300">
+                  <svg class="w-5 h-5 text-accent-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                  100 characters per month
+                </li>
+                <li class="flex items-center gap-3 text-primary-600 dark:text-primary-300">
+                  <svg class="w-5 h-5 text-accent-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                  Standard voices only
+                </li>
+                <li class="flex items-center gap-3 text-primary-600 dark:text-primary-300">
+                  <svg class="w-5 h-5 text-accent-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                  MP3 export
+                </li>
+              </ul>
+              <a routerLink="/signup" class="block w-full py-3 text-center font-semibold text-primary-700 dark:text-primary-200 bg-primary-100 dark:bg-primary-800 hover:bg-primary-200 dark:hover:bg-primary-700 rounded-xl transition-all">Get Started</a>
+            </div>
+
+            <div class="relative p-8 rounded-2xl bg-primary-900 border border-brand-blue">
+              <div class="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-brand-blue text-white text-sm font-semibold rounded-full">Popular</div>
+              <div class="text-sm font-medium text-brand-blue mb-2">Pro</div>
+              <div class="flex items-baseline gap-1 mb-6">
+                <span class="text-4xl font-bold text-white">$19</span>
+                <span class="text-primary-400">/month</span>
+              </div>
+              <ul class="space-y-4 mb-8">
+                <li class="flex items-center gap-3 text-primary-200"><svg class="w-5 h-5 text-accent-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Unlimited characters</li>
+                <li class="flex items-center gap-3 text-primary-200"><svg class="w-5 h-5 text-accent-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> All voices + Neural engine</li>
+                <li class="flex items-center gap-3 text-primary-200"><svg class="w-5 h-5 text-accent-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Priority processing</li>
+                <li class="flex items-center gap-3 text-primary-200"><svg class="w-5 h-5 text-accent-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Commercial license</li>
+              </ul>
+              <a routerLink="/signup" class="block w-full py-3 text-center font-semibold text-white bg-brand-blue hover:bg-brand-blue/90 rounded-xl shadow-lg transition-all">Start Free Trial</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Footer -->
+      <footer class="py-12 bg-white dark:bg-primary-900 border-t border-primary-200 dark:border-primary-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-blue to-brand-purple flex items-center justify-center">
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+              </div>
+              <span class="text-lg font-semibold text-primary-900 dark:text-white">SpeakIT</span>
+            </div>
+            <p class="text-sm text-primary-400">© 2024 SpeakIT. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
     </div>
-  `,
-  styles: [`
-    :host { font-family: 'Inter', sans-serif; }
-  `]
+  `
 })
 export class LandingComponent {}

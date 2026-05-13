@@ -1,203 +1,188 @@
-<div class="min-h-screen bg-white dark:bg-[#090b11] transition-colors duration-500 overflow-x-hidden relative font-body">
-    <app-navbar></app-navbar>
+<div class="min-h-screen bg-primary-50 dark:bg-primary-950">
+  <app-navbar></app-navbar>
 
-    <!-- Subtle Ambient Background -->
-    <div class="absolute inset-0 overflow-hidden pointer-events-none -z-10">
-        <div class="absolute -top-[10%] -right-[10%] w-[60vw] h-[60vw] bg-amber-500/5 dark:bg-amber-500/[0.03] rounded-full blur-[100px]"></div>
-        <div class="absolute -bottom-[10%] -left-[10%] w-[50vw] h-[50vw] bg-indigo-500/5 dark:bg-indigo-500/[0.03] rounded-full blur-[100px]"></div>
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+
+    <!-- Page Header -->
+    <div class="mb-8 animate-fade-in">
+      <h1 class="text-2xl sm:text-3xl font-bold text-primary-900 dark:text-white mb-2">Text to Speech</h1>
+      <p class="text-primary-500 dark:text-primary-400">Convert text to natural-sounding speech with AI</p>
     </div>
 
-    <div class="w-full px-6 lg:px-8 py-12 lg:py-20 animate-slide-up">
+    <!-- Main Content Grid -->
+    <div class="grid lg:grid-cols-3 gap-6">
 
-        <!-- Main Studio Container -->
-        <div class="max-w-7xl mx-auto space-y-12">
+      <!-- Left Column - Voice Selection -->
+      <div class="lg:col-span-1 space-y-6 animate-slide-up">
+        <!-- Voice Selection Card -->
+        <div class="bg-white dark:bg-primary-900 rounded-xl border border-primary-200 dark:border-primary-700 p-6">
+          <h2 class="text-sm font-semibold text-primary-900 dark:text-white mb-4">Select Voice</h2>
 
-            <!-- Studio Toolbar -->
-            <div class="bg-white/50 dark:bg-white/[0.02] backdrop-blur-xl rounded-[2.5rem] p-6 lg:p-8 border border-slate-200 dark:border-white/10 shadow-sm transition-all relative z-40">
-                <div class="flex flex-col lg:flex-row items-center justify-between gap-8">
+          <!-- Filter Tabs -->
+          <div class="flex gap-1 p-1 bg-primary-100 dark:bg-primary-800 rounded-lg mb-4">
+            <button *ngFor="let filter of filterOptions"
+              (click)="setFilter(filter)"
+              [ngClass]="currentFilter === filter ? 'bg-white dark:bg-primary-700 text-primary-900 dark:text-white shadow-sm' : 'text-primary-500 dark:text-primary-400 hover:text-primary-700 dark:hover:text-white'"
+              class="flex-1 py-1.5 text-xs font-medium rounded-md transition-all">
+              {{ filter }}
+              <span *ngIf="filter === 'Neural' && !userCanUseNeural" class="ml-1 opacity-50">🔒</span>
+            </button>
+          </div>
 
-                    <!-- Left: Tiers & Identity -->
-                    <div class="flex flex-col sm:flex-row items-center gap-6 w-full lg:w-auto">
-                        <div class="flex flex-col items-center sm:items-start gap-3">
-                            <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Narrator Tier</label>
-                            <div class="inline-flex p-1.5 bg-slate-100 dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/10 font-bold">
-                                <button (click)="setFilter('All')"
-                                    [ngClass]="currentFilter === 'All' ? 'bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'"
-                                    class="px-6 py-2.5 rounded-xl transition-all duration-300 text-[11px] uppercase tracking-wider">All</button>
-                                <button (click)="setFilter('Standard')"
-                                    [ngClass]="currentFilter === 'Standard' ? 'bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'"
-                                    class="px-6 py-2.5 rounded-xl transition-all duration-300 text-[11px] uppercase tracking-wider mx-1">Standard</button>
-                                <button (click)="setFilter('Neural')"
-                                    [ngClass]="currentFilter === 'Neural' ? 'bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'"
-                                    class="px-6 py-2.5 rounded-xl transition-all duration-300 relative group/btn text-[11px] uppercase tracking-wider flex items-center gap-2">
-                                    Neural
-                                    <span *ngIf="!userCanUseNeural" class="text-[10px] opacity-50">🔒</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Right: Narrator Selector -->
-                    <div class="flex flex-col items-center lg:items-end gap-3 w-full lg:w-[450px]">
-                        <label class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Active Voice</label>
-                        <div class="relative w-full">
-                            <!-- Custom Dropdown Trigger -->
-                            <button (click)="toggleDropdown($event)"
-                                class="w-full bg-slate-50/50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-slate-100 rounded-2xl px-6 py-4 flex items-center justify-between group hover:border-amber-500/50 transition-all shadow-sm">
-                                <div class="flex items-center gap-4">
-                                    <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-lg">
-                                        {{ selectedVoice?.gender === 'Female' ? '👩' : '👨' }}
-                                    </div>
-                                    <div class="flex flex-col items-start">
-                                        <span class="text-sm font-bold tracking-tight">{{ selectedVoice?.name || 'Select Voice' }}</span>
-                                        <span class="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-widest">{{ selectedVoice?.gender }} — {{ voiceBadge(selectedVoice!) }}</span>
-                                    </div>
-                                </div>
-                                <div class="text-xs opacity-40 transition-transform duration-300" [style.transform]="isDropdownOpen ? 'rotate(180deg)' : 'none'">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256"><path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80a8,8,0,0,1,11.32-11.32L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z"></path></svg>
-                                </div>
-                            </button>
-
-                            <!-- Premium Dropdown List -->
-                            <div *ngIf="isDropdownOpen"
-                                class="absolute top-full left-0 w-full mt-4 bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl z-[100] max-h-[350px] overflow-y-auto animate-slide-up p-2 studio-scrollbar backdrop-blur-xl">
-                                <button *ngFor="let voice of filteredVoices"
-                                    (click)="selectVoice(voice.id)"
-                                    class="w-full text-left p-3.5 rounded-xl hover:bg-slate-50 dark:hover:bg-white/5 transition-all flex items-center justify-between group/item mb-1 last:mb-0">
-                                    <div class="flex items-center gap-4">
-                                        <div class="w-9 h-9 rounded-xl bg-slate-100 dark:bg-white/5 flex items-center justify-center text-base group-hover/item:bg-amber-500 group-hover/item:text-white transition-all">
-                                            {{ voice.gender === 'Female' ? '👩' : '👨' }}
-                                        </div>
-                                        <div class="flex flex-col">
-                                            <span class="text-sm font-bold text-slate-900 dark:text-white">{{ voice.name }}</span>
-                                            <span class="text-[9px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-widest">{{ voice.gender }}</span>
-                                        </div>
-                                    </div>
-                                    <div [ngClass]="voice.isNeural ? 'bg-amber-500/10 text-amber-600 dark:text-amber-500' : 'bg-slate-100 dark:bg-white/10 text-slate-500'"
-                                        class="text-[9px] font-bold px-3 py-1 rounded-lg uppercase tracking-wider whitespace-nowrap">
-                                        {{ voiceBadge(voice) }}
-                                    </div>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+          <!-- Voice Dropdown -->
+          <div class="relative">
+            <button (click)="toggleDropdown($event)"
+              class="w-full flex items-center justify-between px-4 py-3 bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 rounded-xl hover:border-brand-blue/50 transition-colors">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-brand-blue/10 flex items-center justify-center">
+                  <svg class="w-5 h-5 text-brand-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                  </svg>
                 </div>
+                <div class="text-left">
+                  <div class="text-sm font-medium text-primary-900 dark:text-white">{{ selectedVoice?.name || 'Select a voice' }}</div>
+                  <div class="text-xs text-primary-400">{{ selectedVoice?.gender }} · {{ selectedVoice?.isNeural ? 'Neural' : 'Standard' }}</div>
+                </div>
+              </div>
+              <svg [ngClass]="isDropdownOpen ? 'rotate-180' : ''" class="w-4 h-4 text-primary-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+
+            <!-- Dropdown -->
+            <div *ngIf="isDropdownOpen"
+              class="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-primary-900 border border-primary-200 dark:border-primary-700 rounded-xl shadow-elevated overflow-hidden z-50 max-h-72 overflow-y-auto">
+              <button *ngFor="let voice of filteredVoices"
+                (click)="selectVoice(voice.id)"
+                [ngClass]="selectedVoiceId === voice.id ? 'bg-brand-blue/10 border-l-2 border-l-brand-blue' : 'hover:bg-primary-50 dark:hover:bg-primary-800'"
+                class="w-full flex items-center justify-between px-4 py-3 text-left transition-colors">
+                <div class="flex items-center gap-3">
+                  <span class="text-lg">{{ voice.gender === 'Female' ? '👩' : '👨' }}</span>
+                  <div>
+                    <div class="text-sm font-medium text-primary-900 dark:text-white">{{ voice.name }}</div>
+                    <div class="text-xs text-primary-400 uppercase">{{ voice.gender }}</div>
+                  </div>
+                </div>
+                <span [ngClass]="voice.isNeural ? 'text-accent-500' : 'text-primary-400'" class="text-[10px] font-medium uppercase">{{ voice.isNeural ? 'Neural' : 'Standard' }}</span>
+              </button>
             </div>
-
-            <!-- Studio Editor Area -->
-            <div class="space-y-12">
-                <div class="bg-white/50 dark:bg-white/[0.02] backdrop-blur-xl rounded-[2.5rem] p-8 lg:p-16 border border-slate-200 dark:border-white/10 shadow-sm relative overflow-hidden">
-                    
-                    <!-- Inner Glow -->
-                    <div class="absolute -top-24 -left-24 w-48 h-48 bg-amber-500/10 rounded-full blur-[80px] pointer-events-none"></div>
-
-                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 mb-12 relative z-10">
-                        <div>
-                            <!-- Floating Badge -->
-                            <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-500 text-[10px] font-bold uppercase tracking-wider mb-4">
-                                <span class="flex h-1.5 w-1.5 relative">
-                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                                    <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500"></span>
-                                </span>
-                                Professional Studio
-                            </div>
-                            <h1 class="text-4xl lg:text-5xl font-bold text-slate-900 dark:text-white tracking-tight leading-tight">
-                                Studio <span class="text-amber-500">Editor</span>
-                            </h1>
-                            <p class="text-slate-500 dark:text-slate-400 text-sm font-medium mt-2">Convert your text into natural, high-fidelity speech.</p>
-                        </div>
-                        <div class="flex items-center gap-4">
-                            <div class="flex flex-col items-end">
-                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Capacity</span>
-                                <span class="px-5 py-2.5 rounded-xl bg-slate-100 dark:bg-white/5 text-xs font-bold text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/10 shadow-inner">
-                                    {{ text.length }} / 3000
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <textarea [(ngModel)]="text"
-                        placeholder="Type or paste your script here..."
-                        rows="10"
-                        maxlength="3000"
-                        class="w-full bg-slate-50/50 dark:bg-white/5 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 text-xl rounded-[2rem] border border-slate-200 dark:border-white/10 p-8 lg:p-10 focus:outline-none focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500/30 resize-none transition-all leading-relaxed font-medium"></textarea>
-
-                    <div class="mt-10">
-                        <button (click)="convert()" [disabled]="loading || !text.trim() || !selectedVoiceId"
-                            class="w-full py-6 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl font-bold text-lg transition-all active:scale-[0.98] shadow-lg shadow-amber-500/20 flex items-center justify-center gap-4 disabled:opacity-50 disabled:cursor-not-allowed group relative overflow-hidden">
-                            
-                            <!-- Shimmer effect while loading -->
-                            <div *ngIf="loading" class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full animate-shimmer"></div>
-
-                            <span *ngIf="!loading" class="flex items-center gap-3 uppercase tracking-widest text-sm font-bold relative z-10">
-                                <span class="group-hover:rotate-12 transition-transform text-2xl">🎙</span> Generate Audio
-                            </span>
-                            <span *ngIf="loading" class="flex items-center gap-4 uppercase tracking-widest text-sm font-bold relative z-10">
-                                <div class="flex items-center gap-1.5 h-6">
-                                    <div class="w-1 bg-white rounded-full animate-audio-bar-1"></div>
-                                    <div class="w-1 bg-white rounded-full animate-audio-bar-2"></div>
-                                    <div class="w-1 bg-white rounded-full animate-audio-bar-3"></div>
-                                    <div class="w-1 bg-white rounded-full animate-audio-bar-4"></div>
-                                </div>
-                                Rendering Master...
-                            </span>
-                        </button>
-                    </div>
-
-                    <!-- Error Alert -->
-                    <div *ngIf="error" class="mt-6 p-6 bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 rounded-2xl text-xs font-bold uppercase tracking-widest animate-shake flex items-center gap-4">
-                        <span class="text-xl">⚠️</span> {{ error }}
-                    </div>
-                </div>
-
-                <!-- Master Output Player & Export -->
-                <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                    <!-- Player Card -->
-                    <div *ngIf="audioUrl" class="lg:col-span-3 bg-white/50 dark:bg-white/[0.02] backdrop-blur-xl rounded-[2.5rem] p-8 lg:p-10 border border-slate-200 dark:border-white/10 shadow-sm animate-slide-up">
-                        <div class="flex flex-col md:flex-row items-center gap-8">
-                            <button (click)="togglePlayPause()"
-                                class="w-20 h-20 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center text-3xl transition-all active:scale-90 shadow-xl shadow-slate-900/10 dark:shadow-white/5 flex-shrink-0">
-                                <span *ngIf="isPlaying">⏸</span>
-                                <span *ngIf="!isPlaying" class="ml-1">▶</span>
-                            </button>
-
-                            <div class="flex-1 w-full space-y-4">
-                                <div class="flex justify-between items-end">
-                                    <div>
-                                        <h4 class="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-[0.3em] mb-1">Master Audio Pipeline</h4>
-                                        <p class="text-slate-900 dark:text-white font-bold text-lg tracking-tight">Studio Output .wav</p>
-                                    </div>
-                                    <span class="text-xs font-bold text-slate-500 dark:text-slate-400 font-mono tracking-wider opacity-60">
-                                        {{ currentTime | number:'1.1-1' }}s / {{ duration | number:'1.1-1' }}s
-                                    </span>
-                                </div>
-                                <div class="h-4 bg-slate-100 dark:bg-white/5 rounded-full cursor-pointer overflow-hidden group relative" (click)="seekAudio($event)">
-                                    <div class="h-full bg-amber-500 rounded-full transition-all duration-100 relative shadow-lg shadow-amber-500/20" [style.width.%]="progressPercent">
-                                        <div class="absolute inset-0 bg-white/20 animate-pulse"></div>
-                                    </div>
-                                    <div class="absolute top-0 left-0 w-full h-full opacity-0 group-hover:opacity-10 bg-white dark:bg-slate-400 transition-opacity"></div>
-                                </div>
-                            </div>
-                        </div>
-                        <audio #audioPlayer [src]="audioUrl" (timeupdate)="onTimeUpdate($event)" (play)="isPlaying = true" (pause)="isPlaying = false" (ended)="isPlaying = false"></audio>
-                    </div>
-
-                    <!-- Export Card -->
-                    <div *ngIf="audioUrl" (click)="download()" 
-                        class="lg:col-span-1 bg-amber-500 rounded-[2.5rem] p-8 shadow-lg shadow-amber-500/20 flex flex-col justify-center items-center gap-4 group cursor-pointer hover:bg-amber-600 transition-all animate-slide-up">
-                        <div class="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center text-4xl group-hover:scale-110 transition-transform">
-                            📥
-                        </div>
-                        <div class="text-center">
-                            <h3 class="text-[10px] font-bold text-white/70 uppercase tracking-widest mb-1">Production Export</h3>
-                            <p class="text-white font-bold text-xl tracking-tight">Save Audio</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
+          </div>
         </div>
-    </div>
 
-    <!-- Global Toast -->
-    <app-toast [message]="toastMessage" [type]="toastType" [visible]="showToast"></app-toast>
+        <!-- Quick Stats -->
+        <div class="bg-white dark:bg-primary-900 rounded-xl border border-primary-200 dark:border-primary-700 p-6">
+          <h2 class="text-sm font-semibold text-primary-900 dark:text-white mb-4">Your Usage</h2>
+          <div class="space-y-4">
+            <div>
+              <div class="flex justify-between text-sm mb-2">
+                <span class="text-primary-500">Characters used</span>
+                <span class="font-medium text-primary-700 dark:text-primary-300">{{ text.length }} / 3000</span>
+              </div>
+              <div class="h-2 bg-primary-100 dark:bg-primary-800 rounded-full overflow-hidden">
+                <div [ngClass]="text.length > 2700 ? 'bg-red-500' : 'bg-brand-blue'"
+                  class="h-full rounded-full transition-all"
+                  [style.width.%]="(text.length / 3000) * 100"></div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 text-xs text-primary-400">
+              <span class="w-2 h-2 rounded-full bg-accent-500"></span>
+              <span>{{ userCanUseNeural ? 'Pro plan active' : 'Free plan' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column - Editor -->
+      <div class="lg:col-span-2 space-y-6 animate-slide-up stagger-1">
+
+        <!-- Text Editor -->
+        <div class="bg-white dark:bg-primary-900 rounded-xl border border-primary-200 dark:border-primary-700 overflow-hidden">
+          <div class="px-6 py-4 border-b border-primary-100 dark:border-primary-800 flex items-center justify-between">
+            <h2 class="text-sm font-semibold text-primary-900 dark:text-white">Script</h2>
+            <button *ngIf="text" (click)="text = ''"
+              class="text-xs text-primary-400 hover:text-primary-600 dark:hover:text-primary-300 transition-colors">
+              Clear
+            </button>
+          </div>
+          <div class="p-6">
+            <textarea [(ngModel)]="text"
+              placeholder="Enter your text here... Paste your script, article, or any content you want to convert to speech."
+              rows="8"
+              maxlength="3000"
+              class="w-full bg-primary-50 dark:bg-primary-800 text-primary-900 dark:text-white placeholder-primary-400 rounded-xl border border-primary-200 dark:border-primary-700 p-4 text-sm leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all"></textarea>
+
+            <div class="mt-4 flex items-center justify-between">
+              <span class="text-xs text-primary-400">{{ text.length }} / 3000 characters</span>
+              <button (click)="convert()" [disabled]="loading || !text.trim() || !selectedVoiceId"
+                class="px-6 py-2.5 rounded-xl font-semibold text-white bg-brand-blue hover:bg-brand-blue/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center gap-2">
+                <svg *ngIf="loading" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                <svg *ngIf="!loading" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+                </svg>
+                {{ loading ? 'Generating...' : 'Generate' }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Error Alert -->
+        <div *ngIf="error" class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 rounded-xl p-4">
+          <p class="text-sm text-red-600 dark:text-red-400 flex items-center gap-2">
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            {{ error }}
+          </p>
+        </div>
+
+        <!-- Audio Player -->
+        <div *ngIf="audioUrl" class="bg-white dark:bg-primary-900 rounded-xl border border-primary-200 dark:border-primary-700 overflow-hidden">
+          <div class="px-6 py-4 border-b border-primary-100 dark:border-primary-800">
+            <h2 class="text-sm font-semibold text-primary-900 dark:text-white">Generated Audio</h2>
+          </div>
+          <div class="p-6">
+            <div class="flex items-center gap-4">
+              <!-- Play Button -->
+              <button (click)="togglePlayPause()"
+                class="w-12 h-12 rounded-xl bg-primary-900 dark:bg-white text-white dark:text-primary-900 flex items-center justify-center hover:opacity-80 transition-all shadow-lg flex-shrink-0">
+                <svg *ngIf="!isPlaying" class="w-5 h-5 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z"/>
+                </svg>
+                <svg *ngIf="isPlaying" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
+                </svg>
+              </button>
+
+              <!-- Progress -->
+              <div class="flex-1">
+                <div class="flex justify-between text-xs text-primary-400 mb-2">
+                  <span>{{ currentTime | number:'1.1-1' }}s</span>
+                  <span>{{ duration | number:'1.1-1' }}s</span>
+                </div>
+                <div class="h-2 bg-primary-100 dark:bg-primary-800 rounded-full cursor-pointer overflow-hidden group" (click)="seekAudio($event)">
+                  <div class="h-full bg-brand-blue rounded-full transition-all group-hover:shadow-lg group-hover:shadow-brand-blue/30"
+                    [style.width.%]="progressPercent"></div>
+                </div>
+              </div>
+
+              <!-- Download -->
+              <button (click)="download()"
+                class="px-4 py-2 rounded-xl font-medium text-sm text-white bg-accent-500 hover:bg-accent-600 transition-all shadow-md hover:shadow-lg flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                </svg>
+                Download
+              </button>
+            </div>
+          </div>
+          <audio #audioPlayer [src]="audioUrl" (timeupdate)="onTimeUpdate($event)" (play)="isPlaying = true" (pause)="isPlaying = false" (ended)="isPlaying = false"></audio>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <app-toast [message]="toastMessage" [type]="toastType" [visible]="showToast"></app-toast>
 </div>
