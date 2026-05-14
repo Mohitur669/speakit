@@ -1,0 +1,188 @@
+<div class="min-h-screen bg-primary-50 dark:bg-primary-950">
+  <app-navbar></app-navbar>
+
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+
+    <!-- Page Header -->
+    <div class="mb-8 animate-fade-in">
+      <h1 class="text-2xl sm:text-3xl font-bold text-primary-900 dark:text-white mb-2">Text to Speech</h1>
+      <p class="text-primary-500 dark:text-primary-400">Convert text to natural-sounding speech with AI</p>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="grid lg:grid-cols-3 gap-6">
+
+      <!-- Left Column - Voice Selection -->
+      <div class="lg:col-span-1 space-y-6 animate-slide-up">
+        <!-- Voice Selection Card -->
+        <div class="bg-white dark:bg-primary-900 rounded-xl border border-primary-200 dark:border-primary-700 p-6">
+          <h2 class="text-sm font-semibold text-primary-900 dark:text-white mb-4">Select Voice</h2>
+
+          <!-- Filter Tabs -->
+          <div class="flex gap-1 p-1 bg-primary-100 dark:bg-primary-800 rounded-lg mb-4">
+            <button *ngFor="let filter of filterOptions()"
+              (click)="setFilter(filter)"
+              [ngClass]="currentFilter() === filter ? 'bg-white dark:bg-primary-700 text-primary-900 dark:text-white shadow-sm' : 'text-primary-500 dark:text-primary-400 hover:text-primary-700 dark:hover:text-white'"
+              class="flex-1 py-1.5 text-xs font-medium rounded-md transition-all">
+              {{ filter === 'Standard' ? 'Standard' : (filter === 'Neural' ? 'Neural' : 'All') }}
+              <span class="text-[10px] opacity-60 ml-1">({{ filter === 'All' ? totalCount : filter === 'Standard' ? standardCount : neuralCount }})</span>
+              <span *ngIf="filter === 'Neural' && !userCanUseNeural" class="ml-1 opacity-50">🔒</span>
+            </button>
+          </div>
+
+          <!-- Voice Dropdown -->
+          <div class="relative">
+            <button (click)="toggleDropdown($event)"
+              class="w-full flex items-center justify-between px-4 py-3 bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 rounded-xl hover:border-brand-blue/50 transition-colors">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-brand-blue/10 flex items-center justify-center">
+                  <svg class="w-5 h-5 text-brand-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                  </svg>
+                </div>
+                <div class="text-left">
+                  <div class="text-sm font-medium text-primary-900 dark:text-white">{{ selectedVoice?.name || 'Select a voice' }}</div>
+                  <div class="text-xs text-primary-400">{{ selectedVoice?.gender }} · {{ currentFilter() === 'Standard' ? 'Standard' : ((selectedVoice?.isNeural && selectedVoice?.isStandard) ? 'Natural + Standard' : (selectedVoice?.isNeural ? 'Natural' : 'Standard')) }}</div>
+                </div>
+              </div>
+              <svg [ngClass]="isDropdownOpen ? 'rotate-180' : ''" class="w-4 h-4 text-primary-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+
+            <!-- Dropdown -->
+            <div *ngIf="isDropdownOpen"
+              class="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-primary-900 border border-primary-200 dark:border-primary-700 rounded-xl shadow-elevated overflow-hidden z-50 max-h-72 overflow-y-auto">
+              <button *ngFor="let voice of filteredVoices()"
+                (click)="selectVoice(voice.id)"
+                [ngClass]="selectedVoiceId === voice.id ? 'bg-brand-blue/10 border-l-2 border-l-brand-blue' : 'hover:bg-primary-50 dark:hover:bg-primary-800'"
+                class="w-full flex items-center justify-between px-4 py-3 text-left transition-colors">
+                <div class="flex items-center gap-3">
+                  <span class="text-lg">{{ voice.gender === 'Female' ? '👩' : '👨' }}</span>
+                  <div>
+                    <div class="text-sm font-medium text-primary-900 dark:text-white">{{ voice.name }}</div>
+                    <div class="text-xs text-primary-400 uppercase">{{ voice.gender }}</div>
+                  </div>
+                </div>
+                <span [ngClass]="currentFilter() === 'Standard' ? 'text-primary-400' : (voice.isNeural && voice.isStandard ? 'text-purple-500' : voice.isNeural ? 'text-accent-500' : 'text-primary-400')" class="text-[10px] font-medium uppercase">
+                  {{ currentFilter() === 'Standard' ? 'Standard' : (voice.isNeural && voice.isStandard ? 'Natural + Standard' : (voice.isNeural ? 'Natural' : 'Standard')) }}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="bg-white dark:bg-primary-900 rounded-xl border border-primary-200 dark:border-primary-700 p-6">
+          <h2 class="text-sm font-semibold text-primary-900 dark:text-white mb-4">Your Usage</h2>
+          <div class="space-y-4">
+            <div>
+              <div class="flex justify-between text-sm mb-2">
+                <span class="text-primary-500">Characters used</span>
+                <span class="font-medium text-primary-700 dark:text-primary-300">{{ text.length }} / 3000</span>
+              </div>
+              <div class="h-2 bg-primary-100 dark:bg-primary-800 rounded-full overflow-hidden">
+                <div [ngClass]="text.length > 2700 ? 'bg-red-500' : 'bg-brand-blue'"
+                  class="h-full rounded-full transition-all"
+                  [style.width.%]="(text.length / 3000) * 100"></div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 text-xs text-primary-400">
+              <span class="w-2 h-2 rounded-full bg-accent-500"></span>
+              <span>{{ userCanUseNeural ? 'Pro plan active' : 'Free plan' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column - Editor -->
+      <div class="lg:col-span-2 space-y-6 animate-slide-up stagger-1">
+
+        <!-- Text Editor -->
+        <div class="bg-white dark:bg-primary-900 rounded-xl border border-primary-200 dark:border-primary-700 overflow-hidden">
+          <div class="px-6 py-4 border-b border-primary-100 dark:border-primary-800 flex items-center justify-between">
+            <h2 class="text-sm font-semibold text-primary-900 dark:text-white">Script</h2>
+            <button *ngIf="text" (click)="text = ''"
+              class="text-xs text-primary-400 hover:text-primary-600 dark:hover:text-primary-300 transition-colors">
+              Clear
+            </button>
+          </div>
+          <div class="p-6">
+            <textarea [(ngModel)]="text"
+              placeholder="Enter your text here..."
+              rows="8"
+              maxlength="3000"
+              class="w-full bg-primary-50 dark:bg-primary-800 text-primary-900 dark:text-white placeholder-primary-400 rounded-xl border border-primary-200 dark:border-primary-700 p-4 text-sm leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all"></textarea>
+
+            <div class="mt-4 flex items-center justify-between">
+              <span class="text-xs text-primary-400">{{ text.length }} / 3000 characters</span>
+              <button (click)="convert()" [disabled]="loading() || !text.trim() || !selectedVoiceId"
+                class="px-6 py-3 rounded-xl font-semibold text-white bg-brand-blue hover:bg-brand-blue/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center gap-2">
+                <svg *ngIf="loading()" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                <svg *ngIf="!loading()" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+                </svg>
+                {{ loading() ? 'Generating...' : 'Generate' }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Error Alert -->
+        <div *ngIf="error()" class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 rounded-xl p-4">
+          <p class="text-sm text-red-600 dark:text-red-400 flex items-center gap-2">
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            {{ error() }}
+          </p>
+        </div>
+
+        <!-- Audio Player -->
+        <div *ngIf="audioUrl()" class="bg-white dark:bg-primary-900 rounded-xl border border-primary-200 dark:border-primary-700 overflow-hidden">
+          <div class="px-6 py-4 border-b border-primary-100 dark:border-primary-800">
+            <h2 class="text-sm font-semibold text-primary-900 dark:text-white">Generated Audio</h2>
+          </div>
+          <div class="p-6">
+            <div class="flex items-center gap-4">
+              <button (click)="togglePlayPause()"
+                class="w-14 h-14 rounded-full bg-gradient-to-br from-brand-blue to-brand-purple text-white flex items-center justify-center hover:scale-105 hover:shadow-xl hover:shadow-brand-blue/30 active:scale-95 transition-all shadow-lg flex-shrink-0">
+                <svg *ngIf="!isPlaying" class="w-6 h-6 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z"/>
+                </svg>
+                <svg *ngIf="isPlaying" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
+                </svg>
+              </button>
+
+              <div class="flex-1">
+                <div class="flex justify-between text-xs text-primary-400 mb-2">
+                  <span>{{ currentTime | number:'1.1-1' }}s</span>
+                  <span>{{ duration | number:'1.1-1' }}s</span>
+                </div>
+                <div class="h-2 bg-primary-100 dark:bg-primary-800 rounded-full cursor-pointer overflow-hidden group" (click)="seekAudio($event)">
+                  <div class="h-full bg-brand-blue rounded-full transition-all group-hover:shadow-lg group-hover:shadow-brand-blue/30"
+                    [style.width.%]="progressPercent"></div>
+                </div>
+              </div>
+
+              <button (click)="download()"
+                class="px-6 py-3 rounded-xl font-semibold text-sm text-white bg-accent-500 hover:bg-accent-600 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                </svg>
+                Download
+              </button>
+            </div>
+          </div>
+          <audio #audioPlayer [src]="audioUrl()" (timeupdate)="onTimeUpdate($event)" (play)="isPlaying = true" (pause)="isPlaying = false" (ended)="isPlaying = false"></audio>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <app-toast [message]="toastMessage()" [type]="toastType()" [visible]="showToast()"></app-toast>
+</div>

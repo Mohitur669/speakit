@@ -1,5 +1,9 @@
 package com.tts.service;
 
+/**
+ * Business logic for user authentication, registration,
+ * password encoding, and JWT token generation.
+ */
 import com.tts.dto.AuthRequest;
 import com.tts.dto.AuthResponse;
 import com.tts.entity.User;

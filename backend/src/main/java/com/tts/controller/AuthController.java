@@ -1,5 +1,9 @@
 package com.tts.controller;
 
+/**
+ * REST controller handling user authentication endpoints
+ * for login and registration with JWT token generation.
+ */
 import com.tts.dto.AuthRequest;
 import com.tts.dto.AuthResponse;
 import com.tts.service.AuthService;

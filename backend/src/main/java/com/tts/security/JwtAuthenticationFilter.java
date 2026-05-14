@@ -1,5 +1,9 @@
 package com.tts.security;
 
+/**
+ * HTTP request filter validating JWT tokens and setting
+ * Spring Security context for authenticated users.
+ */
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

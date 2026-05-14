@@ -2,3 +2,8 @@
 /node_modules
 /.github
 .env.*
+
+# files and folders
+deployment/
+frontend/Refactoring_PLAN.md
+ORACLE_CLOUD_DEPLOYMENT_GUIDE.md

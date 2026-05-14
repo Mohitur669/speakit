@@ -1,5 +1,9 @@
 package com.tts.repository;
 
+/**
+ * JPA repository for User entity providing data access
+ * methods for authentication and user lookup operations.
+ */
 import com.tts.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;

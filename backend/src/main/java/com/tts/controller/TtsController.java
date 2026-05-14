@@ -1,5 +1,9 @@
 package com.tts.controller;
 
+/**
+ * REST controller handling text-to-speech operations including
+ * voice listing and audio synthesis with rate limiting.
+ */
 import com.tts.aspect.RateLimited;
 import com.tts.dto.TtsRequest;
 import com.tts.service.PollyService;

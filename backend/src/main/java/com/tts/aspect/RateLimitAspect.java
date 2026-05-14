@@ -1,5 +1,9 @@
 package com.tts.aspect;
 
+/**
+ * AOP aspect enforcing rate limiting on endpoints
+ * annotated with @RateLimited using Bucket4j tokens.
+ */
 import com.tts.config.RateLimitConfig;
 import com.tts.exception.RateLimitExceededException;
 import io.github.bucket4j.Bucket;

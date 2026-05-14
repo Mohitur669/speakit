@@ -1,5 +1,9 @@
 package com.tts.entity;
 
+/**
+ * User entity representing authenticated users with
+ * credentials, subscription tier, and access control fields.
+ */
 import jakarta.persistence.*;
 import lombok.*;
 
