@@ -1,5 +1,9 @@
 package com.tts.service;
 
+/**
+ * AWS Polly integration service handling voice metadata
+ * fetching and speech synthesis with standard/neural engines.
+ */
 import com.tts.exception.SpeechConversionException;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;

@@ -1,5 +1,9 @@
 package com.tts.security;
 
+/**
+ * JWT token generation, validation, and claims
+ * extraction for authenticated requests.
+ */
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;

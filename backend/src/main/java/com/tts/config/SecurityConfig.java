@@ -1,5 +1,9 @@
 package com.tts.config;
 
+/**
+ * Spring Security configuration defining filter chains,
+ * CORS policies, authentication providers, and route access.
+ */
 import com.tts.security.JwtAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
