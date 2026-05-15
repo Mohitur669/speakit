@@ -243,8 +243,8 @@ export class AuthService implements OnDestroy {
     this.visibilityCallback = () => {
       if (document.visibilityState === 'visible') {
         this.resetIdleTimer();
-        // Lightweight ping to trigger interceptor if session is invalid
-        this.http.get(`${this.apiUrl}/ping`).subscribe({ error: () => {} });
+        // Redundant with WebSocket self-validation on reconnect
+        // this.http.get(`${this.apiUrl}/ping`).subscribe({ error: () => {} });
       }
     };
     document.addEventListener('visibilitychange', this.visibilityCallback);
