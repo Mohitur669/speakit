@@ -10,6 +10,7 @@ import com.tts.entity.User;
 import com.tts.repository.UserRepository;
 import com.tts.security.JwtService;
 import com.tts.util.Sanitizer;
+import com.tts.config.WebSocketConfig;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -17,6 +18,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -29,6 +31,13 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    private final WebSocketConfig webSocketConfig;
+
+    @Value("${auth.session-duration-ms:7200000}")
+    private long sessionDurationMs;
+
+    @Value("${auth.idle-timeout-ms:60000}")
+    private long idleTimeoutMs;
 
     public AuthResponse register(AuthRequest request) {
         String sanitizedUsername = Sanitizer.sanitize(request.getUsername());
@@ -65,15 +74,12 @@ public class AuthService {
         user.setSessionVersion(oldVersion + 1);
         userRepository.save(user);
         
+        // Notify existing sessions to logout immediately
+        webSocketConfig.notifyLogout(user.getUsername());
+        
         System.out.println("DEBUG: User " + user.getUsername() + " login. Version: " + oldVersion + " -> " + user.getSessionVersion());
 
         return authenticate(user.getUsername());
-    }
-
-    public Long getSessionVersion(String username) {
-        return userRepository.findByUsername(username)
-                .map(User::getSessionVersion)
-                .orElse(0L);
     }
 
     @Transactional
@@ -101,6 +107,8 @@ public class AuthService {
                 .username(user.getUsername())
                 .hasNaturalVoiceAccess(user.isHasNaturalVoiceAccess())
                 .sessionVersion(user.getSessionVersion())
+                .sessionDurationMs(sessionDurationMs)
+                .idleTimeoutMs(idleTimeoutMs)
                 .build();
     }
 }

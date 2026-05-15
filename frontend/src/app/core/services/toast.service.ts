@@ -36,8 +36,8 @@ export class ToastService {
     this.show(message, 'error');
   }
 
-  info(message: string): void {
-    this.show(message, 'info');
+  info(message: string, duration?: number): void {
+    this.show(message, 'info', duration);
   }
 
   hide(): void {

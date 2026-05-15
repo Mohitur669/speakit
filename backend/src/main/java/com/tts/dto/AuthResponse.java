@@ -14,4 +14,6 @@ public class AuthResponse {
     private String username;
     private boolean hasNaturalVoiceAccess;
     private Long sessionVersion;
+    private Long sessionDurationMs;
+    private Long idleTimeoutMs;
 }

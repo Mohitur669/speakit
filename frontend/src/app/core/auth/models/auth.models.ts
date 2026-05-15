@@ -3,6 +3,8 @@ export interface AuthResponse {
   username: string;
   hasNaturalVoiceAccess: boolean;
   sessionVersion: number;
+  sessionDurationMs: number;
+  idleTimeoutMs: number;
 }
 
 export interface LoginCredentials {

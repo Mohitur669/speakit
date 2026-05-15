@@ -37,7 +37,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
         String path = request.getServletPath();
-        if (path.equals("/api/auth/login") || path.equals("/api/auth/register")) {
+        if (path.equals("/api/auth/login") || path.equals("/api/auth/register") || path.startsWith("/ws/")) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -49,7 +49,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
         jwt = authHeader.substring(7);
-        username = jwtService.extractUsername(jwt);
+        try {
+            username = jwtService.extractUsername(jwt);
+        } catch (Exception e) {
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid token");
+            return;
+        }
+
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
 
@@ -57,13 +63,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             var user = userRepository.findByUsername(username).orElse(null);
             Long tokenSessionVersion = jwtService.extractSessionVersion(jwt);
             
-            boolean sessionValid = false;
             if (user != null && tokenSessionVersion != null) {
-                // Use longValue() to avoid Integer vs Long comparison issues
-                sessionValid = tokenSessionVersion.longValue() == user.getSessionVersion().longValue();
+                if (tokenSessionVersion.longValue() != user.getSessionVersion().longValue()) {
+                    response.setHeader("X-Logout-Reason", "MULTI_LOGIN");
+                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Multiple logins detected");
+                    return;
+                }
             }
 
-            if (jwtService.isTokenValid(jwt, userDetails) && sessionValid) {
+            if (jwtService.isTokenValid(jwt, userDetails)) {
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                         userDetails,
                         null,

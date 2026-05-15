@@ -59,6 +59,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(AntPathRequestMatcher.antMatcher("/api/auth/login")).permitAll()
                         .requestMatchers(AntPathRequestMatcher.antMatcher("/api/auth/register")).permitAll()
+                        .requestMatchers(AntPathRequestMatcher.antMatcher("/ws/**")).permitAll()
                         .requestMatchers(AntPathRequestMatcher.antMatcher(HttpMethod.OPTIONS, "/**")).permitAll()
                         .anyRequest().authenticated()
                 )
@@ -86,7 +87,8 @@ public class SecurityConfig {
             "Authorization",
             "Content-Type",
             "Access-Control-Allow-Origin", 
-            "Access-Control-Allow-Credentials"
+            "Access-Control-Allow-Credentials",
+            "X-Logout-Reason"
         ));
         
         configuration.setAllowCredentials(true);
