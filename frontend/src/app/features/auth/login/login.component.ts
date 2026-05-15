@@ -2,7 +2,7 @@
  * User login page component handling authentication
  * form submission and redirect to TTS on success.
  */
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -84,7 +84,7 @@ import { NavbarComponent } from '../../../shared/components/navbar/navbar.compon
     </div>
   `
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   username = '';
   password = '';
   loading = signal(false);
@@ -92,6 +92,12 @@ export class LoginComponent {
 
   private authService = inject(AuthService);
   private router = inject(Router);
+
+  ngOnInit(): void {
+    if (this.authService.isLoggedIn()) {
+      this.router.navigate(['/tts']);
+    }
+  }
 
   onSubmit(): void {
     this.loading.set(true);

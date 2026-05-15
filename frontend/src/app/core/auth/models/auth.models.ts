@@ -2,6 +2,7 @@ export interface AuthResponse {
   token: string;
   username: string;
   hasNaturalVoiceAccess: boolean;
+  sessionVersion: number;
 }
 
 export interface LoginCredentials {

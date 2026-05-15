@@ -30,5 +30,10 @@ public class User {
     private String password;
 
     @Column(name = "has_natural_voice_access", nullable = false)
+    @Builder.Default
     private boolean hasNaturalVoiceAccess = false;
+
+    @Column(name = "session_version", nullable = false, columnDefinition = "bigint default 1")
+    @Builder.Default
+    private Long sessionVersion = 1L;
 }

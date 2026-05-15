@@ -1,5 +1,6 @@
 package com.tts.config;
 
+import com.tts.entity.User;
 import com.tts.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
