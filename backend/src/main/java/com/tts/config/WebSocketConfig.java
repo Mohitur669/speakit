@@ -1,5 +1,7 @@
 package com.tts.config;
 
+import com.tts.repository.UserRepository;
+import com.tts.entity.User;
 import com.tts.security.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
@@ -23,6 +25,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
 public class WebSocketConfig implements WebSocketConfigurer {
 
     private final JwtService jwtService;
+    private final UserRepository userRepository;
     private final Map<String, Set<WebSocketSession>> userSessions = new ConcurrentHashMap<>();
 
     @Override
@@ -48,15 +51,28 @@ public class WebSocketConfig implements WebSocketConfigurer {
 
     private class LogoutWebSocketHandler extends TextWebSocketHandler {
         @Override
-        public void afterConnectionEstablished(WebSocketSession session) {
+        public void afterConnectionEstablished(WebSocketSession session) throws IOException {
             String query = session.getUri().getQuery();
             if (query != null && query.startsWith("token=")) {
                 String token = query.substring(6);
                 try {
                     String username = jwtService.extractUsername(token);
-                    if (username != null) {
-                        userSessions.computeIfAbsent(username, k -> new CopyOnWriteArraySet<>()).add(session);
-                        System.out.println("WS Connected: " + username + " (Total sessions: " + userSessions.get(username).size() + ")");
+                    Long tokenVersion = jwtService.extractSessionVersion(token);
+                    
+                    if (username != null && tokenVersion != null) {
+                        User user = userRepository.findByUsername(username).orElse(null);
+                        
+                        // Check if session is already invalid on connection (e.g., wake-up scenario)
+                        if (user != null && tokenVersion.longValue() != user.getSessionVersion().longValue()) {
+                            session.sendMessage(new TextMessage("LOGOUT"));
+                            session.close(CloseStatus.NORMAL);
+                            return;
+                        }
+
+                        if (username != null) {
+                            userSessions.computeIfAbsent(username, k -> new CopyOnWriteArraySet<>()).add(session);
+                            System.out.println("WS Connected: " + username + " (Total sessions: " + userSessions.get(username).size() + ")");
+                        }
                     }
                 } catch (Exception e) {
                     try {
