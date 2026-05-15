@@ -23,14 +23,6 @@ public class AuthController {
         this.authService = authService;
     }
 
-    @GetMapping("/session-status")
-    public ResponseEntity<Map<String, Long>> getSessionStatus() {
-        String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        Long version = authService.getSessionVersion(username);
-        System.out.println("DEBUG: session-status check for " + username + " -> " + version);
-        return ResponseEntity.ok(Map.of("sessionVersion", version));
-    }
-
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@RequestBody AuthRequest request) {
         return ResponseEntity.ok(authService.register(request));
@@ -39,6 +31,11 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody AuthRequest request) {
         return ResponseEntity.ok(authService.login(request));
+    }
+
+    @GetMapping("/ping")
+    public ResponseEntity<Void> ping() {
+        return ResponseEntity.ok().build();
     }
 
     @PostMapping("/logout")
