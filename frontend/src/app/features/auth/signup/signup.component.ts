@@ -2,7 +2,7 @@
  * User registration page component handling new
  * account creation and automatic login on success.
  */
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -101,6 +101,12 @@ export class SignupComponent {
 
   private authService = inject(AuthService);
   private router = inject(Router);
+
+  ngOnInit(): void {
+    if (this.authService.isLoggedIn()) {
+      this.router.navigate(['/tts']);
+    }
+  }
 
   onSubmit(): void {
     this.loading.set(true);

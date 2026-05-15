@@ -1,9 +1,11 @@
 package com.tts.security;
 
-/**
+/*
  * HTTP request filter validating JWT tokens and setting
  * Spring Security context for authenticated users.
  */
+import com.tts.entity.User;
+import com.tts.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,6 +28,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
+    private final UserRepository userRepository;
 
     @Override
     protected void doFilterInternal(
@@ -33,7 +36,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
-        if (request.getServletPath().contains("/api/auth")) {
+        String path = request.getServletPath();
+        if (path.equals("/api/auth/login") || path.equals("/api/auth/register")) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -48,7 +52,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         username = jwtService.extractUsername(jwt);
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
-            if (jwtService.isTokenValid(jwt, userDetails)) {
+
+            // Validate session version to detect token from different device/login
+            var user = userRepository.findByUsername(username).orElse(null);
+            Long tokenSessionVersion = jwtService.extractSessionVersion(jwt);
+            
+            boolean sessionValid = false;
+            if (user != null && tokenSessionVersion != null) {
+                // Use longValue() to avoid Integer vs Long comparison issues
+                sessionValid = tokenSessionVersion.longValue() == user.getSessionVersion().longValue();
+            }
+
+            if (jwtService.isTokenValid(jwt, userDetails) && sessionValid) {
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                         userDetails,
                         null,

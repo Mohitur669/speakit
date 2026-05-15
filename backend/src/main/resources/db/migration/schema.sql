@@ -7,7 +7,8 @@ CREATE TABLE IF NOT EXISTS users (
     username VARCHAR(255) NOT NULL UNIQUE,
     email VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
-    has_natural_voice_access BOOLEAN NOT NULL DEFAULT FALSE
+    has_natural_voice_access BOOLEAN NOT NULL DEFAULT FALSE,
+    session_version BIGINT NOT NULL DEFAULT 1
 );
 
 -- 2. Create Indexes

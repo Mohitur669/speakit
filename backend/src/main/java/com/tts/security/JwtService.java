@@ -55,6 +55,16 @@ public class JwtService {
         return (username.equals(userDetails.getUsername())) && !isTokenExpired(token);
     }
 
+    public Long extractSessionVersion(String token) {
+        return extractClaim(token, claims -> {
+            Object version = claims.get("sessionVersion");
+            if (version instanceof Number) {
+                return ((Number) version).longValue();
+            }
+            return null;
+        });
+    }
+
     private boolean isTokenExpired(String token) {
         return extractExpiration(token).before(new Date());
     }

@@ -16,6 +16,10 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -37,10 +41,11 @@ public class AuthService {
                 .hasNaturalVoiceAccess(false)
                 .build();
         userRepository.save(user);
-        
-        return authenticate(user.getUsername(), request.getPassword());
+
+        return authenticate(user.getUsername());
     }
 
+    @Transactional
     public AuthResponse login(AuthRequest request) {
         String sanitizedIdentifier = Sanitizer.sanitize(request.getUsername());
 
@@ -54,23 +59,45 @@ public class AuthService {
                         request.getPassword()
                 )
         );
-        
-        return authenticate(user.getUsername(), request.getPassword());
+
+        // Increment session version to invalidate previous tokens
+        user.setSessionVersion(user.getSessionVersion() + 1);
+        userRepository.save(user);
+
+        return authenticate(user.getUsername());
     }
 
-    private AuthResponse authenticate(String username, String password) {
+    public Long getSessionVersion(String username) {
+        return userRepository.findByUsername(username)
+                .map(User::getSessionVersion)
+                .orElse(0L);
+    }
+
+    @Transactional
+    public void logout(String username) {
+        var user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setSessionVersion(user.getSessionVersion() + 1);
+        userRepository.save(user);
+    }
+
+    private AuthResponse authenticate(String username) {
         var user = userRepository.findByUsername(username).orElseThrow();
         UserDetails userDetails = org.springframework.security.core.userdetails.User.builder()
                 .username(user.getUsername())
                 .password(user.getPassword())
                 .roles("USER")
                 .build();
-        
-        var jwtToken = jwtService.generateToken(userDetails);
+
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("sessionVersion", user.getSessionVersion());
+
+        var jwtToken = jwtService.generateToken(claims, userDetails);
         return AuthResponse.builder()
                 .token(jwtToken)
                 .username(user.getUsername())
                 .hasNaturalVoiceAccess(user.isHasNaturalVoiceAccess())
+                .sessionVersion(user.getSessionVersion())
                 .build();
     }
 }

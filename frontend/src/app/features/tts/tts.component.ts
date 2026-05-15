@@ -9,6 +9,7 @@ import { FormsModule } from '@angular/forms';
 import { TtsService, Voice } from '../../core/services/tts.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { ThemeService } from '../../core/services/theme.service';
+import { ToastService } from '../../core/services/toast.service';
 import { ToastComponent } from '../../shared/components/toast/toast.component';
 import { NavbarComponent } from '../../shared/components/navbar/navbar.component';
 
@@ -25,6 +26,7 @@ export class TtsComponent {
   ttsService = inject(TtsService);
   authService = inject(AuthService);
   themeService = inject(ThemeService);
+  private toastService = inject(ToastService);
 
   text = '';
   currentFilter = signal<'All' | 'Standard' | 'Neural'>('All');
@@ -55,10 +57,6 @@ export class TtsComponent {
   loading = signal(false);
   error = signal('');
   isPlaying = false;
-
-  toastMessage = signal('');
-  toastType = signal<'success' | 'error'>('success');
-  showToast = signal(false);
 
   currentTime = 0;
   duration = 0;
@@ -217,9 +215,6 @@ export class TtsComponent {
   }
 
   showNotification(message: string, type: 'success' | 'error' = 'success'): void {
-    this.toastMessage.set(message);
-    this.toastType.set(type);
-    this.showToast.set(true);
-    setTimeout(() => this.showToast.set(false), 3000);
+    this.toastService.show(message, type);
   }
 }
