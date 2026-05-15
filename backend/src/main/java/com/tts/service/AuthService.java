@@ -61,8 +61,11 @@ public class AuthService {
         );
 
         // Increment session version to invalidate previous tokens
-        user.setSessionVersion(user.getSessionVersion() + 1);
+        long oldVersion = user.getSessionVersion();
+        user.setSessionVersion(oldVersion + 1);
         userRepository.save(user);
+        
+        System.out.println("DEBUG: User " + user.getUsername() + " login. Version: " + oldVersion + " -> " + user.getSessionVersion());
 
         return authenticate(user.getUsername());
     }

@@ -17,6 +17,7 @@ const SESSION_DURATION = 2 * 60 * 60 * 1000; // 2 hours in ms
 export class AuthService {
   private apiUrl = `${environment.apiUrl}/api/auth`;
   private timeoutId?: ReturnType<typeof setTimeout>;
+  private pollingIntervalId?: any;
   private visibilityCallback?: () => void;
   private isLoggingOut = false;
 
@@ -32,6 +33,7 @@ export class AuthService {
   constructor(private http: HttpClient) {
     this.checkSessionValidity();
     this.setupVisibilityHandler();
+    this.startSessionPolling();
   }
 
   register(credentials: RegisterCredentials): Observable<AuthResponse> {
@@ -76,6 +78,7 @@ export class AuthService {
 
   private clearSession(): void {
     if (this.timeoutId) clearTimeout(this.timeoutId);
+    if (this.pollingIntervalId) clearInterval(this.pollingIntervalId);
     if (this.visibilityCallback) {
       document.removeEventListener('visibilitychange', this.visibilityCallback);
       this.visibilityCallback = undefined;
@@ -108,6 +111,16 @@ export class AuthService {
     this.currentSessionVersion.set(res.sessionVersion);
     this.startSessionTimer(SESSION_DURATION);
     this.setupVisibilityHandler();
+    this.startSessionPolling();
+  }
+
+  private startSessionPolling(): void {
+    if (this.pollingIntervalId) clearInterval(this.pollingIntervalId);
+    if (!this.isLoggedIn()) return;
+
+    this.pollingIntervalId = setInterval(() => {
+      this.verifySessionOnResume();
+    }, 5000); // Check every 5 seconds
   }
 
   private setupVisibilityHandler(): void {
@@ -127,8 +140,9 @@ export class AuthService {
 
   private verifySessionOnResume(): void {
     // Quick check only when user comes back to the app
-    this.http.get<{ sessionVersion: number }>(`${this.apiUrl}/session-status`).subscribe({
+    this.http.get<{ sessionVersion: number }>(`${this.apiUrl}/session-status?t=${Date.now()}`).subscribe({
       next: (res) => {
+        console.log(`Session Verification: Server=${res.sessionVersion}, Client=${this.currentSessionVersion()}`);
         if (res.sessionVersion !== this.currentSessionVersion()) {
           this.logout('Session invalidated by another login');
         }
