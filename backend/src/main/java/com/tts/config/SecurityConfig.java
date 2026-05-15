@@ -59,6 +59,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(AntPathRequestMatcher.antMatcher("/api/auth/login")).permitAll()
                         .requestMatchers(AntPathRequestMatcher.antMatcher("/api/auth/register")).permitAll()
+                        .requestMatchers(AntPathRequestMatcher.antMatcher("/api/auth/ping")).permitAll()
                         .requestMatchers(AntPathRequestMatcher.antMatcher("/ws/**")).permitAll()
                         .requestMatchers(AntPathRequestMatcher.antMatcher(HttpMethod.OPTIONS, "/**")).permitAll()
                         .anyRequest().authenticated()
