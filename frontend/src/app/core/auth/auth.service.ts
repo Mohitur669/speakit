@@ -17,7 +17,7 @@ const SESSION_DURATION = 2 * 60 * 60 * 1000; // 2 hours in ms
 export class AuthService {
   private apiUrl = `${environment.apiUrl}/api/auth`;
   private timeoutId?: ReturnType<typeof setTimeout>;
-  private pollingIntervalId?: any;
+  private visibilityCallback?: () => void;
   private isLoggingOut = false;
 
   currentUser = signal<string | null>(localStorage.getItem('username'));
@@ -31,7 +31,7 @@ export class AuthService {
 
   constructor(private http: HttpClient) {
     this.checkSessionValidity();
-    this.startSessionPolling();
+    this.setupVisibilityHandler();
   }
 
   register(credentials: RegisterCredentials): Observable<AuthResponse> {
@@ -76,7 +76,10 @@ export class AuthService {
 
   private clearSession(): void {
     if (this.timeoutId) clearTimeout(this.timeoutId);
-    if (this.pollingIntervalId) clearInterval(this.pollingIntervalId);
+    if (this.visibilityCallback) {
+      document.removeEventListener('visibilitychange', this.visibilityCallback);
+      this.visibilityCallback = undefined;
+    }
     localStorage.removeItem('token');
     localStorage.removeItem('username');
     localStorage.removeItem('hasNaturalAccess');
@@ -104,30 +107,38 @@ export class AuthService {
     this.hasNaturalAccess.set(res.hasNaturalVoiceAccess);
     this.currentSessionVersion.set(res.sessionVersion);
     this.startSessionTimer(SESSION_DURATION);
-    this.startSessionPolling();
+    this.setupVisibilityHandler();
   }
 
-  private startSessionPolling(): void {
-    if (this.pollingIntervalId) clearInterval(this.pollingIntervalId);
-    if (!this.isLoggedIn()) return;
+  private setupVisibilityHandler(): void {
+    // Remove existing listener if any
+    if (this.visibilityCallback) {
+      document.removeEventListener('visibilitychange', this.visibilityCallback);
+    }
 
-    this.pollingIntervalId = setInterval(() => {
-      this.http.get<{ sessionVersion: number }>(`${this.apiUrl}/session-status`).subscribe({
-        next: (res) => {
-          console.log(`Session Poll: Server=${res.sessionVersion}, Client=${this.currentSessionVersion()}`);
-          if (res.sessionVersion !== this.currentSessionVersion()) {
-            console.warn('Session mismatch detected! Logging out...');
-            this.logout('Session invalidated by another login');
-          }
-        },
-        error: (err) => {
-          console.error('Session poll error:', err);
-          if (err.status === 401 || err.status === 403) {
-            this.logout('Session invalidated by another login');
-          }
+    // Only check session when user returns to the tab (not when leaving)
+    this.visibilityCallback = () => {
+      if (document.visibilityState === 'visible' && this.isLoggedIn()) {
+        this.verifySessionOnResume();
+      }
+    };
+    document.addEventListener('visibilitychange', this.visibilityCallback);
+  }
+
+  private verifySessionOnResume(): void {
+    // Quick check only when user comes back to the app
+    this.http.get<{ sessionVersion: number }>(`${this.apiUrl}/session-status`).subscribe({
+      next: (res) => {
+        if (res.sessionVersion !== this.currentSessionVersion()) {
+          this.logout('Session invalidated by another login');
         }
-      });
-    }, 5000); // Poll every 5 seconds
+      },
+      error: (err) => {
+        if (err.status === 401 || err.status === 403) {
+          this.logout('Session invalidated by another login');
+        }
+      }
+    });
   }
 
   private checkSessionValidity(): void {
