@@ -27,6 +27,7 @@ public class AuthController {
     public ResponseEntity<Map<String, Long>> getSessionStatus() {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         Long version = authService.getSessionVersion(username);
+        System.out.println("DEBUG: session-status check for " + username + " -> " + version);
         return ResponseEntity.ok(Map.of("sessionVersion", version));
     }
 

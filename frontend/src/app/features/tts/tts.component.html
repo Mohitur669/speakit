@@ -10,12 +10,12 @@
     </div>
 
     <!-- Main Content Grid -->
-    <div class="grid lg:grid-cols-3 gap-6">
+    <div class="grid lg:grid-cols-3 gap-6 items-stretch">
 
       <!-- Left Column - Voice Selection -->
-      <div class="lg:col-span-1 space-y-6 animate-slide-up">
+      <div class="lg:col-span-1 flex flex-col gap-6 animate-slide-up">
         <!-- Voice Selection Card -->
-        <div class="bg-white dark:bg-primary-900 rounded-xl border border-primary-200 dark:border-primary-700 p-6">
+        <div class="flex-1 bg-white dark:bg-primary-900 rounded-xl border border-primary-200 dark:border-primary-700 p-6">
           <h2 class="text-sm font-semibold text-primary-900 dark:text-white mb-4">Select Voice</h2>
 
           <!-- Filter Tabs -->
@@ -23,12 +23,18 @@
             <button *ngFor="let filter of filterOptions()"
               (click)="setFilter(filter)"
               [ngClass]="currentFilter() === filter ? 'bg-white dark:bg-primary-700 text-primary-900 dark:text-white shadow-sm' : 'text-primary-500 dark:text-primary-400 hover:text-primary-700 dark:hover:text-white'"
-              class="flex-1 py-1.5 text-xs font-medium rounded-md transition-all">
+              class="flex-1 py-1.5 text-xs font-medium rounded-md transition-all relative">
               {{ filter === 'Standard' ? 'Standard' : (filter === 'Neural' ? 'Neural' : 'All') }}
               <span class="text-[10px] opacity-60 ml-1">({{ filter === 'All' ? totalCount : filter === 'Standard' ? standardCount : neuralCount }})</span>
-              <span *ngIf="filter === 'Neural' && !userCanUseNeural" class="ml-1 opacity-50">🔒</span>
-            </button>
-          </div>
+
+              <!-- Pro Badge -->
+              <span *ngIf="filter === 'Neural'" 
+                [ngClass]="userCanUseNeural ? 'text-accent-500' : 'text-primary-400'"
+                class="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+                <span *ngIf="userCanUseNeural" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2" [ngClass]="userCanUseNeural ? 'bg-accent-500' : 'bg-primary-300 dark:bg-primary-600'"></span>
+              </span>
+              </button>          </div>
 
           <!-- Voice Dropdown -->
           <div class="relative">
@@ -96,10 +102,10 @@
       </div>
 
       <!-- Right Column - Editor -->
-      <div class="lg:col-span-2 space-y-6 animate-slide-up stagger-1">
+      <div class="lg:col-span-2 flex flex-col gap-6 animate-slide-up stagger-1">
 
         <!-- Text Editor -->
-        <div class="bg-white dark:bg-primary-900 rounded-xl border border-primary-200 dark:border-primary-700 overflow-hidden">
+        <div class="flex-1 bg-white dark:bg-primary-900 rounded-xl border border-primary-200 dark:border-primary-700 overflow-hidden flex flex-col">
           <div class="px-6 py-4 border-b border-primary-100 dark:border-primary-800 flex items-center justify-between">
             <h2 class="text-sm font-semibold text-primary-900 dark:text-white">Script</h2>
             <button *ngIf="text" (click)="text = ''"
@@ -107,15 +113,15 @@
               Clear
             </button>
           </div>
-          <div class="p-6">
+          <div class="p-6 flex-1 flex flex-col">
             <textarea [(ngModel)]="text"
               placeholder="Enter your text here..."
               rows="8"
               maxlength="3000"
-              class="w-full bg-primary-50 dark:bg-primary-800 text-primary-900 dark:text-white placeholder-primary-400 rounded-xl border border-primary-200 dark:border-primary-700 p-4 text-sm leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all"></textarea>
+              class="flex-1 w-full bg-primary-50 dark:bg-primary-800 text-primary-900 dark:text-white placeholder-primary-400 rounded-xl border border-primary-200 dark:border-primary-700 p-4 text-sm leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all"></textarea>
 
-            <div class="mt-4 flex items-center justify-between">
-              <span class="text-xs text-primary-400">Enter text to convert</span>
+            <div class="mt-4 flex items-center justify-end">
+              <!-- <span class="text-xs text-primary-400">Enter text to convert</span> -->
               <button (click)="convert()" [disabled]="loading() || !text.trim() || !selectedVoiceId"
                 class="px-6 py-3 rounded-xl font-semibold text-white bg-brand-blue hover:bg-brand-blue/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center gap-2">
                 <svg *ngIf="loading()" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
