@@ -6,7 +6,8 @@ const isProd = process.env.NODE_ENV === 'production';
 const envConfig = {
     API_URL: process.env.API_URL || (isProd ? '' : 'http://localhost:8080'),
     SUPABASE_URL: process.env.SUPABASE_URL || '',
-    SUPABASE_KEY: process.env.SUPABASE_KEY || ''
+    SUPABASE_KEY: process.env.SUPABASE_KEY || '',
+    LOG_LEVEL: process.env.LOG_LEVEL || (isProd ? 'WARN' : 'DEBUG')
 };
 
 const content = `window.__env = ${JSON.stringify(envConfig, null, 2)};`;

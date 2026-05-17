@@ -7,10 +7,11 @@
  * - Robust error handling and type validation
  * - Dynamic environment configuration
  */
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of, tap, catchError, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { LoggerService } from './logger.service';
 
 export interface Voice {
   id: string;
@@ -48,6 +49,7 @@ function isVoiceArray(obj: unknown): obj is Voice[] {
 export class TtsService {
   private baseUrl: string;
   private voicesCache: Voice[] | null = null;
+  private logger = inject(LoggerService);
 
   constructor(private http: HttpClient) {
     const env = (window as { __env?: { API_URL?: string } }).__env;
@@ -71,7 +73,7 @@ export class TtsService {
     return this.http.get<Voice[]>(`${this.baseUrl}/voices`).pipe(
       map((voices: unknown[]) => {
         if (!isVoiceArray(voices)) {
-          console.error('Validation failed for voices:', voices);
+          this.logger.error('Validation failed for voices', voices);
           throw new Error('Invalid voices data received from API');
         }
         return voices as Voice[];
@@ -86,7 +88,7 @@ export class TtsService {
         localStorage.setItem(VOICES_CACHE_KEY, JSON.stringify(cached));
       }),
       catchError(error => {
-        console.error('Error fetching voices:', error);
+        this.logger.error('Error fetching voices', error);
         throw error;
       })
     );

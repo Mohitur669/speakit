@@ -91,6 +91,7 @@ public class TtsController {
         // Sanitize first, then check length
         String sanitizedText = Sanitizer.sanitize(request.getText());
         if (sanitizedText == null || sanitizedText.isEmpty()) {
+            log.warn("Synthesis rejected: Empty content");
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body("Text content is required after sanitization.".getBytes());
         }
@@ -98,12 +99,15 @@ public class TtsController {
         // Enforce plan-based character limits on sanitized text
         int maxChars = hasNaturalAccess ? 3000 : 200;
         if (sanitizedText.length() > maxChars) {
+            log.warn("Synthesis rejected: Character limit exceeded. length={}, limit={}", sanitizedText.length(), maxChars);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(("Character limit exceeded for your plan (" + maxChars + " characters).").getBytes());
         }
 
         String sanitizedVoiceId = Sanitizer.sanitize(request.getVoiceId());
         String sanitizedOutputFormat = Sanitizer.sanitize(request.getOutputFormat());
+
+        log.info("Starting synthesis: voice={}, format={}, length={}", sanitizedVoiceId, sanitizedOutputFormat, sanitizedText.length());
 
         try (InputStream audioStream = pollyService.synthesizeSpeech(
                 sanitizedText,
@@ -117,6 +121,7 @@ public class TtsController {
             // Record analytics history async-like
             recordHistory(httpRequest, sanitizedVoiceId, sanitizedOutputFormat, sanitizedText.length(), hasNaturalAccess, sanitizedText);
             
+            log.info("Synthesis successful: {} bytes generated", audioBytes.length);
             MediaType mediaType = getMediaType(sanitizedOutputFormat);
 
             HttpHeaders headers = new HttpHeaders();
@@ -153,6 +158,7 @@ public class TtsController {
         // Sanitize first, then check length
         String sanitizedText = Sanitizer.sanitize(request.getText());
         if (sanitizedText == null || sanitizedText.isEmpty()) {
+            log.warn("Streaming synthesis rejected: Empty content");
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body("Text content is required after sanitization.");
         }
@@ -160,12 +166,15 @@ public class TtsController {
         // Enforce plan-based character limits on sanitized text
         int maxChars = hasNaturalAccess ? 3000 : 200;
         if (sanitizedText.length() > maxChars) {
+            log.warn("Streaming synthesis rejected: Character limit exceeded. length={}, limit={}", sanitizedText.length(), maxChars);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body("Character limit exceeded for your plan (" + maxChars + " characters).");
         }
 
         String sanitizedVoiceId = Sanitizer.sanitize(request.getVoiceId());
         String sanitizedOutputFormat = Sanitizer.sanitize(request.getOutputFormat());
+
+        log.info("Starting streaming synthesis: voice={}, format={}, length={}", sanitizedVoiceId, sanitizedOutputFormat, sanitizedText.length());
 
         InputStream stream = pollyService.synthesizeSpeech(
                 sanitizedText,
@@ -176,6 +185,8 @@ public class TtsController {
 
         // Record analytics history async-like
         recordHistory(httpRequest, sanitizedVoiceId, sanitizedOutputFormat, sanitizedText.length(), hasNaturalAccess, sanitizedText);
+
+        log.info("Streaming synthesis initiated successfully");
 
         return ResponseEntity.ok()
                 .contentType(getMediaType(sanitizedOutputFormat))
