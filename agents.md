@@ -115,6 +115,7 @@ src/app/
 
 ...
 - **JWT:** Stateless. Validated against `session_version` in the DB.
+- **Lowercase Enforcement:** Usernames and Emails must always be processed and stored in **lowercase**. This is enforced both at the UI level (input forcing) and in the `AuthService` logic to prevent case-sensitive authentication issues.
 ---
 
 ## 8. Logging & Observability Standards

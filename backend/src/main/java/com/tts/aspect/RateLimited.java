@@ -8,4 +8,5 @@ import java.lang.annotation.Target;
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface RateLimited {
+    RateLimitAction action() default RateLimitAction.PUBLIC;
 }

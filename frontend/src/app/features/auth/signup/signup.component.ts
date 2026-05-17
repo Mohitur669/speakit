@@ -29,16 +29,16 @@ import { NavbarComponent } from '../../../shared/components/navbar/navbar.compon
               <form (submit)="onSubmit()" class="space-y-6">
                 <div>
                   <label class="block text-sm font-medium text-primary-700 dark:text-primary-300 mb-2">Username</label>
-                  <input [(ngModel)]="username" name="username" type="text" required
+                  <input [(ngModel)]="username" (input)="username = username.toLowerCase()" name="username" type="text" required
                     placeholder="johndoe"
-                    class="w-full px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all">
+                    class="w-full px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all lowercase">
                 </div>
 
                 <div>
                   <label class="block text-sm font-medium text-primary-700 dark:text-primary-300 mb-2">Email</label>
-                  <input [(ngModel)]="email" name="email" type="email" required
+                  <input [(ngModel)]="email" (input)="email = email.toLowerCase()" name="email" type="email" required
                     placeholder="you@example.com"
-                    class="w-full px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all">
+                    class="w-full px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all lowercase">
                 </div>
 
                 <div>
