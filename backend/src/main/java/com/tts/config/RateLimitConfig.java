@@ -42,34 +42,32 @@ public class RateLimitConfig {
     /**
      * Strict configuration for authentication endpoints.
      * Prevents brute force and credential stuffing.
-     * Allows 5 attempts per minute.
+     * Uses a fraction of the default capacity for higher security.
      */
     public Bucket createAuthBucket() {
         return Bucket.builder()
                 .addLimit(Bandwidth.builder()
-                        .capacity(5)
-                        .refillIntervally(5, Duration.ofMinutes(1))
+                        .capacity(Math.max(1, defaultCapacity / 5))
+                        .refillIntervally(Math.max(1, defaultRefillTokens / 5), Duration.ofMinutes(defaultRefillDurationMinutes))
                         .build())
                 .build();
     }
 
     /**
      * Configuration for expensive AWS Polly operations.
-     * Provides a larger initial burst but throttles sustained aggressive usage.
-     * Allows 30 requests per minute burst, refilling at 10 per minute.
+     * Uses dynamic values from environment/application.properties.
      */
     public Bucket createTtsBucket() {
         return Bucket.builder()
                 .addLimit(Bandwidth.builder()
-                        .capacity(30)
-                        .refillIntervally(10, Duration.ofMinutes(1))
+                        .capacity(defaultCapacity)
+                        .refillIntervally(defaultRefillTokens, Duration.ofMinutes(defaultRefillDurationMinutes))
                         .build())
                 .build();
     }
 
     /**
      * General configuration for public endpoints (like contact forms).
-     * Uses environment variables with sensible defaults.
      */
     public Bucket createPublicBucket() {
         return Bucket.builder()

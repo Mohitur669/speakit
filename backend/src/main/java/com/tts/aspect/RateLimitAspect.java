@@ -12,6 +12,8 @@ import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -37,16 +39,17 @@ public class RateLimitAspect {
     @Autowired
     private RateLimitConfig rateLimitConfig;
 
-    @Autowired
-    private HttpServletRequest request;
-
     @Around("@annotation(com.tts.aspect.RateLimited)")
     public Object enforceRateLimit(ProceedingJoinPoint joinPoint) throws Throwable {
+        HttpServletRequest currentRequest = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
+        
         MethodSignature signature = (MethodSignature) joinPoint.getSignature();
         RateLimited rateLimited = signature.getMethod().getAnnotation(RateLimited.class);
         RateLimitAction action = rateLimited.action();
 
-        String bucketKey = generateBucketKey(action, request);
+        String bucketKey = generateBucketKey(action, currentRequest);
+        
+        // Performance: Avoid repeated creation of buckets
         Bucket bucket = rateLimitBuckets.computeIfAbsent(bucketKey, k -> createBucketForAction(action));
 
         ConsumptionProbe probe = bucket.tryConsumeAndReturnRemaining(1);
@@ -74,18 +77,26 @@ public class RateLimitAspect {
     /**
      * Generates a unique rate-limiting key based on layered signals to prevent bypasses.
      */
-    private String generateBucketKey(RateLimitAction action, HttpServletRequest request) {
-        String clientIp = extractRealIp(request);
+    private String generateBucketKey(RateLimitAction action, HttpServletRequest req) {
+        String clientIp = extractRealIp(req);
 
         return switch (action) {
             case TTS -> {
-                // For expensive operations, bind the limit to the authenticated User ID if possible
-                Long userId = (Long) request.getAttribute("userId");
-                yield (userId != null) ? "TTS_USER_" + userId : "TTS_IP_" + clientIp;
+                // For expensive operations, bind the limit to the authenticated User ID.
+                // We fetch this from request attributes (populated by JwtAuthenticationFilter).
+                Long userId = (Long) req.getAttribute("userId");
+                
+                if (userId != null) {
+                    log.debug("Rate limiting bound to USER_ID: {}", userId);
+                    yield "TTS_USER_" + userId;
+                } else {
+                    log.warn("Authenticated endpoint hit but userId attribute missing. Falling back to IP: {}", clientIp);
+                    yield "TTS_IP_" + clientIp;
+                }
             }
             case AUTH -> {
                 // For Auth (Login/Register), combine IP and User-Agent to stop basic botnet rotation
-                String userAgent = request.getHeader("User-Agent");
+                String userAgent = req.getHeader("User-Agent");
                 String fingerprint = hashString(clientIp + (userAgent != null ? userAgent : ""));
                 yield "AUTH_" + fingerprint;
             }
