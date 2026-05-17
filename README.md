@@ -1,381 +1,246 @@
-# SpeakIt
+# SpeakIT: Enterprise AI Voice Generation Platform
 
-> Transform any text into natural, human-quality speech — instantly.
+> Transforming digital content with lifelike AI-powered speech synthesis.
 
-SpeakIt is a full-stack Text-to-Speech web application powered by **AWS Polly**. It provides a clean, responsive interface where users can paste or type any text, select from a rich catalog of voices and languages, and receive high-quality synthesized audio — playable in-browser or downloadable as an MP3. The project is deployed across a modern cloud stack: an Angular SPA on Vercel, a Spring Boot REST API on Render, with path-based routing managed through a Cloudflare Worker.
+SpeakIT is a production-grade, full-stack SaaS platform powered by **AWS Polly**. It provides a high-performance, responsive interface for converting text into natural, human-quality speech using both Standard and Neural engines. Designed with enterprise scalability in mind, the platform features robust session management, plan-based rate limiting, and a comprehensive marketing suite.
 
-**Live Demo:** [mohitur-speakit.vercel.app](https://mohitur-speakit.vercel.app)
-
----
-
-## Table of Contents
-
-- [Key Features](#key-features)
-- [Tech Stack](#tech-stack)
-- [Project Architecture](#project-architecture)
-- [Installation & Setup](#installation--setup)
-- [Usage](#usage)
-- [Project Structure](#project-structure)
-- [Getting Help](#getting-help)
-- [Contributing](#contributing)
-- [License](#license)
+**Live Platform:** [mohitur-speakit.vercel.app](https://mohitur-speakit.vercel.app)
 
 ---
 
-## Key Features
+## 🚀 Key Features
 
-- **AWS Polly-Powered Synthesis** — Leverages Amazon Polly's neural and standard TTS engines to produce natural, high-fidelity audio from any input text.
-- **Multi-Voice & Multi-Language Support** — Users can choose from a wide range of Polly voices across multiple languages and accents via a dynamic dropdown.
-- **In-Browser Audio Playback** — Synthesized audio streams directly into the browser's native audio player, with no file downloads required for instant listening.
-- **MP3 Download** — Users can download the generated audio as an MP3 file for offline use.
-- **Rate Limiting** — Built-in server-side rate limiting protects the API against abuse and controls AWS Polly invocation costs.
-- **Input Character Limit** — Enforces a 1,000-character cap on synthesis requests, keeping responses fast and costs predictable.
-- **Responsive Design** — The Angular frontend adapts gracefully across desktop and mobile screen sizes.
-- **Runtime Environment Configuration** — Frontend reads the API base URL from `runtime-env.js` injected at startup, enabling zero-rebuild environment switching between local development and production.
-- **Automated Dev/Build Hooks** — `prestart` and `prebuild` npm scripts auto-generate the correct environment file, ensuring a frictionless local development experience.
-- **Cross-Origin REST API** — Spring Boot backend exposes a CORS-configured REST endpoint (`/api/synthesize`) that accepts text and voice parameters and returns audio data.
-- **Containerized Backend** — The Spring Boot service is fully Dockerized using `eclipse-temurin:21`, deployable on any container-compatible host including Render.
-- **Cloudflare Worker Routing** — A lightweight edge Worker handles path-based routing under the `mohitur.com` domain, dispatching requests to the correct application without infrastructure overhead.
-- **Cost-Control Kill Switch** — AWS Budgets + SNS + Lambda IAM deny policy architecture ensures AWS Polly costs are hard-capped, preventing runaway charges.
+- **Dual-Engine Synthesis** — Leverages AWS Polly's Standard and Neural engines for studio-quality audio.
+- **Subscription Tiers** — Enforced limits: **Free (200 characters)** and **Pro (3,000 characters)**.
+- **Stateless Authentication** — JWT-based auth with stateless validation and "Logout from all devices" support via DB session versioning.
+- **Production Dashboard** — Real-time usage statistics and paginated conversion history.
+- **Marketing Suite** — Fully integrated, SEO-optimized About, Blog, Contact, and Legal pages.
+- **High-Performance Data Layer** — Optimized PostgreSQL schema with dedicated sequences and N+1 prevention.
+- **Observability** — Structured logging with MDC-based `requestId` tracing and 30-day log rotation.
+- **Responsive Architecture** — Modern Angular SPA with standalone components and reactive Signals.
 
 ---
 
-## Tech Stack
+## 🛠 Tech Stack
 
-### Frontend
+### Frontend (Modern SPA)
+- **Framework:** Angular 21.x (Standalone Components, Signals)
+- **Styling:** Tailwind CSS 4.x
+- **State Management:** Angular Signals & Services
+- **Hosting:** Vercel
 
-| Technology           | Purpose                                  |
-| -------------------- | ---------------------------------------- |
-| Angular (TypeScript) | SPA framework and component architecture |
-| SCSS                 | Component-scoped styling                 |
-| Angular HttpClient   | REST API communication with the backend  |
-| Vercel               | Frontend hosting and CI/CD               |
+### Backend (Enterprise Java)
+- **Framework:** Spring Boot 3.5.x
+- **Language:** Java 21 (LTS)
+- **Security:** Spring Security 6.x (Stateless JWT)
+- **Database:** PostgreSQL (Hibernate/JPA)
+- **Integration:** AWS SDK for Polly (v2.x)
+- **Hosting:** Render
+
+### Infrastructure & DevOps
+- **Health Monitoring:** GitHub Actions (Keep-alive health checks)
+- **CORS Hardening:** Environment-driven origin restriction
+- **Rate Limiting:** Bucket4j (Token Bucket algorithm)
+
+---
+
+## 🏗 Architecture Overview
+
+SpeakIT follows a clean, layered architecture optimized for high insert throughput and low-latency synthesis.
+
+```text
+User Browser (Angular SPA)
+     │
+     │ HTTPS (JWT + Request-ID)
+     ▼
+Spring Boot API (Render)
+     │
+     ├── Filter: RequestID (MDC Tracing)
+     ├── Filter: JWT (Session Version Validation)
+     ├── Controller: Plan-based Validation (Sanitization)
+     └── Service: Polly Integration (Neural Engine)
+             │
+             ▼
+      AWS Polly Engine ──► Audio Stream (MP3) ──► Frontend Playback
+```
+
+---
+
+## 🔒 Security Compliance
+
+SpeakIT is built with a **Security-First** mindset:
+
+- **Secret Isolation:** No credentials or tokens are stored in code. All configuration is injected via Environment Variables.
+- **Session Versioning:** Every JWT contains a `sessionVersion`. Logging out instantly invalidates all tokens globally.
+- **Input Sanitization:** All text inputs are processed through `Jsoup` sanitization before reaching business logic.
+- **Ownership Validation:** Strict isolation ensures users only access their own history logs.
+- **MDC Tracing:** Every request is assigned a unique `X-Request-ID` for end-to-end tracing.
+- **PII Protection:** Frontend redaction prevents leaking sensitive keys to the browser console.
+
+---
+
+## 📊 Database Design Philosophy
+
+The database is engineered for **PostgreSQL 16+** using enterprise-grade JPA patterns:
+
+- **Sequence-Based IDs:** Uses numeric `Long` primary keys with dedicated sequences (`users_seq`, `tts_history_seq`).
+- **Pooled Optimizer:** `allocationSize = 50` reduces database network round-trips by 98%.
+- **Audit Tracing:** All entities inherit from `BaseEntity`, providing automated audit timestamps.
+- **Standardized Ordering:** Tables follow a consistent physical pattern for optimized performance.
+- **Security:** Internal IDs are never exposed in sensitive public-facing APIs.
+
+---
+
+## 📂 Project Structure
 
 ### Backend
+- `/src/main/java/com/tts/config`: Infrastructure, Security, and Logging configuration.
+- `/src/main/java/com/tts/entity`: JPA entities with standard column ordering.
+- `/src/main/java/com/tts/dto`: Strict validation-based Data Transfer Objects.
+- `/src/main/java/com/tts/repository`: Optimized repositories with interface projections.
+- `/src/main/java/com/tts/service`: Core business logic and AWS integrations.
 
-| Technology                    | Purpose                                      |
-| ----------------------------- | -------------------------------------------- |
-| Java 21                       | Runtime language                             |
-| Spring Boot                   | REST API framework                           |
-| Spring Web (MVC)              | HTTP endpoint routing and CORS configuration |
-| Maven                         | Dependency management and build              |
-| AWS SDK for Java (Polly)      | Text-to-Speech synthesis                     |
-| Docker (`eclipse-temurin:21`) | Containerization                             |
-| Render                        | Backend hosting via Procfile / Docker        |
-
-### Cloud & Infrastructure
-
-| Technology                 | Purpose                                              |
-| -------------------------- | ---------------------------------------------------- |
-| AWS Polly                  | Neural/Standard TTS engine                           |
-| AWS IAM                    | Credential management and cost-control deny policies |
-| AWS Budgets + SNS + Lambda | Automated billing kill switch                        |
-| Cloudflare Workers         | Edge-layer path-based domain routing                 |
+### Frontend
+- `/src/app/core`: Singletons (Auth, Interceptors, Guards, Centralized Logger).
+- `/src/app/shared`: Reusable UI components (Navbar, Footer, Toast).
+- `/src/app/features`: Domain modules (auth, tts, marketing, blog).
+- `/scripts`: Runtime environment generators for zero-rebuild deployments.
 
 ---
 
-## Project Architecture
-
-```
-User Browser
-     |
-     | HTTPS
-     v
-Vercel (Angular SPA)
-     |
-     | HTTP REST  POST /api/synthesize
-     v
-Render (Spring Boot API)
-     |
-     | AWS SDK for Java
-     v
-AWS Polly (TTS Engine)
-     |
-     | audio/mpeg stream
-     v
-Spring Boot  -->  Angular  -->  User (playback / download)
-```
-
-**Request Flow:**
-
-1. The user enters text (up to 1,000 characters) and selects a voice on the Angular frontend.
-2. The Angular service reads the backend API URL from `window.__env.API_URL` (injected by `public/runtime-env.js`) and sends a `POST /api/synthesize` request to the Spring Boot backend.
-3. The backend applies rate limiting, validates the request, then invokes the **AWS Polly SDK** with the user's chosen voice ID and engine type.
-4. The synthesized audio bytes are returned as an HTTP response with `Content-Type: audio/mpeg`.
-5. The Angular component creates a blob URL, binds it to an `<audio>` element for instant in-browser playback, and optionally triggers an MP3 download.
-
-**Environment Strategy:**
-
-The Angular app does not bake the API URL into the compiled bundle. Instead, `src/public/runtime-env.js` (generated at startup by `prestart`/`prebuild` npm hooks) sets `window.__env.API_URL` at runtime, allowing the same build artifact to target different backends without a rebuild.
-
----
-
-## Installation & Setup
+## 🛠 Local Development Setup
 
 ### Prerequisites
-- **Node.js** v18+ and **npm** v9+
-- **Angular CLI** v17+: `npm install -g @angular/cli`
-- **Java 21** (JDK): [eclipse-temurin:21](https://adoptium.net/) recommended
+- **Node.js** 22+
+- **Java 21** (JDK)
 - **Maven** 3.9+
-- **Docker** (optional, for containerized setup)
-- **AWS Account** with an IAM user/role that has `polly:SynthesizeSpeech` permissions
-- AWS credentials configured locally (`~/.aws/credentials` or environment variables)
+- **PostgreSQL** 16+ (Local or Cloud)
+
+### 1. Environment Configuration
+
+#### Backend Setup
+Initialize the backend environment file:
+```bash
+cp backend/.env.example backend/.env
+```
+
+#### Backend Variables (`backend/.env`)
+| Variable | Description | Default |
+| :--- | :--- | :--- |
+| `AWS_ACCESS_KEY_ID` | IAM User access key for Polly access | - |
+| `AWS_SECRET_ACCESS_KEY` | IAM User secret key | - |
+| `AWS_REGION` | AWS region (e.g., `us-east-1`) | - |
+| `SPRING_DATASOURCE_URL` | JDBC URL (Use Supabase Session Pooler for IPv4) | - |
+| `SPRING_DATASOURCE_USERNAME` | Database username (usually `postgres`) | - |
+| `SPRING_DATASOURCE_PASSWORD` | Database password | - |
+| `JWT_SECRET` | 64-character secure secret for token signing | - |
+| `JWT_EXPIRATION` | Token validity in milliseconds | `86400000` |
+| `CORS_ALLOWED_ORIGINS` | Comma-separated list of permitted origins | `http://localhost:4200` |
+| `LOG_LEVEL_APP` | Application logging level (`DEBUG`, `INFO`, `WARN`) | `INFO` |
+| `LOG_MAX_FILE_SIZE` | Log rotation size trigger | `20MB` |
+| `LOG_MAX_HISTORY` | Days of log retention | `10` |
+
+#### Frontend Setup
+Initialize the frontend environment file:
+```bash
+cp frontend/.env.example frontend/.env
+```
+
+#### Frontend Variables (`frontend/.env`)
+| Variable | Description | Default |
+| :--- | :--- | :--- |
+| `API_URL` | Base URL of the Spring Boot Backend | `http://localhost:8080` |
+| `SUPABASE_URL` | Supabase project URL (client-side only) | - |
+| `SUPABASE_KEY` | Supabase anonymous key | - |
+| `LOG_LEVEL` | Client logging verbosity (`DEBUG`, `INFO`, `WARN`, `OFF`) | `DEBUG` |
+| `NODE_ENV` | Environment mode (`development` or `production`) | `development` |
+
+### 2. Manual Setup Steps
+
+Follow these steps to run the services natively on your machine:
+
+#### Step 1: Database Setup
+1. Create a PostgreSQL database (locally or via [Supabase](https://supabase.com)).
+2. If using Supabase, ensure you use the **Session Pooler** URL (Transaction mode) for the `SPRING_DATASOURCE_URL`.
+3. The schema will be automatically created on the first backend run via Hibernate `ddl-auto: update`.
+
+#### Step 2: Backend Initialization
+1. Navigate to the backend directory:
+   ```bash
+   cd backend
+   ```
+2. Install dependencies and compile:
+   ```bash
+   ./mvnw clean compile
+   ```
+3. Initialize your `.env` file and fill in your AWS and Database credentials (if not already done in the "Environment Configuration" section above):
+   ```bash
+   cp .env.example .env
+   ```
+4. Start the Spring Boot application:
+   ```bash
+   ./mvnw spring-boot:run
+   ```
+   The backend will be available at `http://localhost:8080`.
+
+#### Step 3: Frontend Initialization
+1. Open a new terminal and navigate to the frontend directory:
+   ```bash
+   cd frontend
+   ```
+2. Install Node dependencies:
+   ```bash
+   npm install
+   ```
+3. Initialize your `.env` file (if not already done in the "Environment Configuration" section above):
+   ```bash
+   cp .env.example .env
+   ```
+4. Start the Angular development server:
+   ```bash
+   npm start
+   ```
+   The platform will be available at `http://localhost:4200`.
 
 ---
 
-### 1. Clone the Repository
-```bash
-git clone https://github.com/Mohitur669/speakit.git
-cd speakit
-```
+## 📈 Logging & Monitoring
+
+SpeakIT implements structured logging for both development and production:
+
+- **Backend:** Logs are written to `logs/speakit-backend.log` with a 10MB rotation policy and 30-day retention.
+- **Frontend:** Centralized `LoggerService` suppresses verbose logs in production and redacts sensitive data.
+- **Health Checks:** A dedicated `/api/auth/ping` endpoint is monitored by a GitHub Action to prevent service hibernation.
 
 ---
 
-### 2. Backend Setup (Spring Boot)
-```bash
-cd backend
-```
+## 🤝 Contribution Standards
 
-#### Configure Environment Variables
-Copy the provided example file and fill in your credentials:
-```bash
-cp example.env .env
-```
-
-Edit `.env` with your values:
-```bash
-AWS_ACCESS_KEY_ID=your-access-key-id
-AWS_SECRET_ACCESS_KEY=your-secret-access-key
-AWS_REGION=us-east-1
-CORS_ALLOWED_ORIGIN=http://localhost:4200
-RATE_LIMIT_CAPACITY=5
-RATE_LIMIT_REFILL_TOKENS=5
-RATE_LIMIT_REFILL_DURATION_MINUTES=1
-```
-
-> **Note:** For production, set `CORS_ALLOWED_ORIGIN` to your deployed frontend URL (e.g. `https://mohitur-speakit.vercel.app`).
-
-Alternatively, configure AWS credentials via the CLI:
-```bash
-aws configure
-```
-
-#### Run Locally with Maven
-```bash
-./mvnw spring-boot:run
-```
-The backend starts on `http://localhost:8080` by default.
-
-#### Build and Run with Docker (Backend only)
-```bash
-cd backend
-docker build -t mohitur/speakit:backend .
-docker run -p 8080:8080 \
-  -e AWS_ACCESS_KEY_ID=your-access-key-id \
-  -e AWS_SECRET_ACCESS_KEY=your-secret-access-key \
-  -e AWS_REGION=us-east-1 \
-  -e CORS_ALLOWED_ORIGIN=http://localhost:4200 \
-  -e RATE_LIMIT_CAPACITY=5 \
-  -e RATE_LIMIT_REFILL_TOKENS=5 \
-  -e RATE_LIMIT_REFILL_DURATION_MINUTES=1
-  mohitur/speakit:backend
-```
+We follow the **SpeakIT Engineering Guide** (`AGENTS.md`). Before contributing:
+1. Ensure all new components are **Standalone**.
+2. Use **Signals** for state management.
+3. Maintain **100% Build Success** for both backend (`./mvnw compile`) and frontend (`npm run build`).
+4. Follow the **Standardized DB Column Ordering** for schema changes.
 
 ---
 
-### 3. Frontend Setup (Angular)
-```bash
-cd ../frontend
-npm install
-```
+## ⚖️ License & Commercial Usage
 
-#### Configure the Runtime Environment
-Create `public/runtime-env.js` for local development:
-```javascript
-// public/runtime-env.js  (local dev — do not commit)
-window.__env = {
-  API_URL: "http://localhost:8080",
-};
-```
+SpeakIT is distributed under a **Dual-Licensing Model** to support both the open-source community and enterprise commercial requirements.
 
-For production (Vercel), this file is generated automatically by the `prebuild` npm hook pointing to your Render deployment URL.
+### Open Source License (GNU AGPLv3)
+For individuals, open-source projects, and non-commercial educational use, SpeakIT is licensed under the **GNU Affero General Public License v3.0 (AGPLv3)**. 
+- You are free to download, modify, and run the software.
+- **Requirement:** If you modify the codebase and provide it as a hosted service over a network (SaaS), you **must** open-source your modifications under the same AGPLv3 license.
 
-> **Note:** The `prestart` script auto-generates this file before `ng serve`. Manual creation is only needed if you want to override the target backend or if the hooks are not yet configured.
+### Commercial License
+For startups, enterprises, and businesses looking to:
+- Use SpeakIT in a commercial SaaS environment without open-sourcing their proprietary modifications
+- Remove the AGPLv3 restrictions
+- Receive priority technical support and SLA guarantees
 
-#### Start the Development Server
-```bash
-npm start
-```
-The frontend is served at `http://localhost:4200`.
-
-#### Build and Run with Docker (Frontend only)
-```bash
-cd frontend
-docker build -t mohitur/speakit:frontend .
-docker run -p 4200:80 \
-  mohitur/speakit:frontend
-```
-The frontend is served at `http://localhost:4200`.
+Please contact **founders@speakit.ai** to purchase a Commercial License.
 
 ---
 
-### 4. Run Everything with Docker Compose (Recommended)
-
-This is the easiest way to run both frontend and backend together with a single command.
-
-#### Prerequisites
-- Docker installed and running
-- A `.env` file in the repo root
-
-#### Create `.env` in the repo root
-```bash
-AWS_ACCESS_KEY_ID=your-access-key-id
-AWS_SECRET_ACCESS_KEY=your-secret-access-key
-AWS_REGION=your-region
-CORS_ALLOWED_ORIGIN=http://localhost
-RATE_LIMIT_CAPACITY=5
-RATE_LIMIT_REFILL_TOKENS=5
-RATE_LIMIT_REFILL_DURATION_MINUTES=1
-```
-
-#### Option A — Build from source
-```bash
-docker compose build
-docker compose up -d
-```
-
-#### Option B — Pull from Docker Hub (no build needed)
-```bash
-docker pull mohitur/speakit:backend
-docker pull mohitur/speakit:frontend
-docker compose up -d
-```
-
-#### Access the app
-| Service  | URL                      |
-|----------|--------------------------|
-| Frontend | http://localhost:4200    |
-| Backend  | http://localhost:8080    |
-
-#### Stop the app
-```bash
-docker compose down
-```
-
----
-
-
-### 4. Environment Variable Reference
-
-| Variable                | Location                  | Description                              |
-| ----------------------- | ------------------------- | ---------------------------------------- |
-| `AWS_ACCESS_KEY_ID`     | Backend `.env`            | AWS IAM access key                       |
-| `AWS_SECRET_ACCESS_KEY` | Backend `.env`            | AWS IAM secret key                       |
-| `AWS_REGION`            | Backend `.env`            | AWS region for Polly (e.g. `us-east-1`)  |
-| `CORS_ALLOWED_ORIGIN`   | Backend `.env`            | Allowed frontend origin for CORS headers |
-| `RATE_LIMIT_CAPACITY`  | Backend `.env` | API call limit          |
-| `RATE_LIMIT_REFILL_TOKENS`  | Backend `.env` | Refill tokens after duration renews          |
-| `RATE_LIMIT_REFILL_DURATION_MINUTES`  | Backend `.env` | Applies rate limit for this duration          |
-| `window.__env.API_URL`  | Frontend `runtime-env.js` | Base URL of the Spring Boot API          |
----
-
-## Usage
-
-### Running the Full Stack Locally
-
-```bash
-# Terminal 1 — Backend
-cd backend
-./mvnw spring-boot:run
-
-# Terminal 2 — Frontend
-cd frontend
-npm start
-```
-
-Open your browser at `http://localhost:4200`.
-
-### Application Walkthrough
-
-1. Open the application in your browser.
-2. Enter text in the input field (up to **1,000 characters**).
-3. Select a voice from the dropdown — voices are grouped by language and accent.
-4. Click **Convert to Speech**.
-5. Play the generated audio directly in the browser, or click **Download** to save the MP3 file.
-
-### API — Get Available Voices
-
-```
-GET /api/tts/voices
-```
-
-Returns a list of all available AWS Polly voices with their ID, name, and gender.
-
-**Response:** `application/json`
-
-```json
-[
-  {
-    "id": "Joanna",
-    "name": "Joanna",
-    "gender": "Female"
-  },
-  {
-    "id": "Matthew",
-    "name": "Matthew",
-    "gender": "Male"
-  }
-]
-```
-
-Example with `curl`:
-
-```bash
-curl http://localhost:8080/api/tts/voices
-```
-
-> **Note:** This endpoint is rate limited. Excessive requests within a short window will be rejected.
-
-### API — Synthesize Speech
-
-```
-POST /api/synthesize
-Content-Type: application/json
-
-{
-  "text": "Hello, world! This is SpeakIt.",
-  "voiceId": "Joanna",
-  "engine": "neural"
-}
-```
-
-**Response:** `audio/mpeg` binary stream (MP3 audio).
-
-Example with `curl`:
-
-```bash
-curl -X POST http://localhost:8080/api/synthesize \
-  -H "Content-Type: application/json" \
-  -d '{"text":"Hello from SpeakIt","voiceId":"Joanna","engine":"neural"}' \
-  --output output.mp3
-```
-
----
-
-## Getting Help
-
-- **Bug Reports & Feature Requests:** Open an issue on the [GitHub Issues](https://github.com/Mohitur669/speakit/issues) page with a clear description and steps to reproduce.
-- **Questions & Discussions:** Join the conversation on [GitHub Discussions](https://github.com/Mohitur669/speakit/discussions).
-- **API Reference:** Inline documentation is available in the backend source code comments.
-
----
-
-## License
-
-This project is currently unlicensed. All rights reserved by the author.
-
-To use, modify, or distribute this code, please contact the repository owner at [github.com/Mohitur669](https://github.com/Mohitur669), or add a `LICENSE` file to the repository to clarify terms for contributors.
-
----
-
-_Built and maintained by [Mohd Mohitur Rahaman](https://github.com/Mohitur669) — powered by Spring Boot, Angular, and AWS Polly._
+_Built and maintained by [Mohd Mohitur Rahaman](https://github.com/Mohitur669) — Enterprise AI Voice Synthesis._
