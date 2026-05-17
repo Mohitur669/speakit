@@ -17,6 +17,6 @@ fs.writeFileSync(outPath, content);
 
 console.log('=== runtime-env.js generated ===');
 console.log('Environment:', isProd ? 'Production' : 'Development');
-console.log('API_URL:', envConfig.API_URL);
-console.log('SUPABASE_URL:', envConfig.SUPABASE_URL);
-console.log('Output path:', outPath);
+// console.log('API_URL:', envConfig.API_URL);
+// console.log('SUPABASE_URL:', envConfig.SUPABASE_URL);
+// console.log('Output path:', outPath);
