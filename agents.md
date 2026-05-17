@@ -1,304 +1,151 @@
-# AGENTS.md
+# SpeakIT Engineering Guide (AGENTS.md)
 
-## Project Overview
-
-This repository is optimized for AI-assisted development using tools like Claude, Gemini, ChatGPT, and local coding agents.
-
-Tech Stack:
-
-- Backend: Java + Spring Boot
-- Frontend: Angular
-- Build Tool: Maven
-- Database: PostgreSQL
-- Deployment: Docker / Render / AWS
+This document serves as the authoritative architectural blueprint and engineering standard for AI coding agents and developers working on the SpeakIT platform.
 
 ---
 
-# Development Rules
+## 1. Project Overview & Tech Stack
 
-## General Guidelines
+SpeakIT is a production-grade SaaS for AI voice generation. It is designed for high concurrency, minimal database latency, and sub-second TTS delivery.
 
-- Always understand the existing code before modifying anything.
-- Prefer minimal and clean changes.
-- Avoid unnecessary refactoring unless requested.
-- Keep naming consistent with the current project style.
-- Do not create duplicate utility/helper classes.
-- Reuse existing services, DTOs, and repositories whenever possible.
-- Preserve backward compatibility.
+### Tech Stack
+- **Backend:** Java 21, Spring Boot 3.x, Spring Security (JWT)
+- **Data Layer:** PostgreSQL, Hibernate/JPA, Bucket4j (Rate Limiting)
+- **Frontend:** Angular 21.x (Standalone Components, Signals), Tailwind CSS
+- **Infrastructure:** AWS Polly (Neural Engine), Docker, Render (Keep-alive architecture)
 
 ---
 
-# Code Style
+## 2. Backend Architecture Standards
 
-## Java / Spring Boot
+### Layered Responsibility
+1. **Controllers:** Thin wrappers. Use `@Valid` for DTO validation. Accept `HttpServletRequest` to access pre-cached user attributes.
+2. **Services:** Domain logic only. Must be `@Transactional` where state changes occur.
+3. **Repositories:** Use JPA Interface Projections for READ operations. Use `@Modifying` JPQL for high-frequency updates.
+4. **DTOs:** Mandatory for all API input/output. Never expose Entities directly.
+5. **Entities:** Must extend `BaseEntity` for auditing. Use `FetchType.LAZY` for all relationships.
 
-- Use constructor injection only.
-- Use Lombok where already used.
-- Follow layered architecture:
-  - Controller
-  - Service
-  - Repository
-  - DTO
-  - Entity
+### High-Performance Data Access (Mandatory)
+- **Eliminate Over-fetching:** Use projections to pull only required fields.
+- **N+1 Prevention:** Never query the User entity inside a loop or repeatedly across a filter-controller chain.
+- **Request Attribute Caching:** `JwtAuthenticationFilter` pre-fetches `userId` and `hasNaturalVoiceAccess`. **Controllers must read from attributes first.**
+- **Atomic Updates:** Use `@Modifying` queries for session increments or flag toggles.
+- **Relationship Linking:** Use `userRepository.getReferenceById(id)` when saving child entities.
 
-- Keep controllers thin.
-- Business logic must stay inside services.
-- Validate inputs properly.
-- Handle exceptions using global exception handlers.
-- Use meaningful method names.
-- Prefer Streams only when readability improves.
+---
 
-## Angular Frontend Standards
+## 3. Database & JPA Standards
 
-- Use standalone components when appropriate.
-- Keep business logic inside services.
-- Reuse shared components.
-- Use environment files properly.
-- Avoid hardcoded API URLs.
-- Use interceptors for auth tokens and error handling.
-- Keep components focused and small.
-- Prefer reactive forms for complex forms.
-- Use lazy loading for large modules.
-- Follow consistent folder structure.
+### Schema Design & Naming
+- **Snake Case:** Always use `snake_case` for table and column names.
+- **Auditing:** All production tables must include `created_at`, `updated_at`, and optionally `version`.
+- **Soft Deletes:** Use `is_active` boolean (and `deleted_at` if needed) to preserve data integrity.
+- **Constraints:** Enforce `VARCHAR` limits (e.g., username=50, email=100) to match DTO validation.
+- **Foreign Keys:** Types must always match the referenced PK type (`BIGINT`). Use consistent naming: `{entity}_id` (e.g., `user_id`).
 
-Example structure:
+### Database Column Ordering
+All tables must follow this enterprise ordering pattern:
+1. Primary Key (`id`)
+2. Foreign Keys (`user_id`, etc.)
+3. Core Business Fields
+4. Status/Boolean Fields (`is_active`, etc.)
+5. Analytics/Tracking Fields
+6. Audit Fields (`created_at`, `updated_at`)
+7. Soft Delete Fields (`deleted_at`)
+8. Version Fields (`version`)
 
+### Indexing Strategy
+- **Mandatory Indexing:** Index all Foreign Keys and frequently sorted/filtered columns (`username`, `created_at`).
+- **Composite Indexes:** Use for multi-column search paths to optimize query plans.
+- **Unique Constraints:** Apply to business identifiers (`username`, `email`).
+
+---
+
+## 4. Primary Key & Sequence Standards
+
+### ID Generation Strategy
+- **Internal IDs:** Use numeric `Long` primary keys with `GenerationType.SEQUENCE`. This improves insert performance and reduces database contention compared to `IDENTITY`.
+- **Dedicated Sequences:** Each major table must have its own sequence named `{table_name}_seq`.
+- **Never Use:** `GenerationType.AUTO` or shared default Hibernate sequences.
+
+**Preferred Entity Pattern:**
+```java
+@Id
+@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "user_seq")
+@SequenceGenerator(
+    name = "user_seq",
+    sequenceName = "user_seq",
+    allocationSize = 50
+)
+private Long id;
+```
+
+### Allocation Size Rules
+- Use optimized `allocationSize` to reduce database round-trips.
+- Default: `50`.
+- Heavy-write tables: `100`.
+
+---
+
+## 5. Frontend Architecture Standards
+
+### Angular Style Guide
+- **Standalone Components:** All new components must be standalone.
+- **Signals:** Prefer Signals (`signal`, `computed`, `effect`) for local component state.
+- **State Flow:** Services hold global state; Components consume state via Signals.
+
+### Folder Structure
 ```text
 src/app/
- ├── core/
- ├── shared/
- ├── features/
- ├── services/
- ├── interceptors/
- └── models/
+ ├── core/         # Singletons: Auth, Interceptors, Guards, API Services
+ ├── shared/       # Reusable UI: Navbar, Footer, Toast, UI Kits
+ ├── features/     # Domain Modules: auth, tts, dashboard, marketing
+ └── environments/ # Runtime & Build configs
 ```
 
----
-
-## API Standards
-
-- Use REST conventions.
-- Return proper HTTP status codes.
-- Use consistent JSON response structure.
-- Never expose internal exceptions directly.
-- Add pagination for large datasets.
-
-Example Response:
-
-```json
-{
-  "success": true,
-  "message": "Data fetched successfully",
-  "data": {}
-}
-```
+### UI/UX Rules
+- **Consistency:** Use Tailwind CSS utility classes.
+- **Plan Enforcement:** Components must dynamically adjust UI (e.g., `maxlength`, visibility) based on `authService.hasNaturalAccess()`.
+- **Loading States:** Every async action must have a `loading` signal and corresponding UI feedback.
 
 ---
 
-# Database Rules
+## 6. Security & Validation
 
-- Never drop tables without explicit instruction.
-- Prefer migration scripts.
-- Avoid breaking schema changes.
-- Add indexes for frequently queried fields.
-- Use snake_case for DB columns.
-
----
-
-# Security Rules
-
-- Never hardcode secrets.
-- Use environment variables.
-- Do not log sensitive data.
-- Validate all external inputs.
-- Sanitize file uploads.
-- Use Spring Security best practices.
+### API Hardening
+- **Ownership Validation:** Never trust sequential IDs or UUIDs alone. Always validate resource ownership (`userId` from request matches record owner).
+- **Sanitization:** All text inputs must pass through `Sanitizer.sanitize()` before validation.
+- **Validation:** Use JSR-303 annotations (`@Size`, `@NotBlank`) in DTOs.
+- **JWT:** Stateless. Validated against `session_version` in the DB.
 
 ---
 
-# Environment Configuration
+## 7. AI Agent Database Rules
 
-- Backend uses environment variables through `.env` or deployment environment configs.
-- Environment values must be referenced inside `application.properties` or `application.yml`.
-- Never hardcode secrets or credentials.
-- Keep configuration externalized.
+### Investigation Phase (Read-Before-Write)
+1. **Analyze Relationships:** Inspect existing foreign keys and JPA mappings.
+2. **Analyze Query Patterns:** Check repositories for existing projections and N+1 risks.
+3. **Analyze Frontend Usage:** Only fetch fields required by the actual UI screens.
 
-Example:
-
-```properties
-spring.datasource.url=${DB_URL}
-spring.datasource.username=${DB_USERNAME}
-spring.datasource.password=${DB_PASSWORD}
-```
+### Implementation Phase
+- **Preserve Compatibility:** Avoid destructive schema changes. Use migrations.
+- **Maintain Migration Safety:** When adding `NOT NULL` columns to existing tables, make them nullable in JPA first or provide a backfill SQL script.
+- **Consistent Naming:** Match existing project conventions (`snake_case` DB, `camelCase` Java).
 
 ---
 
-# Testing Instructions
+## 8. Local Development Commands
 
-Before completing tasks:
-
-- Run all existing tests.
-- Ensure project builds successfully.
-- Verify no compilation issues.
-- Check formatting.
-- Validate API endpoints.
-
-Maven commands:
-
-```bash
-./mvnw clean test
-./mvnw spring-boot:run
-```
+| Task | Command |
+| :--- | :--- |
+| **Backend Run** | `./mvnw spring-boot:run` |
+| **Backend Build** | `./mvnw clean package -DskipTests` |
+| **Frontend Run** | `npm start` |
+| **Frontend Build** | `npm run build` |
+| **Full Stack** | `docker compose up --build` |
 
 ---
 
-# Git Rules
-
-- Do not commit directly to main.
-- Use feature branches.
-- Keep commits small and meaningful.
-
-Commit format:
-
-```text
-feat: add user profile API
-fix: resolve JWT expiration issue
-refactor: simplify payment service
-```
-
----
-
-# AI Agent Instructions
-
-## When Modifying Code
-
-1. Read related files first.
-2. Search for existing implementations before creating new ones.
-3. Preserve current architecture.
-4. Explain major changes.
-5. Avoid generating placeholder code unless requested.
-6. Do not invent APIs or database columns.
-7. If unsure, ask for clarification instead of guessing.
-
----
-
-# Performance Guidelines
-
-- Avoid N+1 queries.
-- Prefer pagination.
-- Use caching when appropriate.
-- Avoid loading unnecessary data.
-- Optimize SQL queries.
-
----
-
-# Logging
-
-- Use structured logging.
-- Log errors with context.
-- Avoid excessive debug logs in production.
-- Never log passwords or tokens.
-
----
-
-# Docker Rules
-
-- Keep images lightweight.
-- Use multi-stage builds when possible.
-- Externalize configs.
-- Avoid hardcoded ports.
-
----
-
-# Documentation
-
-- Update README when adding major features.
-- Add comments only where logic is complex.
-- Keep API docs updated.
-
----
-
-# Preferred Development Flow
-
-1. Understand requirement
-2. Inspect related modules
-3. Plan minimal changes
-4. Implement
-5. Test locally
-6. Verify edge cases
-7. Document important updates
-
----
-
-# Local Development Commands
-
-## Run Backend
-
-```bash
-./mvnw spring-boot:run
-```
-
-## Build Project
-
-```bash
-./mvnw clean package
-```
-
-## Run Docker
-
-```bash
-docker compose up --build
-```
-
----
-
-# Important Constraints
-
-- Do not change environment configs unnecessarily.
-- Do not rename public APIs without instruction.
-- Do not introduce heavy dependencies casually.
-- Keep memory and CPU usage reasonable.
-
----
-
-# Preferred AI Output Style
-
-When responding:
-
-- Be concise.
-- Show exact file changes.
-- Explain why changes are needed.
-- Provide commands when useful.
-- Mention potential risks.
-- Prefer production-ready code.
-
----
-
-# Repository Structure Example
-
-```text
-src/
- ├── controller/
- ├── service/
- ├── repository/
- ├── dto/
- ├── entity/
- ├── config/
- ├── security/
- └── exception/
-```
-
----
-
-# Final Checklist For AI Agents
-
-Before finishing:
-
-- [ ] Project builds successfully
-- [ ] No syntax errors
-- [ ] No unused imports
-- [ ] No hardcoded secrets
-- [ ] API responses validated
-- [ ] Edge cases considered
-- [ ] Logs are clean
-- [ ] Documentation updated if needed
+## 9. Deployment Constraints
+- **Keep-Alive:** GitHub Action pings `/api/auth/ping` every 25 mins.
+- **CORS:** Origins are restricted via `application.properties`. Update for new environments.

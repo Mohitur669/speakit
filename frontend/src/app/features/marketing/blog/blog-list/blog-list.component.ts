@@ -25,7 +25,7 @@ import { FooterComponent } from '../../../../shared/components/footer/footer.com
           </div>
 
           <!-- Featured Article -->
-          <article class="relative group cursor-pointer mb-16 animate-slide-up stagger-1">
+          <article [routerLink]="['/blog', 'introducing-neural-voice-engine-v2']" class="relative group cursor-pointer mb-16 animate-slide-up stagger-1">
             <div class="absolute -inset-y-4 -inset-x-4 sm:-inset-y-6 sm:-inset-x-6 rounded-3xl bg-white dark:bg-primary-900 border border-primary-200 dark:border-primary-700 opacity-0 group-hover:opacity-100 transition-all shadow-xl scale-95 group-hover:scale-100 -z-10"></div>
             <div class="grid md:grid-cols-2 gap-8 items-center">
               <div class="aspect-[16/9] md:aspect-auto md:h-full w-full rounded-2xl bg-gradient-to-br from-brand-blue/20 to-brand-purple/20 border border-primary-200 dark:border-primary-700 overflow-hidden flex items-center justify-center">
@@ -60,7 +60,7 @@ import { FooterComponent } from '../../../../shared/components/footer/footer.com
           <!-- Article Grid -->
           <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-8 animate-slide-up stagger-2">
             
-            <article class="group cursor-pointer">
+            <article [routerLink]="['/blog', 'achieving-low-latency-tts']" class="group cursor-pointer">
               <div class="aspect-[16/9] w-full rounded-2xl bg-primary-100 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 mb-6 overflow-hidden flex items-center justify-center">
                  <svg class="w-12 h-12 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
               </div>
@@ -76,7 +76,7 @@ import { FooterComponent } from '../../../../shared/components/footer/footer.com
               </p>
             </article>
 
-            <article class="group cursor-pointer">
+            <article [routerLink]="['/blog', 'mastering-ssml']" class="group cursor-pointer">
               <div class="aspect-[16/9] w-full rounded-2xl bg-primary-100 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 mb-6 overflow-hidden flex items-center justify-center">
                  <svg class="w-12 h-12 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
               </div>
@@ -92,7 +92,7 @@ import { FooterComponent } from '../../../../shared/components/footer/footer.com
               </p>
             </article>
 
-            <article class="group cursor-pointer">
+            <article [routerLink]="['/blog', 'speakit-seed-round']" class="group cursor-pointer">
               <div class="aspect-[16/9] w-full rounded-2xl bg-primary-100 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 mb-6 overflow-hidden flex items-center justify-center">
                  <svg class="w-12 h-12 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
               </div>

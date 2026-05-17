@@ -3,6 +3,8 @@ package com.tts.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import lombok.experimental.SuperBuilder;
+
 @Entity
 @Table(name = "tts_history", indexes = {
     @Index(name = "idx_tts_history_user_id", columnList = "user_id"),
@@ -12,11 +14,16 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 public class TtsHistory extends BaseEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "tts_history_seq")
+    @SequenceGenerator(
+        name = "tts_history_seq",
+        sequenceName = "tts_history_seq",
+        allocationSize = 50
+    )
     private Long id;
 
     // LAZY fetch avoids loading User unless explicitly requested

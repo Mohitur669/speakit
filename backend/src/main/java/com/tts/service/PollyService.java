@@ -1,9 +1,5 @@
 package com.tts.service;
 
-/**
- * AWS Polly integration service handling voice metadata
- * fetching and speech synthesis with standard/neural engines.
- */
 import com.tts.exception.SpeechConversionException;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +15,15 @@ import software.amazon.awssdk.services.polly.model.*;
 import java.io.InputStream;
 import java.util.List;
 
+/**
+ * Manages integration with AWS Polly for high-performance text-to-speech synthesis.
+ * 
+ * Handles:
+ * - Initialization of the AWS Polly Client using externalized credentials
+ * - In-memory caching of available voices to reduce external API latency
+ * - Enforcement of Standard vs. Neural engine constraints based on user subscription
+ * - Streaming audio data back to the caller efficiently
+ */
 @Service
 @Slf4j
 public class PollyService {
@@ -35,8 +40,13 @@ public class PollyService {
     private PollyClient pollyClient;
     private List<Voice> cachedVoices;
     private long lastCacheUpdate = 0;
-    private static final long CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+    
+    // Cache duration set to 24 hours to prevent unnecessary network calls
+    private static final long CACHE_DURATION = 24 * 60 * 60 * 1000;
 
+    /**
+     * Initializes the PollyClient upon service creation using injected AWS credentials.
+     */
     @PostConstruct
     public void init() {
         pollyClient = PollyClient.builder()
@@ -47,6 +57,16 @@ public class PollyService {
                 .build();
     }
 
+    /**
+     * Synthesizes text into an audio stream, automatically negotiating the best available 
+     * engine (Neural vs. Standard) based on the voice capabilities and the user's plan.
+     * 
+     * @param text The sanitized text to synthesize
+     * @param voiceId The specific AWS Polly voice ID (e.g., 'Joanna')
+     * @param outputFormat The requested audio format (mp3, ogg_vorbis, pcm)
+     * @param hasNaturalAccess Boolean indicating if the user has a Pro tier subscription
+     * @return InputStream containing the raw audio bytes from AWS Polly
+     */
     public InputStream synthesizeSpeech(String text, String voiceId, String outputFormat, boolean hasNaturalAccess) {
         
         // Find voice in cache to check capabilities
@@ -68,6 +88,9 @@ public class PollyService {
         return synthesize(text, voiceId, outputFormat, engine);
     }
 
+    /**
+     * Internal method that executes the physical request to the AWS Polly API.
+     */
     private InputStream synthesize(String text, String voiceId, String outputFormat, Engine engine) {
 
         SynthesizeSpeechRequest request = SynthesizeSpeechRequest.builder()
@@ -90,11 +113,17 @@ public class PollyService {
             return responseStream;
 
         } catch (Exception e) {
-            log.debug("Polly synthesis failed [voice={}, engine={}]", voiceId, engine, e);
+            log.error("Polly synthesis failed [voice={}, engine={}]", voiceId, engine, e);
             throw new SpeechConversionException("Polly synthesis failed [voice=" + voiceId + ", engine=" + engine + "]");
         }
     }
 
+    /**
+     * Retrieves the list of supported voices from AWS Polly.
+     * Implements a time-based cache to avoid rate limits and reduce latency.
+     * 
+     * @return A list of Voice objects representing the available options
+     */
     public List<Voice> getAvailableVoices() {
         if (cachedVoices != null && (System.currentTimeMillis() - lastCacheUpdate < CACHE_DURATION)) {
             return cachedVoices;
