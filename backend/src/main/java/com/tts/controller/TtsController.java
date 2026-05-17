@@ -8,7 +8,9 @@ import com.tts.aspect.RateLimited;
 import com.tts.dto.TtsRequest;
 import com.tts.service.PollyService;
 import com.tts.repository.UserRepository;
+import com.tts.repository.TtsHistoryRepository;
 import com.tts.entity.User;
+import com.tts.entity.TtsHistory;
 import com.tts.util.Sanitizer;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.InputStreamResource;
@@ -17,6 +19,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import software.amazon.awssdk.services.polly.model.Engine;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.io.InputStream;
 import java.util.HashMap;
@@ -31,21 +34,54 @@ public class TtsController {
 
     private final PollyService pollyService;
     private final UserRepository userRepository;
+    private final TtsHistoryRepository ttsHistoryRepository;
 
-    public TtsController(PollyService pollyService, UserRepository userRepository) {
+    public TtsController(PollyService pollyService, UserRepository userRepository, TtsHistoryRepository ttsHistoryRepository) {
         this.pollyService = pollyService;
         this.userRepository = userRepository;
+        this.ttsHistoryRepository = ttsHistoryRepository;
+    }
+
+    private void recordHistory(HttpServletRequest request, String voiceId, String format, int charCount, boolean isNeural, String text) {
+        try {
+            Long userId = (Long) request.getAttribute("userId");
+            if (userId != null) {
+                String snippet = text.length() > 50 ? text.substring(0, 47) + "..." : text;
+                TtsHistory history = TtsHistory.builder()
+                        .user(userRepository.getReferenceById(userId)) // Avoids DB SELECT
+                        .voiceId(voiceId)
+                        .outputFormat(format)
+                        .characterCount(charCount)
+                        .isNeural(isNeural)
+                        .textSnippet(snippet)
+                        .build();
+                ttsHistoryRepository.save(history);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to record TTS history, proceeding anyway", e);
+        }
     }
 
     @RateLimited
     @PostMapping("/synthesize")
-    public ResponseEntity<byte[]> synthesize(@Valid @RequestBody TtsRequest request) {
-        String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        boolean hasNaturalAccess = userRepository.findByUsername(username)
-                .map(User::isHasNaturalVoiceAccess)
-                .orElse(false);
+    public ResponseEntity<byte[]> synthesize(@Valid @RequestBody TtsRequest request, HttpServletRequest httpRequest) {
+        Boolean accessAttr = (Boolean) httpRequest.getAttribute("hasNaturalVoiceAccess");
+        boolean hasNaturalAccess = accessAttr != null ? accessAttr : false;
 
+        // Sanitize first, then check length
         String sanitizedText = Sanitizer.sanitize(request.getText());
+        if (sanitizedText == null || sanitizedText.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Text content is required after sanitization.".getBytes());
+        }
+        
+        // Enforce plan-based character limits on sanitized text
+        int maxChars = hasNaturalAccess ? 3000 : 200;
+        if (sanitizedText.length() > maxChars) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(("Character limit exceeded for your plan (" + maxChars + " characters).").getBytes());
+        }
+
         String sanitizedVoiceId = Sanitizer.sanitize(request.getVoiceId());
         String sanitizedOutputFormat = Sanitizer.sanitize(request.getOutputFormat());
 
@@ -57,6 +93,10 @@ public class TtsController {
         )) {
 
             byte[] audioBytes = audioStream.readAllBytes();
+            
+            // Record analytics history async-like
+            recordHistory(httpRequest, sanitizedVoiceId, sanitizedOutputFormat, sanitizedText.length(), hasNaturalAccess, sanitizedText);
+            
             MediaType mediaType = getMediaType(sanitizedOutputFormat);
 
             HttpHeaders headers = new HttpHeaders();
@@ -86,13 +126,24 @@ public class TtsController {
     }
 
     @PostMapping("/synthesize-stream")
-    public ResponseEntity<InputStreamResource> synthesizeStream(@Valid @RequestBody TtsRequest request) {
-        String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        boolean hasNaturalAccess = userRepository.findByUsername(username)
-                .map(User::isHasNaturalVoiceAccess)
-                .orElse(false);
+    public ResponseEntity<?> synthesizeStream(@Valid @RequestBody TtsRequest request, HttpServletRequest httpRequest) {
+        Boolean accessAttr = (Boolean) httpRequest.getAttribute("hasNaturalVoiceAccess");
+        boolean hasNaturalAccess = accessAttr != null ? accessAttr : false;
 
+        // Sanitize first, then check length
         String sanitizedText = Sanitizer.sanitize(request.getText());
+        if (sanitizedText == null || sanitizedText.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Text content is required after sanitization.");
+        }
+        
+        // Enforce plan-based character limits on sanitized text
+        int maxChars = hasNaturalAccess ? 3000 : 200;
+        if (sanitizedText.length() > maxChars) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Character limit exceeded for your plan (" + maxChars + " characters).");
+        }
+
         String sanitizedVoiceId = Sanitizer.sanitize(request.getVoiceId());
         String sanitizedOutputFormat = Sanitizer.sanitize(request.getOutputFormat());
 
@@ -103,6 +154,9 @@ public class TtsController {
                 hasNaturalAccess
         );
 
+        // Record analytics history async-like
+        recordHistory(httpRequest, sanitizedVoiceId, sanitizedOutputFormat, sanitizedText.length(), hasNaturalAccess, sanitizedText);
+
         return ResponseEntity.ok()
                 .contentType(getMediaType(sanitizedOutputFormat))
                 .body(new InputStreamResource(stream));
@@ -110,11 +164,9 @@ public class TtsController {
 
     @RateLimited
     @GetMapping("/voices")
-    public ResponseEntity<List<Map<String, Object>>> getVoices() {
-        String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        boolean hasNaturalAccess = userRepository.findByUsername(username)
-                .map(User::isHasNaturalVoiceAccess)
-                .orElse(false);
+    public ResponseEntity<List<Map<String, Object>>> getVoices(HttpServletRequest httpRequest) {
+        Boolean accessAttr = (Boolean) httpRequest.getAttribute("hasNaturalVoiceAccess");
+        boolean hasNaturalAccess = accessAttr != null ? accessAttr : false;
 
         List<Map<String, Object>> voices = pollyService.getAvailableVoices()
                 .stream()

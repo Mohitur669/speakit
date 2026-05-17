@@ -85,17 +85,13 @@
             <div>
               <div class="flex justify-between text-sm mb-2">
                 <span class="text-primary-500">Characters used</span>
-                <span class="font-medium text-primary-700 dark:text-primary-300">{{ text.length }} / 3000</span>
+                <span class="font-medium text-primary-700 dark:text-primary-300">{{ text.length }} / {{ maxChars }}</span>
               </div>
               <div class="h-2 bg-primary-100 dark:bg-primary-800 rounded-full overflow-hidden">
-                <div [ngClass]="text.length > 2700 ? 'bg-red-500' : 'bg-brand-blue'"
+                <div [ngClass]="text.length > (maxChars * 0.9) ? 'bg-red-500' : 'bg-brand-blue'"
                   class="h-full rounded-full transition-all"
-                  [style.width.%]="(text.length / 3000) * 100"></div>
+                  [style.width.%]="(text.length / maxChars) * 100"></div>
               </div>
-            </div>
-            <div class="flex items-center gap-2 text-xs text-primary-400">
-              <span class="w-2 h-2 rounded-full bg-accent-500"></span>
-              <span>{{ userCanUseNeural ? 'Pro plan active' : 'Free plan' }}</span>
             </div>
           </div>
         </div>
@@ -117,7 +113,7 @@
             <textarea [(ngModel)]="text"
               placeholder="Enter your text here..."
               rows="8"
-              maxlength="3000"
+              [maxlength]="maxChars"
               class="flex-1 w-full bg-primary-50 dark:bg-primary-800 text-primary-900 dark:text-white placeholder-primary-400 rounded-xl border border-primary-200 dark:border-primary-700 p-4 text-sm leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all"></textarea>
 
             <div class="mt-4 flex items-center justify-end">

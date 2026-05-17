@@ -35,6 +35,10 @@ export class TtsComponent {
   filteredVoices = signal<Voice[]>([]);
   filterOptions = signal<('All' | 'Standard' | 'Neural')[]>(['All']);
 
+  get maxChars(): number {
+    return this.userCanUseNeural ? 3000 : 200;
+  }
+
   // Track available voice types from API
   hasStandardVoices = false;
   hasNeuralVoices = false;
@@ -83,14 +87,23 @@ export class TtsComponent {
         this.hasStandardVoices = voices.some(v => v.isStandard === true);
         this.hasNeuralVoices = voices.some(v => v.isNeural === true);
 
-        // Build filter options based on what's available
-        const options: ('All' | 'Standard' | 'Neural')[] = ['All'];
-        if (this.hasStandardVoices) options.push('Standard');
-        if (this.hasNeuralVoices && this.userCanUseNeural) options.push('Neural');
+        // Build filter options based on what's available and plan
+        const options: ('All' | 'Standard' | 'Neural')[] = [];
+        
+        if (this.userCanUseNeural) {
+          options.push('All');
+          if (this.hasStandardVoices) options.push('Standard');
+          if (this.hasNeuralVoices) options.push('Neural');
+        } else {
+          // Free users only see Standard filter
+          if (this.hasStandardVoices) options.push('Standard');
+          else options.push('All'); // Fallback if no standard voices found
+        }
+        
         this.filterOptions.set(options);
 
         // Set default filter
-        if (this.hasNeuralVoices && this.userCanUseNeural) {
+        if (this.userCanUseNeural) {
           this.currentFilter.set('All');
         } else if (this.hasStandardVoices) {
           this.currentFilter.set('Standard');

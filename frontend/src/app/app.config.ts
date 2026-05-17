@@ -14,6 +14,30 @@ const routes = [
     loadComponent: () => import('./features/home/landing').then(m => m.LandingComponent)
   },
   {
+    path: 'about',
+    loadComponent: () => import('./features/marketing/about/about.component').then(m => m.AboutComponent)
+  },
+  {
+    path: 'contact',
+    loadComponent: () => import('./features/marketing/contact/contact.component').then(m => m.ContactComponent)
+  },
+  {
+    path: 'blog',
+    loadComponent: () => import('./features/marketing/blog/blog-list/blog-list.component').then(m => m.BlogListComponent)
+  },
+  {
+    path: 'blog/:slug',
+    loadComponent: () => import('./features/marketing/blog/blog-detail/blog-detail.component').then(m => m.BlogDetailComponent)
+  },
+  {
+    path: 'privacy',
+    loadComponent: () => import('./features/marketing/legal/privacy/privacy.component').then(m => m.PrivacyComponent)
+  },
+  {
+    path: 'terms',
+    loadComponent: () => import('./features/marketing/legal/terms/terms.component').then(m => m.TermsComponent)
+  },
+  {
     path: 'login',
     loadComponent: () => import('./features/auth/login').then(m => m.LoginComponent)
   },
