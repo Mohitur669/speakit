@@ -22,8 +22,9 @@ SpeakIT is a production-grade SaaS for AI voice generation. It is designed for h
 1. **Controllers:** Thin wrappers. Use `@Valid` for DTO validation. Accept `HttpServletRequest` to access pre-cached user attributes.
 2. **Services:** Domain logic only. Must be `@Transactional` where state changes occur.
 3. **Repositories:** Use JPA Interface Projections for READ operations. Use `@Modifying` JPQL for high-frequency updates.
-4. **DTOs:** Mandatory for all API input/output. Never expose Entities directly.
-5. **Entities:** Must extend `BaseEntity` for auditing. Use `FetchType.LAZY` for all relationships.
+- **DTOs:** Mandatory for all API input/output. Never expose Entities directly.
+- **Entities:** Must extend `BaseEntity` for auditing. Use `FetchType.LAZY` for all relationships.
+- **OSIV:** `spring.jpa.open-in-view` must be set to `false` in production to prevent unintended database queries during the view rendering phase.
 
 ### High-Performance Data Access (Mandatory)
 - **Eliminate Over-fetching:** Use projections to pull only required fields.
