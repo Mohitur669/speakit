@@ -151,6 +151,7 @@ public class TtsController {
         };
     }
 
+    @RateLimited(action = RateLimitAction.TTS)
     @PostMapping("/synthesize-stream")
     public ResponseEntity<?> synthesizeStream(@Valid @RequestBody TtsRequest request, HttpServletRequest httpRequest) {
         Boolean accessAttr = (Boolean) httpRequest.getAttribute("hasNaturalVoiceAccess");
