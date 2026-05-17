@@ -110,17 +110,45 @@ src/app/
 
 ---
 
-## 6. Security & Validation
+## 7. Security & Validation
 
-### API Hardening
-- **Ownership Validation:** Never trust sequential IDs or UUIDs alone. Always validate resource ownership (`userId` from request matches record owner).
-- **Sanitization:** All text inputs must pass through `Sanitizer.sanitize()` before validation.
-- **Validation:** Use JSR-303 annotations (`@Size`, `@NotBlank`) in DTOs.
+...
 - **JWT:** Stateless. Validated against `session_version` in the DB.
+---
+
+## 8. Logging & Observability Standards
+
+### Backend Structured Logging
+- **Request Tracing:** Every request is assigned a unique 8-character `requestId` via `RequestLoggingFilter`, stored in the SLF4J MDC. 
+- **Pattern:** Logs must follow the standard pattern: `[timestamp] [level] [requestId] [logger] : message`.
+- **MDC Usage:** The `requestId` is automatically included in all logs generated during a request thread.
+
+### Frontend Observability
+- **Centralized Logger:** All logging must go through `LoggerService`. Never use `console.log` directly in feature components or services.
+- **Environment Aware:** `LoggerService` automatically suppresses `debug` and `info` logs in production based on the `LOG_LEVEL` environment variable.
+- **Sensitive Data Protection:** The logger includes a `sanitize` mechanism that automatically redacts fields like `token`, `password`, and `jwt` from log arguments.
+- **Standard Levels:**
+    - `debug`: Low-level tracing (e.g., WebSocket connection attempts).
+    - `info`: Key milestones (e.g., session hydration).
+    - `warn`: Recoverable errors (e.g., 401/403 auth failures).
+    - `error`: Fatal exceptions (e.g., API unreachable).
+
+### Production Log Management
+- **File Rotation:** Configured in `application.properties` with a 10MB per-file limit and 30-day retention.
+...
+- **Root Level:** Default is `INFO`. Spring internals are suppressed to `WARN` to reduce noise.
+- **Sensitive Data:** NEVER log passwords, tokens, or raw PII. Mask identifiers if logging is required for debugging.
+
+### Exception Logging
+- **Global Handler:** `GlobalExceptionHandler` logs all errors with the `requestId`.
+- **Level Usage:**
+    - `ERROR`: System failures, integration issues (AWS Polly, DB).
+    - `WARN`: User-driven errors (Validation failed, Rate limit hit).
+    - `INFO`: Critical business milestones (User registered, synthesis successful).
 
 ---
 
-## 7. AI Agent Database Rules
+## 9. AI Agent Database Rules
 
 ### Investigation Phase (Read-Before-Write)
 1. **Analyze Relationships:** Inspect existing foreign keys and JPA mappings.

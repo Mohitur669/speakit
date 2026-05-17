@@ -30,8 +30,8 @@ import { ThemeService } from '../../../core/services/theme.service';
           <!-- Desktop Nav -->
           <nav class="hidden md:flex items-center gap-8">
             <a routerLink="/" class="text-sm font-medium text-primary-500 hover:text-primary-900 dark:text-primary-400 dark:hover:text-white transition-colors">Home</a>
-            <a href="#features" class="text-sm font-medium text-primary-500 hover:text-primary-900 dark:text-primary-400 dark:hover:text-white transition-colors">Features</a>
-            <a href="#pricing" class="text-sm font-medium text-primary-500 hover:text-primary-900 dark:text-primary-400 dark:hover:text-white transition-colors">Pricing</a>
+            <a routerLink="/" fragment="features" class="text-sm font-medium text-primary-500 hover:text-primary-900 dark:text-primary-400 dark:hover:text-white transition-colors">Features</a>
+            <a routerLink="/" fragment="pricing" class="text-sm font-medium text-primary-500 hover:text-primary-900 dark:text-primary-400 dark:hover:text-white transition-colors">Pricing</a>
           </nav>
 
           <!-- Actions -->
@@ -100,6 +100,5 @@ export class NavbarComponent {
 
   logout(): void {
     this.authService.logout();
-    this.router.navigate(['/']);
   }
 }

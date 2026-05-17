@@ -14,6 +14,7 @@ import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 import { TtsService } from '../services/tts.service';
 import { ToastService } from '../services/toast.service';
+import { LoggerService } from '../services/logger.service';
 import { AuthResponse, LoginCredentials, RegisterCredentials } from './models';
 import { environment } from '../../../environments/environment';
 
@@ -43,6 +44,7 @@ export class AuthService implements OnDestroy {
 
   private ttsService = inject(TtsService);
   private toastService = inject(ToastService);
+  private logger = inject(LoggerService);
   private router = inject(Router);
 
   constructor(private http: HttpClient) {
@@ -80,7 +82,7 @@ export class AuthService implements OnDestroy {
     }
 
     wsUrl += '/ws/logout?token=' + token;
-    console.log('Connecting to WebSocket:', wsUrl);
+    this.logger.debug('Connecting to WebSocket', { url: wsUrl });
 
     this.ws = new WebSocket(wsUrl);
     this.ws.onmessage = (event) => {
@@ -155,16 +157,16 @@ export class AuthService implements OnDestroy {
     }
 
     if (reason || isExternal) {
-      // Instant logout with 1500ms delay as requested
-      this.toastService.info('Another login detected. Logging out', 2000);
+      // Show info message for external/reason-based logouts (e.g. session expired, multi-login)
+      this.toastService.info(reason || 'Session expired. Please log in again', 2000);
       setTimeout(() => {
-        window.location.href = '/login';
+        this.router.navigate(['/login']);
       }, 1500);
     } else {
       // Manual logout
       this.toastService.success('Successfully logged out');
       setTimeout(() => {
-        window.location.href = '/login';
+        this.router.navigate(['/login']);
       }, 1500);
     }
   }
@@ -202,7 +204,7 @@ export class AuthService implements OnDestroy {
    * Hydrates the session state from the backend AuthResponse and starts local timers.
    */
   private setSession(res: AuthResponse): void {
-    console.log('Setting dynamic session:', {
+    this.logger.info('Setting dynamic session', {
       version: res.sessionVersion,
       duration: res.sessionDurationMs,
       idle: res.idleTimeoutMs
