@@ -167,7 +167,7 @@ export class AuthService implements OnDestroy {
       this.toastService.success('Successfully logged out');
       setTimeout(() => {
         this.router.navigate(['/login']);
-      }, 1500);
+      }, 500);
     }
   }
 

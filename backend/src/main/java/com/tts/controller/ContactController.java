@@ -10,12 +10,14 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+import com.tts.aspect.RateLimitAction;
+
 @RestController
 @RequestMapping("/api/contact")
 @Slf4j
 public class ContactController {
 
-    @RateLimited
+    @RateLimited(action = RateLimitAction.PUBLIC)
     @PostMapping
     public ResponseEntity<?> submitContactForm(@Valid @RequestBody ContactRequest request) {
         // Sanitize inputs

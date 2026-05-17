@@ -1,5 +1,6 @@
 package com.tts.controller;
 
+import com.tts.aspect.RateLimitAction;
 import com.tts.aspect.RateLimited;
 import com.tts.dto.TtsRequest;
 import com.tts.entity.TtsHistory;
@@ -82,7 +83,7 @@ public class TtsController {
      * @param httpRequest The underlying HTTP request containing pre-cached user context
      * @return Raw audio byte array wrapped in a ResponseEntity
      */
-    @RateLimited
+    @RateLimited(action = RateLimitAction.TTS)
     @PostMapping("/synthesize")
     public ResponseEntity<byte[]> synthesize(@Valid @RequestBody TtsRequest request, HttpServletRequest httpRequest) {
         Boolean accessAttr = (Boolean) httpRequest.getAttribute("hasNaturalVoiceAccess");

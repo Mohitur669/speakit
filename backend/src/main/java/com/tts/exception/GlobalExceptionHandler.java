@@ -29,10 +29,13 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(RateLimitExceededException.class)
     public ResponseEntity<Map<String, String>> handleRateLimitExceeded(RateLimitExceededException ex) {
-        log.warn("Rate limit exceeded for request");
+        log.warn("Rate limit exceeded for request. Retry after: {}s", ex.getRetryAfterSeconds());
         Map<String, String> error = new HashMap<>();
         error.put("error", "Rate limit exceeded. Please try again later.");
-        return new ResponseEntity<>(error, HttpStatus.TOO_MANY_REQUESTS);
+        
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header("Retry-After", String.valueOf(ex.getRetryAfterSeconds()))
+                .body(error);
     }
 
     @ExceptionHandler(SpeechConversionException.class)

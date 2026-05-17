@@ -55,8 +55,8 @@ public class AuthService {
      */
     @Transactional
     public AuthResponse register(AuthRequest request) {
-        String sanitizedUsername = Sanitizer.sanitize(request.getUsername());
-        String sanitizedEmail = Sanitizer.sanitize(request.getEmail());
+        String sanitizedUsername = Sanitizer.sanitize(request.getUsername()).toLowerCase();
+        String sanitizedEmail = Sanitizer.sanitize(request.getEmail()).toLowerCase();
 
         var user = User.builder()
                 .username(sanitizedUsername)
@@ -82,7 +82,7 @@ public class AuthService {
      */
     @Transactional
     public AuthResponse login(AuthRequest request) {
-        String sanitizedIdentifier = Sanitizer.sanitize(request.getUsername());
+        String sanitizedIdentifier = Sanitizer.sanitize(request.getUsername()).toLowerCase();
 
         var user = userRepository.findByUsernameOrEmail(sanitizedIdentifier, sanitizedIdentifier)
                 .orElseThrow(() -> new RuntimeException("User not found"));

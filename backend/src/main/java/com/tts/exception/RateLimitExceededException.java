@@ -1,7 +1,14 @@
 package com.tts.exception;
 
+import lombok.Getter;
+
+@Getter
 public class RateLimitExceededException extends RuntimeException {
-    public RateLimitExceededException(String message) {
+    
+    private final long retryAfterSeconds;
+
+    public RateLimitExceededException(String message, long retryAfterSeconds) {
         super(message);
+        this.retryAfterSeconds = retryAfterSeconds;
     }
 }

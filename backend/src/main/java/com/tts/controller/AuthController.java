@@ -1,5 +1,7 @@
 package com.tts.controller;
 
+import com.tts.aspect.RateLimitAction;
+import com.tts.aspect.RateLimited;
 import com.tts.dto.AuthRequest;
 import com.tts.dto.AuthResponse;
 import com.tts.service.AuthService;
@@ -29,6 +31,7 @@ public class AuthController {
     /**
      * Registers a new user account and returns an initial authentication token.
      */
+    @RateLimited(action = RateLimitAction.AUTH)
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@RequestBody AuthRequest request) {
         return ResponseEntity.ok(authService.register(request));
@@ -38,6 +41,7 @@ public class AuthController {
      * Authenticates existing users and provisions a new JWT session.
      * Triggers concurrent session invalidation internally.
      */
+    @RateLimited(action = RateLimitAction.AUTH)
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody AuthRequest request) {
         return ResponseEntity.ok(authService.login(request));
