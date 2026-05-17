@@ -1,32 +1,40 @@
 package com.tts.controller;
 
-/**
- * REST controller handling text-to-speech operations including
- * voice listing and audio synthesis with rate limiting.
- */
 import com.tts.aspect.RateLimited;
 import com.tts.dto.TtsRequest;
-import com.tts.service.PollyService;
-import com.tts.repository.UserRepository;
-import com.tts.repository.TtsHistoryRepository;
-import com.tts.entity.User;
 import com.tts.entity.TtsHistory;
+import com.tts.repository.TtsHistoryRepository;
+import com.tts.repository.UserRepository;
+import com.tts.service.PollyService;
 import com.tts.util.Sanitizer;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.*;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import software.amazon.awssdk.services.polly.model.Engine;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.Valid;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * Primary REST controller for text-to-speech operations.
+ * 
+ * Handles:
+ * - Direct synthesis requests (buffered output)
+ * - Streaming synthesis requests (chunked output)
+ * - Fetching available voice metadata from AWS Polly
+ * - Enforcing plan-based character limits and voice filtering
+ * - Asynchronous recording of usage analytics via TtsHistory
+ * 
+ * Performance Notes:
+ * - Uses pre-cached Request Attributes (populated by JwtAuthenticationFilter) 
+ *   to eliminate N+1 user queries during the hot-path synthesis flow.
+ */
 @RestController
 @RequestMapping("/api/tts")
 @Slf4j
@@ -42,6 +50,10 @@ public class TtsController {
         this.ttsHistoryRepository = ttsHistoryRepository;
     }
 
+    /**
+     * Records the TTS generation request to the history log for analytics and billing.
+     * Uses getReferenceById to avoid an unnecessary SELECT query against the User table.
+     */
     private void recordHistory(HttpServletRequest request, String voiceId, String format, int charCount, boolean isNeural, String text) {
         try {
             Long userId = (Long) request.getAttribute("userId");
@@ -62,6 +74,14 @@ public class TtsController {
         }
     }
 
+    /**
+     * Synthesizes text into an audio file payload.
+     * Enforces character limits based on the user's subscription tier.
+     * 
+     * @param request Validated JSON payload containing text and voice preferences
+     * @param httpRequest The underlying HTTP request containing pre-cached user context
+     * @return Raw audio byte array wrapped in a ResponseEntity
+     */
     @RateLimited
     @PostMapping("/synthesize")
     public ResponseEntity<byte[]> synthesize(@Valid @RequestBody TtsRequest request, HttpServletRequest httpRequest) {

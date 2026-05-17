@@ -7,20 +7,27 @@ package com.tts.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import lombok.experimental.SuperBuilder;
+
 @Entity
 @Table(name = "users", indexes = {
-    @Index(name = "idx_user_username", columnList = "username"),
-    @Index(name = "idx_user_email", columnList = "email")
+    @Index(name = "idx_users_username", columnList = "username"),
+    @Index(name = "idx_users_email", columnList = "email")
 })
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 public class User extends BaseEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "users_seq")
+    @SequenceGenerator(
+        name = "users_seq",
+        sequenceName = "users_seq",
+        allocationSize = 50
+    )
     private Long id;
 
     @Column(unique = true, nullable = false, length = 50)
@@ -32,6 +39,10 @@ public class User extends BaseEntity {
     @Column(nullable = false)
     private String password;
 
+    @Column(name = "is_active")
+    @Builder.Default
+    private boolean isActive = true;
+
     @Column(name = "has_natural_voice_access", nullable = false)
     @Builder.Default
     private boolean hasNaturalVoiceAccess = false;
@@ -39,8 +50,4 @@ public class User extends BaseEntity {
     @Column(name = "session_version", nullable = false, columnDefinition = "bigint default 1")
     @Builder.Default
     private Long sessionVersion = 1L;
-    
-    @Column(name = "is_active")
-    @Builder.Default
-    private boolean isActive = true;
 }

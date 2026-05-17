@@ -2,10 +2,11 @@
  * Central authentication service managing user login, registration,
  * session state, and JWT token lifecycle with automatic expiration.
  *
- * Optimized with Dynamic Configuration from .env:
- * 1. Activity-Based Session Validation (Tab focus + Dynamic Heartbeat)
- * 2. Dynamic Idle Timeout (Logs out if no user interaction)
- * 3. Dynamic Session Duration
+ * Optimized with Dynamic Configuration from Environment/Backend:
+ * - Activity-Based Session Validation (Tab focus + Dynamic Heartbeat)
+ * - Dynamic Idle Timeout (Logs out if no user interaction)
+ * - Dynamic Session Duration
+ * - WebSocket integration for instant remote logout
  */
 import { Injectable, signal, inject, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
@@ -30,6 +31,7 @@ export class AuthService implements OnDestroy {
   private logoutChannel = new BroadcastChannel('auth_logout');
   private ws?: WebSocket;
 
+  // Signal-based reactive state for consumption by UI components
   currentUser = signal<string | null>(localStorage.getItem('username'));
   token = signal<string | null>(localStorage.getItem('token'));
   hasNaturalAccess = signal<boolean>(localStorage.getItem('hasNaturalAccess') === 'true');
@@ -56,6 +58,10 @@ export class AuthService implements OnDestroy {
     this.ws?.close();
   }
 
+  /**
+   * Initializes a WebSocket connection to the backend to listen for instant logout events
+   * (e.g., when a user logs in from another device, incrementing their session_version).
+   */
   private setupWebSocket(): void {
     if (this.ws) {
       this.ws.close();
@@ -91,6 +97,10 @@ export class AuthService implements OnDestroy {
     };
   }
 
+  /**
+   * Listens for cross-tab logout events to ensure all instances of the application
+   * securely drop the session if the user logs out in one tab.
+   */
   private setupBroadcastListener(): void {
     this.logoutChannel.onmessage = (event) => {
       if (event.data.type === 'LOGOUT') {
@@ -99,18 +109,29 @@ export class AuthService implements OnDestroy {
     };
   }
 
+  /**
+   * Registers a new user and automatically logs them in upon success.
+   */
   register(credentials: RegisterCredentials): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.apiUrl}/register`, credentials).pipe(
       tap(res => this.setSession(res))
     );
   }
 
+  /**
+   * Authenticates a user against the backend, establishes a local session,
+   * and initializes activity tracking and WebSockets.
+   */
   login(credentials: LoginCredentials): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.apiUrl}/login`, credentials).pipe(
       tap(res => this.setSession(res))
     );
   }
 
+  /**
+   * Securely terminates the session. Notifies the backend to invalidate the token,
+   * clears local state, and redirects to the login screen.
+   */
   logout(reason?: string): void {
     if (this.isLoggingOut) return;
     this.isLoggingOut = true;
@@ -121,6 +142,9 @@ export class AuthService implements OnDestroy {
     });
   }
 
+  /**
+   * Internal mechanism to wipe localStorage and broadcast the logout to other tabs.
+   */
   private clearSessionAfterLogout(reason?: string, isExternal = false): void {
     this.clearSession();
     this.isLoggingOut = false;
@@ -145,6 +169,9 @@ export class AuthService implements OnDestroy {
     }
   }
 
+  /**
+   * Wipes all authentication signals, cache configurations, and localStorage items.
+   */
   private clearSession(): void {
     if (this.timeoutId) clearTimeout(this.timeoutId);
     if (this.idleTimeoutId) clearTimeout(this.idleTimeoutId);
@@ -171,6 +198,9 @@ export class AuthService implements OnDestroy {
     this.currentSessionVersion.set(0);
   }
 
+  /**
+   * Hydrates the session state from the backend AuthResponse and starts local timers.
+   */
   private setSession(res: AuthResponse): void {
     console.log('Setting dynamic session:', {
       version: res.sessionVersion,
@@ -204,6 +234,9 @@ export class AuthService implements OnDestroy {
     this.setupWebSocket();
   }
 
+  /**
+   * Tracks user interaction with the page to prevent timeouts while active.
+   */
   private setupIdleTimer(): void {
     if (!this.isLoggedIn()) return;
 
@@ -234,6 +267,9 @@ export class AuthService implements OnDestroy {
     this.activityListeners = [];
   }
 
+  /**
+   * Listens for tab visibility changes to reset idle timers when the user returns.
+   */
   private initializeActivityValidation(): void {
     if (!this.isLoggedIn()) return;
 
@@ -243,13 +279,14 @@ export class AuthService implements OnDestroy {
     this.visibilityCallback = () => {
       if (document.visibilityState === 'visible') {
         this.resetIdleTimer();
-        // Redundant with WebSocket self-validation on reconnect
-        // this.http.get(`${this.apiUrl}/ping`).subscribe({ error: () => {} });
       }
     };
     document.addEventListener('visibilitychange', this.visibilityCallback);
   }
 
+  /**
+   * Validates if the local session has exceeded the hard duration limit on startup.
+   */
   private checkSessionValidity(): void {
     const loginTimestamp = localStorage.getItem('loginTimestamp');
     if (loginTimestamp) {
@@ -267,6 +304,9 @@ export class AuthService implements OnDestroy {
     this.timeoutId = setTimeout(() => this.logout('Session timeout'), duration);
   }
 
+  /**
+   * Reactive helper to check current authentication state.
+   */
   isLoggedIn(): boolean {
     return !!this.token();
   }

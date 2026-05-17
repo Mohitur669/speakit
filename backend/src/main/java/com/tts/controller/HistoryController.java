@@ -13,6 +13,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * REST controller for retrieving user-specific analytics and history.
+ * 
+ * Provides highly optimized, paginated endpoints to support frontend
+ * dashboards without exposing raw database entities.
+ */
 @RestController
 @RequestMapping("/api/history")
 @RequiredArgsConstructor
@@ -20,6 +26,20 @@ public class HistoryController {
 
     private final TtsHistoryRepository ttsHistoryRepository;
 
+    /**
+     * Fetches a paginated list of TTS generation events for the authenticated user.
+     * 
+     * Security: Relies on the pre-cached userId attribute from the JwtAuthenticationFilter
+     * to guarantee that users can only access their own history logs.
+     * 
+     * Performance: Maps database entities directly to DTOs to minimize the JSON
+     * payload size and prevent recursive object serialization.
+     * 
+     * @param request The HTTP request containing the pre-authenticated userId
+     * @param page The zero-based page index (defaults to 0)
+     * @param size The maximum number of records per page (defaults to 20)
+     * @return Paginated response containing lightweight TtsHistoryDto objects
+     */
     @GetMapping
     public ResponseEntity<Page<TtsHistoryDto>> getHistory(
             HttpServletRequest request,

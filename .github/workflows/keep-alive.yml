@@ -12,12 +12,21 @@ jobs:
     steps:
       - name: Ping Render Backend
         run: |
-          # Replace the URL with your actual Render backend URL
-          # Or better, set it as a GitHub Secret named RENDER_URL
           URL="${{ secrets.RENDER_URL }}"
           if [ -z "$URL" ]; then
-            echo "Error: RENDER_URL secret is not set."
+            echo "::error::RENDER_URL secret is not set. Please add it to your repository secrets."
             exit 1
           fi
-          echo "Pinging $URL..."
-          curl -s -f "$URL/api/auth/ping" || echo "Ping failed, but that's okay (might be spinning up)"
+          
+          echo "Initiating health check for: $URL"
+          echo "Timestamp: $(date -u)"
+          
+          RESPONSE=$(curl -s -w "%{http_code}" -o /dev/null "$URL/api/auth/ping")
+          
+          if [ "$RESPONSE" -eq 200 ]; then
+            echo "::notice::Health check successful (HTTP 200). Service is active."
+          elif [ "$RESPONSE" -eq 000 ]; then
+            echo "::warning::Connection failed. The service might be down or the URL is incorrect."
+          else
+            echo "::warning::Service returned status $RESPONSE. It might be spinning up or experiencing issues."
+          fi
