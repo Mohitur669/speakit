@@ -47,8 +47,8 @@ public class RateLimitConfig {
     public Bucket createAuthBucket() {
         return Bucket.builder()
                 .addLimit(Bandwidth.builder()
-                        .capacity(Math.max(1, defaultCapacity / 5))
-                        .refillIntervally(Math.max(1, defaultRefillTokens / 5), Duration.ofMinutes(defaultRefillDurationMinutes))
+                        .capacity(Math.max(3, defaultCapacity / 2))
+                        .refillIntervally(Math.max(2, defaultRefillTokens / 2), Duration.ofMinutes(defaultRefillDurationMinutes))
                         .build())
                 .build();
     }

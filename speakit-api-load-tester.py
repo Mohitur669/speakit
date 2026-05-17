@@ -440,7 +440,7 @@ def test_health(client):
     )
     log.info("=" * 64)
     try:
-        r = client.get(_ep("/api/auth/ping"), timeout=httpx.Timeout(40.0))
+        r = client.get(_ep("/api/auth/ping"), timeout=httpx.Timeout(120.0))
         if r.status_code == 200:
             cprint("  [green]✓[/green] Backend is UP")
         else:
@@ -705,7 +705,7 @@ def main():
     if not args.no_prompt:
         interactive_setup()
 
-    with httpx.Client(base_url=cfg.base_url) as client:
+    with httpx.Client(base_url=cfg.base_url, timeout=httpx.Timeout(120.0, connect=60.0)) as client:
         test_health(client)
         authenticate(client)
 
