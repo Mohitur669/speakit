@@ -8,7 +8,7 @@ import lombok.Data;
 @Data
 public class TtsRequest {
     @NotBlank(message = "Text cannot be blank")
-    @Size(max = 1000, message = "Text cannot exceed 1000 characters")
+    @Size(max = 3000, message = "Text cannot exceed 3000 characters")
     private String text;
 
     @NotNull(message = "Voice ID cannot be null")

@@ -69,46 +69,47 @@ public class AuthService {
                 )
         );
 
-        // Increment session version to invalidate previous tokens
-        long oldVersion = user.getSessionVersion();
-        user.setSessionVersion(oldVersion + 1);
-        userRepository.save(user);
+        // Increment session version to invalidate previous tokens using optimized query
+        userRepository.incrementSessionVersion(user.getUsername());
+        long newSessionVersion = user.getSessionVersion() + 1;
         
         // Notify existing sessions to logout immediately
         webSocketConfig.notifyLogout(user.getUsername());
         
-        System.out.println("DEBUG: User " + user.getUsername() + " login. Version: " + oldVersion + " -> " + user.getSessionVersion());
+        System.out.println("DEBUG: User " + user.getUsername() + " login. Version: " + user.getSessionVersion() + " -> " + newSessionVersion);
 
-        return authenticate(user.getUsername());
+        return authenticate(user.getUsername(), user.isHasNaturalVoiceAccess(), newSessionVersion);
     }
 
     @Transactional
     public void logout(String username) {
-        var user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        user.setSessionVersion(user.getSessionVersion() + 1);
-        userRepository.save(user);
+        userRepository.incrementSessionVersion(username);
     }
 
-    private AuthResponse authenticate(String username) {
-        var user = userRepository.findByUsername(username).orElseThrow();
+    private AuthResponse authenticate(String username, boolean hasNaturalVoiceAccess, long sessionVersion) {
         UserDetails userDetails = org.springframework.security.core.userdetails.User.builder()
-                .username(user.getUsername())
-                .password(user.getPassword())
+                .username(username)
+                .password("") // Password not needed in token
                 .roles("USER")
                 .build();
 
         Map<String, Object> claims = new HashMap<>();
-        claims.put("sessionVersion", user.getSessionVersion());
+        claims.put("sessionVersion", sessionVersion);
 
         var jwtToken = jwtService.generateToken(claims, userDetails);
         return AuthResponse.builder()
                 .token(jwtToken)
-                .username(user.getUsername())
-                .hasNaturalVoiceAccess(user.isHasNaturalVoiceAccess())
-                .sessionVersion(user.getSessionVersion())
+                .username(username)
+                .hasNaturalVoiceAccess(hasNaturalVoiceAccess)
+                .sessionVersion(sessionVersion)
                 .sessionDurationMs(sessionDurationMs)
                 .idleTimeoutMs(idleTimeoutMs)
                 .build();
+    }
+    
+    // Kept for backward compatibility with register
+    private AuthResponse authenticate(String username) {
+        var user = userRepository.findByUsername(username).orElseThrow();
+        return authenticate(username, user.isHasNaturalVoiceAccess(), user.getSessionVersion());
     }
 }

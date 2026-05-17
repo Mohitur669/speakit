@@ -52,20 +52,16 @@ import { ThemeService } from '../../../core/services/theme.service';
             <ng-container *ngIf="authService.currentUser() as user; else guest">
               <div class="flex items-center gap-2">
                 <!-- User + Plan Badge (Merged) -->
-                <div class="flex items-center justify-center gap-2 w-auto min-w-[140px] h-9 px-3 rounded-full"
-                  [ngClass]="authService.hasNaturalAccess()
-                    ? 'bg-accent-50 dark:bg-accent-500/10 border border-accent-200 dark:border-accent-500/30'
-                    : 'bg-primary-100 dark:bg-primary-800 border border-primary-200 dark:border-primary-700'">
+                <div class="flex items-center justify-center gap-2 w-auto h-9 px-3 rounded-full bg-primary-100 dark:bg-primary-800 border border-primary-200 dark:border-primary-700"
+                  [ngClass]="{'bg-accent-50 dark:bg-accent-500/10 border-accent-200 dark:border-accent-500/30': authService.hasNaturalAccess()}">
                   <div class="w-5 h-5 rounded-full bg-gradient-to-br from-brand-blue to-brand-purple flex items-center justify-center flex-shrink-0">
                     <span class="text-[9px] font-semibold text-white">U</span>
                   </div>
-                  <span class="text-xs font-medium text-primary-700 dark:text-primary-200 truncate">{{ user }}</span>
-                  <span class="w-2 h-2 rounded-full"
-                    [ngClass]="authService.hasNaturalAccess() ? 'bg-accent-500 animate-pulse' : 'bg-primary-400'"></span>
-                  <span class="text-xs font-semibold"
-                    [ngClass]="authService.hasNaturalAccess() ? 'text-accent-600 dark:text-accent-400' : 'text-primary-500 dark:text-primary-400'">
-                    {{ authService.hasNaturalAccess() ? 'Pro' : 'Free' }}
-                  </span>
+                  <span class="text-xs font-medium text-primary-700 dark:text-primary-200 truncate max-w-[100px]">{{ user }}</span>
+                  <ng-container *ngIf="authService.hasNaturalAccess()">
+                    <span class="w-2 h-2 rounded-full bg-accent-500 animate-pulse"></span>
+                    <span class="text-xs font-semibold text-accent-600 dark:text-accent-400">Pro</span>
+                  </ng-container>
                 </div>
 
                 <!-- Sign Out -->

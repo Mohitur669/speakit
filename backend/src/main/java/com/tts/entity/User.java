@@ -8,22 +8,25 @@ import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "users")
+@Table(name = "users", indexes = {
+    @Index(name = "idx_user_username", columnList = "username"),
+    @Index(name = "idx_user_email", columnList = "email")
+})
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class User {
+public class User extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true, nullable = false)
+    @Column(unique = true, nullable = false, length = 50)
     private String username;
 
-    @Column(unique = true, nullable = false)
+    @Column(unique = true, nullable = false, length = 100)
     private String email;
 
     @Column(nullable = false)
@@ -36,4 +39,8 @@ public class User {
     @Column(name = "session_version", nullable = false, columnDefinition = "bigint default 1")
     @Builder.Default
     private Long sessionVersion = 1L;
+    
+    @Column(name = "is_active")
+    @Builder.Default
+    private boolean isActive = true;
 }

@@ -57,21 +57,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
-
-            // Validate session version to detect token from different device/login
-            var user = userRepository.findByUsername(username).orElse(null);
+            // Fetch only session version and access flag using projection
+            com.tts.repository.UserSessionProjection userProj = userRepository.findSessionAndAccessByUsername(username).orElse(null);
             Long tokenSessionVersion = jwtService.extractSessionVersion(jwt);
-            
-            if (user != null && tokenSessionVersion != null) {
-                if (tokenSessionVersion.longValue() != user.getSessionVersion().longValue()) {
+
+            if (userProj != null && tokenSessionVersion != null) {
+                if (tokenSessionVersion.longValue() != userProj.getSessionVersion().longValue()) {
                     response.setHeader("X-Logout-Reason", "MULTI_LOGIN");
                     response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Multiple logins detected");
                     return;
                 }
             }
 
-            if (jwtService.isTokenValid(jwt, userDetails)) {
+            UserDetails userDetails = org.springframework.security.core.userdetails.User.builder()
+                    .username(username)
+                    .password("") // Empty password as we don't need it for JWT auth
+                    .roles("USER")
+                    .build();
+
+            if (userProj != null && jwtService.isTokenValid(jwt, userDetails)) {
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                         userDetails,
                         null,
@@ -81,6 +85,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         new WebAuthenticationDetailsSource().buildDetails(request)
                 );
                 SecurityContextHolder.getContext().setAuthentication(authToken);
+
+                // Pass access flag to request attributes to avoid DB hit in controllers
+                request.setAttribute("hasNaturalVoiceAccess", userProj.getHasNaturalVoiceAccess());
+                request.setAttribute("userId", userProj.getId());
             }
         }
         filterChain.doFilter(request, response);

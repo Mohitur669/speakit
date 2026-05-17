@@ -6,11 +6,12 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { NavbarComponent } from '../../../shared/components/navbar/navbar.component';
+import { FooterComponent } from '../../../shared/components/footer/footer.component';
 
 @Component({
   selector: 'app-landing',
   standalone: true,
-  imports: [CommonModule, RouterLink, NavbarComponent],
+  imports: [CommonModule, RouterLink, NavbarComponent, FooterComponent],
   template: `
     <div class="min-h-screen bg-primary-50 dark:bg-primary-950">
       <app-navbar></app-navbar>
@@ -203,7 +204,7 @@ import { NavbarComponent } from '../../../shared/components/navbar/navbar.compon
               <ul class="space-y-4 mb-8">
                 <li class="flex items-center gap-3 text-primary-600 dark:text-primary-300">
                   <svg class="w-5 h-5 text-accent-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                  100 characters per month
+                  200 characters per request
                 </li>
                 <li class="flex items-center gap-3 text-primary-600 dark:text-primary-300">
                   <svg class="w-5 h-5 text-accent-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
@@ -220,7 +221,7 @@ import { NavbarComponent } from '../../../shared/components/navbar/navbar.compon
                 <span class="text-primary-400">/month</span>
               </div>
               <ul class="space-y-4 mb-8">
-                <li class="flex items-center gap-3 text-primary-200"><svg class="w-5 h-5 text-accent-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Unlimited characters</li>
+                <li class="flex items-center gap-3 text-primary-200"><svg class="w-5 h-5 text-accent-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> 3,000 characters per request</li>
                 <li class="flex items-center gap-3 text-primary-200"><svg class="w-5 h-5 text-accent-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> All voices + Neural engine</li>
               </ul>
               <a routerLink="/signup" class="block w-full py-3 text-center font-semibold text-white bg-brand-blue hover:bg-brand-blue/90 rounded-xl shadow-lg transition-all">Start Free Trial</a>
@@ -229,20 +230,7 @@ import { NavbarComponent } from '../../../shared/components/navbar/navbar.compon
         </div>
       </section>
 
-      <!-- Footer -->
-      <footer class="py-12 bg-white dark:bg-primary-900 border-t border-primary-200 dark:border-primary-800">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div class="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div class="flex items-center gap-2">
-              <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-blue to-brand-purple flex items-center justify-center">
-                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
-              </div>
-              <span class="text-lg font-semibold text-primary-900 dark:text-white">SpeakIT</span>
-            </div>
-            <p class="text-sm text-primary-400">© 2024 SpeakIT. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
+      <app-footer></app-footer>
     </div>
   `
 })
