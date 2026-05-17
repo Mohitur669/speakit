@@ -50,6 +50,8 @@ from rich.prompt import Prompt, IntPrompt, Confirm
 APP_LOG = Path("automation-script-logs/app.log")
 RESULT_LOG = Path("automation-script-logs/result.log")
 
+APP_LOG.parent.mkdir(parents=True, exist_ok=True)
+
 
 def _rotate(path: Path):
     """
