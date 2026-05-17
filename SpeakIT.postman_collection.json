@@ -1,8 +1,8 @@
 {
 	"info": {
-		"_postman_id": "speakit-api-collection",
-		"name": "SpeakIT API",
-		"description": "Comprehensive API collection for SpeakIT TTS Application - Includes Auth and Studio services.",
+		"_postman_id": "speakit-api-collection-v2",
+		"name": "SpeakIT API v1.1",
+		"description": "Production API collection for SpeakIT - Includes Auth, Studio, Analytics, and Marketing services.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
@@ -78,30 +78,51 @@
 					}
 				},
 				{
-					"name": "Forgot Password",
+					"name": "Logout",
 					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"email\": \"john@example.com\"\n}"
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
 						},
+						"method": "POST",
+						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/api/auth/forgot-password",
+							"raw": "{{baseUrl}}/api/auth/logout",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
 								"api",
 								"auth",
-								"forgot-password"
+								"logout"
 							]
-						}
+						},
+						"description": "Invalidates the current session globally by incrementing session_version."
+					}
+				},
+				{
+					"name": "Platform Ping",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/ping",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"ping"
+							]
+						},
+						"description": "Lightweight health check for Render keep-alive."
 					}
 				}
 			]
@@ -134,7 +155,8 @@
 								"tts",
 								"voices"
 							]
-						}
+						},
+						"description": "Returns a list of voices filtered by user plan (Pro users see Neural engines)."
 					}
 				},
 				{
@@ -159,7 +181,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"text\": \"Hello, this is a test from SpeakIT Studio.\",\n    \"voiceId\": \"Joanna\",\n    \"outputFormat\": \"mp3\"\n}"
+							"raw": "{\n    \"text\": \"This is a production test synthesis.\",\n    \"voiceId\": \"Joanna\",\n    \"outputFormat\": \"mp3\"\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/tts/synthesize",
@@ -171,7 +193,8 @@
 								"tts",
 								"synthesize"
 							]
-						}
+						},
+						"description": "Generates audio bytes. Limits: 200 (Free) / 3000 (Pro)."
 					}
 				},
 				{
@@ -196,7 +219,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"text\": \"Welcome to the future of speech synthesis.\",\n    \"voiceId\": \"Matthew\",\n    \"outputFormat\": \"mp3\"\n}"
+							"raw": "{\n    \"text\": \"Streaming high-quality audio...\",\n    \"voiceId\": \"Matthew\",\n    \"outputFormat\": \"mp3\"\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/tts/synthesize-stream",
@@ -207,6 +230,80 @@
 								"api",
 								"tts",
 								"synthesize-stream"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Analytics & History",
+			"item": [
+				{
+					"name": "Get Conversion History",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/history?page=0&size=20",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"history"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "20"
+								}
+							]
+						},
+						"description": "Paginated history of TTS conversion requests."
+					}
+				}
+			]
+		},
+		{
+			"name": "Marketing & Public",
+			"item": [
+				{
+					"name": "Submit Contact Form",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"firstName\": \"John\",\n    \"lastName\": \"Doe\",\n    \"email\": \"john@example.com\",\n    \"topic\": \"support\",\n    \"message\": \"I need help with my Pro subscription.\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/contact",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"contact"
 							]
 						}
 					}
