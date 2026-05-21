@@ -122,6 +122,20 @@ public class AuthService {
         log.info("User logged out: {}", username);
     }
 
+    @Transactional(readOnly = true)
+    public AuthResponse getUserProfile(String username) {
+        var user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        return AuthResponse.builder()
+                .username(user.getUsername())
+                .hasNaturalVoiceAccess(user.isHasNaturalVoiceAccess())
+                .sessionVersion(user.getSessionVersion())
+                .sessionDurationMs(sessionDurationMs)
+                .idleTimeoutMs(idleTimeoutMs)
+                .build();
+    }
+
     /**
      * Internal helper to generate a JWT and construct the AuthResponse.
      * Embeds the session_version into the JWT claims for stateless validation.

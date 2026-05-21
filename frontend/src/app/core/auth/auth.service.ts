@@ -312,4 +312,27 @@ export class AuthService implements OnDestroy {
   isLoggedIn(): boolean {
     return !!this.token();
   }
+
+  /**
+   * Refreshes the current user's profile and status from the backend.
+   * Useful after payments or plan changes to update the UI immediately.
+   */
+  refreshStatus(): void {
+    if (!this.isLoggedIn()) return;
+
+    this.http.get<AuthResponse>(`${this.apiUrl}/me`).subscribe({
+      next: (res) => {
+        this.logger.info('Refreshing user status', { hasNaturalAccess: res.hasNaturalVoiceAccess });
+        
+        // Update signals
+        this.hasNaturalAccess.set(res.hasNaturalVoiceAccess);
+        
+        // Update localStorage
+        localStorage.setItem('hasNaturalAccess', String(res.hasNaturalVoiceAccess));
+        
+        // Broadcast change if needed (though signals handle most of it)
+      },
+      error: (err) => this.logger.error('Failed to refresh user status', err)
+    });
+  }
 }

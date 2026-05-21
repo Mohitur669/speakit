@@ -48,6 +48,15 @@ public class AuthController {
     }
 
     /**
+     * Retrieves the current authenticated user's profile and subscription status.
+     */
+    @GetMapping("/me")
+    public ResponseEntity<AuthResponse> getMe() {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        return ResponseEntity.ok(authService.getUserProfile(username));
+    }
+
+    /**
      * Lightweight endpoint for Render spin-down prevention and basic health monitoring.
      */
     @GetMapping("/ping")

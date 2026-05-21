@@ -5,8 +5,8 @@
 
     <!-- Page Header -->
     <div class="mb-8 animate-fade-in">
-      <h1 class="text-2xl sm:text-3xl font-bold text-primary-900 dark:text-white mb-2">Text to Speech</h1>
-      <p class="text-primary-500 dark:text-primary-400">Convert text to natural-sounding speech with AI</p>
+      <h1 class="text-3xl sm:text-3xl font-bold text-primary-900 dark:text-white mb-2">Text to Speech</h1>
+      <p class="text-base sm:text-primary-500 dark:text-primary-400">Convert text to natural-sounding speech with AI</p>
     </div>
 
     <!-- Main Content Grid -->
@@ -16,25 +16,35 @@
       <div class="lg:col-span-1 flex flex-col gap-6 animate-slide-up">
         <!-- Voice Selection Card -->
         <div class="flex-1 bg-white dark:bg-primary-900 rounded-xl border border-primary-200 dark:border-primary-700 p-6">
-          <h2 class="text-sm font-semibold text-primary-900 dark:text-white mb-4">Select Voice</h2>
+          <h2 class="text-lg sm:text-sm font-semibold text-primary-900 dark:text-white mb-4">Select Voice</h2>
 
           <!-- Filter Tabs -->
           <div class="flex gap-1 p-1 bg-primary-100 dark:bg-primary-800 rounded-lg mb-4">
-            <button *ngFor="let filter of filterOptions()"
-              (click)="setFilter(filter)"
-              [ngClass]="currentFilter() === filter ? 'bg-white dark:bg-primary-700 text-primary-900 dark:text-white shadow-sm' : 'text-primary-500 dark:text-primary-400 hover:text-primary-700 dark:hover:text-white'"
-              class="flex-1 py-1.5 text-xs font-medium rounded-md transition-all relative">
-              {{ filter === 'Standard' ? 'Standard' : (filter === 'Neural' ? 'Neural' : 'All') }}
-              <span class="text-[10px] opacity-60 ml-1">({{ filter === 'All' ? totalCount : filter === 'Standard' ? standardCount : neuralCount }})</span>
+            <ng-container *ngFor="let filter of filterOptions()">
+              <!-- Filter button only rendered for Standard and Neural -->
+              <button *ngIf="filter !== 'All'"
+                (click)="setFilter(filter)"
+                [ngClass]="currentFilter() === filter ? 'bg-white dark:bg-primary-700 text-primary-900 dark:text-white shadow-sm' : 'text-primary-500 dark:text-primary-400 hover:text-primary-700 dark:hover:text-white'"
+                class="flex-1 py-2 sm:py-1.5 text-sm sm:text-xs font-medium rounded-md transition-all relative">
+                
+                {{ filter === 'Standard' ? 'Standard' : (filter === 'Neural' ? 'Neural' : filter) }}
+                <span class="text-[11px] sm:text-[10px] opacity-60 ml-1">({{ filter === 'Standard' ? standardCount : neuralCount }})</span>
 
-              <!-- Pro Badge -->
-              <span *ngIf="filter === 'Neural'" 
-                [ngClass]="userCanUseNeural ? 'text-accent-500' : 'text-primary-400'"
-                class="absolute -top-0.5 -right-0.5 flex h-2 w-2">
-                <span *ngIf="userCanUseNeural" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-400 opacity-75"></span>
-                <span class="relative inline-flex rounded-full h-2 w-2" [ngClass]="userCanUseNeural ? 'bg-accent-500' : 'bg-primary-300 dark:bg-primary-600'"></span>
-              </span>
-              </button>          </div>
+                <!-- Pro Badge -->
+                <span *ngIf="filter === 'Neural'" 
+                  [ngClass]="userCanUseNeural ? 'text-accent-500' : 'text-primary-400'"
+                  class="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+                  <span *ngIf="userCanUseNeural" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-2 w-2" [ngClass]="userCanUseNeural ? 'bg-accent-500' : 'bg-primary-300 dark:bg-primary-600'"></span>
+                </span>
+              </button>
+
+              <!-- Hidden 'All' filter code preserved below as requested -->
+              <!-- 
+              <button *ngIf="filter === 'All'" (click)="setFilter('All')" ...> All ({{ totalCount }}) </button>
+              -->
+            </ng-container>
+          </div>
 
           <!-- Voice Dropdown -->
           <div class="relative">
@@ -47,8 +57,8 @@
                   </svg>
                 </div>
                 <div class="text-left">
-                  <div class="text-sm font-medium text-primary-900 dark:text-white">{{ selectedVoice?.name || 'Select a voice' }}</div>
-                  <div class="text-xs text-primary-400">{{ selectedVoice?.gender }} · {{ currentFilter() === 'Standard' ? 'Standard' : ((selectedVoice?.isNeural && selectedVoice?.isStandard) ? 'Natural + Standard' : (selectedVoice?.isNeural ? 'Natural' : 'Standard')) }}</div>
+                  <div class="text-base sm:text-sm font-medium text-primary-900 dark:text-white">{{ selectedVoice?.name || 'Select a voice' }}</div>
+                  <div class="text-sm sm:text-xs text-primary-400">{{ selectedVoice?.gender }} · {{ currentFilter() === 'Standard' ? 'Standard' : ((selectedVoice?.isNeural && selectedVoice?.isStandard) ? 'Natural + Standard' : (selectedVoice?.isNeural ? 'Natural' : 'Standard')) }}</div>
                 </div>
               </div>
               <svg [ngClass]="isDropdownOpen ? 'rotate-180' : ''" class="w-4 h-4 text-primary-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -80,10 +90,10 @@
 
         <!-- Quick Stats -->
         <div class="bg-white dark:bg-primary-900 rounded-xl border border-primary-200 dark:border-primary-700 p-6">
-          <h2 class="text-sm font-semibold text-primary-900 dark:text-white mb-4">Your Usage</h2>
+          <h2 class="text-lg sm:text-sm font-semibold text-primary-900 dark:text-white mb-4">Your Usage</h2>
           <div class="space-y-4">
             <div>
-              <div class="flex justify-between text-sm mb-2">
+              <div class="flex justify-between text-base sm:text-sm mb-2">
                 <span class="text-primary-500">Characters used</span>
                 <span class="font-medium text-primary-700 dark:text-primary-300">{{ text.length }} / {{ maxChars }}</span>
               </div>
@@ -95,6 +105,26 @@
             </div>
           </div>
         </div>
+
+        <!-- Upgrade Card (Visible only to Free users) -->
+        <div *ngIf="!userCanUseNeural" 
+          class="bg-white dark:bg-primary-900 p-6 rounded-xl border-2 border-accent-500/20 shadow-lg animate-fade-in group hover:border-accent-500/50 transition-all">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-12 h-12 rounded-xl bg-accent-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <svg class="w-6 h-6 text-accent-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+              </svg>
+            </div>
+            <h3 class="text-base sm:text-sm font-bold text-primary-900 dark:text-white uppercase tracking-wider">Go Pro</h3>
+          </div>
+          <p class="text-sm sm:text-xs text-primary-500 dark:text-primary-400 mb-6 leading-relaxed">
+            Unlock 10,000 chars, natural neural voices, and priority audio generation.
+          </p>
+          <a routerLink="/" fragment="pricing" 
+             class="block w-full px-6 py-3.5 sm:py-3 text-center text-sm font-semibold text-white bg-accent-500 hover:bg-accent-600 rounded-xl transition-all shadow-md hover:shadow-lg hover:shadow-accent-500/20 active:scale-95">
+            Upgrade to Pro
+          </a>
+        </div>
       </div>
 
       <!-- Right Column - Editor -->
@@ -103,23 +133,23 @@
         <!-- Text Editor -->
         <div class="flex-1 bg-white dark:bg-primary-900 rounded-xl border border-primary-200 dark:border-primary-700 overflow-hidden flex flex-col">
           <div class="px-6 py-4 border-b border-primary-100 dark:border-primary-800 flex items-center justify-between">
-            <h2 class="text-sm font-semibold text-primary-900 dark:text-white">Script</h2>
+            <h2 class="text-lg sm:text-sm font-semibold text-primary-900 dark:text-white">Script</h2>
             <button *ngIf="text" (click)="text = ''"
-              class="text-xs text-primary-400 hover:text-primary-600 dark:hover:text-primary-300 transition-colors">
+              class="text-sm sm:text-xs text-primary-400 hover:text-primary-600 dark:hover:text-primary-300 transition-colors">
               Clear
             </button>
           </div>
-          <div class="p-6 flex-1 flex flex-col">
+          <div class="p-4 sm:p-6 flex-1 flex flex-col">
             <textarea [(ngModel)]="text"
               placeholder="Enter your text here..."
-              rows="8"
+              rows="12"
               [maxlength]="maxChars"
-              class="flex-1 w-full bg-primary-50 dark:bg-primary-800 text-primary-900 dark:text-white placeholder-primary-400 rounded-xl border border-primary-200 dark:border-primary-700 p-4 text-sm leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all"></textarea>
+              class="flex-1 w-full bg-primary-50 dark:bg-primary-800 text-primary-900 dark:text-white placeholder-primary-400 rounded-xl border border-primary-200 dark:border-primary-700 p-3 sm:p-4 text-base sm:text-sm leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all min-h-[300px]"></textarea>
 
             <div class="mt-4 flex items-center justify-end">
-              <!-- <span class="text-xs text-primary-400">Enter text to convert</span> -->
+              <!-- Generate Button: Same padding/font as Download button for proportions -->
               <button (click)="convert()" [disabled]="loading() || !text.trim() || !selectedVoiceId"
-                class="px-6 py-3 rounded-xl font-semibold text-white bg-brand-blue hover:bg-brand-blue/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center gap-2">
+                class="w-full sm:w-auto px-8 py-3.5 rounded-xl font-semibold text-sm text-white bg-brand-blue hover:bg-brand-blue/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center justify-center gap-2">
                 <svg *ngIf="loading()" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
@@ -149,30 +179,33 @@
             <h2 class="text-sm font-semibold text-primary-900 dark:text-white">Generated Audio</h2>
           </div>
           <div class="p-6">
-            <div class="flex items-center gap-4">
-              <button (click)="togglePlayPause()"
-                class="w-14 h-14 rounded-full bg-gradient-to-br from-brand-blue to-brand-purple text-white flex items-center justify-center hover:scale-105 hover:shadow-xl hover:shadow-brand-blue/30 active:scale-95 transition-all shadow-lg flex-shrink-0">
-                <svg *ngIf="!isPlaying" class="w-6 h-6 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M8 5v14l11-7z"/>
-                </svg>
-                <svg *ngIf="isPlaying" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
-                </svg>
-              </button>
+            <div class="flex flex-col sm:flex-row items-center gap-6">
+              <div class="flex items-center gap-4 w-full sm:w-auto">
+                <button (click)="togglePlayPause()"
+                  class="w-14 h-14 rounded-full bg-gradient-to-br from-brand-blue to-brand-purple text-white flex items-center justify-center hover:scale-105 hover:shadow-xl hover:shadow-brand-blue/30 active:scale-95 transition-all shadow-lg flex-shrink-0">
+                  <svg *ngIf="!isPlaying" class="w-6 h-6 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z"/>
+                  </svg>
+                  <svg *ngIf="isPlaying" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
+                  </svg>
+                </button>
 
-              <div class="flex-1">
-                <div class="flex justify-between text-xs text-primary-400 mb-2">
-                  <span>{{ currentTime | number:'1.1-1' }}s</span>
-                  <span>{{ duration | number:'1.1-1' }}s</span>
-                </div>
-                <div class="h-2 bg-primary-100 dark:bg-primary-800 rounded-full cursor-pointer overflow-hidden group" (click)="seekAudio($event)">
-                  <div class="h-full bg-brand-blue rounded-full transition-all group-hover:shadow-lg group-hover:shadow-brand-blue/30"
-                    [style.width.%]="progressPercent"></div>
+                <div class="flex-1 min-w-[150px]">
+                  <div class="flex justify-between text-xs text-primary-400 mb-2">
+                    <span>{{ currentTime | number:'1.1-1' }}s</span>
+                    <span>{{ duration | number:'1.1-1' }}s</span>
+                  </div>
+                  <div class="h-2 bg-primary-100 dark:bg-primary-800 rounded-full cursor-pointer overflow-hidden group" (click)="seekAudio($event)">
+                    <div class="h-full bg-brand-blue rounded-full transition-all group-hover:shadow-lg group-hover:shadow-brand-blue/30"
+                      [style.width.%]="progressPercent"></div>
+                  </div>
                 </div>
               </div>
 
+              <!-- Download Button: Matching Generate button padding/font for symmetry -->
               <button (click)="download()"
-                class="px-6 py-3 rounded-xl font-semibold text-sm text-white bg-accent-500 hover:bg-accent-600 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 flex items-center gap-2">
+                class="w-full sm:w-auto px-8 py-3.5 rounded-xl font-semibold text-sm text-white bg-accent-500 hover:bg-accent-600 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 flex items-center justify-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
                 </svg>

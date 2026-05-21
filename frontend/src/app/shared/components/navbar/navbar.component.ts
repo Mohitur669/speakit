@@ -29,9 +29,16 @@ import { ThemeService } from '../../../core/services/theme.service';
 
           <!-- Desktop Nav -->
           <nav class="hidden md:flex items-center gap-8">
-            <a routerLink="/" class="text-sm font-medium text-primary-500 hover:text-primary-900 dark:text-primary-400 dark:hover:text-white transition-colors">Home</a>
+            <a routerLink="/" fragment="home" class="text-sm font-medium text-primary-500 hover:text-primary-900 dark:text-primary-400 dark:hover:text-white transition-colors">Home</a>
             <a routerLink="/" fragment="features" class="text-sm font-medium text-primary-500 hover:text-primary-900 dark:text-primary-400 dark:hover:text-white transition-colors">Features</a>
             <a routerLink="/" fragment="pricing" class="text-sm font-medium text-primary-500 hover:text-primary-900 dark:text-primary-400 dark:hover:text-white transition-colors">Pricing</a>
+            <!-- Go to App link commented out as requested -->
+            <!-- 
+            <a *ngIf="authService.currentUser()" routerLink="/tts" class="text-sm font-semibold text-brand-blue hover:text-brand-blue/80 transition-colors flex items-center gap-1.5">
+              Go to App
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
+            </a>
+            -->
           </nav>
 
           <!-- Actions -->
@@ -55,7 +62,7 @@ import { ThemeService } from '../../../core/services/theme.service';
                 <div class="flex items-center justify-center gap-2 w-auto h-9 px-3 rounded-full bg-primary-100 dark:bg-primary-800 border border-primary-200 dark:border-primary-700"
                   [ngClass]="{'bg-accent-50 dark:bg-accent-500/10 border-accent-200 dark:border-accent-500/30': authService.hasNaturalAccess()}">
                   <div class="w-5 h-5 rounded-full bg-gradient-to-br from-brand-blue to-brand-purple flex items-center justify-center flex-shrink-0">
-                    <span class="text-[9px] font-semibold text-white">U</span>
+                    <span class="text-[9px] font-bold text-white">{{ user.charAt(0).toUpperCase() }}</span>
                   </div>
                   <span class="text-xs font-medium text-primary-700 dark:text-primary-200 truncate max-w-[100px]">{{ user }}</span>
                   <ng-container *ngIf="authService.hasNaturalAccess()">
