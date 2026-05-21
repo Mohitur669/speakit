@@ -2,13 +2,14 @@
  * Landing page component displaying marketing content,
  * feature highlights, pricing, and trust indicators.
  */
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { NavbarComponent } from '../../../shared/components/navbar/navbar.component';
 import { FooterComponent } from '../../../shared/components/footer/footer.component';
 import { RazorpayService } from '../../../core/services/razorpay.service';
 import { AuthService } from '../../../core/auth/auth.service';
+import { FeatureFlagService } from '../../../core/services/feature-flag.service';
 
 @Component({
   selector: 'app-landing',
@@ -64,6 +65,7 @@ import { AuthService } from '../../../core/auth/auth.service';
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <p class="text-sm text-primary-400 dark:text-primary-500 mb-8 text-center">Trusted by 50,000+ creators worldwide</p>
 
+          <!-- Row 1 - Left to Right -->
           <div class="relative overflow-hidden mb-3">
             <div class="flex animate-marquee whitespace-nowrap">
               <div class="flex items-center gap-16 px-8 opacity-30">
@@ -88,6 +90,8 @@ import { AuthService } from '../../../core/auth/auth.service';
               </div>
             </div>
           </div>
+
+          <!-- Row 2 - Right to Left (Reverse) -->
           <div class="relative overflow-hidden mb-3">
             <div class="flex animate-marquee-reverse whitespace-nowrap">
               <div class="flex items-center gap-16 px-8 opacity-50">
@@ -112,6 +116,8 @@ import { AuthService } from '../../../core/auth/auth.service';
               </div>
             </div>
           </div>
+
+          <!-- Row 3 - Left to Right (Fast) -->
           <div class="relative overflow-hidden">
             <div class="flex animate-marquee-fast whitespace-nowrap">
               <div class="flex items-center gap-16 px-8 opacity-20">
@@ -205,7 +211,7 @@ import { AuthService } from '../../../core/auth/auth.service';
                 </li>
                 <li class="flex items-center gap-3 text-primary-600 dark:text-primary-300">
                   <svg class="w-5 h-5 text-accent-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                  3,000 chars / request
+                  {{ featureFlags.getCached('MAX_FREE_CHARACTERS', '3,000') }} chars / request
                 </li>
               </ul>
               <a [routerLink]="authService.currentUser() ? '/tts' : '/signup'" class="block w-full py-3 text-center font-semibold text-primary-700 dark:text-primary-200 bg-primary-100 dark:bg-primary-800 hover:bg-primary-200 dark:hover:bg-primary-700 rounded-xl transition-all">
@@ -218,22 +224,22 @@ import { AuthService } from '../../../core/auth/auth.service';
               <div class="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-brand-blue text-white text-sm font-semibold rounded-full shadow-lg">Popular</div>
               <div class="text-sm font-medium text-brand-blue mb-2">Pro</div>
               <div class="flex items-baseline gap-1 mb-6">
-                <span class="text-4xl font-bold text-primary-900 dark:text-white">₹499</span>
+                <span class="text-4xl font-bold text-primary-900 dark:text-white">₹{{ proPrice() }}</span>
                 <span class="text-primary-400">/month</span>
               </div>
               <ul class="space-y-4 mb-8 flex-grow text-left">
-                <li class="flex items-center gap-3 text-primary-600 dark:text-primary-300"><svg class="w-5 h-5 text-accent-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> 10,000 chars / request</li>
+                <li class="flex items-center gap-3 text-primary-600 dark:text-primary-300"><svg class="w-5 h-5 text-accent-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> {{ featureFlags.getCached('MAX_PRO_CHARACTERS', '10,000') }} chars / request</li>
                 <li class="flex items-center gap-3 text-primary-600 dark:text-primary-300"><svg class="w-5 h-5 text-accent-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Natural/Neural Voices</li>
                 <li class="flex items-center gap-3 text-primary-600 dark:text-primary-300"><svg class="w-5 h-5 text-accent-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Priority Support</li>
               </ul>
-              <button (click)="buyPlan('PRO', 1)" class="block w-full py-3 text-center font-semibold text-white bg-brand-blue hover:bg-brand-blue/90 rounded-xl shadow-lg hover:shadow-brand-blue/20 transition-all">Upgrade to Pro</button>
+              <button (click)="buyPlan('PRO', proPrice())" class="block w-full py-3 text-center font-semibold text-white bg-brand-blue hover:bg-brand-blue/90 rounded-xl shadow-lg hover:shadow-brand-blue/20 transition-all">Upgrade to Pro</button>
             </div>
 
             <!-- Enterprise Plan -->
             <div class="p-8 rounded-2xl bg-white dark:bg-primary-900 border border-primary-200 dark:border-primary-700 flex flex-col transition-all">
               <div class="text-sm font-medium text-primary-500 mb-2">Enterprise</div>
               <div class="flex items-baseline gap-1 mb-6">
-                <span class="text-4xl font-bold text-primary-900 dark:text-white">₹1,999</span>
+                <span class="text-4xl font-bold text-primary-900 dark:text-white">₹{{ enterprisePrice() }}</span>
                 <span class="text-primary-400">/month</span>
               </div>
               <ul class="space-y-4 mb-8 flex-grow text-left">
@@ -250,7 +256,7 @@ import { AuthService } from '../../../core/auth/auth.service';
                   Dedicated Support
                 </li>
               </ul>
-              <button (click)="buyPlan('ENTERPRISE', 1999)" class="block w-full py-3 text-center font-semibold text-primary-700 dark:text-primary-200 bg-primary-100 dark:bg-primary-800 hover:bg-primary-200 dark:hover:bg-primary-700 rounded-xl transition-all">Get Enterprise</button>
+              <button (click)="buyPlan('ENTERPRISE', enterprisePrice())" class="block w-full py-3 text-center font-semibold text-primary-700 dark:text-primary-200 bg-primary-100 dark:bg-primary-800 hover:bg-primary-200 dark:hover:bg-primary-700 rounded-xl transition-all">Get Enterprise</button>
             </div>
           </div>
         </div>
@@ -260,9 +266,25 @@ import { AuthService } from '../../../core/auth/auth.service';
     </div>
   `
 })
-export class LandingComponent {
+export class LandingComponent implements OnInit {
   private razorpay = inject(RazorpayService);
   authService = inject(AuthService);
+  featureFlags = inject(FeatureFlagService);
+
+  proPrice = signal<number>(499);
+  enterprisePrice = signal<number>(1999);
+
+  async ngOnInit() {
+    // 1. Fetch UI Flags (Cached)
+    this.featureFlags.init(['MAX_FREE_CHARACTERS', 'MAX_PRO_CHARACTERS', 'ENABLE_RAZORPAY']);
+
+    // 2. Fetch Pricing (LIVE - No Cache)
+    const pro = await this.featureFlags.getLiveNumber('PRO_PLAN_PRICE_INR', 499);
+    const ent = await this.featureFlags.getLiveNumber('ENTERPRISE_PLAN_PRICE_INR', 1999);
+    
+    this.proPrice.set(pro);
+    this.enterprisePrice.set(ent);
+  }
 
   buyPlan(plan: string, amount: number) {
     this.razorpay.initiatePayment(plan, amount);

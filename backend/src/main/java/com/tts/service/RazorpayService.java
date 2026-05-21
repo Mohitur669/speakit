@@ -32,10 +32,17 @@ public class RazorpayService {
     private final PaymentRepository paymentRepository;
     private final SubscriptionRepository subscriptionRepository;
     private final UserRepository userRepository;
+    private final SystemParameterService systemParameterService;
 
     @Transactional
     public PaymentOrderResponse createOrder(PaymentOrderRequest request, User user) throws RazorpayException {
-        int amountInPaise = request.getAmount().multiply(new BigDecimal("100")).intValue();
+        // Fetch LIVE price from system parameters to ensure accuracy
+        BigDecimal planPrice = systemParameterService.getLivePrice(
+                request.getPlanType().toUpperCase() + "_PLAN_PRICE_INR", 
+                request.getAmount()
+        );
+
+        int amountInPaise = planPrice.multiply(new BigDecimal("100")).intValue();
 
         JSONObject orderRequest = new JSONObject();
         orderRequest.put("amount", amountInPaise);
@@ -48,7 +55,7 @@ public class RazorpayService {
         Payment payment = Payment.builder()
                 .user(user)
                 .razorpayOrderId(orderId)
-                .amount(request.getAmount())
+                .amount(planPrice)
                 .currency(request.getCurrency())
                 .status(PaymentStatus.INITIATED)
                 .build();
