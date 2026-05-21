@@ -65,9 +65,11 @@ import { ThemeService } from '../../../core/services/theme.service';
                     <span class="text-[9px] font-bold text-white">{{ user.charAt(0).toUpperCase() }}</span>
                   </div>
                   <span class="text-xs font-medium text-primary-700 dark:text-primary-200 truncate max-w-[100px]">{{ user }}</span>
-                  <ng-container *ngIf="authService.hasNaturalAccess()">
+                  <ng-container *ngIf="authService.currentPlanType() !== 'FREE'">
                     <span class="w-2 h-2 rounded-full bg-accent-500 animate-pulse"></span>
-                    <span class="text-xs font-semibold text-accent-600 dark:text-accent-400">Pro</span>
+                    <span class="text-xs font-semibold text-accent-600 dark:text-accent-400">
+                      {{ authService.currentPlanType() | titlecase }}
+                    </span>
                   </ng-container>
                 </div>
 

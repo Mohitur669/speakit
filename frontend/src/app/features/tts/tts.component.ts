@@ -10,14 +10,16 @@ import { TtsService, Voice } from '../../core/services/tts.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { ThemeService } from '../../core/services/theme.service';
 import { ToastService } from '../../core/services/toast.service';
+import { FeatureFlagService } from '../../core/services/feature-flag.service';
+import { RazorpayService } from '../../core/services/razorpay.service';
 import { ToastComponent } from '../../shared/components/toast/toast.component';
 import { NavbarComponent } from '../../shared/components/navbar/navbar.component';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'app-tts',
   standalone: true,
-  imports: [CommonModule, FormsModule, ToastComponent, NavbarComponent, RouterLink],
+  imports: [CommonModule, FormsModule, ToastComponent, NavbarComponent],
   templateUrl: './tts.component.html',
   styleUrls: ['./tts.component.scss']
 })
@@ -27,13 +29,19 @@ export class TtsComponent implements OnInit {
   ttsService = inject(TtsService);
   authService = inject(AuthService);
   themeService = inject(ThemeService);
+  featureFlags = inject(FeatureFlagService);
+  private razorpayService = inject(RazorpayService);
   private toastService = inject(ToastService);
+  private route = inject(ActivatedRoute);
+
+  maxChars = signal<number>(3000);
 
   constructor() {
     // Reactively refresh UI when user status changes (e.g. after payment)
     effect(() => {
       const isPro = this.authService.hasNaturalAccess();
       this.refreshVoices();
+      this.refreshLimits();
     });
   }
 
@@ -43,10 +51,6 @@ export class TtsComponent implements OnInit {
   voices: Voice[] = [];
   filteredVoices = signal<Voice[]>([]);
   filterOptions = signal<('All' | 'Standard' | 'Neural')[]>(['All']);
-
-  get maxChars(): number {
-    return this.userCanUseNeural ? 10000 : 3000;
-  }
 
   // Track available voice types from API
   hasStandardVoices = false;
@@ -79,12 +83,46 @@ export class TtsComponent implements OnInit {
     this.isDropdownOpen = false;
   }
 
-  ngOnInit(): void {
-    // Logic moved to effect or keep as secondary check
+  async ngOnInit() {
+    // 1. Check for autostart payment (after signup conversion)
+    const autostart = this.route.snapshot.queryParams['autostart'];
+    if (autostart) {
+      this.invokeUpgrade(autostart);
+    }
   }
 
+  /**
+   * Enterprise and Pro users have identical voice parity (full neural access).
+   */
   get userCanUseNeural(): boolean {
-    return this.authService.hasNaturalAccess();
+    const plan = this.authService.currentPlanType();
+    return plan === 'PRO' || plan === 'ENTERPRISE' || this.authService.hasNaturalAccess();
+  }
+
+  async refreshLimits() {
+    // Fetch limits LIVE from database based on current plan
+    const plan = this.authService.currentPlanType();
+    let limitKey = 'MAX_FREE_CHARACTERS';
+    let defaultVal = 3000;
+
+    if (plan === 'ENTERPRISE') {
+      limitKey = 'MAX_ENTERPRISE_CHARACTERS';
+      defaultVal = 50000;
+    } else if (plan === 'PRO') {
+      limitKey = 'MAX_PRO_CHARACTERS';
+      defaultVal = 10000;
+    }
+    
+    const limit = await this.featureFlags.getLiveNumber(limitKey, defaultVal);
+    this.maxChars.set(limit);
+  }
+
+  async invokeUpgrade(plan: string) {
+    const amount = plan === 'PRO' ? 
+      await this.featureFlags.getLiveNumber('PRO_PLAN_PRICE_INR', 499) : 
+      await this.featureFlags.getLiveNumber('ENTERPRISE_PLAN_PRICE_INR', 1999);
+    
+    this.razorpayService.initiatePayment(plan, amount);
   }
 
   refreshVoices(): void {
@@ -194,9 +232,12 @@ export class TtsComponent implements OnInit {
         this.loading.set(false);
         this.showNotification('Audio generated successfully');
       },
-      error: () => {
+      error: (err) => {
         this.loading.set(false);
         this.error.set('Failed to generate audio. Please try again.');
+        if (err.status === 400 || err.status === 403) {
+          this.showNotification('Neural voices require a Pro subscription', 'error');
+        }
       }
     });
   }

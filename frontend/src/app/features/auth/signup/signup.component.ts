@@ -5,7 +5,7 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../../core/auth/auth.service';
 import { NavbarComponent } from '../../../shared/components/navbar/navbar.component';
 
@@ -92,7 +92,7 @@ import { NavbarComponent } from '../../../shared/components/navbar/navbar.compon
     </div>
   `
 })
-export class SignupComponent {
+export class SignupComponent implements OnInit {
   username = '';
   email = '';
   password = '';
@@ -101,18 +101,29 @@ export class SignupComponent {
 
   private authService = inject(AuthService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
+
+  pendingPlan = '';
 
   ngOnInit(): void {
     if (this.authService.isLoggedIn()) {
       this.router.navigate(['/tts']);
     }
+    this.pendingPlan = this.route.snapshot.queryParams['plan'] || '';
   }
 
   onSubmit(): void {
     this.loading.set(true);
     this.error.set('');
     this.authService.register({ username: this.username, email: this.email, password: this.password }).subscribe({
-      next: () => this.router.navigate(['/tts']),
+      next: () => {
+        if (this.pendingPlan) {
+          // Send to TTS with auto-payment intent
+          this.router.navigate(['/tts'], { queryParams: { autostart: this.pendingPlan } });
+        } else {
+          this.router.navigate(['/tts']);
+        }
+      },
       error: () => {
         this.error.set('Unable to create account. Username or email may already be in use.');
         this.loading.set(false);

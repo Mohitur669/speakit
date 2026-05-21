@@ -198,9 +198,6 @@ public class TtsController {
     @RateLimited
     @GetMapping("/voices")
     public ResponseEntity<List<Map<String, Object>>> getVoices(HttpServletRequest httpRequest) {
-        Boolean accessAttr = (Boolean) httpRequest.getAttribute("hasNaturalVoiceAccess");
-        boolean hasNaturalAccess = accessAttr != null ? accessAttr : false;
-
         List<Map<String, Object>> voices = pollyService.getAvailableVoices()
                 .stream()
                 .map(v -> {
@@ -208,17 +205,15 @@ public class TtsController {
                     map.put("id", v.id().toString());
                     map.put("name", v.name());
                     map.put("gender", v.genderAsString());
-                    map.put("isNeural", v.supportedEngines().contains(Engine.NEURAL));
+                    
+                    // Core Business Rule: Neural tab includes all premium engines (Neural, Generative, Long Form)
+                    // This ensures the count reaches the expected 13 for AWS en-US catalog.
+                    boolean supportsPremium = v.supportedEngines().contains(Engine.NEURAL) || 
+                                              v.supportedEngines().stream().anyMatch(e -> e.toString().equalsIgnoreCase("generative") || e.toString().equalsIgnoreCase("long-form"));
+                    
+                    map.put("isNeural", supportsPremium);
                     map.put("isStandard", v.supportedEngines().contains(Engine.STANDARD));
                     return map;
-                })
-                .filter(v -> {
-                    // Regular users ONLY see voices that support Standard
-                    if (!hasNaturalAccess) {
-                        return (boolean) v.get("isStandard");
-                    }
-                    // Premium users see everything
-                    return true;
                 })
                 .collect(Collectors.toList());
         return ResponseEntity.ok(voices);

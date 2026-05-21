@@ -32,6 +32,14 @@ export class RazorpayService {
   }
 
   async initiatePayment(planType: string, amount: number) {
+    // INDUSTRY STANDARD: Handle guest users by redirecting to signup
+    if (!this.authService.isLoggedIn()) {
+      this.toast.show('Please create an account to upgrade to ' + planType, 'info');
+      // Store intent in session storage or just redirect with query param
+      this.router.navigate(['/signup'], { queryParams: { plan: planType } });
+      return;
+    }
+
     const isScriptLoaded = await this.loadScript('https://checkout.razorpay.com/v1/checkout.js');
     if (!isScriptLoaded) {
       this.toast.show('Failed to load payment gateway. Please check your connection.', 'error');

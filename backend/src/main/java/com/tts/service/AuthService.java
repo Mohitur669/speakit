@@ -107,7 +107,7 @@ public class AuthService {
         
         log.debug("User {} login. Session Version: {} -> {}", user.getUsername(), user.getSessionVersion(), newSessionVersion);
 
-        return authenticate(user.getUsername(), user.isHasNaturalVoiceAccess(), newSessionVersion);
+        return authenticate(user.getUsername(), user.isHasNaturalVoiceAccess(), user.getPlanType(), newSessionVersion);
     }
 
     /**
@@ -130,6 +130,7 @@ public class AuthService {
         return AuthResponse.builder()
                 .username(user.getUsername())
                 .hasNaturalVoiceAccess(user.isHasNaturalVoiceAccess())
+                .planType(user.getPlanType())
                 .sessionVersion(user.getSessionVersion())
                 .sessionDurationMs(sessionDurationMs)
                 .idleTimeoutMs(idleTimeoutMs)
@@ -140,7 +141,7 @@ public class AuthService {
      * Internal helper to generate a JWT and construct the AuthResponse.
      * Embeds the session_version into the JWT claims for stateless validation.
      */
-    private AuthResponse authenticate(String username, boolean hasNaturalVoiceAccess, long sessionVersion) {
+    private AuthResponse authenticate(String username, boolean hasNaturalVoiceAccess, String planType, long sessionVersion) {
         UserDetails userDetails = org.springframework.security.core.userdetails.User.builder()
                 .username(username)
                 .password("") // Password not needed in token validation flow
@@ -155,6 +156,7 @@ public class AuthService {
                 .token(jwtToken)
                 .username(username)
                 .hasNaturalVoiceAccess(hasNaturalVoiceAccess)
+                .planType(planType)
                 .sessionVersion(sessionVersion)
                 .sessionDurationMs(sessionDurationMs)
                 .idleTimeoutMs(idleTimeoutMs)
@@ -167,6 +169,6 @@ public class AuthService {
      */
     private AuthResponse authenticate(String username) {
         var user = userRepository.findByUsername(username).orElseThrow();
-        return authenticate(username, user.isHasNaturalVoiceAccess(), user.getSessionVersion());
+        return authenticate(username, user.isHasNaturalVoiceAccess(), user.getPlanType(), user.getSessionVersion());
     }
 }

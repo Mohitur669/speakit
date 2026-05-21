@@ -40,7 +40,7 @@ export class FeatureFlagService {
 
   /**
    * Fetches a parameter LIVE from the database. 
-   * Use this for critical items like prices to avoid stale cache.
+   * Use this for critical items like prices and limits to avoid stale cache.
    */
   async getLive(name: string, defaultValue: string = ''): Promise<string> {
     try {

@@ -95,35 +95,36 @@
             <div>
               <div class="flex justify-between text-base sm:text-sm mb-2">
                 <span class="text-primary-500">Characters used</span>
-                <span class="font-medium text-primary-700 dark:text-primary-300">{{ text.length }} / {{ maxChars }}</span>
+                <span class="font-medium text-primary-700 dark:text-primary-300">{{ text.length }} / {{ maxChars() | number }}</span>
               </div>
               <div class="h-2 bg-primary-100 dark:bg-primary-800 rounded-full overflow-hidden">
-                <div [ngClass]="text.length > (maxChars * 0.9) ? 'bg-red-500' : 'bg-brand-blue'"
+                <div [ngClass]="text.length > (maxChars() * 0.9) ? 'bg-red-500' : 'bg-brand-blue'"
                   class="h-full rounded-full transition-all"
-                  [style.width.%]="(text.length / maxChars) * 100"></div>
+                  [style.width.%]="(text.length / maxChars()) * 100"></div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Upgrade Card (Visible only to Free users) -->
-        <div *ngIf="!userCanUseNeural" 
-          class="bg-white dark:bg-primary-900 p-6 rounded-xl border-2 border-accent-500/20 shadow-lg animate-fade-in group hover:border-accent-500/50 transition-all">
+        <!-- Dynamic Upgrade Card -->
+        <div class="bg-white dark:bg-primary-900 p-6 rounded-xl border-2 border-accent-500/20 shadow-lg animate-fade-in group hover:border-accent-500/50 transition-all">
           <div class="flex items-center gap-3 mb-4">
             <div class="w-12 h-12 rounded-xl bg-accent-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <svg class="w-6 h-6 text-accent-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-5 h-5 text-accent-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
               </svg>
             </div>
-            <h3 class="text-base sm:text-sm font-bold text-primary-900 dark:text-white uppercase tracking-wider">Go Pro</h3>
+            <h3 class="text-base sm:text-sm font-bold text-primary-900 dark:text-white uppercase tracking-wider">
+              {{ userCanUseNeural ? 'Get Enterprise' : 'Go Pro' }}
+            </h3>
           </div>
           <p class="text-sm sm:text-xs text-primary-500 dark:text-primary-400 mb-6 leading-relaxed">
-            Unlock 10,000 chars, natural neural voices, and priority audio generation.
+            {{ userCanUseNeural ? 'Unlimited characters, API access, and dedicated support for large-scale creation.' : 'Unlock 10,000 chars, natural neural voices, and priority generation.' }}
           </p>
-          <a routerLink="/" fragment="pricing" 
+          <button (click)="invokeUpgrade(userCanUseNeural ? 'ENTERPRISE' : 'PRO')" 
              class="block w-full px-6 py-3.5 sm:py-3 text-center text-sm font-semibold text-white bg-accent-500 hover:bg-accent-600 rounded-xl transition-all shadow-md hover:shadow-lg hover:shadow-accent-500/20 active:scale-95">
-            Upgrade to Pro
-          </a>
+            Upgrade to {{ userCanUseNeural ? 'Enterprise' : 'Pro' }}
+          </button>
         </div>
       </div>
 
@@ -143,11 +144,10 @@
             <textarea [(ngModel)]="text"
               placeholder="Enter your text here..."
               rows="12"
-              [maxlength]="maxChars"
+              [maxlength]="maxChars()"
               class="flex-1 w-full bg-primary-50 dark:bg-primary-800 text-primary-900 dark:text-white placeholder-primary-400 rounded-xl border border-primary-200 dark:border-primary-700 p-3 sm:p-4 text-base sm:text-sm leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all min-h-[300px]"></textarea>
 
             <div class="mt-4 flex items-center justify-end">
-              <!-- Generate Button: Same padding/font as Download button for proportions -->
               <button (click)="convert()" [disabled]="loading() || !text.trim() || !selectedVoiceId"
                 class="w-full sm:w-auto px-8 py-3.5 rounded-xl font-semibold text-sm text-white bg-brand-blue hover:bg-brand-blue/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center justify-center gap-2">
                 <svg *ngIf="loading()" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -203,7 +203,6 @@
                 </div>
               </div>
 
-              <!-- Download Button: Matching Generate button padding/font for symmetry -->
               <button (click)="download()"
                 class="w-full sm:w-auto px-8 py-3.5 rounded-xl font-semibold text-sm text-white bg-accent-500 hover:bg-accent-600 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 flex items-center justify-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

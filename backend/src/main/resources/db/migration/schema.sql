@@ -9,20 +9,21 @@ CREATE SEQUENCE IF NOT EXISTS tts_history_seq START WITH 1 INCREMENT BY 50;
 CREATE TABLE IF NOT EXISTS users (
     -- Primary Key (Internal sequential for performance)
     id BIGINT PRIMARY KEY,
-    
+
     -- Core Business Data
     username VARCHAR(50) NOT NULL UNIQUE,
     email VARCHAR(100) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
-    
+
     -- Status/Flags
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     has_natural_voice_access BOOLEAN NOT NULL DEFAULT FALSE,
-    
+    plan_type VARCHAR(20) NOT NULL DEFAULT 'FREE',
+
     -- Audit Fields
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    
+
     -- Versioning/Optimistic Locking
     session_version BIGINT NOT NULL DEFAULT 1,
     version BIGINT NOT NULL DEFAULT 0
@@ -32,21 +33,21 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS tts_history (
     -- Primary Key
     id BIGINT PRIMARY KEY,
-    
+
     -- Foreign Keys
     user_id BIGINT NOT NULL REFERENCES users(id),
-    
+
     -- Core Business Data
     voice_id VARCHAR(50) NOT NULL,
     output_format VARCHAR(10) NOT NULL,
     character_count INTEGER NOT NULL,
     is_neural BOOLEAN NOT NULL DEFAULT FALSE,
     text_snippet VARCHAR(100),
-    
+
     -- Audit Fields
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    
+
     -- Versioning
     version BIGINT NOT NULL DEFAULT 0
 );
@@ -128,11 +129,12 @@ CREATE TABLE IF NOT EXISTS system_parameters (
 );
 
 -- Seed Initial Parameters
-INSERT INTO system_parameters (parameter_name, parameter_value, description) VALUES 
+INSERT INTO system_parameters (parameter_name, parameter_value, description) VALUES
 ('ENABLE_RAZORPAY', 'true', 'Global toggle for payment gateway'),
 ('PRO_PLAN_PRICE_INR', '499', 'Current price for Pro monthly subscription'),
 ('ENTERPRISE_PLAN_PRICE_INR', '1999', 'Current price for Enterprise subscription'),
-('MAX_FREE_CHARACTERS', '3000', 'Character limit for free tier requests'),
-('MAX_PRO_CHARACTERS', '10000', 'Character limit for Pro tier requests'),
+('MAX_FREE_CHARACTERS', '300', 'Character limit for free tier requests'),
+('MAX_PRO_CHARACTERS', '5000', 'Character limit for Pro tier requests'),
+('MAX_ENTERPRISE_CHARACTERS', '10000', 'Character limit for Enterprise tier requests'),
 ('SHOW_BETA_FEATURES', 'false', 'Toggle for experimental UI components')
 ON CONFLICT (parameter_name) DO NOTHING;

@@ -2,6 +2,7 @@ export interface AuthResponse {
   token: string;
   username: string;
   hasNaturalVoiceAccess: boolean;
+  planType: string;
   sessionVersion: number;
   sessionDurationMs: number;
   idleTimeoutMs: number;
@@ -21,4 +22,5 @@ export interface RegisterCredentials {
 export interface User {
   username: string;
   hasNaturalAccess: boolean;
+  planType: string;
 }
