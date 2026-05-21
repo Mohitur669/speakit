@@ -60,6 +60,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/register").permitAll()
                         .requestMatchers("/api/auth/ping").permitAll()
                         .requestMatchers("/api/v1/webhooks/**").permitAll()
+                        .requestMatchers("/api/system-parameters/**").permitAll()
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().authenticated()

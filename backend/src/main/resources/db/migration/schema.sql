@@ -116,3 +116,23 @@ CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status);
 CREATE INDEX IF NOT EXISTS idx_payments_user_id ON payments(user_id);
 CREATE INDEX IF NOT EXISTS idx_payments_order_id ON payments(razorpay_order_id);
 CREATE INDEX IF NOT EXISTS idx_webhook_events_event_id ON webhook_events(event_id);
+
+-- 6. System Parameters & Feature Flags
+CREATE TABLE IF NOT EXISTS system_parameters (
+    parameter_name VARCHAR(100) PRIMARY KEY,
+    parameter_value TEXT,
+    description VARCHAR(255),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_by VARCHAR(50) NOT NULL DEFAULT 'SYSTEM',
+    version BIGINT NOT NULL DEFAULT 0
+);
+
+-- Seed Initial Parameters
+INSERT INTO system_parameters (parameter_name, parameter_value, description) VALUES 
+('ENABLE_RAZORPAY', 'true', 'Global toggle for payment gateway'),
+('PRO_PLAN_PRICE_INR', '499', 'Current price for Pro monthly subscription'),
+('ENTERPRISE_PLAN_PRICE_INR', '1999', 'Current price for Enterprise subscription'),
+('MAX_FREE_CHARACTERS', '3000', 'Character limit for free tier requests'),
+('MAX_PRO_CHARACTERS', '10000', 'Character limit for Pro tier requests'),
+('SHOW_BETA_FEATURES', 'false', 'Toggle for experimental UI components')
+ON CONFLICT (parameter_name) DO NOTHING;
