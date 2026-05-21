@@ -106,8 +106,9 @@
           </div>
         </div>
 
-        <!-- Dynamic Upgrade Card -->
-        <div class="bg-white dark:bg-primary-900 p-6 rounded-xl border-2 border-accent-500/20 shadow-lg animate-fade-in group hover:border-accent-500/50 transition-all">
+        <!-- Dynamic Upgrade Card (Hidden for Enterprise) -->
+        <div *ngIf="authService.currentPlanType() !== 'ENTERPRISE'" 
+          class="bg-white dark:bg-primary-900 p-6 rounded-xl border-2 border-accent-500/20 shadow-lg animate-fade-in group hover:border-accent-500/50 transition-all">
           <div class="flex items-center gap-3 mb-4">
             <div class="w-12 h-12 rounded-xl bg-accent-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
               <svg class="w-5 h-5 text-accent-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
