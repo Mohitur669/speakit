@@ -13,6 +13,7 @@ public class AuthResponse {
     private String token;
     private String username;
     private boolean hasNaturalVoiceAccess;
+    private String planType; // FREE, PRO, ENTERPRISE
     private Long sessionVersion;
     private Long sessionDurationMs;
     private Long idleTimeoutMs;

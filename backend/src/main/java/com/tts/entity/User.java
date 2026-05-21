@@ -6,7 +6,7 @@ package com.tts.entity;
  */
 import jakarta.persistence.*;
 import lombok.*;
-
+import org.hibernate.annotations.ColumnDefault;
 import lombok.experimental.SuperBuilder;
 
 @Entity
@@ -46,6 +46,11 @@ public class User extends BaseEntity {
     @Column(name = "has_natural_voice_access", nullable = false)
     @Builder.Default
     private boolean hasNaturalVoiceAccess = false;
+
+    @Column(name = "plan_type", nullable = false, length = 20)
+    @ColumnDefault("'FREE'")
+    @Builder.Default
+    private String planType = "FREE";
 
     @Column(name = "session_version", nullable = false, columnDefinition = "bigint default 1")
     @Builder.Default

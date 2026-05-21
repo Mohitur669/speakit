@@ -52,16 +52,22 @@ public class RazorpayService {
         Order order = razorpayClient.orders.create(orderRequest);
         String orderId = order.get("id");
 
+        // Create subscription record immediately to track plan intent
+        Subscription subscription = Subscription.builder()
+                .user(user)
+                .planType(PlanType.valueOf(request.getPlanType().toUpperCase()))
+                .status(SubscriptionStatus.PENDING)
+                .build();
+        subscriptionRepository.save(subscription);
+
         Payment payment = Payment.builder()
                 .user(user)
+                .subscription(subscription)
                 .razorpayOrderId(orderId)
                 .amount(planPrice)
                 .currency(request.getCurrency())
                 .status(PaymentStatus.INITIATED)
                 .build();
-        
-        // Handle Plan metadata if needed
-        PlanType planType = PlanType.valueOf(request.getPlanType().toUpperCase());
         
         paymentRepository.save(payment);
 
@@ -102,23 +108,29 @@ public class RazorpayService {
     }
 
     private void activateSubscription(User user, Payment payment) {
-        // Simple logic: If it's a success, upgrade user
-        // In a real app, you'd check the plan type from the order metadata or DTO
+        // Upgrade user based on plan
+        String planStr = payment.getSubscription() != null ? 
+            payment.getSubscription().getPlanType().name() : "PRO";
+            
         user.setHasNaturalVoiceAccess(true);
+        user.setPlanType(planStr);
         userRepository.save(user);
 
-        Subscription subscription = Subscription.builder()
-                .user(user)
-                .planType(PlanType.PRO) // Defaulting to PRO for now, should be dynamic
-                .status(SubscriptionStatus.ACTIVE)
-                .currentPeriodStart(LocalDateTime.now())
-                .currentPeriodEnd(LocalDateTime.now().plusMonths(1))
-                .build();
+        // Ensure subscription record is consistent
+        if (payment.getSubscription() == null) {
+            Subscription subscription = Subscription.builder()
+                    .user(user)
+                    .planType(PlanType.PRO)
+                    .status(SubscriptionStatus.ACTIVE)
+                    .currentPeriodStart(LocalDateTime.now())
+                    .currentPeriodEnd(LocalDateTime.now().plusMonths(1))
+                    .build();
+            
+            subscriptionRepository.save(subscription);
+            payment.setSubscription(subscription);
+        }
         
-        subscriptionRepository.save(subscription);
-        payment.setSubscription(subscription);
         paymentRepository.save(payment);
-        
-        log.info("Subscription activated for user: {}", user.getUsername());
+        log.info("Subscription ({}) activated for user: {}", planStr, user.getUsername());
     }
 }
