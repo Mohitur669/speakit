@@ -65,3 +65,54 @@ COMMENT ON TABLE users IS 'Master user registry with authentication, status, and
 COMMENT ON TABLE tts_history IS 'Comprehensive analytics log for all voice generation requests';
 COMMENT ON COLUMN users.session_version IS 'Internal counter for JWT invalidation and logout-from-all-devices';
 COMMENT ON COLUMN users.version IS 'Standard JPA optimistic locking version';
+
+-- 5. Payment & Subscription System (Razorpay Integration)
+CREATE SEQUENCE IF NOT EXISTS subscriptions_seq START WITH 1 INCREMENT BY 50;
+CREATE SEQUENCE IF NOT EXISTS payments_seq START WITH 1 INCREMENT BY 50;
+CREATE SEQUENCE IF NOT EXISTS webhook_events_seq START WITH 1 INCREMENT BY 50;
+
+-- Subscriptions Table
+CREATE TABLE IF NOT EXISTS subscriptions (
+    id BIGINT PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id),
+    razorpay_subscription_id VARCHAR(100) UNIQUE,
+    plan_type VARCHAR(20) NOT NULL, -- BASIC, PRO, ENTERPRISE
+    status VARCHAR(20) NOT NULL, -- CREATED, ACTIVE, CANCELLED, EXPIRED, PENDING
+    current_period_start TIMESTAMP WITH TIME ZONE,
+    current_period_end TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    version BIGINT NOT NULL DEFAULT 0
+);
+
+-- Payments Table
+CREATE TABLE IF NOT EXISTS payments (
+    id BIGINT PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id),
+    subscription_id BIGINT REFERENCES subscriptions(id),
+    razorpay_order_id VARCHAR(100) UNIQUE NOT NULL,
+    razorpay_payment_id VARCHAR(100),
+    razorpay_signature VARCHAR(255),
+    amount DECIMAL(19, 4) NOT NULL,
+    currency VARCHAR(10) NOT NULL DEFAULT 'INR',
+    status VARCHAR(20) NOT NULL, -- INITIATED, SUCCESS, FAILED, REFUNDED
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    version BIGINT NOT NULL DEFAULT 0
+);
+
+-- Webhook Events Table (For Idempotency & Audit)
+CREATE TABLE IF NOT EXISTS webhook_events (
+    id BIGINT PRIMARY KEY,
+    event_id VARCHAR(100) UNIQUE NOT NULL,
+    payload TEXT NOT NULL,
+    status VARCHAR(20) NOT NULL, -- RECEIVED, PROCESSED, FAILED
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Payment System Indexes
+CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions(user_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status);
+CREATE INDEX IF NOT EXISTS idx_payments_user_id ON payments(user_id);
+CREATE INDEX IF NOT EXISTS idx_payments_order_id ON payments(razorpay_order_id);
+CREATE INDEX IF NOT EXISTS idx_webhook_events_event_id ON webhook_events(event_id);

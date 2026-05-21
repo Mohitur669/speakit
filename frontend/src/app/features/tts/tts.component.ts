@@ -3,7 +3,7 @@
  * text input, audio generation, playback controls,
  * and download functionality.
  */
-import { Component, ElementRef, ViewChild, inject, signal, HostListener } from '@angular/core';
+import { Component, ElementRef, ViewChild, inject, signal, HostListener, effect, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TtsService, Voice } from '../../core/services/tts.service';
@@ -12,21 +12,30 @@ import { ThemeService } from '../../core/services/theme.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ToastComponent } from '../../shared/components/toast/toast.component';
 import { NavbarComponent } from '../../shared/components/navbar/navbar.component';
+import { RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-tts',
   standalone: true,
-  imports: [CommonModule, FormsModule, ToastComponent, NavbarComponent],
+  imports: [CommonModule, FormsModule, ToastComponent, NavbarComponent, RouterLink],
   templateUrl: './tts.component.html',
   styleUrls: ['./tts.component.scss']
 })
-export class TtsComponent {
+export class TtsComponent implements OnInit {
   @ViewChild('audioPlayer') audioPlayerRef!: ElementRef<HTMLAudioElement>;
 
   ttsService = inject(TtsService);
   authService = inject(AuthService);
   themeService = inject(ThemeService);
   private toastService = inject(ToastService);
+
+  constructor() {
+    // Reactively refresh UI when user status changes (e.g. after payment)
+    effect(() => {
+      const isPro = this.authService.hasNaturalAccess();
+      this.refreshVoices();
+    });
+  }
 
   text = '';
   currentFilter = signal<'All' | 'Standard' | 'Neural'>('All');
@@ -36,7 +45,7 @@ export class TtsComponent {
   filterOptions = signal<('All' | 'Standard' | 'Neural')[]>(['All']);
 
   get maxChars(): number {
-    return this.userCanUseNeural ? 3000 : 200;
+    return this.userCanUseNeural ? 10000 : 3000;
   }
 
   // Track available voice types from API
@@ -71,7 +80,7 @@ export class TtsComponent {
   }
 
   ngOnInit(): void {
-    this.refreshVoices();
+    // Logic moved to effect or keep as secondary check
   }
 
   get userCanUseNeural(): boolean {

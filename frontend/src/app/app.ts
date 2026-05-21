@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { ViewportScroller } from '@angular/common';
 import { ToastComponent } from './shared/components/toast/toast.component';
 
 @Component({
@@ -11,4 +12,10 @@ import { ToastComponent } from './shared/components/toast/toast.component';
     <app-toast></app-toast>
   `
 })
-export class App {}
+export class App {
+  private scroller = inject(ViewportScroller);
+
+  constructor() {
+    this.scroller.setOffset([0, 64]);
+  }
+}
