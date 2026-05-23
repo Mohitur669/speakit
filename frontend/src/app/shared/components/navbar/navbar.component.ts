@@ -2,7 +2,7 @@
  * Global navigation bar component with logo, nav links,
  * theme toggle, and authenticated user menu with logout.
  */
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, Router } from '@angular/router';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -50,30 +50,63 @@ import { ThemeService } from '../../../core/services/theme.service';
 
             <!-- User Menu -->
             <ng-container *ngIf="authService.currentUser() as user; else guest">
-              <div class="flex items-center gap-2 sm:gap-3">
-                <!-- User + Plan Badge (Merged) -->
-                <div class="flex items-center justify-center gap-1.5 sm:gap-2 w-auto h-9 px-2 sm:px-3 rounded-full bg-primary-100 dark:bg-primary-800 border border-primary-200 dark:border-primary-700"
+              <div class="flex items-center gap-2 sm:gap-3 relative">
+                <!-- User Avatar + Menu Trigger -->
+                <div (click)="toggleUserMenu($event)" 
+                  class="flex items-center justify-center gap-2 sm:gap-3 h-9 px-3 rounded-full bg-primary-100 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 cursor-pointer hover:border-brand-blue/50 transition-all select-none"
                   [ngClass]="{'bg-accent-50 dark:bg-accent-500/10 border-accent-200 dark:border-accent-500/30': authService.hasNaturalAccess()}">
-                  <div class="w-5 h-5 rounded-full bg-gradient-to-br from-brand-blue to-brand-purple flex items-center justify-center flex-shrink-0">
-                    <span class="text-[9px] font-bold text-white">{{ user.charAt(0).toUpperCase() }}</span>
-                  </div>
-                  <span class="hidden sm:inline text-xs font-medium text-primary-700 dark:text-primary-200 truncate max-w-[100px]">{{ user }}</span>
-                  <ng-container *ngIf="authService.currentPlanType() !== 'FREE'">
-                    <span class="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span class="text-[10px] sm:text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                      {{ authService.currentPlanType() | titlecase }}
+                  <div class="relative">
+                    <div class="w-6 h-6 rounded-full bg-gradient-to-br from-brand-blue to-brand-purple flex items-center justify-center flex-shrink-0">
+                      <span class="text-[10px] font-bold text-white">{{ user.charAt(0).toUpperCase() }}</span>
+                    </div>
+                    <!-- Minimal Status Indicator -->
+                    <span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-primary-900"
+                      [ngClass]="authService.currentPlanType() !== 'FREE' ? 'bg-emerald-500' : 'bg-primary-400'">
                     </span>
-                  </ng-container>
+                  </div>
+                  <span class="text-xs font-semibold text-primary-900 dark:text-white truncate max-w-[120px]">{{ user }}</span>
+                  <svg class="w-4 h-4 text-primary-400 group-hover:text-primary-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                 </div>
 
-                <!-- Sign Out -->
-                <button (click)="logout()"
-                  class="w-8 h-8 sm:w-9 sm:h-9 rounded-full text-primary-500 hover:text-primary-700 hover:bg-primary-100 dark:text-primary-400 dark:hover:text-white dark:hover:bg-primary-800 border border-primary-200 dark:border-primary-700 transition-all flex items-center justify-center"
-                  aria-label="Sign out">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
-                  </svg>
-                </button>
+                <!-- Dropdown Menu -->
+                <div *ngIf="showUserMenu()" (click)="$event.stopPropagation()"
+                  class="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-primary-900 border border-primary-200 dark:border-primary-700 rounded-xl shadow-2xl z-[100] py-2 animate-fade-in">
+                  
+                  <div class="px-4 py-2 border-b border-primary-100 dark:border-primary-800 mb-1">
+                    <p class="text-xs font-semibold text-primary-400 uppercase tracking-wider">Current Plan</p>
+                    <div class="flex flex-col gap-2 mt-1">
+                      <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                          <span class="text-sm font-bold text-primary-900 dark:text-white">{{ authService.currentPlanType() }}</span>
+                          <span *ngIf="authService.currentPlanType() !== 'FREE'" class="flex h-2 w-2 relative">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <!-- Mobile-Only Upgrade Button (Matches Desktop Styling) -->
+                      <a *ngIf="authService.currentPlanType() !== 'ENTERPRISE'" 
+                        routerLink="/tts" [queryParams]="{autostart: authService.currentPlanType() === 'FREE' ? 'PRO' : 'ENTERPRISE'}"
+                        (click)="$event.stopPropagation(); showUserMenu.set(false)"
+                        class="lg:hidden w-full mt-2 py-2.5 px-4 text-center text-xs font-bold text-white bg-accent-500 hover:bg-accent-600 rounded-lg shadow-md hover:shadow-accent-500/20 active:scale-95 transition-all uppercase tracking-wider">
+                        Get {{ authService.currentPlanType() === 'FREE' ? 'Pro' : 'Enterprise' }}
+                      </a>
+                    </div>
+                  </div>
+
+                  <a routerLink="/settings/profile" (click)="showUserMenu.set(false)"
+                    class="flex items-center gap-3 px-4 py-2 text-sm text-primary-700 dark:text-primary-200 hover:bg-primary-50 dark:hover:bg-primary-800 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                    Profile Settings
+                  </a>
+
+                  <button (click)="logout()"
+                    class="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                    Sign Out
+                  </button>
+                </div>
               </div>
             </ng-container>
 
@@ -99,6 +132,18 @@ export class NavbarComponent {
   authService = inject(AuthService);
   themeService = inject(ThemeService);
   private router = inject(Router);
+
+  showUserMenu = signal(false);
+
+  @HostListener('document:click')
+  closeUserMenu(): void {
+    this.showUserMenu.set(false);
+  }
+
+  toggleUserMenu(event: Event): void {
+    event.stopPropagation();
+    this.showUserMenu.update(v => !v);
+  }
 
   logout(): void {
     this.authService.logout();

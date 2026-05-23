@@ -88,8 +88,8 @@
           </div>
         </div>
 
-        <!-- Quick Stats -->
-        <div class="bg-white dark:bg-primary-900 rounded-xl border border-primary-200 dark:border-primary-700 p-6">
+        <!-- Quick Stats (Hidden on Mobile, already in script) -->
+        <div class="hidden lg:block bg-white dark:bg-primary-900 rounded-xl border border-primary-200 dark:border-primary-700 p-6">
           <h2 class="text-lg sm:text-sm font-semibold text-primary-900 dark:text-white mb-4">Your Usage</h2>
           <div class="space-y-4">
             <div>
@@ -106,9 +106,9 @@
           </div>
         </div>
 
-        <!-- Dynamic Upgrade Card (Hidden for Enterprise) -->
+        <!-- Dynamic Upgrade Card (Hidden for Enterprise & Mobile) -->
         <div *ngIf="authService.currentPlanType() !== 'ENTERPRISE'" 
-          class="bg-white dark:bg-primary-900 p-6 rounded-xl border-2 border-accent-500/20 shadow-lg animate-fade-in group hover:border-accent-500/50 transition-all">
+          class="hidden lg:block bg-white dark:bg-primary-900 p-6 rounded-xl border-2 border-accent-500/20 shadow-lg animate-fade-in group hover:border-accent-500/50 transition-all">
           <div class="flex items-center gap-3 mb-4">
             <div class="w-12 h-12 rounded-xl bg-accent-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
               <svg class="w-5 h-5 text-accent-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -135,7 +135,19 @@
         <!-- Text Editor -->
         <div class="flex-1 bg-white dark:bg-primary-900 rounded-xl border border-primary-200 dark:border-primary-700 overflow-hidden flex flex-col">
           <div class="px-6 py-4 border-b border-primary-100 dark:border-primary-800 flex items-center justify-between">
-            <h2 class="text-lg sm:text-sm font-semibold text-primary-900 dark:text-white">Script</h2>
+            <div class="flex items-center gap-4">
+              <h2 class="text-lg sm:text-sm font-semibold text-primary-900 dark:text-white">Script</h2>
+              <!-- Mobile-Only Quick Stats -->
+              <div class="lg:hidden flex items-center gap-3 bg-primary-100 dark:bg-primary-800 px-3 py-1 rounded-full">
+                <span class="text-[10px] font-bold text-primary-500 uppercase tracking-wider">Usage</span>
+                <span class="text-[11px] font-medium text-primary-700 dark:text-primary-300">{{ text.length }} / {{ maxChars() | number }}</span>
+                <div class="w-12 h-1.5 bg-primary-200 dark:bg-primary-700 rounded-full overflow-hidden">
+                  <div [ngClass]="text.length > (maxChars() * 0.9) ? 'bg-red-500' : 'bg-brand-blue'"
+                    class="h-full rounded-full transition-all"
+                    [style.width.%]="(text.length / maxChars()) * 100"></div>
+                </div>
+              </div>
+            </div>
             <button *ngIf="text" (click)="text = ''"
               class="text-sm sm:text-xs text-primary-400 hover:text-primary-600 dark:hover:text-primary-300 transition-colors">
               Clear
