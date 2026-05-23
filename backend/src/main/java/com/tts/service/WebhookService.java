@@ -48,9 +48,20 @@ public class WebhookService {
         webhookEventRepository.save(event);
 
         // 2. Verify Signature
-        boolean isValid = Utils.verifyWebhookSignature(payload, signature, webhookSecret);
+        if (webhookSecret == null || webhookSecret.isBlank()) {
+            log.error("Razorpay Webhook Secret is not configured in the application properties!");
+        }
+
+        boolean isValid = false;
+        try {
+            isValid = Utils.verifyWebhookSignature(payload, signature, webhookSecret.trim());
+        } catch (Exception e) {
+            log.error("Error during signature verification for event: {}", eventId, e);
+        }
+
         if (!isValid) {
-            log.error("Invalid Webhook Signature for event: {}", eventId);
+            log.error("Invalid Webhook Signature for event: {}. Signature: {}, Secret Length: {}", 
+                    eventId, signature, (webhookSecret != null ? webhookSecret.length() : 0));
             event.setStatus(WebhookEventStatus.FAILED);
             webhookEventRepository.save(event);
             throw new Exception("Invalid Signature");
@@ -62,6 +73,9 @@ public class WebhookService {
 
         try {
             switch (eventType) {
+                case "order.paid":
+                    handleOrderPaid(json);
+                    break;
                 case "payment.captured":
                     handlePaymentCaptured(json);
                     break;
@@ -79,15 +93,27 @@ public class WebhookService {
         webhookEventRepository.save(event);
     }
 
+    private void handleOrderPaid(JSONObject json) {
+        JSONObject orderEntity = json.getJSONObject("payload").getJSONObject("order").getJSONObject("entity");
+        String orderId = orderEntity.getString("id");
+        log.info("Order paid event received for: {}", orderId);
+        processSuccessPayment(orderId, null);
+    }
+
     private void handlePaymentCaptured(JSONObject json) {
         JSONObject paymentEntity = json.getJSONObject("payload").getJSONObject("payment").getJSONObject("entity");
         String orderId = paymentEntity.getString("order_id");
         String paymentId = paymentEntity.getString("id");
-        log.info("Payment captured for order: {}", orderId);
+        log.info("Payment captured event received for order: {}", orderId);
+        processSuccessPayment(orderId, paymentId);
+    }
 
+    private void processSuccessPayment(String orderId, String paymentId) {
         paymentRepository.findByRazorpayOrderId(orderId).ifPresent(payment -> {
             if (payment.getStatus() != PaymentStatus.SUCCESS) {
-                payment.setRazorpayPaymentId(paymentId);
+                if (paymentId != null) {
+                    payment.setRazorpayPaymentId(paymentId);
+                }
                 payment.setStatus(PaymentStatus.SUCCESS);
                 paymentRepository.save(payment);
 
@@ -105,7 +131,9 @@ public class WebhookService {
                     subscription.setCurrentPeriodEnd(LocalDateTime.now().plusMonths(1));
                     subscriptionRepository.save(subscription);
                 }
-                log.info("Subscription activated via Webhook for user: {}", user.getUsername());
+                log.info("Subscription activated via Webhook for user: {} on plan: {}", user.getUsername(), planStr);
+            } else {
+                log.info("Payment for order {} already marked as SUCCESS", orderId);
             }
         });
     }
