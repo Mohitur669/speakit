@@ -48,23 +48,22 @@ interface Country {
                     class="w-full px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all lowercase">
                 </div>
 
-                <!-- Custom International Phone Input -->
                 <div class="relative">
                   <label class="block text-sm font-medium text-primary-700 dark:text-primary-300 mb-2">Phone Number</label>
-                  <div class="flex items-center gap-2">
+                  <div class="flex items-stretch gap-2">
                     <!-- Custom Searchable Select -->
-                    <div class="relative w-28 flex-shrink-0">
+                    <div class="relative w-20 flex-shrink-0">
                       <button type="button" (click)="toggleDropdown($event)"
-                        class="w-full flex items-center justify-between gap-1.5 px-3 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white transition-all text-sm hover:border-brand-blue/50">
-                        <span class="flex items-center gap-1.5">
+                        class="w-full h-full flex items-center justify-between gap-1 px-2 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white transition-all text-xs sm:text-sm hover:border-brand-blue/50">
+                        <span class="flex items-center gap-1">
                           <span>{{ selectedCountry().flag }}</span>
                           <span class="font-medium">{{ selectedCountry().code }}</span>
                         </span>
-                        <svg class="w-4 h-4 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        <svg class="w-3 h-3 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                       </button>
 
                       <!-- Dropdown -->
-                      <div *ngIf="showDropdown()" 
+                      <div *ngIf="showDropdown()"
                         class="absolute top-full left-0 mt-2 w-64 bg-white dark:bg-primary-900 border border-primary-200 dark:border-primary-700 rounded-xl shadow-2xl z-[100] overflow-hidden animate-fade-in">
                         <div class="p-2 border-b border-primary-100 dark:border-primary-800">
                           <input [(ngModel)]="searchQuery" name="search" type="text"
@@ -87,7 +86,7 @@ interface Country {
                     <!-- Number Input -->
                     <input [(ngModel)]="phoneNumber" name="phoneNumber" type="tel" required
                       placeholder="9876543210"
-                      class="flex-1 px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all">
+                      class="flex-1 min-w-0 px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white text-sm placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all">
                   </div>
                 </div>
 
@@ -97,7 +96,7 @@ interface Country {
                     <input [(ngModel)]="password" name="password" [type]="showPassword() ? 'text' : 'password'" required
                       placeholder="••••••••"
                       class="w-full px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all">
-                    <button type="button" (click)="togglePassword()" 
+                    <button type="button" (click)="togglePassword()"
                       class="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-primary-400 hover:text-primary-600 dark:hover:text-primary-300 transition-colors">
                       <svg *ngIf="!showPassword()" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
                       <svg *ngIf="showPassword()" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 011.563-3.04m4.533-4.533A9.93 9.93 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21m-2.122-2.122L3 3m5.303 5.303a3 3 0 104.243 4.243"></path></svg>
@@ -233,20 +232,20 @@ export class SignupComponent implements OnInit {
     // Format: +CCXXXXXXXXXX
     const countryCode = this.selectedCountry().code; // e.g. +91
     let cleanLocalNumber = this.phoneNumber.replace(/\D/g, '');
-    
+
     // Prevent double-prefixing: if local number starts with the dial code, strip it
     const dialDigits = countryCode.replace('+', '');
     if (cleanLocalNumber.startsWith(dialDigits)) {
       cleanLocalNumber = cleanLocalNumber.substring(dialDigits.length);
     }
-    
+
     const fullPhoneNumber = countryCode + cleanLocalNumber;
 
-    this.authService.register({ 
-      username: this.username, 
-      email: this.email, 
+    this.authService.register({
+      username: this.username,
+      email: this.email,
       phoneNumber: fullPhoneNumber,
-      password: this.password 
+      password: this.password
     }).subscribe({
       next: () => {
         if (this.pendingPlan) {

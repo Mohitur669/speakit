@@ -14,7 +14,7 @@ import { FeatureFlagService } from '../../core/services/feature-flag.service';
 import { RazorpayService } from '../../core/services/razorpay.service';
 import { ToastComponent } from '../../shared/components/toast/toast.component';
 import { NavbarComponent } from '../../shared/components/navbar/navbar.component';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 
 @Component({
   selector: 'app-tts',
@@ -33,6 +33,7 @@ export class TtsComponent implements OnInit {
   private razorpayService = inject(RazorpayService);
   private toastService = inject(ToastService);
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
 
   maxChars = signal<number>(3000);
 
@@ -104,7 +105,25 @@ export class TtsComponent implements OnInit {
   }
 
   async ngOnInit() {
-    // 1. Check for autostart payment (after signup conversion)
+    // 1. Handle initial autostart param
+    this.checkAutostart();
+
+    // 2. Listen for param changes (for mobile menu clicks while on page)
+    this.route.queryParams.subscribe(params => {
+      if (params['autostart']) {
+        this.invokeUpgrade(params['autostart']);
+        
+        // Clear param to allow re-triggering same tier if needed
+        this.router.navigate([], {
+          relativeTo: this.route,
+          queryParams: { autostart: null },
+          queryParamsHandling: 'merge'
+        });
+      }
+    });
+  }
+
+  private checkAutostart() {
     const autostart = this.route.snapshot.queryParams['autostart'];
     if (autostart) {
       this.invokeUpgrade(autostart);

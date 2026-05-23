@@ -124,6 +124,56 @@ public class AuthService {
                 .build();
     }
 
+    @Transactional
+    public AuthResponse updateProfile(String currentUsername, com.tts.dto.UserProfileUpdateRequest request) {
+        var user = userRepository.findByUsername(currentUsername)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // 1. Verify Current Password
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            throw new RuntimeException("Incorrect current password");
+        }
+
+        // 2. Validate Uniqueness (if changed)
+        if (request.getUsername() != null && !request.getUsername().equalsIgnoreCase(user.getUsername())) {
+            String sanitizedUsername = Sanitizer.sanitize(request.getUsername()).toLowerCase();
+            if (userRepository.findByUsername(sanitizedUsername).isPresent()) {
+                throw new RuntimeException("Username already taken");
+            }
+            user.setUsername(sanitizedUsername);
+        }
+
+        if (request.getEmail() != null && !request.getEmail().equalsIgnoreCase(user.getEmail())) {
+            String sanitizedEmail = Sanitizer.sanitize(request.getEmail()).toLowerCase();
+            if (userRepository.findByEmail(sanitizedEmail).isPresent()) {
+                throw new RuntimeException("Email already taken");
+            }
+            user.setEmail(sanitizedEmail);
+        }
+
+        if (request.getPhoneNumber() != null && !request.getPhoneNumber().equals(user.getPhoneNumber())) {
+            String sanitizedPhone = Sanitizer.sanitize(request.getPhoneNumber());
+            if (userRepository.findByPhoneNumber(sanitizedPhone).isPresent()) {
+                throw new RuntimeException("Phone number already taken");
+            }
+            user.setPhoneNumber(sanitizedPhone);
+        }
+
+        // 3. Update Password (optional)
+        if (request.getNewPassword() != null && !request.getNewPassword().isBlank()) {
+            user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+            // Invalidate other sessions on password change
+            userRepository.incrementSessionVersion(user.getUsername());
+            user.setSessionVersion(user.getSessionVersion() + 1);
+            webSocketConfig.notifyLogout(user.getUsername());
+        }
+
+        user = userRepository.save(user);
+        log.info("User profile updated for: {}", user.getUsername());
+        
+        return authenticate(user, user.getSessionVersion());
+    }
+
     /**
      * Optimized helper to generate a JWT and construct the AuthResponse.
      * Uses the managed User entity directly to ensure data consistency.

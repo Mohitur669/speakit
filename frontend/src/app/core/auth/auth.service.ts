@@ -219,6 +219,17 @@ export class AuthService implements OnDestroy {
 
   isLoggedIn(): boolean { return !!this.token(); }
 
+  updateProfile(data: any): Observable<AuthResponse> {
+    return this.http.put<AuthResponse>(`${environment.apiUrl}/api/v1/users/profile`, data).pipe(
+      tap(res => {
+        // If password was changed, the backend increments session version and notifies logout.
+        // If only profile was updated, we update the local session state.
+        this.setSession(res);
+        this.toastService.success('Profile updated successfully');
+      })
+    );
+  }
+
   refreshStatus(): void {
     if (!this.isLoggedIn()) return;
     this.http.get<AuthResponse>(`${this.apiUrl}/me`).subscribe({
