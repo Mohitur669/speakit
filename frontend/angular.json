@@ -33,6 +33,10 @@
               }
             ],
             "styles": ["src/styles.scss"],
+            "allowedCommonJsDependencies": [
+              "google-libphonenumber",
+              "intl-tel-input"
+            ],
             "optimization": {
               "scripts": true,
               "styles": {

@@ -208,33 +208,13 @@ a {
   text-decoration: none;
 }
 
-/* International Tel Input Overrides */
-@import "intl-tel-input/dist/css/intlTelInput.css";
-
-.iti {
-  width: 100%;
+/* Custom Scrollbar for Dropdowns */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
 }
-
-.iti__country-list {
-  background-color: white !important;
-  color: #18181B !important;
-  border-radius: 12px !important;
-  border: 1px solid #E4E4E7 !important;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
-  z-index: 100 !important;
+.custom-scrollbar::-webkit-scrollbar-track {
+  @apply bg-transparent;
 }
-
-.dark .iti__country-list {
-  background-color: #27272A !important;
-  color: #FAFAFA !important;
-  border-color: #3F3F46 !important;
-}
-
-.iti__selected-flag {
-  background-color: transparent !important;
-  border-radius: 12px 0 0 12px !important;
-}
-
-.iti--allow-dropdown .iti__selection {
-  @apply rounded-xl bg-primary-50 dark:bg-primary-800 border-primary-200 dark:border-primary-700;
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-primary-200 dark:bg-primary-700 rounded-full;
 }

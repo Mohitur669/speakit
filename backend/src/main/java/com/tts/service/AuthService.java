@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Handles core authentication flows including user registration, login, 
@@ -56,10 +57,10 @@ public class AuthService {
                 .role("ROLE_USER")
                 .planType("FREE")
                 .build();
-        userRepository.save(user);
+        user = userRepository.save(user);
 
         log.info("New user registered: {}", sanitizedUsername);
-        return authenticate(user.getUsername());
+        return authenticate(user, user.getSessionVersion());
     }
 
     @Transactional
@@ -69,6 +70,13 @@ public class AuthService {
         var user = userRepository.findByUsername(sanitizedIdentifier)
                 .or(() -> userRepository.findByEmail(sanitizedIdentifier))
                 .or(() -> userRepository.findByPhoneNumber(sanitizedIdentifier))
+                // Smart Fallback: Try suffix match if 7-15 digits provided (covers most global local numbers)
+                .or(() -> {
+                    if (sanitizedIdentifier.matches("\\d{7,15}")) {
+                        return userRepository.findByPhoneNumberSuffix(sanitizedIdentifier);
+                    }
+                    return Optional.empty();
+                })
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         if (!user.isActive()) {
@@ -89,7 +97,7 @@ public class AuthService {
         
         log.debug("User {} login. Session Version: {} -> {}", user.getUsername(), user.getSessionVersion(), newSessionVersion);
 
-        return authenticate(user.getUsername(), user.getRole(), user.isHasNaturalVoiceAccess(), user.getPlanType(), newSessionVersion);
+        return authenticate(user, newSessionVersion);
     }
 
     @Transactional
@@ -116,42 +124,37 @@ public class AuthService {
                 .build();
     }
 
-    private AuthResponse authenticate(String username, String role, boolean hasNaturalVoiceAccess, String planType, long sessionVersion) {
-        // Safe role handling: Default to USER if null
-        String effectiveRole = (role != null) ? role : "ROLE_USER";
-        
+    /**
+     * Optimized helper to generate a JWT and construct the AuthResponse.
+     * Uses the managed User entity directly to ensure data consistency.
+     */
+    private AuthResponse authenticate(User user, long sessionVersion) {
+        String role = user.getRole();
         // Strip ROLE_ prefix if present for UserBuilder.roles() (which adds it back)
-        String roleName = effectiveRole.startsWith("ROLE_") ? effectiveRole.substring(5) : effectiveRole;
+        String roleName = role.startsWith("ROLE_") ? role.substring(5) : role;
 
         UserDetails userDetails = org.springframework.security.core.userdetails.User.builder()
-                .username(username)
+                .username(user.getUsername())
                 .password("") 
                 .roles(roleName)
                 .build();
 
         Map<String, Object> claims = new HashMap<>();
         claims.put("sessionVersion", sessionVersion);
-        claims.put("role", effectiveRole); 
-
-        var user = userRepository.findByUsername(username).orElseThrow();
+        claims.put("role", role); 
 
         var jwtToken = jwtService.generateToken(claims, userDetails);
         return AuthResponse.builder()
                 .token(jwtToken)
-                .username(username)
+                .username(user.getUsername())
                 .email(user.getEmail())
                 .phoneNumber(user.getPhoneNumber())
                 .role(role)
-                .hasNaturalVoiceAccess(hasNaturalVoiceAccess)
-                .planType(planType)
+                .hasNaturalVoiceAccess(user.isHasNaturalVoiceAccess())
+                .planType(user.getPlanType())
                 .sessionVersion(sessionVersion)
                 .sessionDurationMs(sessionDurationMs)
                 .idleTimeoutMs(idleTimeoutMs)
                 .build();
-    }
-    
-    private AuthResponse authenticate(String username) {
-        var user = userRepository.findByUsername(username).orElseThrow();
-        return authenticate(username, user.getRole(), user.isHasNaturalVoiceAccess(), user.getPlanType(), user.getSessionVersion());
     }
 }
