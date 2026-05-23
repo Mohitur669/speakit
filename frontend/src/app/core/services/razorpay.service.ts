@@ -33,10 +33,8 @@ export class RazorpayService {
   }
 
   async initiatePayment(planType: string, amount: number) {
-    // INDUSTRY STANDARD: Handle guest users by redirecting to signup
     if (!this.authService.isLoggedIn()) {
       this.toast.show('Please create an account to upgrade to ' + planType, 'info');
-      // Store intent in session storage or just redirect with query param
       this.router.navigate(['/signup'], { queryParams: { plan: planType } });
       return;
     }
@@ -52,25 +50,30 @@ export class RazorpayService {
       const email = this.authService.currentUserEmail();
       const phoneRaw = this.authService.currentUserPhone() || '';
       
-      // Smart Phone Cleaning for Razorpay
-      let phone = phoneRaw.replace(/\D/g, ''); // Digits only by default
+      /**
+       * PRECISION PRE-FILL LOGIC (Based on Official Razorpay Docs)
+       * For Indian merchant accounts:
+       * 1. India (+91): Pass ONLY the 10-digit local number.
+       * 2. International: Pass full E.164 (+CCXXXXXXXXXX).
+       */
+      let phone = phoneRaw.replace(/\D/g, ''); 
       
       try {
         const parsed = parsePhoneNumberFromString(phoneRaw);
         if (parsed) {
-          // ALWAYS include the '+' prefix for Razorpay.
-          // This allows the modal to correctly auto-select the country flag
-          // and populate the local number field.
-          phone = parsed.format('E.164');
-        } else if (phoneRaw && !phoneRaw.startsWith('+')) {
-          // Fallback if parsing fails but it's a numeric string
-          phone = '+' + phoneRaw.replace(/\D/g, '');
+          if (parsed.country === 'IN') {
+            // Passing 10 digits is most stable for Indian merchants
+            phone = parsed.nationalNumber as string;
+          } else {
+            // Full E.164 required for International auto-detection
+            phone = parsed.format('E.164');
+          }
         }
       } catch (e) {
-        console.warn('[Razorpay] Phone parsing failed, using raw digits:', e);
+        console.warn('[Razorpay] Phone parsing failed, falling back to raw digits');
       }
 
-      console.log('[Razorpay] Initiating payment for:', { user, email, phone });
+      console.log('[Razorpay] Prefilling modal with:', { user, email, phone });
 
       // 1. Create Order on Backend
       const orderRes: any = await firstValueFrom(
@@ -81,7 +84,7 @@ export class RazorpayService {
         })
       );
 
-      // 2. Open Razorpay Checkout
+      // 2. Open Razorpay Checkout (Standard Integration Step 1)
       const options = {
         key: orderRes.keyId,
         amount: orderRes.amount,
@@ -99,6 +102,9 @@ export class RazorpayService {
         },
         theme: {
           color: '#3B82F6'
+        },
+        modal: {
+          confirm_close: true
         }
       };
 
@@ -125,11 +131,7 @@ export class RazorpayService {
       );
 
       this.toast.show('Payment successful! Your subscription is now active.', 'success');
-      
-      // Refresh user status to show "Pro" badge immediately
       this.authService.refreshStatus();
-
-      // Redirect or refresh user state
       this.router.navigate(['/tts']);
       
     } catch (error) {
