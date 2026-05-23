@@ -82,10 +82,12 @@ export class AuthService implements OnDestroy {
   }
 
   register(credentials: RegisterCredentials): Observable<AuthResponse> {
+    this.clearSession(); // Ensure clean slate for new user
     return this.http.post<AuthResponse>(`${this.apiUrl}/register`, credentials).pipe(tap(res => this.setSession(res)));
   }
 
   login(credentials: LoginCredentials): Observable<AuthResponse> {
+    this.clearSession(); // Ensure clean slate for new session
     return this.http.post<AuthResponse>(`${this.apiUrl}/login`, credentials).pipe(tap(res => this.setSession(res)));
   }
 
@@ -140,6 +142,12 @@ export class AuthService implements OnDestroy {
   }
 
   private setSession(res: AuthResponse): void {
+    console.log('[Auth] Setting session with:', { 
+      username: res.username, 
+      email: res.email, 
+      phone: res.phoneNumber 
+    });
+
     this.ttsService.clearCache();
     localStorage.setItem('token', res.token);
     localStorage.setItem('username', res.username);

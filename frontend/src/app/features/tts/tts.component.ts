@@ -40,9 +40,10 @@ export class TtsComponent implements OnInit {
     // Reactively refresh UI when user status changes (e.g. after payment)
     effect(() => {
       // Logic triggers when any auth signal changes
-      const isPremium = this.userCanUseNeural;
-      this.refreshVoices();
-      this.refreshLimits();
+      if (this.authService.isLoggedIn()) {
+        this.refreshVoices();
+        this.refreshLimits();
+      }
     });
   }
 

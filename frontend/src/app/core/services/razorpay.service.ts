@@ -5,6 +5,7 @@ import { environment } from '../config/environment';
 import { ToastService } from './toast.service';
 import { Router } from '@angular/router';
 import { AuthService } from '../auth/auth.service';
+import { parsePhoneNumberFromString } from 'libphonenumber-js';
 
 declare var Razorpay: any;
 
@@ -47,6 +48,30 @@ export class RazorpayService {
     }
 
     try {
+      const user = this.authService.currentUser();
+      const email = this.authService.currentUserEmail();
+      const phoneRaw = this.authService.currentUserPhone() || '';
+      
+      // Smart Phone Cleaning for Razorpay
+      let phone = phoneRaw.replace(/\D/g, ''); // Digits only by default
+      
+      try {
+        const parsed = parsePhoneNumberFromString(phoneRaw);
+        if (parsed) {
+          // ALWAYS include the '+' prefix for Razorpay.
+          // This allows the modal to correctly auto-select the country flag
+          // and populate the local number field.
+          phone = parsed.format('E.164');
+        } else if (phoneRaw && !phoneRaw.startsWith('+')) {
+          // Fallback if parsing fails but it's a numeric string
+          phone = '+' + phoneRaw.replace(/\D/g, '');
+        }
+      } catch (e) {
+        console.warn('[Razorpay] Phone parsing failed, using raw digits:', e);
+      }
+
+      console.log('[Razorpay] Initiating payment for:', { user, email, phone });
+
       // 1. Create Order on Backend
       const orderRes: any = await firstValueFrom(
         this.http.post(`${environment.apiUrl}/api/v1/payments/create-order`, {
@@ -68,9 +93,9 @@ export class RazorpayService {
           await this.verifyPayment(response);
         },
         prefill: {
-          name: this.authService.currentUser() || '',
-          email: this.authService.currentUserEmail() || '',
-          contact: this.authService.currentUserPhone() || ''
+          name: user || '',
+          email: email || '',
+          contact: phone || ''
         },
         theme: {
           color: '#3B82F6'

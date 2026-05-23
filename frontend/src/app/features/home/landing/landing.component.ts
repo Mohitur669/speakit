@@ -4,7 +4,7 @@
  */
 import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { RouterLink, Router } from '@angular/router';
 import { NavbarComponent } from '../../../shared/components/navbar/navbar.component';
 import { FooterComponent } from '../../../shared/components/footer/footer.component';
 import { RazorpayService } from '../../../core/services/razorpay.service';
@@ -48,10 +48,10 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
 
             <!-- CTAs -->
             <div class="flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up stagger-2">
-              <a [routerLink]="authService.currentUser() ? '/tts' : '/signup'" class="w-full sm:w-auto px-8 py-3.5 text-base font-semibold text-white bg-brand-blue hover:bg-brand-blue/90 rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2">
+              <button (click)="onStartTrial()" class="w-full sm:w-auto px-8 py-3.5 text-base font-semibold text-white bg-brand-blue hover:bg-brand-blue/90 rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2">
                 {{ authService.currentUser() ? 'Go to Dashboard' : 'Start Free Trial' }}
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
-              </a>
+              </button>
               <a [routerLink]="authService.currentUser() ? '/tts' : '/login'" class="w-full sm:w-auto px-8 py-3.5 text-base font-semibold text-primary-700 dark:text-primary-200 bg-white dark:bg-primary-900 hover:bg-primary-100 dark:hover:bg-primary-800 border border-primary-200 dark:border-primary-700 rounded-xl transition-all flex items-center justify-center gap-2">
                 {{ authService.currentUser() ? 'Open App' : 'View Demo' }}
               </a>
@@ -210,9 +210,9 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
                   {{ feature }}
                 </li>
               </ul>
-              <a [routerLink]="authService.currentUser() ? '/tts' : '/signup'" class="block w-full py-3 text-center font-semibold text-primary-700 dark:text-primary-200 bg-primary-100 dark:bg-primary-800 hover:bg-primary-200 dark:hover:bg-primary-700 rounded-xl transition-all">
+              <button (click)="onStartTrial()" class="block w-full py-3 text-center font-semibold text-primary-700 dark:text-primary-200 bg-primary-100 dark:bg-primary-800 hover:bg-primary-200 dark:hover:bg-primary-700 rounded-xl transition-all">
                 {{ authService.currentUser() ? 'Go to App' : 'Get Started' }}
-              </a>
+              </button>
             </div>
 
             <!-- Pro Plan -->
@@ -257,6 +257,7 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
 })
 export class LandingComponent implements OnInit {
   private razorpay = inject(RazorpayService);
+  private router = inject(Router);
   authService = inject(AuthService);
   featureFlags = inject(FeatureFlagService);
 
@@ -295,6 +296,18 @@ export class LandingComponent implements OnInit {
   }
 
   buyPlan(plan: string, amount: number) {
-    this.razorpay.initiatePayment(plan, amount);
+    if (this.authService.isLoggedIn()) {
+      this.razorpay.initiatePayment(plan, amount);
+    } else {
+      this.router.navigate(['/signup'], { queryParams: { plan } });
+    }
+  }
+
+  onStartTrial() {
+    if (this.authService.isLoggedIn()) {
+      this.router.navigate(['/tts']);
+    } else {
+      this.router.navigate(['/signup']);
+    }
   }
 }
