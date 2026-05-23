@@ -1,6 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { FeatureFlagService } from '../../../core/services/feature-flag.service';
 
 @Component({
   selector: 'app-footer',
@@ -57,8 +58,13 @@ import { RouterLink } from '@angular/router';
           <p class="text-xs text-primary-400">&copy; {{ currentYear }} SpeakIT. All rights reserved. Built for professional voice generation.</p>
           <div class="flex items-center gap-6">
             <span class="text-xs text-primary-400 flex items-center gap-2">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-              System Status: Operational
+              <span class="w-1.5 h-1.5 rounded-full"
+                [ngClass]="{
+                  'bg-emerald-500': systemStatus() === 'Operational',
+                  'bg-amber-500': systemStatus() === 'Maintenance',
+                  'bg-red-500': systemStatus() === 'Outage'
+                }"></span>
+              System Status: {{ systemStatus() }}
             </span>
           </div>
         </div>
@@ -66,6 +72,14 @@ import { RouterLink } from '@angular/router';
     </footer>
   `
 })
-export class FooterComponent {
+export class FooterComponent implements OnInit {
+  private featureFlags = inject(FeatureFlagService);
+  
   currentYear = new Date().getFullYear();
+  systemStatus = signal('Operational');
+
+  async ngOnInit() {
+    const status = await this.featureFlags.getLive('SYSTEM_STATUS', 'Operational');
+    this.systemStatus.set(status);
+  }
 }

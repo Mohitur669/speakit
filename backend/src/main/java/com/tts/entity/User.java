@@ -36,6 +36,9 @@ public class User extends BaseEntity {
     @Column(unique = true, nullable = false, length = 100)
     private String email;
 
+    @Column(name = "phone_number", unique = true, nullable = false, length = 15, columnDefinition = "varchar(15) default '0000000000'")
+    private String phoneNumber;
+
     @Column(nullable = false)
     private String password;
 
@@ -51,6 +54,11 @@ public class User extends BaseEntity {
     @ColumnDefault("'FREE'")
     @Builder.Default
     private String planType = "FREE";
+
+    @Column(name = "role", nullable = false, length = 20)
+    @ColumnDefault("'USER'")
+    @Builder.Default
+    private String role = "USER";
 
     @Column(name = "session_version", nullable = false, columnDefinition = "bigint default 1")
     @Builder.Default

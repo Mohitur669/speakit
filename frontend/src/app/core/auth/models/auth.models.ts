@@ -1,6 +1,8 @@
 export interface AuthResponse {
   token: string;
   username: string;
+  email: string;
+  phoneNumber: string;
   hasNaturalVoiceAccess: boolean;
   planType: string;
   sessionVersion: number;
@@ -16,11 +18,14 @@ export interface LoginCredentials {
 export interface RegisterCredentials {
   username: string;
   email: string;
+  phoneNumber: string;
   password: string;
 }
 
 export interface User {
   username: string;
+  email: string;
+  phoneNumber: string;
   hasNaturalAccess: boolean;
   planType: string;
 }
