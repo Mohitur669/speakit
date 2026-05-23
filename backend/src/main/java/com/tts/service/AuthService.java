@@ -23,12 +23,6 @@ import java.util.Map;
 /**
  * Handles core authentication flows including user registration, login, 
  * session management, and JWT token provisioning.
- * 
- * Includes logic for:
- * - Sanitizing user input to prevent injection
- * - Validating credentials via Spring Security AuthenticationManager
- * - Managing concurrent sessions through DB session_version tracking
- * - Emitting WebSocket events for remote logout enforcement
  */
 @Service
 @RequiredArgsConstructor
@@ -47,22 +41,20 @@ public class AuthService {
     @Value("${auth.idle-timeout-ms:60000}")
     private long idleTimeoutMs;
 
-    /**
-     * Registers a new user, hashes their password, and provisions an initial JWT.
-     * 
-     * @param request The un-sanitized registration payload
-     * @return AuthResponse containing the JWT token and user session details
-     */
     @Transactional
     public AuthResponse register(AuthRequest request) {
         String sanitizedUsername = Sanitizer.sanitize(request.getUsername()).toLowerCase();
         String sanitizedEmail = Sanitizer.sanitize(request.getEmail()).toLowerCase();
+        String sanitizedPhone = Sanitizer.sanitize(request.getPhoneNumber());
 
         var user = User.builder()
                 .username(sanitizedUsername)
                 .email(sanitizedEmail)
+                .phoneNumber(sanitizedPhone)
                 .password(passwordEncoder.encode(request.getPassword()))
                 .hasNaturalVoiceAccess(false)
+                .role("ROLE_USER")
+                .planType("FREE")
                 .build();
         userRepository.save(user);
 
@@ -70,21 +62,13 @@ public class AuthService {
         return authenticate(user.getUsername());
     }
 
-    /**
-     * Authenticates an existing user and manages session invalidation.
-     * 
-     * This method increments the user's session_version in the database, ensuring
-     * any previously issued JWTs are immediately invalidated (supporting "logout everywhere").
-     * It also triggers a WebSocket notification to disconnect active frontend clients.
-     * 
-     * @param request The login credentials payload
-     * @return AuthResponse containing the new JWT token and session details
-     */
     @Transactional
     public AuthResponse login(AuthRequest request) {
         String sanitizedIdentifier = Sanitizer.sanitize(request.getUsername()).toLowerCase();
 
-        var user = userRepository.findByUsernameOrEmail(sanitizedIdentifier, sanitizedIdentifier)
+        var user = userRepository.findByUsername(sanitizedIdentifier)
+                .or(() -> userRepository.findByEmail(sanitizedIdentifier))
+                .or(() -> userRepository.findByPhoneNumber(sanitizedIdentifier))
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         if (!user.isActive()) {
@@ -98,24 +82,16 @@ public class AuthService {
                 )
         );
 
-        // Increment session version to invalidate previous tokens using optimized query
         userRepository.incrementSessionVersion(user.getUsername());
         long newSessionVersion = user.getSessionVersion() + 1;
         
-        // Notify existing sessions to logout immediately
         webSocketConfig.notifyLogout(user.getUsername());
         
         log.debug("User {} login. Session Version: {} -> {}", user.getUsername(), user.getSessionVersion(), newSessionVersion);
 
-        return authenticate(user.getUsername(), user.isHasNaturalVoiceAccess(), user.getPlanType(), newSessionVersion);
+        return authenticate(user.getUsername(), user.getRole(), user.isHasNaturalVoiceAccess(), user.getPlanType(), newSessionVersion);
     }
 
-    /**
-     * Increments the user's session_version, effectively logging them out of all devices
-     * by invalidating all previously issued JWTs.
-     * 
-     * @param username The username of the user logging out
-     */
     @Transactional
     public void logout(String username) {
         userRepository.incrementSessionVersion(username);
@@ -129,6 +105,9 @@ public class AuthService {
         
         return AuthResponse.builder()
                 .username(user.getUsername())
+                .email(user.getEmail())
+                .phoneNumber(user.getPhoneNumber())
+                .role(user.getRole())
                 .hasNaturalVoiceAccess(user.isHasNaturalVoiceAccess())
                 .planType(user.getPlanType())
                 .sessionVersion(user.getSessionVersion())
@@ -137,24 +116,32 @@ public class AuthService {
                 .build();
     }
 
-    /**
-     * Internal helper to generate a JWT and construct the AuthResponse.
-     * Embeds the session_version into the JWT claims for stateless validation.
-     */
-    private AuthResponse authenticate(String username, boolean hasNaturalVoiceAccess, String planType, long sessionVersion) {
+    private AuthResponse authenticate(String username, String role, boolean hasNaturalVoiceAccess, String planType, long sessionVersion) {
+        // Safe role handling: Default to USER if null
+        String effectiveRole = (role != null) ? role : "ROLE_USER";
+        
+        // Strip ROLE_ prefix if present for UserBuilder.roles() (which adds it back)
+        String roleName = effectiveRole.startsWith("ROLE_") ? effectiveRole.substring(5) : effectiveRole;
+
         UserDetails userDetails = org.springframework.security.core.userdetails.User.builder()
                 .username(username)
-                .password("") // Password not needed in token validation flow
-                .roles("USER")
+                .password("") 
+                .roles(roleName)
                 .build();
 
         Map<String, Object> claims = new HashMap<>();
         claims.put("sessionVersion", sessionVersion);
+        claims.put("role", effectiveRole); 
+
+        var user = userRepository.findByUsername(username).orElseThrow();
 
         var jwtToken = jwtService.generateToken(claims, userDetails);
         return AuthResponse.builder()
                 .token(jwtToken)
                 .username(username)
+                .email(user.getEmail())
+                .phoneNumber(user.getPhoneNumber())
+                .role(role)
                 .hasNaturalVoiceAccess(hasNaturalVoiceAccess)
                 .planType(planType)
                 .sessionVersion(sessionVersion)
@@ -163,12 +150,8 @@ public class AuthService {
                 .build();
     }
     
-    /**
-     * Overloaded helper maintained for registration backward compatibility.
-     * Performs an extra database read. Prefer the overloaded version with cached attributes.
-     */
     private AuthResponse authenticate(String username) {
         var user = userRepository.findByUsername(username).orElseThrow();
-        return authenticate(username, user.isHasNaturalVoiceAccess(), user.getPlanType(), user.getSessionVersion());
+        return authenticate(username, user.getRole(), user.isHasNaturalVoiceAccess(), user.getPlanType(), user.getSessionVersion());
     }
 }

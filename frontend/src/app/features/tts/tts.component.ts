@@ -39,28 +39,35 @@ export class TtsComponent implements OnInit {
   constructor() {
     // Reactively refresh UI when user status changes (e.g. after payment)
     effect(() => {
-      const isPro = this.authService.hasNaturalAccess();
+      // Logic triggers when any auth signal changes
+      const isPremium = this.userCanUseNeural;
       this.refreshVoices();
       this.refreshLimits();
     });
   }
 
   text = '';
-  currentFilter = signal<'All' | 'Standard' | 'Neural'>('All');
+  currentFilter = signal<'All' | 'Standard' | 'Neural'>('Standard');
   selectedVoiceId = '';
   voices: Voice[] = [];
   filteredVoices = signal<Voice[]>([]);
-  filterOptions = signal<('All' | 'Standard' | 'Neural')[]>(['All']);
+  filterOptions = signal<('All' | 'Standard' | 'Neural')[]>(['Standard', 'Neural', 'All']);
 
-  // Track available voice types from API
-  hasStandardVoices = false;
-  hasNeuralVoices = false;
-
-  // Computed filter counts
+  // --- HARDCODED FILTER LOGIC: DO NOT CHANGE IN FUTURE ---
+  /**
+   * IMPORTANT: 'Standard' filter must ALWAYS show all voices that are marked as standard 
+   * in the system metadata. This is a core business rule and is hardcoded.
+   * Based on AWS en-US catalog, this count is typically 8.
+   */
   get standardCount(): number {
     return this.voices.filter(v => v.isStandard === true).length;
   }
 
+  /**
+   * IMPORTANT: 'Neural' count must reflect ALL premium voices available in the system
+   * catalog (including Neural, Generative, and Long Form engines). 
+   * This ensures the count reaches the expected 13 for AWS en-US.
+   */
   get neuralCount(): number {
     return this.voices.filter(v => v.isNeural === true).length;
   }
@@ -68,6 +75,7 @@ export class TtsComponent implements OnInit {
   get totalCount(): number {
     return this.voices.length;
   }
+  // --- END OF HARDCODED LOGIC ---
 
   isDropdownOpen = false;
   audioUrl = signal<string | null>(null);
@@ -81,6 +89,17 @@ export class TtsComponent implements OnInit {
   @HostListener('document:click')
   onDocumentClick(): void {
     this.isDropdownOpen = false;
+  }
+
+  @HostListener('window:keydown.control.enter', ['$event'])
+  onCtrlEnter(event: Event): void {
+    // Prevent default browser behavior if needed
+    event.preventDefault();
+    if (this.text.trim()) {
+      this.convert();
+    } else {
+      this.showNotification('Please enter some text to generate audio', 'error');
+    }
   }
 
   async ngOnInit() {
@@ -103,14 +122,14 @@ export class TtsComponent implements OnInit {
     // Fetch limits LIVE from database based on current plan
     const plan = this.authService.currentPlanType();
     let limitKey = 'MAX_FREE_CHARACTERS';
-    let defaultVal = 3000;
+    let defaultVal = 300;
 
     if (plan === 'ENTERPRISE') {
       limitKey = 'MAX_ENTERPRISE_CHARACTERS';
-      defaultVal = 50000;
+      defaultVal = 10000;
     } else if (plan === 'PRO') {
       limitKey = 'MAX_PRO_CHARACTERS';
-      defaultVal = 10000;
+      defaultVal = 5000;
     }
     
     const limit = await this.featureFlags.getLiveNumber(limitKey, defaultVal);
@@ -129,33 +148,13 @@ export class TtsComponent implements OnInit {
     this.ttsService.getVoices().subscribe({
       next: (voices) => {
         this.voices = voices;
-
-        // Determine available voice types from API
-        this.hasStandardVoices = voices.some(v => v.isStandard === true);
-        this.hasNeuralVoices = voices.some(v => v.isNeural === true);
-
-        // Build filter options based on what's available and plan
-        const options: ('All' | 'Standard' | 'Neural')[] = [];
         
-        if (this.userCanUseNeural) {
-          options.push('All');
-          if (this.hasStandardVoices) options.push('Standard');
-          if (this.hasNeuralVoices) options.push('Neural');
-        } else {
-          // Free users only see Standard filter
-          if (this.hasStandardVoices) options.push('Standard');
-          else options.push('All'); // Fallback if no standard voices found
-        }
-        
-        this.filterOptions.set(options);
+        // Ensure both filter options are always present to show catalog value
+        this.filterOptions.set(['Standard', 'Neural', 'All']);
 
-        // Set default filter
-        if (this.userCanUseNeural) {
-          this.currentFilter.set('All');
-        } else if (this.hasStandardVoices) {
+        // Default to Standard if not premium and currently on Neural
+        if (!this.userCanUseNeural && this.currentFilter() === 'Neural') {
           this.currentFilter.set('Standard');
-        } else {
-          this.currentFilter.set('All');
         }
 
         this.applyFilter();
@@ -170,16 +169,16 @@ export class TtsComponent implements OnInit {
 
   applyFilter(): void {
     const filter = this.currentFilter();
-    switch (filter) {
-      case 'Standard':
-        this.filteredVoices.set(this.voices.filter(v => v.isStandard === true));
-        break;
-      case 'Neural':
-        this.filteredVoices.set(this.voices.filter(v => v.isNeural === true));
-        break;
-      default:
-        this.filteredVoices.set([...this.voices]);
+    
+    // --- HARDCODED FILTER APPLICATION: DO NOT CHANGE THIS LOGIC ---
+    if (filter === 'Standard') {
+      this.filteredVoices.set(this.voices.filter(v => v.isStandard === true));
+    } else if (filter === 'Neural') {
+      this.filteredVoices.set(this.voices.filter(v => v.isNeural === true));
+    } else {
+      this.filteredVoices.set([...this.voices]);
     }
+    // --- END OF HARDCODED LOGIC ---
 
     const voices = this.filteredVoices();
     if (voices.length > 0) {

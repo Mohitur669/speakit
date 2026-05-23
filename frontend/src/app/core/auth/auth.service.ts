@@ -28,6 +28,8 @@ export class AuthService implements OnDestroy {
 
   // Signal-based reactive state for consumption by UI components
   currentUser = signal<string | null>(localStorage.getItem('username'));
+  currentUserEmail = signal<string | null>(localStorage.getItem('email'));
+  currentUserPhone = signal<string | null>(localStorage.getItem('phoneNumber'));
   token = signal<string | null>(localStorage.getItem('token'));
   hasNaturalAccess = signal<boolean>(localStorage.getItem('hasNaturalAccess') === 'true');
   
@@ -63,18 +65,20 @@ export class AuthService implements OnDestroy {
   }
 
   private setupWebSocket(): void {
-    if (this.ws) this.ws.close();
+    if (this.ws) {
+      this.ws.close();
+    }
     const token = this.token();
     if (!token) return;
     let wsUrl = environment.apiUrl.startsWith('http') ? environment.apiUrl.replace(/^http/, 'ws') : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}${environment.apiUrl}`;
     wsUrl += '/ws/logout?token=' + token;
     this.ws = new WebSocket(wsUrl);
-    this.ws.onmessage = (e) => { if (e.data === 'LOGOUT') this.logout('Another login detected'); };
+    this.ws.onmessage = (event) => { if (event.data === 'LOGOUT') this.logout('Another login detected'); };
     this.ws.onclose = () => { if (this.isLoggedIn() && !this.isLoggingOut) setTimeout(() => this.setupWebSocket(), 5000); };
   }
 
   private setupBroadcastListener(): void {
-    this.logoutChannel.onmessage = (e) => { if (e.data.type === 'LOGOUT') this.clearSessionAfterLogout(e.data.reason, true); };
+    this.logoutChannel.onmessage = (event) => { if (event.data.type === 'LOGOUT') this.clearSessionAfterLogout(event.data.reason, true); };
   }
 
   register(credentials: RegisterCredentials): Observable<AuthResponse> {
@@ -114,21 +118,33 @@ export class AuthService implements OnDestroy {
     this.removeActivityListeners();
     if (this.visibilityCallback) document.removeEventListener('visibilitychange', this.visibilityCallback);
     
-    ['token', 'username', 'hasNaturalAccess', 'planType', 'loginTimestamp', 'sessionVersion', 'sessionDurationMs', 'idleTimeoutMs']
-      .forEach(k => localStorage.removeItem(k));
+    // 1. Comprehensive LocalStorage Purge
+    localStorage.clear(); // Nuclear option for complete safety
 
+    // 2. Clear Application State
     this.ttsService.clearCache();
     this.token.set(null);
     this.currentUser.set(null);
+    this.currentUserEmail.set(null);
+    this.currentUserPhone.set(null);
     this.hasNaturalAccess.set(false);
     this.planTypeSignal.set(null);
     this.currentSessionVersion.set(0);
+
+    // 3. Clear Browser Cache (Best effort via Service Worker if present, or simply reload)
+    if ('caches' in window) {
+      caches.keys().then(names => {
+        for (let name of names) caches.delete(name);
+      });
+    }
   }
 
   private setSession(res: AuthResponse): void {
     this.ttsService.clearCache();
     localStorage.setItem('token', res.token);
     localStorage.setItem('username', res.username);
+    localStorage.setItem('email', res.email || '');
+    localStorage.setItem('phoneNumber', res.phoneNumber || '');
     localStorage.setItem('hasNaturalAccess', String(res.hasNaturalVoiceAccess));
     localStorage.setItem('planType', res.planType || 'FREE');
     localStorage.setItem('loginTimestamp', Date.now().toString());
@@ -138,6 +154,8 @@ export class AuthService implements OnDestroy {
 
     this.token.set(res.token);
     this.currentUser.set(res.username);
+    this.currentUserEmail.set(res.email || '');
+    this.currentUserPhone.set(res.phoneNumber || '');
     this.hasNaturalAccess.set(res.hasNaturalVoiceAccess);
     this.planTypeSignal.set(res.planType || 'FREE');
     this.currentSessionVersion.set(res.sessionVersion);
@@ -156,8 +174,8 @@ export class AuthService implements OnDestroy {
     const events = ['mousedown', 'mousemove', 'keypress', 'touchstart', 'scroll'];
     this.removeActivityListeners();
     const handler = () => this.resetIdleTimer();
-    events.forEach(e => window.addEventListener(e, handler));
-    events.forEach(e => this.activityListeners.push({ event: e, handler }));
+    events.forEach(event => window.addEventListener(event, handler));
+    events.forEach(event => this.activityListeners.push({ event, handler }));
   }
 
   private resetIdleTimer(): void {
@@ -198,8 +216,12 @@ export class AuthService implements OnDestroy {
     this.http.get<AuthResponse>(`${this.apiUrl}/me`).subscribe({
       next: (res) => {
         this.hasNaturalAccess.set(res.hasNaturalVoiceAccess);
+        this.currentUserEmail.set(res.email || '');
+        this.currentUserPhone.set(res.phoneNumber || '');
         this.planTypeSignal.set(res.planType || (res.hasNaturalVoiceAccess ? 'PRO' : 'FREE'));
         localStorage.setItem('hasNaturalAccess', String(res.hasNaturalVoiceAccess));
+        localStorage.setItem('email', this.currentUserEmail() || '');
+        localStorage.setItem('phoneNumber', this.currentUserPhone() || '');
         localStorage.setItem('planType', this.currentPlanType());
       },
       error: (err) => this.logger.error('Failed to refresh user status', err)

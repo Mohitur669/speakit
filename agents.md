@@ -4,11 +4,11 @@ This document serves as the authoritative architectural blueprint and engineerin
 
 ---
 
-## 1. Project Overview & Tech Stack
+# 1. Project Overview & Tech Stack
 
 SpeakIT is a production-grade SaaS for AI voice generation. It is designed for high concurrency, minimal database latency, and sub-second TTS delivery.
 
-### Tech Stack
+## Tech Stack
 - **Backend:** Java 21, Spring Boot 3.x, Spring Security (JWT)
 - **Data Layer:** PostgreSQL, Hibernate/JPA, Bucket4j (Rate Limiting)
 - **Frontend:** Angular 21.x (Standalone Components, Signals), Tailwind CSS
@@ -16,60 +16,65 @@ SpeakIT is a production-grade SaaS for AI voice generation. It is designed for h
 
 ---
 
-## 2. Backend Architecture Standards
+# 2. Backend Architecture Standards
 
-### Layered Responsibility
+## Layered Responsibility
 1. **Controllers:** Thin wrappers. Use `@Valid` for DTO validation. Accept `HttpServletRequest` to access pre-cached user attributes.
 2. **Services:** Domain logic only. Must be `@Transactional` where state changes occur.
 3. **Repositories:** Use JPA Interface Projections for READ operations. Use `@Modifying` JPQL for high-frequency updates.
-- **DTOs:** Mandatory for all API input/output. Never expose Entities directly.
-- **Entities:** Must extend `BaseEntity` for auditing. Use `FetchType.LAZY` for all relationships.
-- **OSIV:** `spring.jpa.open-in-view` must be set to `false` in production to prevent unintended database queries during the view rendering phase.
+4. **DTOs:** Mandatory for all API input/output. Never expose Entities directly.
+5. **Entities:** Must extend `BaseEntity` for auditing. Use `FetchType.LAZY` for all relationships.
+6. **OSIV:** `spring.jpa.open-in-view=false` in production to prevent unintended database queries during view rendering.
 
-### High-Performance Data Access (Mandatory)
+## High-Performance Data Access (Mandatory)
 - **Eliminate Over-fetching:** Use projections to pull only required fields.
 - **N+1 Prevention:** Never query the User entity inside a loop or repeatedly across a filter-controller chain.
-- **Request Attribute Caching:** `JwtAuthenticationFilter` pre-fetches `userId` and `hasNaturalVoiceAccess`. **Controllers must read from attributes first.**
+- **Request Attribute Caching:** `JwtAuthenticationFilter` pre-fetches `userId` and `hasNaturalVoiceAccess`. Controllers must read from request attributes first.
 - **Atomic Updates:** Use `@Modifying` queries for session increments or flag toggles.
 - **Relationship Linking:** Use `userRepository.getReferenceById(id)` when saving child entities.
 
 ---
 
-## 3. Database & JPA Standards
+# 3. Database & JPA Standards
 
-### Schema Design & Naming
-- **Snake Case:** Always use `snake_case` for table and column names.
-- **Auditing:** All production tables must include `created_at`, `updated_at`, and optionally `version`.
-- **Soft Deletes:** Use `is_active` boolean (and `deleted_at` if needed) to preserve data integrity.
-- **Constraints:** Enforce `VARCHAR` limits (e.g., username=50, email=100) to match DTO validation.
-- **Foreign Keys:** Types must always match the referenced PK type (`BIGINT`). Use consistent naming: `{entity}_id` (e.g., `user_id`).
+## Schema Design & Naming
+- Always use `snake_case` for table and column names.
+- All production tables must include:
+  - `created_at`
+  - `updated_at`
+  - optionally `version`
+- Soft deletes should use:
+  - `is_active`
+  - optionally `deleted_at`
+- Enforce VARCHAR limits to match DTO validation.
+- Foreign key types must always match referenced PK types (`BIGINT`).
 
-### Database Column Ordering
-All tables must follow this enterprise ordering pattern:
+## Database Column Ordering
 1. Primary Key (`id`)
-2. Foreign Keys (`user_id`, etc.)
+2. Foreign Keys (`user_id`)
 3. Core Business Fields
-4. Status/Boolean Fields (`is_active`, etc.)
+4. Status/Boolean Fields
 5. Analytics/Tracking Fields
-6. Audit Fields (`created_at`, `updated_at`)
-7. Soft Delete Fields (`deleted_at`)
-8. Version Fields (`version`)
+6. Audit Fields
+7. Soft Delete Fields
+8. Version Fields
 
-### Indexing Strategy
-- **Mandatory Indexing:** Index all Foreign Keys and frequently sorted/filtered columns (`username`, `created_at`).
-- **Composite Indexes:** Use for multi-column search paths to optimize query plans.
-- **Unique Constraints:** Apply to business identifiers (`username`, `email`).
+## Indexing Strategy
+- Index all foreign keys.
+- Index frequently filtered/sorted columns.
+- Use composite indexes for multi-column query paths.
+- Apply unique constraints to business identifiers.
 
 ---
 
-## 4. Primary Key & Sequence Standards
+# 4. Primary Key & Sequence Standards
 
-### ID Generation Strategy
-- **Internal IDs:** Use numeric `Long` primary keys with `GenerationType.SEQUENCE`. This improves insert performance and reduces database contention compared to `IDENTITY`.
-- **Dedicated Sequences:** Each major table must have its own sequence named `{table_name}_seq`.
-- **Never Use:** `GenerationType.AUTO` or shared default Hibernate sequences.
+## ID Generation Strategy
+- Use numeric `Long` primary keys.
+- Use `GenerationType.SEQUENCE`.
+- Each table must have dedicated sequences.
 
-**Preferred Entity Pattern:**
+### Preferred Pattern
 ```java
 @Id
 @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "user_seq")
@@ -81,101 +86,258 @@ All tables must follow this enterprise ordering pattern:
 private Long id;
 ```
 
-### Allocation Size Rules
-- Use optimized `allocationSize` to reduce database round-trips.
-- Default: `50`.
-- Heavy-write tables: `100`.
+## Allocation Size Rules
+- Default: `50`
+- Heavy write tables: `100`
 
 ---
 
-## 5. Frontend Architecture Standards
+# 5. Frontend Architecture Standards
 
-### Angular Style Guide
-- **Standalone Components:** All new components must be standalone.
-- **Signals:** Prefer Signals (`signal`, `computed`, `effect`) for local component state.
-- **State Flow:** Services hold global state; Components consume state via Signals.
+## Angular Style Guide
+- All new components must be standalone.
+- Prefer Angular Signals for local state.
+- Services hold global state.
+- Components consume state via Signals.
 
-### Folder Structure
+## Folder Structure
 ```text
 src/app/
- ├── core/         # Singletons: Auth, Interceptors, Guards, API Services
- ├── shared/       # Reusable UI: Navbar, Footer, Toast, UI Kits
- ├── features/     # Domain Modules: auth, tts, dashboard, marketing
- └── environments/ # Runtime & Build configs
+ ├── core/
+ ├── shared/
+ ├── features/
+ └── environments/
 ```
 
-### UI/UX Rules
-- **Consistency:** Use Tailwind CSS utility classes.
-- **Plan Enforcement:** Components must dynamically adjust UI (e.g., `maxlength`, visibility) based on `authService.hasNaturalAccess()`.
-- **Loading States:** Every async action must have a `loading` signal and corresponding UI feedback.
+## UI/UX Rules
+- Use Tailwind utility classes consistently.
+- Components must dynamically adapt based on plan/access.
+- Every async action must have loading state feedback.
 
 ---
 
-## 7. Security & Validation
+# 6. Security & Validation
 
-...
-- **JWT:** Stateless. Validated against `session_version` in the DB.
-- **Lowercase Enforcement:** Usernames and Emails must always be processed and stored in **lowercase**. This is enforced both at the UI level (input forcing) and in the `AuthService` logic to prevent case-sensitive authentication issues.
----
+## Authentication
+- JWT must remain stateless.
+- Validate JWT against `session_version`.
 
-## 8. Logging & Observability Standards
+## Lowercase Enforcement
+- Usernames and emails must always be stored and processed in lowercase.
+- Enforce both frontend and backend normalization.
 
-### Backend Structured Logging
-- **Request Tracing:** Every request is assigned a unique 8-character `requestId` via `RequestLoggingFilter`, stored in the SLF4J MDC. 
-- **Pattern:** Logs must follow the standard pattern: `[timestamp] [level] [requestId] [logger] : message`.
-- **MDC Usage:** The `requestId` is automatically included in all logs generated during a request thread.
-
-### Frontend Observability
-- **Centralized Logger:** All logging must go through `LoggerService`. Never use `console.log` directly in feature components or services.
-- **Environment Aware:** `LoggerService` automatically suppresses `debug` and `info` logs in production based on the `LOG_LEVEL` environment variable.
-- **Sensitive Data Protection:** The logger includes a `sanitize` mechanism that automatically redacts fields like `token`, `password`, and `jwt` from log arguments.
-- **Standard Levels:**
-    - `debug`: Low-level tracing (e.g., WebSocket connection attempts).
-    - `info`: Key milestones (e.g., session hydration).
-    - `warn`: Recoverable errors (e.g., 401/403 auth failures).
-    - `error`: Fatal exceptions (e.g., API unreachable).
-
-### Production Log Management
-- **File Rotation:** Configured in `application.properties` with a 10MB per-file limit and 30-day retention.
-...
-- **Root Level:** Default is `INFO`. Spring internals are suppressed to `WARN` to reduce noise.
-- **Sensitive Data:** NEVER log passwords, tokens, or raw PII. Mask identifiers if logging is required for debugging.
-
-### Exception Logging
-- **Global Handler:** `GlobalExceptionHandler` logs all errors with the `requestId`.
-- **Level Usage:**
-    - `ERROR`: System failures, integration issues (AWS Polly, DB).
-    - `WARN`: User-driven errors (Validation failed, Rate limit hit).
-    - `INFO`: Critical business milestones (User registered, synthesis successful).
+## Sensitive Data Protection
+- Never expose internal entities directly.
+- Never log passwords, tokens, JWTs, or sensitive PII.
+- Sanitize logs automatically.
 
 ---
 
-## 9. AI Agent Database Rules
+# 7. Logging & Observability Standards
 
-### Investigation Phase (Read-Before-Write)
-1. **Analyze Relationships:** Inspect existing foreign keys and JPA mappings.
-2. **Analyze Query Patterns:** Check repositories for existing projections and N+1 risks.
-3. **Analyze Frontend Usage:** Only fetch fields required by the actual UI screens.
+## Backend Structured Logging
+- Every request receives unique `requestId`.
+- Logs must follow:
+```text
+[timestamp] [level] [requestId] [logger] : message
+```
 
-### Implementation Phase
-- **Preserve Compatibility:** Avoid destructive schema changes. Use migrations.
-- **Maintain Migration Safety:** When adding `NOT NULL` columns to existing tables, make them nullable in JPA first or provide a backfill SQL script.
-- **Consistent Naming:** Match existing project conventions (`snake_case` DB, `camelCase` Java).
+## Frontend Logging
+- Always use centralized `LoggerService`.
+- Never use direct `console.log`.
+- Suppress debug/info logs in production.
+
+## Log Levels
+- `debug`
+- `info`
+- `warn`
+- `error`
+
+## Exception Logging
+- `GlobalExceptionHandler` must include `requestId`.
+- Use proper log severity levels.
 
 ---
 
-## 8. Local Development Commands
+# 8. AI Agent Database Rules
+
+## Investigation Phase (Read-Before-Write)
+Before modifying anything:
+1. Analyze existing relationships.
+2. Analyze repositories and query patterns.
+3. Analyze frontend usage.
+4. Identify potential N+1 risks.
+5. Identify backward compatibility impact.
+
+## Implementation Phase
+- Avoid destructive schema changes.
+- Use migrations.
+- Preserve compatibility.
+- Maintain naming consistency.
+
+---
+
+# 9. Critical Stability & Backward Compatibility Rules
+
+## Preserve Existing Business Logic
+- NEVER change existing business logic unless absolutely necessary.
+- Preserve:
+  - Authentication flow
+  - Authorization rules
+  - Payment flow
+  - Subscription enforcement
+  - Validation logic
+  - Rate limiting
+  - Analytics logic
+  - Existing workflows
+  - Existing API contracts
+
+## Backward Compatibility (Mandatory)
+All updates must remain backward compatible.
+
+Do NOT break:
+- Existing APIs
+- DTO contracts
+- Database schema compatibility
+- Frontend bindings
+- Existing integrations
+- Existing authentication/session behavior
+
+## Comment Preservation Rule
+- NEVER delete existing comments.
+- NEVER remove TODOs, documentation, notes, or architectural explanations.
+- Existing comments are part of the engineering knowledge system.
+
+Allowed:
+- Add comments
+- Improve clarity
+- Append explanations
+
+Not allowed:
+- Remove historical developer context without replacement clarification.
+
+## Minimal Change Principle
+- Prefer the smallest safe implementation.
+- Avoid unnecessary refactoring.
+- Avoid unrelated formatting changes.
+- Avoid renaming stable modules unless required.
+
+## Safe Refactoring Rules
+If refactoring is unavoidable:
+- Preserve public APIs.
+- Preserve behavior.
+- Preserve logs.
+- Preserve validation rules.
+- Preserve DB compatibility.
+- Preserve monitoring/tracing behavior.
+
+## UI/UX Preservation
+- Do not redesign existing UI unless explicitly requested.
+- Preserve:
+  - responsiveness
+  - dark/light mode
+  - accessibility
+  - existing design system consistency
+
+## Database Safety Rules
+- Never drop columns/tables unless explicitly required.
+- New columns should initially be nullable or safely backfilled.
+- Preserve relationships and constraints.
+
+## Logging Preservation
+- Do not remove existing logs unless duplicated/harmful.
+- Preserve observability and audit behavior.
+
+## Final Validation Requirement
+Before finalizing implementation:
+1. Verify existing features still work.
+2. Verify backward compatibility.
+3. Verify comments remain intact.
+4. Verify no unrelated logic changed.
+5. Verify existing business flows remain unchanged.
+
+---
+
+# 10. Local Development Commands
 
 | Task | Command |
-| :--- | :--- |
-| **Backend Run** | `./mvnw spring-boot:run` |
-| **Backend Build** | `./mvnw clean package -DskipTests` |
-| **Frontend Run** | `npm start` |
-| **Frontend Build** | `npm run build` |
-| **Full Stack** | `docker compose up --build` |
+|---|---|
+| Backend Run | `./mvnw spring-boot:run` |
+| Backend Build | `./mvnw clean package -DskipTests` |
+| Frontend Run | `npm start` |
+| Frontend Build | `npm run build` |
+| Full Stack | `docker compose up --build` |
 
 ---
 
-## 9. Deployment Constraints
-- **Keep-Alive:** GitHub Action pings `/api/auth/ping` every 25 mins.
-- **CORS:** Origins are restricted via `application.properties`. Update for new environments.
+# 11. Deployment Constraints
+
+## Keep Alive
+- GitHub Action pings `/api/auth/ping` every 25 minutes.
+
+## CORS
+- Origins are restricted via configuration.
+- Update allowed origins carefully.
+
+## Production Safety
+- Never expose secrets in frontend builds.
+- Use environment variables.
+- Preserve production logging behavior.
+
+---
+
+# 12. AI Agent Operational Rules
+
+## Read Before Modify
+Before editing any file:
+1. Read surrounding implementation.
+2. Understand dependencies.
+3. Check service/repository/controller usage.
+4. Check frontend integration impact.
+5. Check DTO compatibility.
+
+## Avoid Destructive Changes
+- Never mass rewrite files.
+- Never replace stable architecture unnecessarily.
+- Never remove unused-looking code without investigation.
+
+## Enterprise Coding Standards
+All generated code must be:
+- Production-ready
+- Clean
+- Maintainable
+- Modular
+- Type-safe
+- Performance-aware
+- Secure-by-default
+
+## Testing Expectations
+When implementing features:
+- Preserve existing tests.
+- Avoid breaking integration flows.
+- Ensure API compatibility.
+
+## Documentation Rules
+- Preserve all existing documentation.
+- Add concise explanations for complex logic.
+- Keep architecture decisions discoverable.
+
+---
+
+# 13. Final Engineering Principle
+
+The platform is production-grade.
+
+Every modification must prioritize:
+1. Stability
+2. Backward compatibility
+3. Performance
+4. Security
+5. Maintainability
+6. Minimal-risk implementation
+
+When uncertain:
+- Preserve existing behavior.
+- Prefer additive changes over destructive changes.
+- Avoid assumptions.
+- Analyze before modifying.

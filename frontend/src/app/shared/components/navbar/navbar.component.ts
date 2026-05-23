@@ -15,34 +15,27 @@ import { ThemeService } from '../../../core/services/theme.service';
   template: `
     <header class="sticky top-0 z-50 w-full bg-white/80 dark:bg-primary-900/80 backdrop-blur-xl border-b border-primary-200 dark:border-primary-800">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex items-center justify-between h-16">
+        <div class="flex items-center justify-between h-16 gap-4">
 
           <!-- Logo -->
-          <a routerLink="/" class="flex items-center gap-3 group">
+          <a routerLink="/" class="flex items-center gap-2 sm:gap-3 group flex-shrink-0">
             <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-blue to-brand-purple flex items-center justify-center shadow-md group-hover:shadow-lg group-hover:scale-105 transition-all">
               <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
               </svg>
             </div>
-            <span class="text-lg font-semibold text-primary-900 dark:text-white tracking-tight">SpeakIT</span>
+            <span class="text-base sm:text-lg font-semibold text-primary-900 dark:text-white tracking-tight">SpeakIT</span>
           </a>
 
           <!-- Desktop Nav -->
-          <nav class="hidden md:flex items-center gap-8">
+          <nav class="hidden md:flex items-center gap-6 lg:gap-8">
             <a routerLink="/" fragment="home" class="text-sm font-medium text-primary-500 hover:text-primary-900 dark:text-primary-400 dark:hover:text-white transition-colors">Home</a>
             <a routerLink="/" fragment="features" class="text-sm font-medium text-primary-500 hover:text-primary-900 dark:text-primary-400 dark:hover:text-white transition-colors">Features</a>
             <a routerLink="/" fragment="pricing" class="text-sm font-medium text-primary-500 hover:text-primary-900 dark:text-primary-400 dark:hover:text-white transition-colors">Pricing</a>
-            <!-- Go to App link commented out as requested -->
-            <!-- 
-            <a *ngIf="authService.currentUser()" routerLink="/tts" class="text-sm font-semibold text-brand-blue hover:text-brand-blue/80 transition-colors flex items-center gap-1.5">
-              Go to App
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
-            </a>
-            -->
           </nav>
 
           <!-- Actions -->
-          <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
             <!-- Theme Toggle -->
             <button (click)="themeService.toggleTheme()"
               class="p-2 rounded-lg text-primary-500 hover:text-primary-900 hover:bg-primary-100 dark:text-primary-400 dark:hover:text-white dark:hover:bg-primary-800 transition-all"
@@ -57,17 +50,17 @@ import { ThemeService } from '../../../core/services/theme.service';
 
             <!-- User Menu -->
             <ng-container *ngIf="authService.currentUser() as user; else guest">
-              <div class="flex items-center gap-2">
+              <div class="flex items-center gap-2 sm:gap-3">
                 <!-- User + Plan Badge (Merged) -->
-                <div class="flex items-center justify-center gap-2 w-auto h-9 px-3 rounded-full bg-primary-100 dark:bg-primary-800 border border-primary-200 dark:border-primary-700"
+                <div class="flex items-center justify-center gap-1.5 sm:gap-2 w-auto h-9 px-2 sm:px-3 rounded-full bg-primary-100 dark:bg-primary-800 border border-primary-200 dark:border-primary-700"
                   [ngClass]="{'bg-accent-50 dark:bg-accent-500/10 border-accent-200 dark:border-accent-500/30': authService.hasNaturalAccess()}">
                   <div class="w-5 h-5 rounded-full bg-gradient-to-br from-brand-blue to-brand-purple flex items-center justify-center flex-shrink-0">
                     <span class="text-[9px] font-bold text-white">{{ user.charAt(0).toUpperCase() }}</span>
                   </div>
-                  <span class="text-xs font-medium text-primary-700 dark:text-primary-200 truncate max-w-[100px]">{{ user }}</span>
+                  <span class="hidden sm:inline text-xs font-medium text-primary-700 dark:text-primary-200 truncate max-w-[100px]">{{ user }}</span>
                   <ng-container *ngIf="authService.currentPlanType() !== 'FREE'">
-                    <span class="w-2 h-2 rounded-full bg-accent-500 animate-pulse"></span>
-                    <span class="text-xs font-semibold text-accent-600 dark:text-accent-400">
+                    <span class="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span class="text-[10px] sm:text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                       {{ authService.currentPlanType() | titlecase }}
                     </span>
                   </ng-container>
@@ -75,7 +68,7 @@ import { ThemeService } from '../../../core/services/theme.service';
 
                 <!-- Sign Out -->
                 <button (click)="logout()"
-                  class="w-9 h-9 rounded-full text-primary-500 hover:text-primary-700 hover:bg-primary-100 dark:text-primary-400 dark:hover:text-white dark:hover:bg-primary-800 border border-primary-200 dark:border-primary-700 transition-all flex items-center justify-center"
+                  class="w-8 h-8 sm:w-9 sm:h-9 rounded-full text-primary-500 hover:text-primary-700 hover:bg-primary-100 dark:text-primary-400 dark:hover:text-white dark:hover:bg-primary-800 border border-primary-200 dark:border-primary-700 transition-all flex items-center justify-center"
                   aria-label="Sign out">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
@@ -85,13 +78,13 @@ import { ThemeService } from '../../../core/services/theme.service';
             </ng-container>
 
             <ng-template #guest>
-              <div class="flex items-center gap-2">
+              <div class="flex items-center gap-1 sm:gap-2">
                 <a routerLink="/login"
-                  class="px-4 py-2 text-sm font-medium text-primary-600 hover:text-primary-900 hover:bg-primary-100 dark:text-primary-300 dark:hover:text-white dark:hover:bg-primary-800 rounded-lg transition-all">
+                  class="px-2 sm:px-4 py-2 text-xs sm:text-sm font-medium text-primary-600 hover:text-primary-900 hover:bg-primary-100 dark:text-primary-300 dark:hover:text-white dark:hover:bg-primary-800 rounded-lg transition-all">
                   Sign in
                 </a>
                 <a routerLink="/signup"
-                  class="px-4 py-2 text-sm font-semibold text-white bg-brand-blue hover:bg-brand-blue/90 rounded-lg shadow-sm hover:shadow-md transition-all">
+                  class="px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white bg-brand-blue hover:bg-brand-blue/90 rounded-lg shadow-sm hover:shadow-md transition-all whitespace-nowrap">
                   Get Started
                 </a>
               </div>

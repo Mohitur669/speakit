@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS users (
     -- Core Business Data
     username VARCHAR(50) NOT NULL UNIQUE,
     email VARCHAR(100) NOT NULL UNIQUE,
+    phone_number VARCHAR(15) NOT NULL UNIQUE, -- NOT NULL enforced
     password VARCHAR(255) NOT NULL,
 
     -- Status/Flags
@@ -136,5 +137,36 @@ INSERT INTO system_parameters (parameter_name, parameter_value, description) VAL
 ('MAX_FREE_CHARACTERS', '300', 'Character limit for free tier requests'),
 ('MAX_PRO_CHARACTERS', '5000', 'Character limit for Pro tier requests'),
 ('MAX_ENTERPRISE_CHARACTERS', '10000', 'Character limit for Enterprise tier requests'),
-('SHOW_BETA_FEATURES', 'false', 'Toggle for experimental UI components')
+('SHOW_BETA_FEATURES', 'false', 'Toggle for experimental UI components'),
+('SYSTEM_STATUS', 'Operational', 'Current live status of the AI voice engine'),
+('FREE_PLAN_FEATURES', 'Standard Voices;300 chars / request', 'Features list for free tier'),
+('PRO_PLAN_FEATURES', '5,000 chars / request;Natural/Neural Voices;Priority Support', 'Features list for pro tier'),
+('ENTERPRISE_PLAN_FEATURES', 'Unlimited Characters;API Access;Dedicated Support', 'Features list for enterprise tier')
 ON CONFLICT (parameter_name) DO NOTHING;
+
+-- Accepted values for SYSTEM_STATUS
+-- Emerald: "Operational"
+-- Amber: "Maintenance"
+-- Red: "Outage"
+
+
+
+-- Migration Helper for existing databases
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='phone_number') THEN
+        ALTER TABLE users ADD COLUMN phone_number VARCHAR(15);
+        -- Populate with username as temporary unique placeholder to avoid nulls
+        UPDATE users SET phone_number = username WHERE phone_number IS NULL;
+        ALTER TABLE users ALTER COLUMN phone_number SET NOT NULL;
+        ALTER TABLE users ADD CONSTRAINT users_phone_number_unique UNIQUE (phone_number);
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='role') THEN
+        ALTER TABLE users ADD COLUMN role VARCHAR(20) DEFAULT 'USER' NOT NULL;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='plan_type') THEN
+        ALTER TABLE users ADD COLUMN plan_type VARCHAR(20) DEFAULT 'FREE' NOT NULL;
+    END IF;
+END $$;

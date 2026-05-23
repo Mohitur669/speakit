@@ -116,9 +116,10 @@ public class RazorpayService {
         user.setPlanType(planStr);
         userRepository.save(user);
 
-        // Ensure subscription record is consistent
-        if (payment.getSubscription() == null) {
-            Subscription subscription = Subscription.builder()
+        // Ensure subscription record is consistent and ACTIVE
+        Subscription subscription = payment.getSubscription();
+        if (subscription == null) {
+            subscription = Subscription.builder()
                     .user(user)
                     .planType(PlanType.PRO)
                     .status(SubscriptionStatus.ACTIVE)
@@ -128,6 +129,11 @@ public class RazorpayService {
             
             subscriptionRepository.save(subscription);
             payment.setSubscription(subscription);
+        } else {
+            subscription.setStatus(SubscriptionStatus.ACTIVE);
+            subscription.setCurrentPeriodStart(LocalDateTime.now());
+            subscription.setCurrentPeriodEnd(LocalDateTime.now().plusMonths(1));
+            subscriptionRepository.save(subscription);
         }
         
         paymentRepository.save(payment);

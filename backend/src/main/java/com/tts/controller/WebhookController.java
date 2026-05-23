@@ -7,6 +7,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/v1/webhooks")
 @RequiredArgsConstructor
@@ -16,7 +19,7 @@ public class WebhookController {
     private final WebhookService webhookService;
 
     @PostMapping("/razorpay")
-    public ResponseEntity<String> handleRazorpayWebhook(
+    public ResponseEntity<Map<String, String>> handleRazorpayWebhook(
             @RequestBody String payload,
             @RequestHeader("X-Razorpay-Signature") String signature,
             HttpServletRequest request) {
@@ -24,10 +27,10 @@ public class WebhookController {
         log.info("Received Razorpay Webhook");
         try {
             webhookService.processWebhook(payload, signature);
-            return ResponseEntity.ok("OK");
+            return ResponseEntity.ok(Collections.singletonMap("status", "ok"));
         } catch (Exception e) {
             log.error("Webhook processing failed", e);
-            return ResponseEntity.status(500).body(e.getMessage());
+            return ResponseEntity.status(400).body(Collections.singletonMap("error", e.getMessage()));
         }
     }
 }

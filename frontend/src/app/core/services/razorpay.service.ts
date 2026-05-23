@@ -68,9 +68,9 @@ export class RazorpayService {
           await this.verifyPayment(response);
         },
         prefill: {
-          name: '', // Optional: Fill from user profile
-          email: '',
-          contact: ''
+          name: this.authService.currentUser() || '',
+          email: this.authService.currentUserEmail() || '',
+          contact: this.authService.currentUserPhone() || ''
         },
         theme: {
           color: '#3B82F6'
