@@ -261,8 +261,8 @@ export class LandingComponent implements OnInit {
   authService = inject(AuthService);
   featureFlags = inject(FeatureFlagService);
 
-  proPrice = signal<number>(499);
-  enterprisePrice = signal<number>(1999);
+  proPrice = computed(() => Number(this.featureFlags.getCached('PRO_PLAN_PRICE_INR', '499')));
+  enterprisePrice = computed(() => Number(this.featureFlags.getCached('ENTERPRISE_PLAN_PRICE_INR', '1999')));
 
   // Computed signals for features (Cached Track)
   freeFeatures = computed(() => this.getPlanFeatures('FREE'));
@@ -275,24 +275,18 @@ export class LandingComponent implements OnInit {
   }
 
   async ngOnInit() {
-    // 1. Fetch UI Flags (Cached) - INCLUDES PLAN FEATURES
+    // Combine everything into ONE batch request for maximum speed
+    // Computed signals (proPrice, enterprisePrice, features) will auto-update when this finishes
     await this.featureFlags.init([
       'MAX_FREE_CHARACTERS', 
       'MAX_PRO_CHARACTERS', 
       'ENABLE_RAZORPAY',
       'FREE_PLAN_FEATURES',
       'PRO_PLAN_FEATURES',
-      'ENTERPRISE_PLAN_FEATURES'
+      'ENTERPRISE_PLAN_FEATURES',
+      'PRO_PLAN_PRICE_INR',
+      'ENTERPRISE_PLAN_PRICE_INR'
     ]);
-
-    // 2. Fetch Pricing (LIVE - No Cache)
-    const [pro, ent] = await Promise.all([
-      this.featureFlags.getLiveNumber('PRO_PLAN_PRICE_INR', 499),
-      this.featureFlags.getLiveNumber('ENTERPRISE_PLAN_PRICE_INR', 1999)
-    ]);
-    
-    this.proPrice.set(pro);
-    this.enterprisePrice.set(ent);
   }
 
   buyPlan(plan: string, amount: number) {
