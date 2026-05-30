@@ -3,10 +3,11 @@
  * account creation and automatic login on success.
  * Includes a custom searchable country code selector.
  */
-import { Component, inject, signal, OnInit, HostListener } from '@angular/core';
+import { Component, inject, signal, OnInit, HostListener, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
+import { Subject, debounceTime, takeUntil } from 'rxjs';
 import { AuthService } from '../../../core/auth/auth.service';
 import { NavbarComponent } from '../../../shared/components/navbar/navbar.component';
 
@@ -36,16 +37,20 @@ interface Country {
               <form (submit)="onSubmit()" class="space-y-5">
                 <div>
                   <label class="block text-sm font-medium text-primary-700 dark:text-primary-300 mb-2">Username</label>
-                  <input [(ngModel)]="username" (input)="username = username.toLowerCase()" name="username" type="text" required
+                  <input [(ngModel)]="username" (input)="onUsernameInput()" name="username" type="text" required
                     placeholder="johndoe"
-                    class="w-full px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all lowercase">
+                    class="w-full px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all lowercase"
+                    [ngClass]="{'border-red-500': usernameTaken()}">
+                  <p *ngIf="usernameTaken()" class="text-xs text-red-500 mt-1">Username is already taken</p>
                 </div>
 
                 <div>
                   <label class="block text-sm font-medium text-primary-700 dark:text-primary-300 mb-2">Email</label>
-                  <input [(ngModel)]="email" (input)="email = email.toLowerCase()" name="email" type="email" required
+                  <input [(ngModel)]="email" (input)="onEmailInput()" name="email" type="email" required
                     placeholder="you@example.com"
-                    class="w-full px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all lowercase">
+                    class="w-full px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all lowercase"
+                    [ngClass]="{'border-red-500': emailTaken()}">
+                  <p *ngIf="emailTaken()" class="text-xs text-red-500 mt-1">Email is already taken</p>
                 </div>
 
                 <div class="relative">
@@ -84,10 +89,13 @@ interface Country {
                     </div>
 
                     <!-- Number Input -->
-                    <input [(ngModel)]="phoneNumber" name="phoneNumber" type="tel" required
+                    <input [(ngModel)]="phoneNumber" (input)="onPhoneInput()" (keypress)="onlyNumbers($event)" name="phoneNumber" type="tel" required
+                      inputmode="numeric" pattern="[0-9]*"
                       placeholder="9876543210"
-                      class="flex-1 min-w-0 px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white text-sm placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all">
+                      class="flex-1 min-w-0 px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white text-sm placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all"
+                      [ngClass]="{'border-red-500': phoneTaken()}">
                   </div>
+                  <p *ngIf="phoneTaken()" class="text-xs text-red-500 mt-1">Phone number is already taken</p>
                 </div>
 
                 <div>
@@ -105,6 +113,21 @@ interface Country {
                   <p class="text-[10px] text-primary-400 mt-2 italic">Must be at least 8 characters</p>
                 </div>
 
+                <div>
+                  <label class="block text-sm font-medium text-primary-700 dark:text-primary-300 mb-2">Confirm Password</label>
+                  <div class="relative">
+                    <input [(ngModel)]="confirmPassword" name="confirmPassword" [type]="showConfirmPassword() ? 'text' : 'password'" required
+                      placeholder="••••••••"
+                      class="w-full px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all"
+                      [ngClass]="{'border-red-500': password && confirmPassword && password !== confirmPassword}">
+                    <button type="button" (click)="showConfirmPassword.set(!showConfirmPassword())"
+                      class="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-primary-400 hover:text-primary-600 dark:hover:text-primary-300 transition-colors">
+                      <svg *ngIf="!showConfirmPassword()" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                      <svg *ngIf="showConfirmPassword()" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 011.563-3.04m4.533-4.533A9.93 9.93 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21m-2.122-2.122L3 3m5.303 5.303a3 3 0 104.243 4.243"></path></svg>
+                    </button>
+                  </div>
+                </div>
+
                 <div *ngIf="error()" class="p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30">
                   <p class="text-sm text-red-600 dark:text-red-400 flex items-center gap-2">
                     <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -114,7 +137,7 @@ interface Country {
                   </p>
                 </div>
 
-                <button type="submit" [disabled]="loading()"
+                <button type="submit" [disabled]="loading() || !username || !email || !phoneNumber || usernameTaken() || emailTaken() || phoneTaken() || !password || password.length < 8 || password !== confirmPassword"
                   class="w-full py-3 px-6 rounded-xl font-semibold text-white bg-brand-blue hover:bg-brand-blue/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center justify-center gap-2">
                   <svg *ngIf="loading()" class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -148,14 +171,25 @@ interface Country {
     </div>
   `
 })
-export class SignupComponent implements OnInit {
+export class SignupComponent implements OnInit, OnDestroy {
   username = '';
   email = '';
   phoneNumber = '';
   password = '';
+  confirmPassword = '';
   showPassword = signal(false);
+  showConfirmPassword = signal(false);
   loading = signal(false);
   error = signal('');
+
+  usernameTaken = signal(false);
+  emailTaken = signal(false);
+  phoneTaken = signal(false);
+
+  private destroy$ = new Subject<void>();
+  private usernameSubject = new Subject<string>();
+  private emailSubject = new Subject<string>();
+  private phoneSubject = new Subject<string>();
 
   // Custom Country Selector State
   showDropdown = signal(false);
@@ -175,7 +209,6 @@ export class SignupComponent implements OnInit {
     { name: 'Singapore', code: '+65', flag: '🇸🇬' },
     { name: 'United Arab Emirates', code: '+971', flag: '🇦🇪' },
     { name: 'Saudi Arabia', code: '+966', flag: '🇸🇦' },
-    { name: 'Germany', code: '+49', flag: '🇩🇪' },
     { name: 'Netherlands', code: '+31', flag: '🇳🇱' },
     { name: 'Ireland', code: '+353', flag: '🇮🇪' },
     { name: 'New Zealand', code: '+64', flag: '🇳🇿' },
@@ -202,6 +235,61 @@ export class SignupComponent implements OnInit {
       this.router.navigate(['/tts']);
     }
     this.pendingPlan = this.route.snapshot.queryParams['plan'] || '';
+    this.setupAvailabilityChecks();
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private setupAvailabilityChecks() {
+    this.usernameSubject.pipe(debounceTime(500), takeUntil(this.destroy$)).subscribe(val => {
+      if (!val) {
+        this.usernameTaken.set(false);
+        return;
+      }
+      this.authService.checkUsername(val).subscribe(taken => this.usernameTaken.set(taken));
+    });
+
+    this.emailSubject.pipe(debounceTime(500), takeUntil(this.destroy$)).subscribe(val => {
+      if (!val) {
+        this.emailTaken.set(false);
+        return;
+      }
+      this.authService.checkEmail(val).subscribe(taken => this.emailTaken.set(taken));
+    });
+
+    this.phoneSubject.pipe(debounceTime(500), takeUntil(this.destroy$)).subscribe(val => {
+      const fullPhone = this.selectedCountry().code + val.replace(/\D/g, '');
+      if (!val) {
+        this.phoneTaken.set(false);
+        return;
+      }
+      this.authService.checkPhone(fullPhone).subscribe(taken => this.phoneTaken.set(taken));
+    });
+  }
+
+  onUsernameInput() {
+    this.username = this.username.toLowerCase();
+    this.usernameSubject.next(this.username);
+  }
+
+  onEmailInput() {
+    this.email = this.email.toLowerCase();
+    this.emailSubject.next(this.email);
+  }
+
+  onPhoneInput() {
+    this.phoneNumber = this.phoneNumber.replace(/\D/g, '');
+    this.phoneSubject.next(this.phoneNumber);
+  }
+
+  onlyNumbers(event: KeyboardEvent) {
+    const charCode = event.which ? event.which : event.keyCode;
+    if (charCode > 31 && (charCode < 48 || charCode > 57)) {
+      event.preventDefault();
+    }
   }
 
   @HostListener('document:click')
@@ -219,6 +307,7 @@ export class SignupComponent implements OnInit {
     this.selectedCountry.set(country);
     this.showDropdown.set(false);
     this.searchQuery = '';
+    this.phoneSubject.next(this.phoneNumber); // Re-check phone with new country code
   }
 
   togglePassword(): void {
@@ -226,12 +315,15 @@ export class SignupComponent implements OnInit {
   }
 
   onSubmit(): void {
+    if (this.usernameTaken() || this.emailTaken() || this.phoneTaken()) return;
+    if (!this.username || !this.email || !this.phoneNumber || !this.password || this.password !== this.confirmPassword) return;
+
     this.loading.set(true);
     this.error.set('');
 
     // Format: +CCXXXXXXXXXX
     const countryCode = this.selectedCountry().code; // e.g. +91
-    let cleanLocalNumber = this.phoneNumber.replace(/\D/g, '');
+    let cleanLocalNumber = this.phoneNumber; // already cleaned in onPhoneInput
 
     // Prevent double-prefixing: if local number starts with the dial code, strip it
     const dialDigits = countryCode.replace('+', '');

@@ -107,6 +107,21 @@ public class AuthService {
     }
 
     @Transactional(readOnly = true)
+    public boolean isUsernameTaken(String username) {
+        return userRepository.findByUsername(Sanitizer.sanitize(username).toLowerCase()).isPresent();
+    }
+
+    @Transactional(readOnly = true)
+    public boolean isEmailTaken(String email) {
+        return userRepository.findByEmail(Sanitizer.sanitize(email).toLowerCase()).isPresent();
+    }
+
+    @Transactional(readOnly = true)
+    public boolean isPhoneTaken(String phone) {
+        return userRepository.findByPhoneNumber(Sanitizer.sanitize(phone)).isPresent();
+    }
+
+    @Transactional(readOnly = true)
     public AuthResponse getUserProfile(String username) {
         var user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));

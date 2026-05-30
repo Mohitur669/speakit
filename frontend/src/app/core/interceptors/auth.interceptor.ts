@@ -23,6 +23,11 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   return next(authReq).pipe(
     catchError((error: HttpErrorResponse) => {
       if (error.status === 401 || error.status === 403) {
+        // Skip automatic logout for public availability check endpoints
+        if (req.url.includes('/api/auth/check-')) {
+          return throwError(() => error);
+        }
+
         const reason = error.headers.get('X-Logout-Reason');
         const message = reason === 'MULTI_LOGIN' 
           ? 'Another login detected' 
