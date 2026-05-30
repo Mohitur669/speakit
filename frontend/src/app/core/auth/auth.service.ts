@@ -91,6 +91,18 @@ export class AuthService implements OnDestroy {
     return this.http.post<AuthResponse>(`${this.apiUrl}/login`, credentials).pipe(tap(res => this.setSession(res)));
   }
 
+  checkUsername(username: string): Observable<boolean> {
+    return this.http.get<boolean>(`${this.apiUrl}/check-username`, { params: { username } });
+  }
+
+  checkEmail(email: string): Observable<boolean> {
+    return this.http.get<boolean>(`${this.apiUrl}/check-email`, { params: { email } });
+  }
+
+  checkPhone(phone: string): Observable<boolean> {
+    return this.http.get<boolean>(`${this.apiUrl}/check-phone`, { params: { phone } });
+  }
+
   logout(reason?: string): void {
     if (this.isLoggingOut) return;
     this.isLoggingOut = true;

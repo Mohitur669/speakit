@@ -73,4 +73,19 @@ public class AuthController {
         authService.logout(username);
         return ResponseEntity.ok().build();
     }
+
+    @GetMapping("/check-username")
+    public ResponseEntity<Boolean> checkUsername(@RequestParam String username) {
+        return ResponseEntity.ok(authService.isUsernameTaken(username));
+    }
+
+    @GetMapping("/check-email")
+    public ResponseEntity<Boolean> checkEmail(@RequestParam String email) {
+        return ResponseEntity.ok(authService.isEmailTaken(email));
+    }
+
+    @GetMapping("/check-phone")
+    public ResponseEntity<Boolean> checkPhone(@RequestParam String phone) {
+        return ResponseEntity.ok(authService.isPhoneTaken(phone));
+    }
 }

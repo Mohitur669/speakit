@@ -1,7 +1,8 @@
-import { Component, inject, signal, OnInit, HostListener } from '@angular/core';
+import { Component, inject, signal, OnInit, HostListener, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { Subject, debounceTime, takeUntil } from 'rxjs';
 import { AuthService } from '../../../core/auth/auth.service';
 import { NavbarComponent } from '../../../shared/components/navbar/navbar.component';
 
@@ -20,9 +21,18 @@ interface Country {
       <app-navbar></app-navbar>
 
       <div class="max-w-4xl mx-auto px-4 py-12">
-        <div class="mb-8">
-          <h1 class="text-3xl font-bold text-primary-900 dark:text-white mb-2">Profile Settings</h1>
-          <p class="text-primary-500 dark:text-primary-400">Update your account details and security preferences.</p>
+        <div class="mb-8 flex items-start justify-between">
+          <div>
+            <h1 class="text-3xl font-bold text-primary-900 dark:text-white mb-2">Profile Settings</h1>
+            <p class="text-primary-500 dark:text-primary-400">Update your account details and security preferences.</p>
+          </div>
+          <button routerLink="/tts" 
+            class="p-2 rounded-xl text-primary-400 hover:text-primary-600 dark:hover:text-primary-200 hover:bg-white dark:hover:bg-primary-900 border border-transparent hover:border-primary-200 dark:hover:border-primary-700 transition-all group shadow-sm hover:shadow-md"
+            title="Back to Studio">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
         </div>
 
         <div class="bg-white dark:bg-primary-900 rounded-2xl border border-primary-200 dark:border-primary-700 shadow-xl overflow-hidden">
@@ -33,16 +43,20 @@ interface Country {
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="space-y-2">
                   <label class="block text-sm font-semibold text-primary-700 dark:text-primary-300">Username</label>
-                  <input [(ngModel)]="username" (input)="username = username.toLowerCase()" name="username" type="text" required
+                  <input [(ngModel)]="username" (input)="onUsernameInput()" name="username" type="text" required
                     placeholder="johndoe"
-                    class="w-full px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-blue/50 transition-all lowercase">
+                    class="w-full px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-blue/50 transition-all lowercase"
+                    [ngClass]="{'border-red-500': usernameTaken()}">
+                  <p *ngIf="usernameTaken()" class="text-xs text-red-500 mt-1">Username is already taken</p>
                 </div>
 
                 <div class="space-y-2">
                   <label class="block text-sm font-semibold text-primary-700 dark:text-primary-300">Email Address</label>
-                  <input [(ngModel)]="email" (input)="email = email.toLowerCase()" name="email" type="email" required
+                  <input [(ngModel)]="email" (input)="onEmailInput()" name="email" type="email" required
                     placeholder="you@example.com"
-                    class="w-full px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-blue/50 transition-all lowercase">
+                    class="w-full px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-blue/50 transition-all lowercase"
+                    [ngClass]="{'border-red-500': emailTaken()}">
+                  <p *ngIf="emailTaken()" class="text-xs text-red-500 mt-1">Email is already taken</p>
                 </div>
 
                 <!-- Custom International Phone Input -->
@@ -82,10 +96,13 @@ interface Country {
                     </div>
 
                     <!-- Number Input -->
-                    <input [(ngModel)]="phoneNumber" name="phoneNumber" type="tel" required
+                    <input [(ngModel)]="phoneNumber" (input)="onPhoneInput()" (keypress)="onlyNumbers($event)" name="phoneNumber" type="tel" required
+                      inputmode="numeric" pattern="[0-9]*"
                       placeholder="9876543210"
-                      class="flex-1 min-w-0 px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white text-sm placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all">
+                      class="flex-1 min-w-0 px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white text-sm placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all"
+                      [ngClass]="{'border-red-500': phoneTaken()}">
                   </div>
+                  <p *ngIf="phoneTaken()" class="text-xs text-red-500 mt-1">Phone number is already taken</p>
                 </div>
               </div>
 
@@ -137,10 +154,19 @@ interface Country {
                   
                   <div class="space-y-2">
                     <label class="block text-sm font-semibold text-primary-700 dark:text-primary-300">Confirm New Password</label>
-                    <input [(ngModel)]="confirmPassword" name="confirmPassword" type="password"
-                      placeholder="Repeat new password"
-                      class="w-full px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-blue/50 transition-all"
-                      [ngClass]="{'border-red-500': newPassword && confirmPassword && newPassword !== confirmPassword}">
+                    <div class="relative">
+                      <input [(ngModel)]="confirmPassword" name="confirmPassword" [type]="showConfirmPass() ? 'text' : 'password'"
+                        placeholder="Repeat new password"
+                        class="w-full px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-blue/50 transition-all"
+                        [ngClass]="{'border-red-500': newPassword && confirmPassword && newPassword !== confirmPassword}">
+                      <button type="button" (click)="showConfirmPass.set(!showConfirmPass())"
+                        class="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-primary-400 hover:text-primary-600 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path *ngIf="!showConfirmPass()" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                          <path *ngIf="showConfirmPass()" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 011.563-3.04m4.533-4.533A9.93 9.93 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21m-2.122-2.122L3 3m5.303 5.303a3 3 0 104.243 4.243"></path>
+                        </svg>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -154,7 +180,7 @@ interface Country {
                 <button type="button" routerLink="/tts" class="px-6 py-3 rounded-xl font-semibold text-primary-600 dark:text-primary-400 hover:bg-primary-100 dark:hover:bg-primary-800 transition-all">
                   Cancel
                 </button>
-                <button type="submit" [disabled]="loading() || !currentPassword || (showPasswordFields() && (!newPassword || newPassword.length < 8 || newPassword !== confirmPassword))"
+                <button type="submit" [disabled]="loading() || !username || !email || !phoneNumber || !currentPassword || usernameTaken() || emailTaken() || phoneTaken() || (showPasswordFields() && (!newPassword || newPassword.length < 8 || newPassword !== confirmPassword))"
                   class="px-8 py-3 rounded-xl font-semibold text-white bg-brand-blue hover:bg-brand-blue/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center justify-center gap-2">
                   <svg *ngIf="loading()" class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
                   Save Changes
@@ -167,7 +193,7 @@ interface Country {
     </div>
   `
 })
-export class ProfileSettingsComponent implements OnInit {
+export class ProfileSettingsComponent implements OnInit, OnDestroy {
   username = '';
   email = '';
   phoneNumber = '';
@@ -180,6 +206,16 @@ export class ProfileSettingsComponent implements OnInit {
   showPasswordFields = signal(false);
   showNewPass = signal(false);
   showCurrPass = signal(false);
+  showConfirmPass = signal(false);
+
+  usernameTaken = signal(false);
+  emailTaken = signal(false);
+  phoneTaken = signal(false);
+
+  private destroy$ = new Subject<void>();
+  private usernameSubject = new Subject<string>();
+  private emailSubject = new Subject<string>();
+  private phoneSubject = new Subject<string>();
 
   showDropdown = signal(false);
   searchQuery = '';
@@ -227,6 +263,62 @@ export class ProfileSettingsComponent implements OnInit {
       this.phoneNumber = rawPhone.substring(country.code.length);
     } else {
       this.phoneNumber = rawPhone;
+    }
+
+    this.setupAvailabilityChecks();
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private setupAvailabilityChecks() {
+    this.usernameSubject.pipe(debounceTime(500), takeUntil(this.destroy$)).subscribe(val => {
+      if (!val || val.toLowerCase() === this.authService.currentUser()?.toLowerCase()) {
+        this.usernameTaken.set(false);
+        return;
+      }
+      this.authService.checkUsername(val).subscribe(taken => this.usernameTaken.set(taken));
+    });
+
+    this.emailSubject.pipe(debounceTime(500), takeUntil(this.destroy$)).subscribe(val => {
+      if (!val || val.toLowerCase() === this.authService.currentUserEmail()?.toLowerCase()) {
+        this.emailTaken.set(false);
+        return;
+      }
+      this.authService.checkEmail(val).subscribe(taken => this.emailTaken.set(taken));
+    });
+
+    this.phoneSubject.pipe(debounceTime(500), takeUntil(this.destroy$)).subscribe(val => {
+      const fullPhone = this.selectedCountry().code + val.replace(/\D/g, '');
+      if (!val || fullPhone === this.authService.currentUserPhone()) {
+        this.phoneTaken.set(false);
+        return;
+      }
+      this.authService.checkPhone(fullPhone).subscribe(taken => this.phoneTaken.set(taken));
+    });
+  }
+
+  onUsernameInput() {
+    this.username = this.username.toLowerCase();
+    this.usernameSubject.next(this.username);
+  }
+
+  onEmailInput() {
+    this.email = this.email.toLowerCase();
+    this.emailSubject.next(this.email);
+  }
+
+  onPhoneInput() {
+    this.phoneNumber = this.phoneNumber.replace(/\D/g, '');
+    this.phoneSubject.next(this.phoneNumber);
+  }
+
+  onlyNumbers(event: KeyboardEvent) {
+    const charCode = event.which ? event.which : event.keyCode;
+    if (charCode > 31 && (charCode < 48 || charCode > 57)) {
+      event.preventDefault();
     }
   }
 

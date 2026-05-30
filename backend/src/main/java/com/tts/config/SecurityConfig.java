@@ -58,6 +58,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/login").permitAll()
                         .requestMatchers("/api/auth/register").permitAll()
+                        .requestMatchers("/api/auth/check-username").permitAll()
+                        .requestMatchers("/api/auth/check-email").permitAll()
+                        .requestMatchers("/api/auth/check-phone").permitAll()
                         .requestMatchers("/api/auth/ping").permitAll()
                         .requestMatchers("/api/v1/webhooks/**").permitAll()
                         .requestMatchers("/api/system-parameters/**").permitAll()
