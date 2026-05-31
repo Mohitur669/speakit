@@ -21,28 +21,22 @@
           <!-- Filter Tabs -->
           <div class="flex gap-1 p-1 bg-primary-100 dark:bg-primary-800 rounded-lg mb-4">
             <ng-container *ngFor="let filter of filterOptions()">
-              <!-- Filter button only rendered for Standard and Neural -->
               <button *ngIf="filter !== 'All'"
                 (click)="setFilter(filter)"
                 [ngClass]="currentFilter() === filter ? 'bg-white dark:bg-primary-700 text-primary-900 dark:text-white shadow-sm' : 'text-primary-500 dark:text-primary-400 hover:text-primary-700 dark:hover:text-white'"
-                class="flex-1 py-2 sm:py-1.5 text-sm sm:text-xs font-medium rounded-md transition-all relative">
+                class="flex-1 py-2 sm:py-1.5 text-[11px] sm:text-[10px] font-bold rounded-md transition-all relative uppercase tracking-tight">
                 
-                {{ filter === 'Standard' ? 'Standard' : (filter === 'Neural' ? 'Neural' : filter) }}
-                <span class="text-[11px] sm:text-[10px] opacity-60 ml-1">({{ filter === 'Standard' ? standardCount : neuralCount }})</span>
+                {{ filter }}
+                <span class="opacity-60 ml-0.5">({{ filter === 'Standard' ? standardCount : (filter === 'Neural' ? neuralCount : naturalCount) }})</span>
 
-                <!-- Pro Badge -->
-                <span *ngIf="filter === 'Neural'" 
-                  [ngClass]="userCanUseNeural ? 'text-accent-500' : 'text-primary-400'"
+                <!-- Access Badge -->
+                <span *ngIf="filter === 'Neural' || filter === 'Natural'" 
+                  [ngClass]="(filter === 'Neural' ? userCanUseNeural : userCanUseNatural) ? 'text-accent-500' : 'text-primary-400'"
                   class="absolute -top-0.5 -right-0.5 flex h-2 w-2">
-                  <span *ngIf="userCanUseNeural" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-400 opacity-75"></span>
-                  <span class="relative inline-flex rounded-full h-2 w-2" [ngClass]="userCanUseNeural ? 'bg-accent-500' : 'bg-primary-300 dark:bg-primary-600'"></span>
+                  <span *ngIf="filter === 'Neural' ? userCanUseNeural : userCanUseNatural" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-2 w-2" [ngClass]="(filter === 'Neural' ? userCanUseNeural : userCanUseNatural) ? 'bg-accent-500' : 'bg-primary-300 dark:bg-primary-600'"></span>
                 </span>
               </button>
-
-              <!-- Hidden 'All' filter code preserved below as requested -->
-              <!-- 
-              <button *ngIf="filter === 'All'" (click)="setFilter('All')" ...> All ({{ totalCount }}) </button>
-              -->
             </ng-container>
           </div>
 
@@ -51,14 +45,14 @@
             <button (click)="toggleDropdown($event)"
               class="w-full flex items-center justify-between px-4 py-3 bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 rounded-xl hover:border-brand-blue/50 transition-colors">
               <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-lg bg-brand-blue/10 flex items-center justify-center">
-                  <svg class="w-5 h-5 text-brand-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="w-10 h-10 rounded-lg bg-brand-blue/10 flex items-center justify-center text-brand-blue">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                   </svg>
                 </div>
                 <div class="text-left">
                   <div class="text-base sm:text-sm font-medium text-primary-900 dark:text-white">{{ selectedVoice?.name || 'Select a voice' }}</div>
-                  <div class="text-sm sm:text-xs text-primary-400">{{ selectedVoice?.gender }} · {{ currentFilter() === 'Standard' ? 'Standard' : ((selectedVoice?.isNeural && selectedVoice?.isStandard) ? 'Natural + Standard' : (selectedVoice?.isNeural ? 'Natural' : 'Standard')) }}</div>
+                  <div class="text-sm sm:text-xs text-primary-400">{{ selectedVoice?.gender }} · {{ currentFilter() === 'Standard' ? 'Standard' : (selectedVoice?.isElevenLabs ? 'Natural AI' : (selectedVoice?.isNeural ? 'Neural' : 'Standard')) }}</div>
                 </div>
               </div>
               <svg [ngClass]="isDropdownOpen ? 'rotate-180' : ''" class="w-4 h-4 text-primary-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -80,8 +74,8 @@
                     <div class="text-xs text-primary-400 uppercase">{{ voice.gender }}</div>
                   </div>
                 </div>
-                <span [ngClass]="currentFilter() === 'Standard' ? 'text-primary-400' : (voice.isNeural && voice.isStandard ? 'text-purple-500' : voice.isNeural ? 'text-accent-500' : 'text-primary-400')" class="text-[10px] font-medium uppercase">
-                  {{ currentFilter() === 'Standard' ? 'Standard' : (voice.isNeural && voice.isStandard ? 'Natural + Standard' : (voice.isNeural ? 'Natural' : 'Standard')) }}
+                <span [ngClass]="currentFilter() === 'Standard' ? 'text-primary-400' : (voice.isElevenLabs ? 'text-purple-500' : voice.isNeural ? 'text-accent-500' : 'text-primary-400')" class="text-[10px] font-medium uppercase">
+                  {{ currentFilter() === 'Standard' ? 'Standard' : (voice.isElevenLabs ? 'Natural AI' : (voice.isNeural ? 'Neural' : 'Standard')) }}
                 </span>
               </button>
             </div>
@@ -92,14 +86,18 @@
         <div class="hidden lg:block bg-white dark:bg-primary-900 rounded-xl border border-primary-200 dark:border-primary-700 p-6">
           <h2 class="text-lg sm:text-sm font-semibold text-primary-900 dark:text-white mb-4">Your Usage</h2>
           <div class="space-y-4">
-            <div>
-              <div class="flex justify-between text-base sm:text-sm mb-2">
-                <span class="text-primary-500">Characters used</span>
-                <span class="font-medium text-primary-700 dark:text-primary-300">{{ text.length }} / {{ maxChars() | number }}</span>
-              </div>
-              <div class="h-2 bg-primary-100 dark:bg-primary-800 rounded-full overflow-hidden">
+          <div>
+            <div class="flex justify-between text-base sm:text-sm mb-1">
+              <span class="text-primary-500">Current Plan</span>
+              <span class="font-bold text-brand-blue">{{ authService.currentPlanType().replace('_', ' ') }}</span>
+            </div>
+            <div class="flex justify-between text-base sm:text-sm mb-2">
+              <span class="text-primary-500">Characters used</span>
+              <span class="font-medium text-primary-700 dark:text-primary-300">{{ text.length | number }} / {{ maxChars() | number }}</span>
+            </div>
+            <div class="h-2 bg-primary-100 dark:bg-primary-800 rounded-full overflow-hidden">
                 <div [ngClass]="text.length > (maxChars() * 0.9) ? 'bg-red-500' : 'bg-brand-blue'"
-                  class="h-full rounded-full transition-all"
+                  class="h-full rounded-full transition-all duration-500"
                   [style.width.%]="(text.length / maxChars()) * 100"></div>
               </div>
             </div>
@@ -116,15 +114,15 @@
               </svg>
             </div>
             <h3 class="text-base sm:text-sm font-bold text-primary-900 dark:text-white uppercase tracking-wider">
-              {{ userCanUseNeural ? 'Get Enterprise' : 'Go Pro' }}
+              {{ authService.currentPlanType() === 'FREE' ? 'Go Pro' : (authService.currentPlanType() === 'PRO' ? 'Get Pro Plus' : 'Contact Sales') }}
             </h3>
           </div>
           <p class="text-sm sm:text-xs text-primary-500 dark:text-primary-400 mb-6 leading-relaxed">
-            {{ userCanUseNeural ? 'Unlimited characters, API access, and dedicated support for large-scale creation.' : 'Unlock 10,000 chars, natural neural voices, and priority generation.' }}
+            {{ authService.currentPlanType() === 'FREE' ? 'Unlock natural neural voices and higher generation priority.' : (authService.currentPlanType() === 'PRO' ? 'Unlock ElevenLabs AI voices and higher character limits.' : 'Tailored character limits and dedicated SLA for large scale.') }}
           </p>
-          <button (click)="invokeUpgrade(userCanUseNeural ? 'ENTERPRISE' : 'PRO')" 
+          <button (click)="invokeUpgrade(authService.currentPlanType() === 'FREE' ? 'PRO' : (authService.currentPlanType() === 'PRO' ? 'PRO_PLUS' : 'ENTERPRISE'))" 
              class="block w-full px-6 py-3.5 sm:py-3 text-center text-sm font-semibold text-white bg-accent-500 hover:bg-accent-600 rounded-xl transition-all shadow-md hover:shadow-lg hover:shadow-accent-500/20 active:scale-95">
-            Upgrade to {{ userCanUseNeural ? 'Enterprise' : 'Pro' }}
+            {{ authService.currentPlanType() === 'PRO_PLUS' ? 'Contact Sales' : 'Upgrade to ' + (authService.currentPlanType() === 'FREE' ? 'Pro' : 'Pro Plus') }}
           </button>
         </div>
       </div>
@@ -137,6 +135,9 @@
           <div class="px-6 py-4 border-b border-primary-100 dark:border-primary-800 flex items-center justify-between">
             <div class="flex items-center gap-4">
               <h2 class="text-lg sm:text-sm font-semibold text-primary-900 dark:text-white">Script</h2>
+              <span *ngIf="usage()?.dailyLimit > 0" class="text-xs font-semibold px-2 py-1 rounded-md bg-accent-500/10 text-accent-600 dark:text-accent-400">
+                {{ usage()?.dailyCount }}/{{ usage()?.dailyLimit }} calls today
+              </span>
               <!-- Mobile-Only Quick Stats -->
               <div class="lg:hidden flex items-center gap-3 bg-primary-100 dark:bg-primary-800 px-3 py-1 rounded-full">
                 <span class="text-[10px] font-bold text-primary-500 uppercase tracking-wider">Usage</span>

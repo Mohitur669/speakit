@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS tts_history (
     output_format VARCHAR(10) NOT NULL,
     character_count INTEGER NOT NULL,
     is_neural BOOLEAN NOT NULL DEFAULT FALSE,
+    is_eleven_labs BOOLEAN NOT NULL DEFAULT FALSE,
     text_snippet VARCHAR(100),
 
     -- Audit Fields
@@ -133,15 +134,18 @@ CREATE TABLE IF NOT EXISTS system_parameters (
 INSERT INTO system_parameters (parameter_name, parameter_value, description) VALUES
 ('ENABLE_RAZORPAY', 'true', 'Global toggle for payment gateway'),
 ('PRO_PLAN_PRICE_INR', '499', 'Current price for Pro monthly subscription'),
-('ENTERPRISE_PLAN_PRICE_INR', '1999', 'Current price for Enterprise subscription'),
+('PRO_PLUS_PLAN_PRICE_INR', '1999', 'Current price for Pro Plus subscription'),
+('ENTERPRISE_PLAN_PRICE_INR', '0', 'Contact sales for Enterprise pricing'),
 ('MAX_FREE_CHARACTERS', '300', 'Character limit for free tier requests'),
 ('MAX_PRO_CHARACTERS', '5000', 'Character limit for Pro tier requests'),
-('MAX_ENTERPRISE_CHARACTERS', '10000', 'Character limit for Enterprise tier requests'),
+('MAX_PRO_PLUS_CHARACTERS', '20000', 'Character limit for Pro Plus tier requests'),
+('MAX_ENTERPRISE_CHARACTERS', '100000', 'Character limit for Enterprise tier requests'),
 ('SHOW_BETA_FEATURES', 'false', 'Toggle for experimental UI components'),
 ('SYSTEM_STATUS', 'Operational', 'Current live status of the AI voice engine'),
-('FREE_PLAN_FEATURES', 'Standard Voices;300 chars / request', 'Features list for free tier'),
+('FREE_PLAN_FEATURES', 'Standard Voices;300 chars / request;3 daily syntheses', 'Features list for free tier'),
 ('PRO_PLAN_FEATURES', '5,000 chars / request;Natural/Neural Voices;Priority Support', 'Features list for pro tier'),
-('ENTERPRISE_PLAN_FEATURES', 'Unlimited Characters;API Access;Dedicated Support', 'Features list for enterprise tier')
+('PRO_PLUS_PLAN_FEATURES', '20,000 chars / request;ElevenLabs AI Voices;Dedicated Support', 'Features list for pro plus tier'),
+('ENTERPRISE_PLAN_FEATURES', 'Custom Character Limits;API Access;SLA Guarantee', 'Features list for enterprise tier')
 ON CONFLICT (parameter_name) DO NOTHING;
 
 -- Accepted values for SYSTEM_STATUS

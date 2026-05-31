@@ -22,19 +22,17 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(authReq).pipe(
     catchError((error: HttpErrorResponse) => {
-      if (error.status === 401 || error.status === 403) {
-        // Skip automatic logout for public availability check endpoints
-        if (req.url.includes('/api/auth/check-')) {
-          return throwError(() => error);
-        }
-
+      if (error.status === 401) {
         const reason = error.headers.get('X-Logout-Reason');
         const message = reason === 'MULTI_LOGIN' 
           ? 'Another login detected' 
           : 'Session expired';
         
-        logger.warn(`Auth failure (${error.status}): ${message}`, { url: req.url });
+        logger.warn(`Auth failure (401): ${message}`, { url: req.url });
         authService.logout(message);
+      } else if (error.status === 403) {
+        // Log 403 but don't logout - usually a plan restriction or permissions issue
+        logger.warn(`Access forbidden (403): ${req.url}`);
       } else {
         logger.error(`API Error: ${req.method} ${req.url}`, error);
       }

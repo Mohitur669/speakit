@@ -77,7 +77,7 @@ import { ThemeService } from '../../../core/services/theme.service';
                     <div class="flex flex-col gap-2 mt-1">
                       <div class="flex items-center justify-between">
                         <div class="flex items-center gap-2">
-                          <span class="text-sm font-bold text-primary-900 dark:text-white">{{ authService.currentPlanType() }}</span>
+                          <span class="text-sm font-bold text-primary-900 dark:text-white">{{ authService.currentPlanType().replace('_', ' ') }}</span>
                           <span *ngIf="authService.currentPlanType() !== 'FREE'" class="flex h-2 w-2 relative">
                             <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                             <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
@@ -87,10 +87,10 @@ import { ThemeService } from '../../../core/services/theme.service';
                       
                       <!-- Mobile-Only Upgrade Button (Matches Desktop Styling) -->
                       <a *ngIf="authService.currentPlanType() !== 'ENTERPRISE'" 
-                        routerLink="/tts" [queryParams]="{autostart: authService.currentPlanType() === 'FREE' ? 'PRO' : 'ENTERPRISE'}"
+                        routerLink="/tts" [queryParams]="{autostart: authService.currentPlanType() === 'FREE' ? 'PRO' : (authService.currentPlanType() === 'PRO' ? 'PRO_PLUS' : 'ENTERPRISE')}"
                         (click)="$event.stopPropagation(); showUserMenu.set(false)"
                         class="lg:hidden w-full mt-2 py-2.5 px-4 text-center text-xs font-bold text-white bg-accent-500 hover:bg-accent-600 rounded-lg shadow-md hover:shadow-accent-500/20 active:scale-95 transition-all uppercase tracking-wider">
-                        Get {{ authService.currentPlanType() === 'FREE' ? 'Pro' : 'Enterprise' }}
+                        {{ authService.currentPlanType() === 'PRO_PLUS' ? 'Contact Sales' : 'Get ' + (authService.currentPlanType() === 'FREE' ? 'Pro' : 'Pro Plus') }}
                       </a>
                     </div>
                   </div>
