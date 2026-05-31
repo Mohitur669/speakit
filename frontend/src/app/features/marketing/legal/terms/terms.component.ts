@@ -16,33 +16,33 @@ import { FooterComponent } from '../../../../shared/components/footer/footer.com
           
           <div class="mb-12 animate-slide-up">
             <h1 class="text-4xl font-bold text-primary-900 dark:text-white tracking-tight mb-4">Terms of Service</h1>
-            <p class="text-primary-500 dark:text-primary-400">Last updated: May 17, 2026</p>
+            <p class="text-primary-500 dark:text-primary-400">Last updated: 31/05/2026</p>
           </div>
 
           <div class="prose prose-primary dark:prose-invert prose-lg max-w-none animate-slide-up stagger-1 text-primary-600 dark:text-primary-300">
-            <p>Welcome to SpeakIT. These Terms of Service constitute a legally binding agreement made between you and SpeakIT concerning your access to and use of our application and services.</p>
+            <p>These Terms constitute a "Record" under the <strong>Information Technology Act, 2000</strong> and a legally binding contract under the <strong>Indian Contract Act, 1872</strong>.</p>
 
-            <h2 class="text-2xl font-bold text-primary-900 dark:text-white mt-12 mb-4">1. Agreement to Terms</h2>
-            <p>By accessing the Application, you agree that you have read, understood, and agree to be bound by all of these Terms of Service. If you do not agree with all of these Terms of Service, then you are expressly prohibited from using the Application and you must discontinue use immediately.</p>
+            <h2 class="text-2xl font-bold text-primary-900 dark:text-white mt-12 mb-4">1. User Account Responsibility</h2>
+            <p>You are responsible for maintaining the confidentiality of your password. You agree to notify us immediately of any unauthorized use of your account. We reserve the right to suspend accounts that provide false information during signup.</p>
 
-            <h2 class="text-2xl font-bold text-primary-900 dark:text-white mt-12 mb-4">2. Intellectual Property Rights</h2>
-            <p>The text you submit to the Service remains your intellectual property. We claim no ownership rights over your input text or the resulting generated audio files. The Application itself, including all source code, databases, functionality, software, website designs, audio, video, text, photographs, and graphics on the Application are owned or controlled by us.</p>
-
-            <h2 class="text-2xl font-bold text-primary-900 dark:text-white mt-12 mb-4">3. Prohibited Activities</h2>
-            <p>You may not access or use the Application for any purpose other than that for which we make the Application available. The Application may not be used in connection with any commercial endeavors except those that are specifically endorsed or approved by us. You agree not to:</p>
+            <h2 class="text-2xl font-bold text-primary-900 dark:text-white mt-12 mb-4">2. Prohibited Content (Rule 3(1)(b) Compliance)</h2>
+            <p>In accordance with <strong>Rule 3(1)(b) of the IT Rules, 2021</strong>, you shall not host, display, or upload any text that:</p>
             <ul class="list-disc pl-6 space-y-2 mt-4 mb-8">
-              <li>Use the Service to generate hate speech, defamatory content, or content that promotes violence.</li>
-              <li>Circumvent, disable, or otherwise interfere with security-related features of the Application.</li>
-              <li>Attempt to bypass any measures of the Application designed to prevent or restrict access to the Application, or any portion of the Application.</li>
-              <li>Use the Service in any automated manner via scripts or unauthorized API access to mass-generate content without an Enterprise agreement.</li>
+              <li>Belongs to another person without right.</li>
+              <li>Is defamatory, obscene, pornographic, or invasive of another's privacy.</li>
+              <li>Is harmful to minors or threatens the unity and integrity of India.</li>
+              <li>Violates any law currently in force in India.</li>
             </ul>
+            <p>Any violation will result in immediate termination of service and reporting to relevant authorities if required by law.</p>
 
-            <h2 class="text-2xl font-bold text-primary-900 dark:text-white mt-12 mb-4">4. Subscriptions and Billing</h2>
-            <p>If you purchase a Pro subscription, you agree to provide current, complete, and accurate purchase and account information. You agree to promptly update account and payment information, including email address, payment method, and payment card expiration date, so that we can complete your transactions and contact you as needed. We bill you through an online billing account for purchases made via the Application.</p>
+            <h2 class="text-2xl font-bold text-primary-900 dark:text-white mt-12 mb-4">3. Rate Limiting and Service Fair Use</h2>
+            <p>SpeakIT employs <strong>Bucket4j</strong> to enforce rate limits per IP/User. Attempting to bypass these limits via scripts or multiple accounts is a breach of these Terms. For Free Plan users, the daily limit is dynamically set via our system parameters (currently 3 syntheses per day).</p>
 
-            <h2 class="text-2xl font-bold text-primary-900 dark:text-white mt-12 mb-4">5. Contact Us</h2>
-            <p>In order to resolve a complaint regarding the Application or to receive further information regarding use of the Application, please contact us at:</p>
-            <p class="mt-4 font-medium text-primary-900 dark:text-white">legal&#64;speakit.ai</p>
+            <h2 class="text-2xl font-bold text-primary-900 dark:text-white mt-12 mb-4">4. Payments and Refunds</h2>
+            <p>Payments for Pro plans are handled via <strong>Razorpay</strong>. All transactions are in <strong>Indian Rupees (INR)</strong>. Since this is a digital SaaS product with an immediate consumption nature, refunds are generally not provided once a synthesis has been performed, as per the <strong>Consumer Protection (e-Commerce) Rules, 2020</strong>.</p>
+
+            <h2 class="text-2xl font-bold text-primary-900 dark:text-white mt-12 mb-4">5. Governing Law</h2>
+            <p>These Terms shall be governed by and constructed in accordance with the laws of India. Any disputes shall be subject to the exclusive jurisdiction of the courts in <strong>[VERIFY WITH COUNSEL: INSERT CITY]</strong>.</p>
           </div>
         </div>
       </main>
