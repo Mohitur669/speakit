@@ -25,17 +25,26 @@
                 (click)="setFilter(filter)"
                 [ngClass]="currentFilter() === filter ? 'bg-white dark:bg-primary-700 text-primary-900 dark:text-white shadow-sm' : 'text-primary-500 dark:text-primary-400 hover:text-primary-700 dark:hover:text-white'"
                 class="flex-1 py-2 sm:py-1.5 text-[11px] sm:text-[10px] font-bold rounded-md transition-all relative uppercase tracking-tight">
-                
+
                 {{ filter }}
                 <span class="opacity-60 ml-0.5">({{ filter === 'Standard' ? standardCount : (filter === 'Neural' ? neuralCount : naturalCount) }})</span>
 
                 <!-- Access Badge -->
-                <span *ngIf="filter === 'Neural' || filter === 'Natural'" 
-                  [ngClass]="(filter === 'Neural' ? userCanUseNeural : userCanUseNatural) ? 'text-accent-500' : 'text-primary-400'"
-                  class="absolute -top-0.5 -right-0.5 flex h-2 w-2">
-                  <span *ngIf="filter === 'Neural' ? userCanUseNeural : userCanUseNatural" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-400 opacity-75"></span>
-                  <span class="relative inline-flex rounded-full h-2 w-2" [ngClass]="(filter === 'Neural' ? userCanUseNeural : userCanUseNatural) ? 'bg-accent-500' : 'bg-primary-300 dark:bg-primary-600'"></span>
-                </span>
+                <div *ngIf="filter === 'Neural' || filter === 'Natural'"
+                  class="absolute -top-1 -right-1 flex items-center justify-center">
+
+                  <!-- Access Granted: Pinging Green Dot -->
+                  <span *ngIf="filter === 'Neural' ? userCanUseNeural : userCanUseNatural" class="relative flex h-2 w-2">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-accent-500"></span>
+                  </span>
+
+                  <!-- Access Denied: Tiny Lock -->
+                  <svg *ngIf="!(filter === 'Neural' ? userCanUseNeural : userCanUseNatural)"
+                    class="w-3 h-3 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
+                  </svg>
+                </div>
               </button>
             </ng-container>
           </div>
@@ -105,7 +114,7 @@
         </div>
 
         <!-- Dynamic Upgrade Card (Hidden for Enterprise & Mobile) -->
-        <div *ngIf="authService.currentPlanType() !== 'ENTERPRISE'" 
+        <div *ngIf="authService.currentPlanType() !== 'ENTERPRISE'"
           class="hidden lg:block bg-white dark:bg-primary-900 p-6 rounded-xl border-2 border-accent-500/20 shadow-lg animate-fade-in group hover:border-accent-500/50 transition-all">
           <div class="flex items-center gap-3 mb-4">
             <div class="w-12 h-12 rounded-xl bg-accent-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -114,17 +123,16 @@
               </svg>
             </div>
             <h3 class="text-base sm:text-sm font-bold text-primary-900 dark:text-white uppercase tracking-wider">
-              {{ authService.currentPlanType() === 'FREE' ? 'Go Pro' : (authService.currentPlanType() === 'PRO' ? 'Get Pro Plus' : 'Contact Sales') }}
-            </h3>
-          </div>
-          <p class="text-sm sm:text-xs text-primary-500 dark:text-primary-400 mb-6 leading-relaxed">
-            {{ authService.currentPlanType() === 'FREE' ? 'Unlock natural neural voices and higher generation priority.' : (authService.currentPlanType() === 'PRO' ? 'Unlock ElevenLabs AI voices and higher character limits.' : 'Tailored character limits and dedicated SLA for large scale.') }}
-          </p>
-          <button (click)="invokeUpgrade(authService.currentPlanType() === 'FREE' ? 'PRO' : (authService.currentPlanType() === 'PRO' ? 'PRO_PLUS' : 'ENTERPRISE'))" 
-             class="block w-full px-6 py-3.5 sm:py-3 text-center text-sm font-semibold text-white bg-accent-500 hover:bg-accent-600 rounded-xl transition-all shadow-md hover:shadow-lg hover:shadow-accent-500/20 active:scale-95">
-            {{ authService.currentPlanType() === 'PRO_PLUS' ? 'Contact Sales' : 'Upgrade to ' + (authService.currentPlanType() === 'FREE' ? 'Pro' : 'Pro Plus') }}
-          </button>
-        </div>
+              {{ authService.currentPlanType() === 'FREE' ? 'Go Pro' : (authService.currentPlanType() === 'PRO' ? 'Get Pro Plus' : 'Get Enterprise') }}
+              </h3>
+              </div>
+              <p class="text-sm sm:text-xs text-primary-500 dark:text-primary-400 mb-6 leading-relaxed">
+              {{ authService.currentPlanType() === 'FREE' ? 'Unlock natural neural voices and higher generation priority.' : (authService.currentPlanType() === 'PRO' ? 'Unlock ElevenLabs AI voices and higher character limits.' : 'Tailored character limits and dedicated SLA for large scale.') }}
+              </p>
+              <button (click)="invokeUpgrade(authService.currentPlanType() === 'FREE' ? 'PRO' : (authService.currentPlanType() === 'PRO' ? 'PRO_PLUS' : 'ENTERPRISE'))"
+              class="block w-full px-6 py-3.5 sm:py-3 text-center text-sm font-semibold text-white bg-accent-500 hover:bg-accent-600 rounded-xl transition-all shadow-md hover:shadow-lg hover:shadow-accent-500/20 active:scale-95">
+              {{ authService.currentPlanType() === 'PRO_PLUS' ? 'Get Enterprise' : 'Upgrade to ' + (authService.currentPlanType() === 'FREE' ? 'Pro' : 'Pro Plus') }}
+              </button>        </div>
       </div>
 
       <!-- Right Column - Editor -->
@@ -136,7 +144,7 @@
             <div class="flex items-center gap-4">
               <h2 class="text-lg sm:text-sm font-semibold text-primary-900 dark:text-white">Script</h2>
               <span *ngIf="usage()?.dailyLimit > 0" class="text-xs font-semibold px-2 py-1 rounded-md bg-accent-500/10 text-accent-600 dark:text-accent-400">
-                {{ usage()?.dailyCount }}/{{ usage()?.dailyLimit }} calls today
+                {{ usage()?.dailyCount }}/{{ usage()?.dailyLimit }} credits used
               </span>
               <!-- Mobile-Only Quick Stats -->
               <div class="lg:hidden flex items-center gap-3 bg-primary-100 dark:bg-primary-800 px-3 py-1 rounded-full">

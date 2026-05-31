@@ -73,7 +73,7 @@ export class RazorpayService {
         console.warn('[Razorpay] Phone parsing failed, falling back to raw digits');
       }
 
-      console.log('[Razorpay] Prefilling modal with:', { user, email, phone });
+      // console.log('[Razorpay] Prefilling modal with:', { user, email, phone });
 
       // 1. Create Order on Backend
       const orderRes: any = await firstValueFrom(

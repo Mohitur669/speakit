@@ -142,6 +142,7 @@ INSERT INTO system_parameters (parameter_name, parameter_value, description) VAL
 ('MAX_ENTERPRISE_CHARACTERS', '100000', 'Character limit for Enterprise tier requests'),
 ('SHOW_BETA_FEATURES', 'false', 'Toggle for experimental UI components'),
 ('SYSTEM_STATUS', 'Operational', 'Current live status of the AI voice engine'),
+('FREE_PLAN_SYNTHESIZE_LIMIT', '3', 'Daily synthesis limit for free tier users'),
 ('FREE_PLAN_FEATURES', 'Standard Voices;300 chars / request;3 daily syntheses', 'Features list for free tier'),
 ('PRO_PLAN_FEATURES', '5,000 chars / request;Natural/Neural Voices;Priority Support', 'Features list for pro tier'),
 ('PRO_PLUS_PLAN_FEATURES', '20,000 chars / request;ElevenLabs AI Voices;Dedicated Support', 'Features list for pro plus tier'),

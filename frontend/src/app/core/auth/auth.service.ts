@@ -154,11 +154,13 @@ export class AuthService implements OnDestroy {
   }
 
   private setSession(res: AuthResponse): void {
+    /* 
     console.log('[Auth] Setting session with:', { 
       username: res.username, 
       email: res.email, 
       phone: res.phoneNumber 
     });
+    */
 
     this.ttsService.clearCache();
     localStorage.setItem('token', res.token);

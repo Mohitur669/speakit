@@ -99,7 +99,12 @@ interface Country {
                 </div>
 
                 <div>
-                  <label class="block text-sm font-medium text-primary-700 dark:text-primary-300 mb-2">Password</label>
+                  <div class="flex items-center justify-between mb-2">
+                    <label class="block text-sm font-medium text-primary-700 dark:text-primary-300">Password</label>
+                    <button type="button" (click)="showPolicyModal.set(true)" class="text-[10px] font-bold text-brand-blue hover:underline">
+                      Password Policy
+                    </button>
+                  </div>
                   <div class="relative">
                     <input [(ngModel)]="password" name="password" [type]="showPassword() ? 'text' : 'password'" required
                       placeholder="••••••••"
@@ -110,7 +115,41 @@ interface Country {
                       <svg *ngIf="showPassword()" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 011.563-3.04m4.533-4.533A9.93 9.93 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21m-2.122-2.122L3 3m5.303 5.303a3 3 0 104.243 4.243"></path></svg>
                     </button>
                   </div>
-                  <p class="text-[10px] text-primary-400 mt-2 italic">Must be at least 8 characters</p>
+                  
+                  <!-- Unmet Password Requirements -->
+                  <div *ngIf="password && !isPasswordValid(password)" class="mt-2 space-y-1">
+                    <ng-container *ngFor="let req of getPasswordRequirements(password)">
+                      <div *ngIf="!req.met" class="flex items-center gap-1.5 text-red-500 animate-fade-in">
+                        <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        <span class="text-[10px] font-medium leading-none">{{ req.label }} required</span>
+                      </div>
+                    </ng-container>
+                  </div>
+                </div>
+
+                <!-- Password Policy Modal -->
+                <div *ngIf="showPolicyModal()" class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in" (click)="showPolicyModal.set(false)">
+                  <div class="bg-white dark:bg-primary-900 rounded-2xl p-6 w-full max-w-xs border border-primary-200 dark:border-primary-700 shadow-2xl animate-scale-up" (click)="$event.stopPropagation()">
+                    <div class="flex items-center justify-between mb-4">
+                      <h3 class="text-sm font-bold text-primary-900 dark:text-white uppercase tracking-wider">Password Policy</h3>
+                      <button (click)="showPolicyModal.set(false)" class="p-1 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-800 transition-colors">
+                        <svg class="w-4 h-4 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                      </button>
+                    </div>
+                    <div class="space-y-3">
+                      <div *ngFor="let req of getPasswordRequirements(password)" class="flex items-center gap-3">
+                        <div class="w-5 h-5 rounded-full flex items-center justify-center transition-colors"
+                          [ngClass]="req.met ? 'bg-green-500 text-white' : 'bg-primary-100 dark:bg-primary-800 text-primary-400'">
+                          <svg *ngIf="req.met" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                          <svg *ngIf="!req.met" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m0 0v2m0-2h2m-2 0H10m1-11a4 4 0 00-4 4v3H5v7h14v-7h-2V8a4 4 0 00-4-4z"></path></svg>
+                        </div>
+                        <span class="text-xs font-medium" [ngClass]="req.met ? 'text-green-600 dark:text-green-400' : 'text-primary-600 dark:text-primary-300'">{{ req.label }}</span>
+                      </div>
+                    </div>
+                    <button (click)="showPolicyModal.set(false)" class="w-full mt-6 py-2 bg-brand-blue text-white text-xs font-bold rounded-xl shadow-lg active:scale-95 transition-all">
+                      Got it
+                    </button>
+                  </div>
                 </div>
 
                 <div>
@@ -126,6 +165,16 @@ interface Country {
                       <svg *ngIf="showConfirmPassword()" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 011.563-3.04m4.533-4.533A9.93 9.93 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21m-2.122-2.122L3 3m5.303 5.303a3 3 0 104.243 4.243"></path></svg>
                     </button>
                   </div>
+                  <div *ngIf="confirmPassword" class="mt-1">
+                    <p *ngIf="password !== confirmPassword" class="text-xs text-red-500 flex items-center gap-1">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                      Passwords do not match
+                    </p>
+                    <p *ngIf="password === confirmPassword" class="text-xs text-green-500 flex items-center gap-1">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                      Passwords match
+                    </p>
+                  </div>
                 </div>
 
                 <div *ngIf="error()" class="p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30">
@@ -137,7 +186,7 @@ interface Country {
                   </p>
                 </div>
 
-                <button type="submit" [disabled]="loading() || !username || !email || !phoneNumber || usernameTaken() || emailTaken() || phoneTaken() || !password || password.length < 8 || password !== confirmPassword"
+                <button type="submit" [disabled]="loading() || !username || !email || !phoneNumber || usernameTaken() || emailTaken() || phoneTaken() || !isPasswordValid(password) || password !== confirmPassword"
                   class="w-full py-3 px-6 rounded-xl font-semibold text-white bg-brand-blue hover:bg-brand-blue/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center justify-center gap-2">
                   <svg *ngIf="loading()" class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -179,6 +228,7 @@ export class SignupComponent implements OnInit, OnDestroy {
   confirmPassword = '';
   showPassword = signal(false);
   showConfirmPassword = signal(false);
+  showPolicyModal = signal(false);
   loading = signal(false);
   error = signal('');
 
@@ -227,6 +277,24 @@ export class SignupComponent implements OnInit, OnDestroy {
   private authService = inject(AuthService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
+
+  getPasswordRequirements(pass: string) {
+    return [
+      { label: '8+ Characters', met: pass.length >= 8 },
+      { label: 'Lowercase (a-z)', met: /[a-z]/.test(pass) },
+      { label: 'Uppercase (A-Z)', met: /[A-Z]/.test(pass) },
+      { label: 'Numbers (0-9)', met: /[0-9]/.test(pass) },
+      { label: 'Special Char (!@#)', met: /[!@#$%^&*(),.?":{}|<>]/.test(pass) }
+    ];
+  }
+
+  isPasswordValid(pass: string): boolean {
+    return pass.length >= 8 &&
+           /[a-z]/.test(pass) &&
+           /[A-Z]/.test(pass) &&
+           /[0-9]/.test(pass) &&
+           /[!@#$%^&*(),.?":{}|<>]/.test(pass);
+  }
 
   pendingPlan = '';
 

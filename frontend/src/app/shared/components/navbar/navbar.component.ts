@@ -90,7 +90,7 @@ import { ThemeService } from '../../../core/services/theme.service';
                         routerLink="/tts" [queryParams]="{autostart: authService.currentPlanType() === 'FREE' ? 'PRO' : (authService.currentPlanType() === 'PRO' ? 'PRO_PLUS' : 'ENTERPRISE')}"
                         (click)="$event.stopPropagation(); showUserMenu.set(false)"
                         class="lg:hidden w-full mt-2 py-2.5 px-4 text-center text-xs font-bold text-white bg-accent-500 hover:bg-accent-600 rounded-lg shadow-md hover:shadow-accent-500/20 active:scale-95 transition-all uppercase tracking-wider">
-                        {{ authService.currentPlanType() === 'PRO_PLUS' ? 'Contact Sales' : 'Get ' + (authService.currentPlanType() === 'FREE' ? 'Pro' : 'Pro Plus') }}
+                        {{ authService.currentPlanType() === 'PRO_PLUS' ? 'Get Enterprise' : 'Get ' + (authService.currentPlanType() === 'FREE' ? 'Pro' : 'Pro Plus') }}
                       </a>
                     </div>
                   </div>
