@@ -136,7 +136,12 @@ interface Country {
 
                 <div *ngIf="showPasswordFields()" class="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in">
                   <div class="space-y-2">
-                    <label class="block text-sm font-semibold text-primary-700 dark:text-primary-300">New Password</label>
+                    <div class="flex items-center justify-between">
+                      <label class="block text-sm font-semibold text-primary-700 dark:text-primary-300">New Password</label>
+                      <button type="button" (click)="showPolicyModal.set(true)" class="text-[10px] font-bold text-brand-blue hover:underline">
+                        Password Policy
+                      </button>
+                    </div>
                     <div class="relative">
                       <input [(ngModel)]="newPassword" name="newPassword" [type]="showNewPass() ? 'text' : 'password'"
                         placeholder="Enter new password"
@@ -149,7 +154,41 @@ interface Country {
                         </svg>
                       </button>
                     </div>
-                    <p class="text-[10px] text-primary-400 mt-2 italic">Must be at least 8 characters</p>
+                    
+                    <!-- Unmet Password Requirements -->
+                    <div *ngIf="newPassword && !isPasswordValid(newPassword)" class="mt-2 space-y-1">
+                      <ng-container *ngFor="let req of getPasswordRequirements(newPassword)">
+                        <div *ngIf="!req.met" class="flex items-center gap-1.5 text-red-500 animate-fade-in">
+                          <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                          <span class="text-[10px] font-medium leading-none">{{ req.label }} required</span>
+                        </div>
+                      </ng-container>
+                    </div>
+                  </div>
+
+                  <!-- Password Policy Modal -->
+                  <div *ngIf="showPolicyModal()" class="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in" (click)="showPolicyModal.set(false)">
+                    <div class="bg-white dark:bg-primary-900 rounded-2xl p-6 w-full max-w-xs border border-primary-200 dark:border-primary-700 shadow-2xl animate-scale-up" (click)="$event.stopPropagation()">
+                      <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-sm font-bold text-primary-900 dark:text-white uppercase tracking-wider">Password Policy</h3>
+                        <button (click)="showPolicyModal.set(false)" class="p-1 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-800 transition-colors">
+                          <svg class="w-4 h-4 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                      </div>
+                      <div class="space-y-3">
+                        <div *ngFor="let req of getPasswordRequirements(newPassword)" class="flex items-center gap-3">
+                          <div class="w-5 h-5 rounded-full flex items-center justify-center transition-colors"
+                            [ngClass]="req.met ? 'bg-green-500 text-white' : 'bg-primary-100 dark:bg-primary-800 text-primary-400'">
+                            <svg *ngIf="req.met" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                            <svg *ngIf="!req.met" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m0 0v2m0-2h2m-2 0H10m1-11a4 4 0 00-4 4v3H5v7h14v-7h-2V8a4 4 0 00-4-4z"></path></svg>
+                          </div>
+                          <span class="text-xs font-medium" [ngClass]="req.met ? 'text-green-600 dark:text-green-400' : 'text-primary-600 dark:text-primary-300'">{{ req.label }}</span>
+                        </div>
+                      </div>
+                      <button (click)="showPolicyModal.set(false)" class="w-full mt-6 py-2 bg-brand-blue text-white text-xs font-bold rounded-xl shadow-lg active:scale-95 transition-all">
+                        Got it
+                      </button>
+                    </div>
                   </div>
                   
                   <div class="space-y-2">
@@ -167,6 +206,16 @@ interface Country {
                         </svg>
                       </button>
                     </div>
+                    <div *ngIf="confirmPassword" class="mt-1">
+                      <p *ngIf="newPassword !== confirmPassword" class="text-xs text-red-500 flex items-center gap-1">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        Passwords do not match
+                      </p>
+                      <p *ngIf="newPassword === confirmPassword" class="text-xs text-green-500 flex items-center gap-1">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        Passwords match
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -180,7 +229,7 @@ interface Country {
                 <button type="button" routerLink="/tts" class="px-6 py-3 rounded-xl font-semibold text-primary-600 dark:text-primary-400 hover:bg-primary-100 dark:hover:bg-primary-800 transition-all">
                   Cancel
                 </button>
-                <button type="submit" [disabled]="loading() || !username || !email || !phoneNumber || !currentPassword || usernameTaken() || emailTaken() || phoneTaken() || (showPasswordFields() && (!newPassword || newPassword.length < 8 || newPassword !== confirmPassword))"
+                <button type="submit" [disabled]="loading() || !username || !email || !phoneNumber || !currentPassword || usernameTaken() || emailTaken() || phoneTaken() || (showPasswordFields() && (!newPassword || !isPasswordValid(newPassword) || newPassword !== confirmPassword))"
                   class="px-8 py-3 rounded-xl font-semibold text-white bg-brand-blue hover:bg-brand-blue/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center justify-center gap-2">
                   <svg *ngIf="loading()" class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
                   Save Changes
@@ -207,6 +256,7 @@ export class ProfileSettingsComponent implements OnInit, OnDestroy {
   showNewPass = signal(false);
   showCurrPass = signal(false);
   showConfirmPass = signal(false);
+  showPolicyModal = signal(false);
 
   usernameTaken = signal(false);
   emailTaken = signal(false);
@@ -245,6 +295,24 @@ export class ProfileSettingsComponent implements OnInit, OnDestroy {
 
   private authService = inject(AuthService);
   private router = inject(Router);
+
+  getPasswordRequirements(pass: string) {
+    return [
+      { label: '8+ Characters', met: pass.length >= 8 },
+      { label: 'Lowercase (a-z)', met: /[a-z]/.test(pass) },
+      { label: 'Uppercase (A-Z)', met: /[A-Z]/.test(pass) },
+      { label: 'Numbers (0-9)', met: /[0-9]/.test(pass) },
+      { label: 'Special Char (!@#)', met: /[!@#$%^&*(),.?":{}|<>]/.test(pass) }
+    ];
+  }
+
+  isPasswordValid(pass: string): boolean {
+    return pass.length >= 8 &&
+           /[a-z]/.test(pass) &&
+           /[A-Z]/.test(pass) &&
+           /[0-9]/.test(pass) &&
+           /[!@#$%^&*(),.?":{}|<>]/.test(pass);
+  }
 
   ngOnInit(): void {
     if (!this.authService.isLoggedIn()) {

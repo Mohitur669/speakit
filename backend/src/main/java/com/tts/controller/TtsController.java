@@ -8,6 +8,7 @@ import com.tts.repository.TtsHistoryRepository;
 import com.tts.repository.UserRepository;
 import com.tts.service.ElevenLabsService;
 import com.tts.service.PollyService;
+import com.tts.service.SystemParameterService;
 import com.tts.util.Sanitizer;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -45,12 +46,14 @@ public class TtsController {
     private final ElevenLabsService elevenLabsService;
     private final UserRepository userRepository;
     private final TtsHistoryRepository ttsHistoryRepository;
+    private final SystemParameterService systemParameterService;
 
-    public TtsController(PollyService pollyService, ElevenLabsService elevenLabsService, UserRepository userRepository, TtsHistoryRepository ttsHistoryRepository) {
+    public TtsController(PollyService pollyService, ElevenLabsService elevenLabsService, UserRepository userRepository, TtsHistoryRepository ttsHistoryRepository, SystemParameterService systemParameterService) {
         this.pollyService = pollyService;
         this.elevenLabsService = elevenLabsService;
         this.userRepository = userRepository;
         this.ttsHistoryRepository = ttsHistoryRepository;
+        this.systemParameterService = systemParameterService;
     }
 
     /**
@@ -91,8 +94,9 @@ public class TtsController {
             if (userId != null) {
                 LocalDateTime todayStart = LocalDateTime.now().truncatedTo(ChronoUnit.DAYS);
                 long count = ttsHistoryRepository.countRecentByUserId(userId, todayStart);
-                if (count >= 3) {
-                    throw new RuntimeException("Daily limit of 3 syntheses reached for Free plan. Please upgrade to Pro.");
+                int limit = Integer.parseInt(systemParameterService.getLiveParameter("FREE_PLAN_SYNTHESIZE_LIMIT", "3"));
+                if (count >= limit) {
+                    throw new RuntimeException("Daily limit of " + limit + " syntheses reached for Free plan. Please upgrade to Pro.");
                 }
             }
         }
@@ -218,7 +222,12 @@ public class TtsController {
             LocalDateTime todayStart = LocalDateTime.now().truncatedTo(ChronoUnit.DAYS);
             long count = ttsHistoryRepository.countRecentByUserId(userId, todayStart);
             usage.put("dailyCount", count);
-            usage.put("dailyLimit", "FREE".equalsIgnoreCase(planType) ? 3 : -1);
+            
+            int limit = -1;
+            if ("FREE".equalsIgnoreCase(planType)) {
+                limit = Integer.parseInt(systemParameterService.getLiveParameter("FREE_PLAN_SYNTHESIZE_LIMIT", "3"));
+            }
+            usage.put("dailyLimit", limit);
         }
 
         return ResponseEntity.ok(usage);
