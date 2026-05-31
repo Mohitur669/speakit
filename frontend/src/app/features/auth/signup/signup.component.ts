@@ -186,8 +186,18 @@ interface Country {
                   </p>
                 </div>
 
-                <button type="submit" [disabled]="loading() || !username || !email || !phoneNumber || usernameTaken() || emailTaken() || phoneTaken() || !isPasswordValid(password) || password !== confirmPassword"
-                  class="w-full py-3 px-6 rounded-xl font-semibold text-white bg-brand-blue hover:bg-brand-blue/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center justify-center gap-2">
+                <div class="flex items-start gap-3 mt-6">
+                  <input type="checkbox" [(ngModel)]="acceptedTerms" name="acceptedTerms" id="acceptedTerms" required
+                    class="mt-1 w-4 h-4 rounded border-primary-300 text-brand-blue focus:ring-brand-blue/50">
+                  <label for="acceptedTerms" class="text-xs text-primary-500 dark:text-primary-400 leading-relaxed">
+                    I agree to the <a routerLink="/terms" class="text-brand-blue font-semibold hover:underline">Terms of Service</a> and 
+                    <a routerLink="/privacy" class="text-brand-blue font-semibold hover:underline">Privacy Policy</a> and consent to the 
+                    processing of my data as per the DPDP Act 2023.
+                  </label>
+                </div>
+
+                <button type="submit" [disabled]="loading() || !username || !email || !phoneNumber || usernameTaken() || emailTaken() || phoneTaken() || !isPasswordValid(password) || password !== confirmPassword || !acceptedTerms"
+                  class="w-full mt-6 py-3 px-6 rounded-xl font-semibold text-white bg-brand-blue hover:bg-brand-blue/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center justify-center gap-2">
                   <svg *ngIf="loading()" class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
@@ -213,7 +223,7 @@ interface Country {
           </div>
 
           <p class="text-center text-xs text-primary-400 mt-8 leading-relaxed opacity-70">
-            By creating an account, you agree to our <a class="underline">Terms</a> and <a class="underline">Privacy Policy</a>.
+            &copy; 2026 SpeakIT. All rights reserved. Professional AI voice generation.
           </p>
         </div>
       </div>
@@ -226,6 +236,7 @@ export class SignupComponent implements OnInit, OnDestroy {
   phoneNumber = '';
   password = '';
   confirmPassword = '';
+  acceptedTerms = false;
   showPassword = signal(false);
   showConfirmPassword = signal(false);
   showPolicyModal = signal(false);
