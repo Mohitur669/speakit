@@ -1,5 +1,6 @@
 package com.tts.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -16,4 +17,7 @@ public class TtsRequest {
 
     @NotNull(message = "Output format cannot be null")
     private String outputFormat = "mp3";  // mp3 | ogg_vorbis | pcm
+
+    @JsonProperty("isElevenLabs")
+    private boolean isElevenLabs = false;
 }

@@ -197,7 +197,7 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
             <h2 class="text-3xl sm:text-4xl font-bold text-primary-900 dark:text-white mb-4">Simple, transparent pricing</h2>
             <p class="text-lg text-primary-500 dark:text-primary-400">Start free, upgrade when you need more.</p>
           </div>
-          <div class="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+          <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
             <!-- Free Plan -->
             <div class="p-8 rounded-2xl bg-white dark:bg-primary-900 border border-primary-200 dark:border-primary-700 flex flex-col transition-all">
               <div class="text-sm font-medium text-primary-500 mb-2">Basic</div>
@@ -216,12 +216,11 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
             </div>
 
             <!-- Pro Plan -->
-            <div class="relative p-8 rounded-2xl bg-white dark:bg-primary-900 border-2 border-brand-blue flex flex-col transform md:scale-105 shadow-xl transition-all">
-              <div class="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-brand-blue text-white text-sm font-semibold rounded-full shadow-lg">Popular</div>
+            <div class="p-8 rounded-2xl bg-white dark:bg-primary-900 border border-primary-200 dark:border-primary-700 flex flex-col transition-all">
               <div class="text-sm font-medium text-brand-blue mb-2">Pro</div>
               <div class="flex items-baseline gap-1 mb-6">
                 <span class="text-4xl font-bold text-primary-900 dark:text-white">₹{{ proPrice() }}</span>
-                <span class="text-primary-400">/month</span>
+                <span class="text-primary-400">/mo</span>
               </div>
               <ul class="space-y-4 mb-8 flex-grow text-left">
                 <li *ngFor="let feature of proFeatures()" class="flex items-center gap-3 text-primary-600 dark:text-primary-300">
@@ -229,15 +228,31 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
                   {{ feature }}
                 </li>
               </ul>
-              <button (click)="buyPlan('PRO', proPrice())" class="block w-full py-3 text-center font-semibold text-white bg-brand-blue hover:bg-brand-blue/90 rounded-xl shadow-lg hover:shadow-brand-blue/20 transition-all">Upgrade to Pro</button>
+              <button (click)="buyPlan('PRO', proPrice())" class="block w-full py-3 text-center font-semibold text-white bg-brand-blue hover:bg-brand-blue/90 rounded-xl shadow-lg transition-all">Upgrade to Pro</button>
+            </div>
+
+            <!-- Pro Plus Plan -->
+            <div class="relative p-8 rounded-2xl bg-white dark:bg-primary-900 border-2 border-brand-blue flex flex-col transform lg:scale-105 shadow-xl transition-all">
+              <div class="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-brand-blue text-white text-sm font-semibold rounded-full shadow-lg">Recommended</div>
+              <div class="text-sm font-medium text-brand-blue mb-2">Pro Plus</div>
+              <div class="flex items-baseline gap-1 mb-6">
+                <span class="text-4xl font-bold text-primary-900 dark:text-white">₹{{ proPlusPrice() }}</span>
+                <span class="text-primary-400">/mo</span>
+              </div>
+              <ul class="space-y-4 mb-8 flex-grow text-left">
+                <li *ngFor="let feature of proPlusFeatures()" class="flex items-center gap-3 text-primary-600 dark:text-primary-300">
+                  <svg class="w-5 h-5 text-accent-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                  {{ feature }}
+                </li>
+              </ul>
+              <button (click)="buyPlan('PRO_PLUS', proPlusPrice())" class="block w-full py-3 text-center font-semibold text-white bg-brand-blue hover:bg-brand-blue/90 rounded-xl shadow-lg transition-all">Go Pro Plus</button>
             </div>
 
             <!-- Enterprise Plan -->
             <div class="p-8 rounded-2xl bg-white dark:bg-primary-900 border border-primary-200 dark:border-primary-700 flex flex-col transition-all">
               <div class="text-sm font-medium text-primary-500 mb-2">Enterprise</div>
               <div class="flex items-baseline gap-1 mb-6">
-                <span class="text-4xl font-bold text-primary-900 dark:text-white">₹{{ enterprisePrice() }}</span>
-                <span class="text-primary-400">/month</span>
+                <span class="text-4xl font-bold text-primary-900 dark:text-white">Custom</span>
               </div>
               <ul class="space-y-4 mb-8 flex-grow text-left">
                 <li *ngFor="let feature of enterpriseFeatures()" class="flex items-center gap-3 text-primary-600 dark:text-primary-300">
@@ -245,7 +260,7 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
                   {{ feature }}
                 </li>
               </ul>
-              <button (click)="buyPlan('ENTERPRISE', enterprisePrice())" class="block w-full py-3 text-center font-semibold text-primary-700 dark:text-primary-200 bg-primary-100 dark:bg-primary-800 hover:bg-primary-200 dark:hover:bg-primary-700 rounded-xl transition-all">Get Enterprise</button>
+              <a routerLink="/contact" class="block w-full py-3 text-center font-semibold text-primary-700 dark:text-primary-200 bg-primary-100 dark:bg-primary-800 hover:bg-primary-200 dark:hover:bg-primary-700 rounded-xl transition-all">Contact Sales</a>
             </div>
           </div>
         </div>
@@ -262,11 +277,12 @@ export class LandingComponent implements OnInit {
   featureFlags = inject(FeatureFlagService);
 
   proPrice = computed(() => Number(this.featureFlags.getCached('PRO_PLAN_PRICE_INR', '499')));
-  enterprisePrice = computed(() => Number(this.featureFlags.getCached('ENTERPRISE_PLAN_PRICE_INR', '1999')));
+  proPlusPrice = computed(() => Number(this.featureFlags.getCached('PRO_PLUS_PLAN_PRICE_INR', '1999')));
 
   // Computed signals for features (Cached Track)
   freeFeatures = computed(() => this.getPlanFeatures('FREE'));
   proFeatures = computed(() => this.getPlanFeatures('PRO'));
+  proPlusFeatures = computed(() => this.getPlanFeatures('PRO_PLUS'));
   enterpriseFeatures = computed(() => this.getPlanFeatures('ENTERPRISE'));
 
   private getPlanFeatures(plan: string): string[] {
@@ -276,16 +292,18 @@ export class LandingComponent implements OnInit {
 
   async ngOnInit() {
     // Combine everything into ONE batch request for maximum speed
-    // Computed signals (proPrice, enterprisePrice, features) will auto-update when this finishes
+    // Computed signals will auto-update when this finishes
     await this.featureFlags.init([
       'MAX_FREE_CHARACTERS', 
       'MAX_PRO_CHARACTERS', 
+      'MAX_PRO_PLUS_CHARACTERS',
       'ENABLE_RAZORPAY',
       'FREE_PLAN_FEATURES',
       'PRO_PLAN_FEATURES',
+      'PRO_PLUS_PLAN_FEATURES',
       'ENTERPRISE_PLAN_FEATURES',
       'PRO_PLAN_PRICE_INR',
-      'ENTERPRISE_PLAN_PRICE_INR'
+      'PRO_PLUS_PLAN_PRICE_INR'
     ]);
   }
 

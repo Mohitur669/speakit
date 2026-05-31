@@ -42,6 +42,10 @@ public class TtsHistory extends BaseEntity {
 
     @Column(name = "is_neural", nullable = false)
     private boolean isNeural;
+
+    @Column(name = "is_eleven_labs", nullable = false)
+    @Builder.Default
+    private boolean isElevenLabs = false;
     
     // We only store a snippet or hash for privacy, not full text in DB
     @Column(name = "text_snippet", length = 100)

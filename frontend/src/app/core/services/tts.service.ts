@@ -19,6 +19,13 @@ export interface Voice {
   gender: string;
   isNeural: boolean;
   isStandard: boolean;
+  isElevenLabs?: boolean;
+}
+
+export interface TtsUsage {
+  plan: string;
+  dailyCount: number;
+  dailyLimit: number;
 }
 
 interface CachedVoices {
@@ -122,15 +129,20 @@ export class TtsService {
    * 
    * @param text The source text to synthesize
    * @param voiceId The specific voice to use (e.g., 'Joanna')
+   * @param isElevenLabs Boolean indicating if the voice belongs to ElevenLabs
    * @param format The desired audio format (defaults to 'mp3')
    * @returns Observable containing the audio file as a Blob
    */
-  synthesize(text: string, voiceId: string, format = 'mp3'): Observable<Blob> {
+  synthesize(text: string, voiceId: string, isElevenLabs = false, format = 'mp3'): Observable<Blob> {
     return this.http.post(
-      `${this.baseUrl}/synthesize-stream`,
-      { text, voiceId, outputFormat: format },
+      `${this.baseUrl}/synthesize`, // Using /synthesize (buffered) for better ElevenLabs compatibility
+      { text, voiceId, outputFormat: format, isElevenLabs },
       { responseType: 'blob' }
     );
+  }
+
+  getUsage(): Observable<TtsUsage> {
+    return this.http.get<TtsUsage>(`${this.baseUrl}/usage`);
   }
 
   /**

@@ -36,6 +36,7 @@ export class TtsComponent implements OnInit {
   private router = inject(Router);
 
   maxChars = signal<number>(3000);
+  usage = signal<any>(null);
 
   constructor() {
     // Reactively refresh UI when user status changes (e.g. after payment)
@@ -44,16 +45,17 @@ export class TtsComponent implements OnInit {
       if (this.authService.isLoggedIn()) {
         this.refreshVoices();
         this.refreshLimits();
+        this.refreshUsage();
       }
     });
   }
 
   text = '';
-  currentFilter = signal<'All' | 'Standard' | 'Neural'>('Standard');
+  currentFilter = signal<'All' | 'Standard' | 'Neural' | 'Natural'>('Standard');
   selectedVoiceId = '';
   voices: Voice[] = [];
   filteredVoices = signal<Voice[]>([]);
-  filterOptions = signal<('All' | 'Standard' | 'Neural')[]>(['Standard', 'Neural', 'All']);
+  filterOptions = signal<('All' | 'Standard' | 'Neural' | 'Natural')[]>(['Standard', 'Neural', 'Natural', 'All']);
 
   // --- HARDCODED FILTER LOGIC: DO NOT CHANGE IN FUTURE ---
   /**
@@ -71,7 +73,11 @@ export class TtsComponent implements OnInit {
    * This ensures the count reaches the expected 13 for AWS en-US.
    */
   get neuralCount(): number {
-    return this.voices.filter(v => v.isNeural === true).length;
+    return this.voices.filter(v => v.isNeural === true && !v.isElevenLabs).length;
+  }
+
+  get naturalCount(): number {
+    return this.voices.filter(v => v.isElevenLabs === true).length;
   }
 
   get totalCount(): number {
@@ -135,7 +141,16 @@ export class TtsComponent implements OnInit {
    */
   get userCanUseNeural(): boolean {
     const plan = this.authService.currentPlanType();
-    return plan === 'PRO' || plan === 'ENTERPRISE' || this.authService.hasNaturalAccess();
+    return plan === 'PRO' || plan === 'PRO_PLUS' || plan === 'ENTERPRISE' || this.authService.hasNaturalAccess();
+  }
+
+  get userCanUseNatural(): boolean {
+    const plan = this.authService.currentPlanType();
+    return plan === 'PRO_PLUS' || plan === 'ENTERPRISE';
+  }
+
+  async refreshUsage() {
+    this.ttsService.getUsage().subscribe(u => this.usage.set(u));
   }
 
   async refreshLimits() {
@@ -146,7 +161,10 @@ export class TtsComponent implements OnInit {
 
     if (plan === 'ENTERPRISE') {
       limitKey = 'MAX_ENTERPRISE_CHARACTERS';
-      defaultVal = 10000;
+      defaultVal = 100000;
+    } else if (plan === 'PRO_PLUS') {
+      limitKey = 'MAX_PRO_PLUS_CHARACTERS';
+      defaultVal = 20000;
     } else if (plan === 'PRO') {
       limitKey = 'MAX_PRO_CHARACTERS';
       defaultVal = 5000;
@@ -159,8 +177,13 @@ export class TtsComponent implements OnInit {
   async invokeUpgrade(plan: string) {
     const amount = plan === 'PRO' ? 
       await this.featureFlags.getLiveNumber('PRO_PLAN_PRICE_INR', 499) : 
-      await this.featureFlags.getLiveNumber('ENTERPRISE_PLAN_PRICE_INR', 1999);
+      await this.featureFlags.getLiveNumber('PRO_PLUS_PLAN_PRICE_INR', 1999);
     
+    if (plan === 'ENTERPRISE') {
+      this.router.navigate(['/contact']);
+      return;
+    }
+
     this.razorpayService.initiatePayment(plan, amount);
   }
 
@@ -170,10 +193,13 @@ export class TtsComponent implements OnInit {
         this.voices = voices;
         
         // Ensure both filter options are always present to show catalog value
-        this.filterOptions.set(['Standard', 'Neural', 'All']);
+        this.filterOptions.set(['Standard', 'Neural', 'Natural', 'All']);
 
         // Default to Standard if not premium and currently on Neural
         if (!this.userCanUseNeural && this.currentFilter() === 'Neural') {
+          this.currentFilter.set('Standard');
+        }
+        if (!this.userCanUseNatural && this.currentFilter() === 'Natural') {
           this.currentFilter.set('Standard');
         }
 
@@ -194,7 +220,9 @@ export class TtsComponent implements OnInit {
     if (filter === 'Standard') {
       this.filteredVoices.set(this.voices.filter(v => v.isStandard === true));
     } else if (filter === 'Neural') {
-      this.filteredVoices.set(this.voices.filter(v => v.isNeural === true));
+      this.filteredVoices.set(this.voices.filter(v => v.isNeural === true && !v.isElevenLabs));
+    } else if (filter === 'Natural') {
+      this.filteredVoices.set(this.voices.filter(v => v.isElevenLabs === true));
     } else {
       this.filteredVoices.set([...this.voices]);
     }
@@ -211,9 +239,13 @@ export class TtsComponent implements OnInit {
     }
   }
 
-  setFilter(filter: 'All' | 'Standard' | 'Neural'): void {
+  setFilter(filter: 'All' | 'Standard' | 'Neural' | 'Natural'): void {
     if (filter === 'Neural' && !this.userCanUseNeural) {
       this.showNotification('Neural voices require a Pro subscription', 'error');
+      return;
+    }
+    if (filter === 'Natural' && !this.userCanUseNatural) {
+      this.showNotification('Natural AI voices require a Pro Plus subscription', 'error');
       return;
     }
     this.currentFilter.set(filter);
@@ -236,6 +268,12 @@ export class TtsComponent implements OnInit {
 
   convert(): void {
     if (!this.text.trim() || !this.selectedVoiceId) return;
+    
+    if (this.usage()?.dailyLimit > 0 && this.usage()?.dailyCount >= this.usage()?.dailyLimit) {
+      this.showNotification('Daily limit reached for Free plan. Please upgrade to Pro.', 'error');
+      return;
+    }
+
     this.loading.set(true);
     this.error.set('');
 
@@ -244,18 +282,20 @@ export class TtsComponent implements OnInit {
       this.audioUrl.set(null);
     }
 
-    this.ttsService.synthesize(this.text, this.selectedVoiceId).subscribe({
+    const voice = this.selectedVoice;
+    this.ttsService.synthesize(this.text, this.selectedVoiceId, !!voice?.isElevenLabs).subscribe({
       next: (blob) => {
         const audioBlob = new Blob([blob], { type: blob.type || 'audio/mpeg' });
         this.audioUrl.set(URL.createObjectURL(audioBlob));
         this.loading.set(false);
         this.showNotification('Audio generated successfully');
+        this.refreshUsage();
       },
       error: (err) => {
         this.loading.set(false);
         this.error.set('Failed to generate audio. Please try again.');
-        if (err.status === 400 || err.status === 403) {
-          this.showNotification('Neural voices require a Pro subscription', 'error');
+        if (err.status === 403) {
+          this.showNotification(err.error?.message || 'Access denied', 'error');
         }
       }
     });
