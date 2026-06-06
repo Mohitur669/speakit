@@ -9,7 +9,8 @@ import { Country } from '../../../shared/models/country.model';
 import { 
   isPasswordValid, 
   mapValidationErrors, 
-  COUNTRIES 
+  COUNTRIES,
+  buildFormFields
 } from '../../../shared';
 import { ProfileFormComponent } from './components/profile-form/profile-form.component';
 import { PasswordFormComponent } from './components/password-form/password-form.component';
@@ -155,8 +156,10 @@ export class ProfileSettingsComponent implements OnInit, OnDestroy {
   emailSubject = new Subject<string>();
   phoneSubject = new Subject<string>();
 
+  private formSetup = buildFormFields();
   selectedCountry!: Country;
-  countries = COUNTRIES;
+  countries = this.formSetup.countries;
+
 
   authService = inject(AuthService);
   private router = inject(Router);
@@ -176,7 +179,8 @@ export class ProfileSettingsComponent implements OnInit, OnDestroy {
     const rawPhone = this.authService.currentUserPhone() || '';
     
     // Attempt to extract country code from stored phone
-    const country = this.countries.find(c => rawPhone.startsWith(c.code));
+    const country = this.countries.find((c: Country) => rawPhone.startsWith(c.code));
+
     if (country) {
       this.selectedCountry = country;
       this.phoneNumber = rawPhone.substring(country.code.length);

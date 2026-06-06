@@ -1,7 +1,7 @@
 import { Component, Input, Output, EventEmitter, signal, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Country } from '../../../../shared/models/country.model';
+import { Country } from '../../../../../shared/models/country.model';
 import { 
   OnlyNumbersDirective, 
   handleUsernameInput, 
@@ -10,10 +10,10 @@ import {
   toggleDropdown,
   selectCountry,
   COUNTRIES
-} from '../../../../shared';
+} from '../../../../../shared';
 import { Subject } from 'rxjs';
 
-import { CountrySelectorComponent } from '../../../../shared/components/country-selector/country-selector.component';
+import { CountrySelectorComponent } from '../../../../../shared/components/country-selector/country-selector.component';
 
 @Component({
   selector: 'app-profile-form',

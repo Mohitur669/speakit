@@ -66,7 +66,7 @@ export function mapValidationErrors(
 
   config.emailSubject.pipe(debounceTime(500), takeUntil(config.destroy$)).subscribe(val => {
     if (!val || (config.currentEmail && val.toLowerCase() === config.currentEmail.toLowerCase())) {
-      emailTaken.set(false);
+      config.emailTaken.set(false);
       return;
     }
     config.authService.checkEmail(val).subscribe((taken: boolean) => config.emailTaken.set(taken));
@@ -75,7 +75,7 @@ export function mapValidationErrors(
   config.phoneSubject.pipe(debounceTime(500), takeUntil(config.destroy$)).subscribe(val => {
     const fullPhone = config.selectedCountryCode() + val.replace(/\D/g, '');
     if (!val || (config.currentPhone && fullPhone === config.currentPhone)) {
-      phoneTaken.set(false);
+      config.phoneTaken.set(false);
       return;
     }
     config.authService.checkPhone(fullPhone).subscribe((taken: boolean) => config.phoneTaken.set(taken));

@@ -8,7 +8,9 @@ export function isPasswordValid(pass: string): boolean {
          /[!@#$%^&*(),.?":{}|<>]/.test(pass);
 }
 
+// fallow-ignore-next-line unused-export
 export function passwordStrengthValidator(): ValidatorFn {
+
   return (control: AbstractControl): ValidationErrors | null =>
     isPasswordValid(control.value) ? null : { weakPassword: true };
 }
