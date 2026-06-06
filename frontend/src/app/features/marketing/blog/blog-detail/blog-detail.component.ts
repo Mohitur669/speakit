@@ -74,7 +74,7 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
       <app-footer></app-footer>
     </div>
   `,
-  styles: [\`
+  styles: [`
     /* Minimal styles for code blocks within prose */
     ::ng-deep .prose pre {
       background-color: #1e293b !important;
@@ -101,7 +101,8 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
       padding: 0;
       font-weight: 400;
     }
-  \`]
+  `]
+
 })
 export class BlogDetailComponent implements OnInit {
   private route = inject(ActivatedRoute);

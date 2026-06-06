@@ -9,7 +9,7 @@ import { Country } from '../../../shared/models/country.model';
 import { 
   OnlyNumbersDirective, 
   isPasswordValid, 
-  resetFormFields, 
+  resetFormFields, buildFormFields, 
   mapValidationErrors, 
   COUNTRIES,
   handleUsernameInput,
@@ -151,8 +151,10 @@ export class SignupComponent implements OnInit, OnDestroy {
   emailSubject = new Subject<string>();
   phoneSubject = new Subject<string>();
 
-  selectedCountry: Country = COUNTRIES[0];
-  countries = COUNTRIES;
+  private formSetup = buildFormFields();
+  selectedCountry: Country = this.formSetup.defaultCountry;
+  countries = this.formSetup.countries;
+
 
   private authService = inject(AuthService);
   private router = inject(Router);
