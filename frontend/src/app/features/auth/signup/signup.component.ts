@@ -84,11 +84,13 @@ import { PasswordPolicyModalComponent } from '../../../shared/components/passwor
                   <p *ngIf="phoneTaken()" class="text-xs text-red-500 mt-1">Phone number is already taken</p>
                 </div>
 
-                <app-password-field-group
-                  [(password)]="password"
-                  [(confirmPassword)]="confirmPassword"
-                  (showPolicyModal)="showPolicyModal.set($event)">
-                </app-password-field-group>
+                <div>
+                  <app-password-field-group
+                    [(password)]="password"
+                    [(confirmPassword)]="confirmPassword"
+                    (showPolicyModal)="showPolicyModal.set($event)">
+                  </app-password-field-group>
+                </div>
 
                 <div *ngIf="error()" class="p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm animate-fade-in">
                   {{ error() }}
