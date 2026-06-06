@@ -46,35 +46,6 @@ export class RazorpayService {
     }
 
     try {
-      const user = this.authService.currentUser();
-      const email = this.authService.currentUserEmail();
-      const phoneRaw = this.authService.currentUserPhone() || '';
-      
-      /**
-       * PRECISION PRE-FILL LOGIC (Based on Official Razorpay Docs)
-       * For Indian merchant accounts:
-       * 1. India (+91): Pass ONLY the 10-digit local number.
-       * 2. International: Pass full E.164 (+CCXXXXXXXXXX).
-       */
-      let phone = phoneRaw.replace(/\D/g, ''); 
-      
-      try {
-        const parsed = parsePhoneNumberFromString(phoneRaw);
-        if (parsed) {
-          if (parsed.country === 'IN') {
-            // Passing 10 digits is most stable for Indian merchants
-            phone = parsed.nationalNumber as string;
-          } else {
-            // Full E.164 required for International auto-detection
-            phone = parsed.format('E.164');
-          }
-        }
-      } catch (e) {
-        console.warn('[Razorpay] Phone parsing failed, falling back to raw digits');
-      }
-
-      // console.log('[Razorpay] Prefilling modal with:', { user, email, phone });
-
       // 1. Create Order on Backend
       const orderRes: any = await firstValueFrom(
         this.http.post(`${environment.apiUrl}/api/v1/payments/create-order`, {
@@ -85,40 +56,79 @@ export class RazorpayService {
       );
 
       // 2. Open Razorpay Checkout (Standard Integration Step 1)
-      const options = {
-        key: orderRes.keyId,
-        amount: orderRes.amount,
-        currency: orderRes.currency,
-        name: 'SpeakIT',
-        description: `${planType} Plan Subscription`,
-        order_id: orderRes.orderId,
-        handler: async (response: any) => {
-          await this.verifyPayment(response);
-        },
-        prefill: {
-          name: user || '',
-          email: email || '',
-          contact: phone || ''
-        },
-        theme: {
-          color: '#3B82F6'
-        },
-        modal: {
-          confirm_close: true
-        }
-      };
-
+      const options = this.buildOrderOptions(planType, orderRes);
       const rzp = new Razorpay(options);
-      rzp.on('payment.failed', (response: any) => {
-        this.toast.show('Payment failed: ' + response.error.description, 'error');
-      });
+      
+      rzp.on('payment.failed', (response: any) => this.handlePaymentFailure(response));
       rzp.open();
 
     } catch (error) {
-      console.error('Payment initiation error', error);
-      this.toast.show('Failed to initiate payment. Please try again.', 'error');
+      this.handlePaymentFailure(error);
     }
   }
+
+  private buildOrderOptions(planType: string, orderRes: any): any {
+    const user = this.authService.currentUser();
+    const email = this.authService.currentUserEmail();
+    const phoneRaw = this.authService.currentUserPhone() || '';
+    
+    /**
+     * PRECISION PRE-FILL LOGIC (Based on Official Razorpay Docs)
+     * For Indian merchant accounts:
+     * 1. India (+91): Pass ONLY the 10-digit local number.
+     * 2. International: Pass full E.164 (+CCXXXXXXXXXX).
+     */
+    let phone = phoneRaw.replace(/\D/g, ''); 
+    
+    try {
+      const parsed = parsePhoneNumberFromString(phoneRaw);
+      if (parsed) {
+        if (parsed.country === 'IN') {
+          // Passing 10 digits is most stable for Indian merchants
+          phone = parsed.nationalNumber as string;
+        } else {
+          // Full E.164 required for International auto-detection
+          phone = parsed.format('E.164');
+        }
+      }
+    } catch (e) {
+      console.warn('[Razorpay] Phone parsing failed, falling back to raw digits');
+    }
+
+    return {
+      key: orderRes.keyId,
+      amount: orderRes.amount,
+      currency: orderRes.currency,
+      name: 'SpeakIT',
+      description: `${planType} Plan Subscription`,
+      order_id: orderRes.orderId,
+      handler: async (response: any) => {
+        await this.handlePaymentSuccess(response);
+      },
+      prefill: {
+        name: user || '',
+        email: email || '',
+        contact: phone || ''
+      },
+      theme: {
+        color: '#3B82F6'
+      },
+      modal: {
+        confirm_close: true
+      }
+    };
+  }
+
+  private async handlePaymentSuccess(response: any): Promise<void> {
+    await this.verifyPayment(response);
+  }
+
+  private handlePaymentFailure(error: any): void {
+    console.error('Payment error', error);
+    const description = error?.error?.description || 'Failed to process payment. Please try again.';
+    this.toast.show(description, 'error');
+  }
+
 
   private async verifyPayment(razorpayResponse: any) {
     try {
