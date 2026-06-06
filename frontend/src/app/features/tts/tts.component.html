@@ -12,178 +12,40 @@
     <!-- Main Content Grid -->
     <div class="grid lg:grid-cols-3 gap-6 items-stretch">
 
-      <!-- Left Column - Voice Selection -->
+      <!-- Left Column - Voice Selection & Stats -->
       <div class="lg:col-span-1 flex flex-col gap-6 animate-slide-up">
-        <!-- Voice Selection Card -->
-        <div class="flex-1 bg-white dark:bg-primary-900 rounded-xl border border-primary-200 dark:border-primary-700 p-6">
-          <h2 class="text-lg sm:text-sm font-semibold text-primary-900 dark:text-white mb-4">Select Voice</h2>
+        <app-voice-selector
+          [voices]="voices"
+          [voiceId]="selectedVoiceId"
+          [userCanUseNeural]="userCanUseNeural"
+          [userCanUseNatural]="userCanUseNatural"
+          (voiceChange)="selectedVoiceId = $event"
+          (showNotification)="handleNotification($event)">
+        </app-voice-selector>
 
-          <!-- Filter Tabs -->
-          <div class="flex gap-1 p-1 bg-primary-100 dark:bg-primary-800 rounded-lg mb-4">
-            <ng-container *ngFor="let filter of filterOptions()">
-              <button *ngIf="filter !== 'All'"
-                (click)="setFilter(filter)"
-                [ngClass]="currentFilter() === filter ? 'bg-white dark:bg-primary-700 text-primary-900 dark:text-white shadow-sm' : 'text-primary-500 dark:text-primary-400 hover:text-primary-700 dark:hover:text-white'"
-                class="flex-1 py-2 sm:py-1.5 text-[11px] sm:text-[10px] font-bold rounded-md transition-all relative uppercase tracking-tight">
+        <app-usage-stats
+          [planType]="authService.currentPlanType()"
+          [textLength]="text.length"
+          [maxChars]="maxChars()">
+        </app-usage-stats>
 
-                {{ filter }}
-                <span class="opacity-60 ml-0.5">({{ filter === 'Standard' ? standardCount : (filter === 'Neural' ? neuralCount : naturalCount) }})</span>
-
-                <!-- Access Badge -->
-                <div *ngIf="filter === 'Neural' || filter === 'Natural'"
-                  class="absolute -top-1 -right-1 flex items-center justify-center">
-
-                  <!-- Access Granted: Pinging Green Dot -->
-                  <span *ngIf="filter === 'Neural' ? userCanUseNeural : userCanUseNatural" class="relative flex h-2 w-2">
-                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-400 opacity-75"></span>
-                    <span class="relative inline-flex rounded-full h-2 w-2 bg-accent-500"></span>
-                  </span>
-
-                  <!-- Access Denied: Tiny Lock -->
-                  <svg *ngIf="!(filter === 'Neural' ? userCanUseNeural : userCanUseNatural)"
-                    class="w-3 h-3 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
-                  </svg>
-                </div>
-              </button>
-            </ng-container>
-          </div>
-
-          <!-- Voice Dropdown -->
-          <div class="relative">
-            <button (click)="toggleDropdown($event)"
-              class="w-full flex items-center justify-between px-4 py-3 bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 rounded-xl hover:border-brand-blue/50 transition-colors">
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-lg bg-brand-blue/10 flex items-center justify-center text-brand-blue">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                  </svg>
-                </div>
-                <div class="text-left">
-                  <div class="text-base sm:text-sm font-medium text-primary-900 dark:text-white">{{ selectedVoice?.name || 'Select a voice' }}</div>
-                  <div class="text-sm sm:text-xs text-primary-400">{{ selectedVoice?.gender }} · {{ currentFilter() === 'Standard' ? 'Standard' : (selectedVoice?.isElevenLabs ? 'Natural AI' : (selectedVoice?.isNeural ? 'Neural' : 'Standard')) }}</div>
-                </div>
-              </div>
-              <svg [ngClass]="isDropdownOpen ? 'rotate-180' : ''" class="w-4 h-4 text-primary-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-              </svg>
-            </button>
-
-            <!-- Dropdown -->
-            <div *ngIf="isDropdownOpen"
-              class="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-primary-900 border border-primary-200 dark:border-primary-700 rounded-xl shadow-elevated overflow-hidden z-50 max-h-72 overflow-y-auto">
-              <button *ngFor="let voice of filteredVoices()"
-                (click)="selectVoice(voice.id)"
-                [ngClass]="selectedVoiceId === voice.id ? 'bg-brand-blue/10 border-l-2 border-l-brand-blue' : 'hover:bg-primary-50 dark:hover:bg-primary-800'"
-                class="w-full flex items-center justify-between px-4 py-3 text-left transition-colors">
-                <div class="flex items-center gap-3">
-                  <span class="text-lg">{{ voice.gender === 'Female' ? '👩' : '👨' }}</span>
-                  <div>
-                    <div class="text-sm font-medium text-primary-900 dark:text-white">{{ voice.name }}</div>
-                    <div class="text-xs text-primary-400 uppercase">{{ voice.gender }}</div>
-                  </div>
-                </div>
-                <span [ngClass]="currentFilter() === 'Standard' ? 'text-primary-400' : (voice.isElevenLabs ? 'text-purple-500' : voice.isNeural ? 'text-accent-500' : 'text-primary-400')" class="text-[10px] font-medium uppercase">
-                  {{ currentFilter() === 'Standard' ? 'Standard' : (voice.isElevenLabs ? 'Natural AI' : (voice.isNeural ? 'Neural' : 'Standard')) }}
-                </span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Quick Stats (Hidden on Mobile, already in script) -->
-        <div class="hidden lg:block bg-white dark:bg-primary-900 rounded-xl border border-primary-200 dark:border-primary-700 p-6">
-          <h2 class="text-lg sm:text-sm font-semibold text-primary-900 dark:text-white mb-4">Your Usage</h2>
-          <div class="space-y-4">
-          <div>
-            <div class="flex justify-between text-base sm:text-sm mb-1">
-              <span class="text-primary-500">Current Plan</span>
-              <span class="font-bold text-brand-blue">{{ authService.currentPlanType().replace('_', ' ') }}</span>
-            </div>
-            <div class="flex justify-between text-base sm:text-sm mb-2">
-              <span class="text-primary-500">Characters used</span>
-              <span class="font-medium text-primary-700 dark:text-primary-300">{{ text.length | number }} / {{ maxChars() | number }}</span>
-            </div>
-            <div class="h-2 bg-primary-100 dark:bg-primary-800 rounded-full overflow-hidden">
-                <div [ngClass]="text.length > (maxChars() * 0.9) ? 'bg-red-500' : 'bg-brand-blue'"
-                  class="h-full rounded-full transition-all duration-500"
-                  [style.width.%]="(text.length / maxChars()) * 100"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Dynamic Upgrade Card (Hidden for Enterprise & Mobile) -->
-        <div *ngIf="authService.currentPlanType() !== 'ENTERPRISE'"
-          class="hidden lg:block bg-white dark:bg-primary-900 p-6 rounded-xl border-2 border-accent-500/20 shadow-lg animate-fade-in group hover:border-accent-500/50 transition-all">
-          <div class="flex items-center gap-3 mb-4">
-            <div class="w-12 h-12 rounded-xl bg-accent-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <svg class="w-5 h-5 text-accent-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-              </svg>
-            </div>
-            <h3 class="text-base sm:text-sm font-bold text-primary-900 dark:text-white uppercase tracking-wider">
-              {{ authService.currentPlanType() === 'FREE' ? 'Go Pro' : (authService.currentPlanType() === 'PRO' ? 'Get Pro Plus' : 'Get Enterprise') }}
-              </h3>
-              </div>
-              <p class="text-sm sm:text-xs text-primary-500 dark:text-primary-400 mb-6 leading-relaxed">
-              {{ authService.currentPlanType() === 'FREE' ? 'Unlock natural neural voices and higher generation priority.' : (authService.currentPlanType() === 'PRO' ? 'Unlock ElevenLabs AI voices and higher character limits.' : 'Tailored character limits and dedicated SLA for large scale.') }}
-              </p>
-              <button (click)="invokeUpgrade(authService.currentPlanType() === 'FREE' ? 'PRO' : (authService.currentPlanType() === 'PRO' ? 'PRO_PLUS' : 'ENTERPRISE'))"
-              class="block w-full px-6 py-3.5 sm:py-3 text-center text-sm font-semibold text-white bg-accent-500 hover:bg-accent-600 rounded-xl transition-all shadow-md hover:shadow-lg hover:shadow-accent-500/20 active:scale-95">
-              {{ authService.currentPlanType() === 'PRO_PLUS' ? 'Get Enterprise' : 'Upgrade to ' + (authService.currentPlanType() === 'FREE' ? 'Pro' : 'Pro Plus') }}
-              </button>        </div>
+        <app-upgrade-card
+          *ngIf="authService.currentPlanType() !== 'ENTERPRISE'"
+          [currentPlan]="authService.currentPlanType()"
+          (upgrade)="invokeUpgrade($event)">
+        </app-upgrade-card>
       </div>
 
       <!-- Right Column - Editor -->
       <div class="lg:col-span-2 flex flex-col gap-6 animate-slide-up stagger-1">
-
-        <!-- Text Editor -->
-        <div class="flex-1 bg-white dark:bg-primary-900 rounded-xl border border-primary-200 dark:border-primary-700 overflow-hidden flex flex-col">
-          <div class="px-6 py-4 border-b border-primary-100 dark:border-primary-800 flex items-center justify-between">
-            <div class="flex items-center gap-4">
-              <h2 class="text-lg sm:text-sm font-semibold text-primary-900 dark:text-white">Script</h2>
-              <span *ngIf="usage()?.dailyLimit > 0" class="text-xs font-semibold px-2 py-1 rounded-md bg-accent-500/10 text-accent-600 dark:text-accent-400">
-                {{ usage()?.dailyCount }}/{{ usage()?.dailyLimit }} credits used
-              </span>
-              <!-- Mobile-Only Quick Stats -->
-              <div class="lg:hidden flex items-center gap-3 bg-primary-100 dark:bg-primary-800 px-3 py-1 rounded-full">
-                <span class="text-[10px] font-bold text-primary-500 uppercase tracking-wider">Usage</span>
-                <span class="text-[11px] font-medium text-primary-700 dark:text-primary-300">{{ text.length }} / {{ maxChars() | number }}</span>
-                <div class="w-12 h-1.5 bg-primary-200 dark:bg-primary-700 rounded-full overflow-hidden">
-                  <div [ngClass]="text.length > (maxChars() * 0.9) ? 'bg-red-500' : 'bg-brand-blue'"
-                    class="h-full rounded-full transition-all"
-                    [style.width.%]="(text.length / maxChars()) * 100"></div>
-                </div>
-              </div>
-            </div>
-            <button *ngIf="text" (click)="text = ''"
-              class="text-sm sm:text-xs text-primary-400 hover:text-primary-600 dark:hover:text-primary-300 transition-colors">
-              Clear
-            </button>
-          </div>
-          <div class="p-4 sm:p-6 flex-1 flex flex-col">
-            <textarea [(ngModel)]="text"
-              placeholder="Enter your text here..."
-              rows="12"
-              [maxlength]="maxChars()"
-              class="flex-1 w-full bg-primary-50 dark:bg-primary-800 text-primary-900 dark:text-white placeholder-primary-400 rounded-xl border border-primary-200 dark:border-primary-700 p-3 sm:p-4 text-base sm:text-sm leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all min-h-[300px]"></textarea>
-
-            <div class="mt-4 flex items-center justify-end">
-              <button (click)="convert()" [disabled]="loading() || !text.trim() || !selectedVoiceId"
-                class="flex items-center justify-center gap-2 w-40 h-12 rounded-xl font-semibold text-sm text-white bg-brand-blue hover:bg-brand-blue/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl active:scale-[0.98]">
-                <svg *ngIf="loading()" class="w-5 h-5 animate-spin flex-shrink-0" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                </svg>
-                <svg *ngIf="!loading()" class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
-                </svg>
-                <span class="whitespace-nowrap">{{ loading() ? 'Generating...' : 'Generate' }}</span>
-              </button>
-            </div>
-          </div>
-        </div>
+        <app-tts-input
+          [(text)]="text"
+          [maxChars]="maxChars()"
+          [usage]="usage()"
+          [loading]="loading()"
+          [voiceId]="selectedVoiceId"
+          (convert)="convert()">
+        </app-tts-input>
 
         <!-- Error Alert -->
         <div *ngIf="error()" class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 rounded-xl p-4">
@@ -195,47 +57,11 @@
           </p>
         </div>
 
-        <!-- Audio Player -->
-        <div *ngIf="audioUrl()" class="bg-white dark:bg-primary-900 rounded-xl border border-primary-200 dark:border-primary-700 overflow-hidden">
-          <div class="px-6 py-4 border-b border-primary-100 dark:border-primary-800">
-            <h2 class="text-sm font-semibold text-primary-900 dark:text-white">Generated Audio</h2>
-          </div>
-          <div class="p-6">
-            <div class="flex flex-col sm:flex-row items-center justify-between gap-6">
-              <div class="flex items-center gap-4 w-full sm:w-auto">
-                <button (click)="togglePlayPause()"
-                  class="w-14 h-14 rounded-full bg-gradient-to-br from-brand-blue to-brand-purple text-white flex items-center justify-center hover:scale-105 hover:shadow-xl hover:shadow-brand-blue/30 active:scale-95 transition-all shadow-lg flex-shrink-0">
-                  <svg *ngIf="!isPlaying" class="w-6 h-6 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z"/>
-                  </svg>
-                  <svg *ngIf="isPlaying" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
-                  </svg>
-                </button>
-
-                <div class="flex-1 min-w-[150px]">
-                  <div class="flex justify-between text-xs text-primary-400 mb-2">
-                    <span>{{ currentTime | number:'1.1-1' }}s</span>
-                    <span>{{ duration | number:'1.1-1' }}s</span>
-                  </div>
-                  <div class="h-2 bg-primary-100 dark:bg-primary-800 rounded-full cursor-pointer overflow-hidden group" (click)="seekAudio($event)">
-                    <div class="h-full bg-brand-blue rounded-full transition-all group-hover:shadow-lg group-hover:shadow-brand-blue/30"
-                      [style.width.%]="progressPercent"></div>
-                  </div>
-                </div>
-              </div>
-
-              <button (click)="download()"
-                class="flex items-center justify-center gap-2 w-40 h-12 rounded-xl font-semibold text-sm text-white bg-accent-500 hover:bg-accent-600 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:scale-95">
-                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                </svg>
-                <span class="whitespace-nowrap">Download</span>
-              </button>
-            </div>
-          </div>
-          <audio #audioPlayer [src]="audioUrl()" (timeupdate)="onTimeUpdate($event)" (play)="isPlaying = true" (pause)="isPlaying = false" (ended)="isPlaying = false"></audio>
-        </div>
+        <app-tts-output
+          *ngIf="audioUrl()"
+          [audioUrl]="audioUrl()"
+          (download)="download()">
+        </app-tts-output>
       </div>
     </div>
   </div>
