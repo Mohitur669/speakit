@@ -93,6 +93,11 @@ public class RazorpayService {
                 Payment payment = paymentRepository.findByRazorpayOrderId(request.getRazorpayOrderId())
                         .orElseThrow(() -> new RuntimeException("Payment record not found"));
 
+                if (payment.getStatus() == PaymentStatus.SUCCESS) {
+                    log.warn("Replay attempt detected for order: {}", request.getRazorpayOrderId());
+                    return true; 
+                }
+
                 payment.setRazorpayPaymentId(request.getRazorpayPaymentId());
                 payment.setRazorpaySignature(request.getRazorpaySignature());
                 payment.setStatus(PaymentStatus.SUCCESS);

@@ -9,6 +9,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 /**
  * Public REST controller managing user authentication lifecycles.
  * 
@@ -74,16 +76,29 @@ public class AuthController {
         return ResponseEntity.ok().build();
     }
 
+    /**
+     * Issues a short-lived ticket for secure WebSocket handshakes.
+     */
+    @PostMapping("/ws-ticket")
+    public ResponseEntity<Map<String, String>> getWSTicket() {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        String ticket = authService.issueWSTicket(username);
+        return ResponseEntity.ok(Map.of("ticket", ticket));
+    }
+
+    @RateLimited(action = RateLimitAction.PUBLIC)
     @GetMapping("/check-username")
     public ResponseEntity<Boolean> checkUsername(@RequestParam String username) {
         return ResponseEntity.ok(authService.isUsernameTaken(username));
     }
 
+    @RateLimited(action = RateLimitAction.PUBLIC)
     @GetMapping("/check-email")
     public ResponseEntity<Boolean> checkEmail(@RequestParam String email) {
         return ResponseEntity.ok(authService.isEmailTaken(email));
     }
 
+    @RateLimited(action = RateLimitAction.PUBLIC)
     @GetMapping("/check-phone")
     public ResponseEntity<Boolean> checkPhone(@RequestParam String phone) {
         return ResponseEntity.ok(authService.isPhoneTaken(phone));

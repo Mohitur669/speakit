@@ -341,3 +341,194 @@ When uncertain:
 - Prefer additive changes over destructive changes.
 - Avoid assumptions.
 - Analyze before modifying.
+
+---
+
+# 14. Anti-Duplication & Code Reuse Standards
+
+> This section is enforced by **fallow** (dead-code, duplication, and health analysis) and **fallow skills** installed in the project directory. All AI agents and developers must comply. These rules apply to every feature — current and future.
+
+## 14.1 Mandatory Pre-Implementation Scan
+
+Before writing any new component, service, utility function, validator, or helper:
+
+1. **Run fallow** to get the current duplication baseline:
+   ```bash
+   npx fallow          # full report (dead code + dupes + health)
+   npx fallow dupes    # duplication only
+   ```
+2. **Search `shared/` first.** If a component, directive, pipe, or utility already exists there — use it. Do not re-implement it.
+3. **Search by behavior, not name.** A password validator named `isPasswordStrong` in `signup.component.ts` is the same as `isPasswordValid` in `profile-settings.component.ts`. Search for the logic pattern, not just the identifier.
+4. **If you find similar logic in a feature component** — extract it to `shared/` before adding more call sites.
+
+## 14.2 Shared Directory — Source of Truth for Reusable Code
+
+```text
+frontend/src/app/shared/
+ ├── components/          ← reusable UI components (inputs, buttons, modals, loaders)
+ ├── directives/          ← attribute directives (e.g. onlyNumbers, trimInput)
+ ├── pipes/               ← pure transformation pipes
+ ├── validators/          ← AbstractControl validators (password, phone, email rules)
+ ├── utils/               ← pure functions (formatting, parsing, regex constants)
+ └── index.ts             ← barrel export — always export new additions here
+```
+
+**Rules:**
+- Any logic used in **2 or more places** must live in `shared/`. No exceptions.
+- Feature components import from `shared/`. `shared/` never imports from `features/`.
+- Always add new shared items to `shared/index.ts` immediately.
+
+## 14.3 Known Duplications to Fix (from fallow output)
+
+The following duplication was detected by fallow and must be resolved before adding new features to these files:
+
+| Clone Family | Lines | Files |
+|---|---|---|
+| Password validation logic (`isPasswordValid`) | 7 lines × 2 | `signup.component.ts:302`, `profile-settings.component.ts:309` |
+| Numeric-only input handler (`onlyNumbers`) | 6 lines × 2 | `signup.component.ts:367`, `profile-settings.component.ts:386` |
+| Form field build logic | 37 lines × 2 | `signup.component.ts:244–280`, `profile-settings.component.ts:259–294` |
+| Submit/save handler pattern | 28 lines × 2 | `signup.component.ts:344–371`, `profile-settings.component.ts:363–390` |
+| Error mapping block | 19 lines × 2 | `signup.component.ts:370–388`, `profile-settings.component.ts:397–415` |
+| Field reset logic | 18 lines × 2 | `signup.component.ts:290–307`, `profile-settings.component.ts:297–314` |
+| Validation feedback block | 11+10+9 lines × 2 | `signup.component.ts:317–344`, `profile-settings.component.ts:336–363` |
+
+**Resolution plan:**
+```text
+Extract to:
+  shared/validators/password.validator.ts         ← isPasswordValid()
+  shared/directives/only-numbers.directive.ts     ← onlyNumbers handler → @Directive
+  shared/utils/form.utils.ts                      ← shared form build/reset helpers
+  shared/components/password-field/               ← if UI is also duplicated
+```
+
+## 14.4 Dead Code Removal Protocol
+
+fallow currently flags these as unreachable — remove before they accumulate:
+
+| File | Issue |
+|---|---|
+| `frontend/src/app/app.scss` | Unused file — not reachable from any entry point |
+| `frontend/src/app/core/index.ts` | Unused barrel — no consumers |
+| `frontend/src/app/shared/components/index.ts` | Unused barrel — add exports or remove |
+| `frontend/src/app/shared/index.ts` | Unused barrel — populate or remove |
+| `core/auth/models/auth.models.ts` `:25 User` | Unused type export — remove or consume |
+
+**Protocol:**
+1. Before removing: `grep -r "ClassName\|functionName" src/` to confirm zero consumers.
+2. Remove the dead code.
+3. Re-run `npx fallow` to confirm clean.
+4. Commit with message: `chore: remove dead code flagged by fallow`.
+
+## 14.5 Complexity Budget — Per-File Limits
+
+fallow health scores enforce these hard limits. AI agents must not generate code that exceeds them:
+
+| Metric | Limit | Action if exceeded |
+|---|---|---|
+| File LOC | 300 lines | Split into sub-components or extract services |
+| Function LOC | 40 lines | Extract named private methods |
+| Cyclomatic complexity | 10 per function | Break into smaller decision paths |
+| Cognitive complexity | 15 per function | Flatten nested conditionals; extract helpers |
+| CRAP score | < 30 (estimated) | Reduce complexity or increase test coverage |
+| Template LOC (`<template>`) | 150 lines | Extract child components |
+
+**Current files already over budget** (do not add further complexity — only reduce):
+
+| File | Current cyclomatic | Current template LOC | Action |
+|---|---|---|---|
+| `tts.component.ts` + `.html` | 66 / 56 | 244 | Extract sub-components: voice selector, output panel, controls bar |
+| `profile-settings.component.ts` | 51 | 225 | Extract: password section, profile section, plan section |
+| `signup.component.ts` | 49 | 208 | Extract: password field group, validation summary |
+| `razorpay.service.ts` | 11 | — | Extract: error handler, retry logic |
+
+## 14.6 Template Decomposition Standard
+
+Large inline templates are the primary source of complexity violations in this codebase. Apply this pattern:
+
+**Instead of one god-template:**
+```typescript
+// ❌ tts.component.ts — 244-line template doing everything
+@Component({
+  template: `
+    <!-- voice selector: 40 lines -->
+    <!-- text input: 30 lines -->
+    <!-- output audio panel: 60 lines -->
+    <!-- controls: 50 lines -->
+    <!-- history table: 64 lines -->
+  `
+})
+```
+
+**Extract into focused child components:**
+```typescript
+// ✅ tts.component.ts — orchestrator only
+@Component({
+  template: `
+    <app-voice-selector [(voice)]="selectedVoice" />
+    <app-tts-input [(text)]="inputText" (convert)="onConvert()" />
+    <app-tts-output [result]="result()" />
+    <app-tts-history [entries]="history()" />
+  `,
+  imports: [VoiceSelectorComponent, TtsInputComponent, TtsOutputComponent, TtsHistoryComponent]
+})
+```
+
+Each child component lives in its own folder under `features/tts/components/`.
+
+## 14.7 New Feature Checklist (Anti-Duplication Gate)
+
+Every AI agent must complete this checklist before generating code for any new feature:
+
+```
+PRE-IMPLEMENTATION
+[ ] Run: npx fallow dupes — confirm no existing clone of this logic
+[ ] Search shared/ for existing validators, utils, directives that apply
+[ ] Search feature files for similar patterns (form build, submit handler, error map)
+[ ] If similar logic exists: extract first, then reuse — never copy
+
+IMPLEMENTATION
+[ ] Form validators → shared/validators/
+[ ] Input masks / key handlers → shared/directives/
+[ ] Pure utility functions → shared/utils/
+[ ] Reusable UI blocks (> 20 lines, used in 2+ places) → shared/components/
+[ ] Export all new shared items from shared/index.ts
+[ ] No single template exceeds 150 lines
+[ ] No single function exceeds 40 lines or cyclomatic 10
+
+POST-IMPLEMENTATION
+[ ] Run: npx fallow — zero new duplication warnings
+[ ] Run: npx fallow health — no new files above complexity threshold
+[ ] Commit shared extractions separately from feature code
+     e.g. "refactor: extract password validator to shared" then "feat: add profile update"
+```
+
+## 14.8 fallow Integration in CI (Recommended)
+
+Add to `.github/workflows/` to enforce these rules on every PR:
+
+```yaml
+- name: Run fallow analysis
+  run: |
+    cd frontend
+    npx fallow --format json > fallow-report.json
+    # Fail if new duplication or dead code is introduced
+    npx fallow dupes
+    npx fallow dead-code
+```
+
+If fallow reports new clone groups or dead files introduced by the PR, the PR must not be merged until resolved.
+
+## 14.9 Refactoring Priority Order (from fallow)
+
+When scheduling refactoring work, follow fallow's computed priority:
+
+| Priority | File | Reason | Suggested Action |
+|---|---|---|---|
+| 1 (high) | `core/auth/auth.service.ts` | 9 dependents, highest churn, 271 LOC | Split into `AuthTokenService`, `AuthSessionService`, `OAuthService` |
+| 2 | `tts.component.html` | cognitive 62, 244 LOC | Extract child components (see §14.6) |
+| 3 | `signup.component.ts` | cognitive 33, 435 LOC, 7 clone groups | Extract shared validators + child form sections |
+| 4 | `profile-settings.component.ts` | cognitive 39, 452 LOC, 7 clone groups | Same as above — shares all clones with signup |
+
+> **Note:** Items 3 and 4 share the same 7 clone families. Fix them together in a single refactor PR to avoid partial extractions.
+
+---

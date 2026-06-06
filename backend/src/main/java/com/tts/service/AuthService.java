@@ -35,6 +35,7 @@ public class AuthService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final WebSocketConfig webSocketConfig;
+    private final WSTicketService wsTicketService;
 
     @Value("${auth.session-duration-ms:7200000}")
     private long sessionDurationMs;
@@ -104,6 +105,10 @@ public class AuthService {
     public void logout(String username) {
         userRepository.incrementSessionVersion(username);
         log.info("User logged out: {}", username);
+    }
+
+    public String issueWSTicket(String username) {
+        return wsTicketService.createTicket(username);
     }
 
     @Transactional(readOnly = true)

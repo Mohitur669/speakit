@@ -10,7 +10,7 @@ import { Subject } from 'rxjs';
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="relative w-20 flex-shrink-0">
+    <div class="relative w-20 flex-shrink-0 h-full">
       <button type="button" (click)="onToggleDropdown($event)"
         class="w-full h-full flex items-center justify-between gap-1 px-2 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white transition-all text-xs sm:text-sm hover:border-brand-blue/50">
         <span class="flex items-center gap-1">
@@ -42,7 +42,12 @@ import { Subject } from 'rxjs';
         </div>
       </div>
     </div>
-  `
+  `,
+  styles: [`
+    :host {
+      display: block;
+    }
+  `]
 })
 export class CountrySelectorComponent {
   @Input() selectedCountry!: Country;

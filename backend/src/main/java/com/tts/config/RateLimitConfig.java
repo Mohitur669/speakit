@@ -34,6 +34,9 @@ public class RateLimitConfig {
     @Value("${rate-limit.refill-duration-minutes:1}")
     private long defaultRefillDurationMinutes;
 
+    @Value("${rate-limit.live-param.capacity:10}")
+    private long liveParamCapacity;
+
     @Bean
     public ConcurrentHashMap<String, Bucket> rateLimitBuckets() {
         return new ConcurrentHashMap<>();
@@ -62,6 +65,15 @@ public class RateLimitConfig {
                 .addLimit(Bandwidth.builder()
                         .capacity(defaultCapacity)
                         .refillIntervally(defaultRefillTokens, Duration.ofMinutes(defaultRefillDurationMinutes))
+                        .build())
+                .build();
+    }
+
+    public Bucket createLiveParamBucket() {
+        return Bucket.builder()
+                .addLimit(Bandwidth.builder()
+                        .capacity(liveParamCapacity)
+                        .refillIntervally(liveParamCapacity, Duration.ofMinutes(1))
                         .build())
                 .build();
     }

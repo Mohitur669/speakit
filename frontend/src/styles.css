@@ -1,8 +1,7 @@
-// fallow-ignore-next-line unresolved-imports
 @import "tailwindcss";
 
-/* Design System Foundation */
 
+/* Design System Foundation */
 
 :root {
   /* Typography */
@@ -217,8 +216,12 @@ a {
   width: 6px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
-  @apply bg-transparent;
+  background-color: transparent;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  @apply bg-primary-200 dark:bg-primary-700 rounded-full;
+  background-color: #E4E4E7;
+  border-radius: 9999px;
+}
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #3F3F46;
 }
