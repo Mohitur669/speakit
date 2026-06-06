@@ -52,25 +52,29 @@ import { PlanInfoComponent } from './components/plan-info/plan-info.component';
         <div class="bg-white dark:bg-primary-900 rounded-2xl border border-primary-200 dark:border-primary-700 shadow-xl overflow-hidden">
           <div class="p-8">
             <form (submit)="onSubmit()" class="space-y-8">
-              <app-profile-form
-                [(username)]="username"
-                [(email)]="email"
-                [(phoneNumber)]="phoneNumber"
-                [(selectedCountry)]="selectedCountry"
-                [usernameTaken]="usernameTaken()"
-                [emailTaken]="emailTaken()"
-                [phoneTaken]="phoneTaken()"
-                [usernameSubject]="usernameSubject"
-                [emailSubject]="emailSubject"
-                [phoneSubject]="phoneSubject">
-              </app-profile-form>
+              <div>
+                <app-profile-form
+                  [(username)]="username"
+                  [(email)]="email"
+                  [(phoneNumber)]="phoneNumber"
+                  [(selectedCountry)]="selectedCountry"
+                  [usernameTaken]="usernameTaken()"
+                  [emailTaken]="emailTaken()"
+                  [phoneTaken]="phoneTaken()"
+                  [usernameSubject]="usernameSubject"
+                  [emailSubject]="emailSubject"
+                  [phoneSubject]="phoneSubject">
+                </app-profile-form>
+              </div>
 
-              <app-password-form
-                [(currentPassword)]="currentPassword"
-                [(newPassword)]="newPassword"
-                [(confirmPassword)]="confirmPassword"
-                (showPolicyModal)="showPolicyModal.set($event)">
-              </app-password-form>
+              <div>
+                <app-password-form
+                  [(currentPassword)]="currentPassword"
+                  [(newPassword)]="newPassword"
+                  [(confirmPassword)]="confirmPassword"
+                  (showPolicyModal)="showPolicyModal.set($event)">
+                </app-password-form>
+              </div>
 
               <div *ngIf="error()" class="p-4 rounded-xl bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm animate-fade-in">
                 {{ error() }}
