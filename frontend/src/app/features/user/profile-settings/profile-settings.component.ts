@@ -2,20 +2,23 @@ import { Component, inject, signal, OnInit, HostListener, OnDestroy } from '@ang
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { Subject, debounceTime, takeUntil } from 'rxjs';
+import { Subject } from 'rxjs';
 import { AuthService } from '../../../core/auth/auth.service';
 import { NavbarComponent } from '../../../shared/components/navbar/navbar.component';
-
-interface Country {
-  name: string;
-  code: string;
-  flag: string;
-}
+import { Country } from '../../../shared/models/country.model';
+import { 
+  OnlyNumbersDirective, 
+  isPasswordValid, 
+  resetFormFields, 
+  mapValidationErrors, 
+  COUNTRIES 
+} from '../../../shared';
 
 @Component({
   selector: 'app-profile-settings',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, NavbarComponent],
+  imports: [CommonModule, FormsModule, RouterLink, NavbarComponent, OnlyNumbersDirective],
+
   template: `
     <div class="min-h-screen bg-primary-50 dark:bg-primary-950">
       <app-navbar></app-navbar>
@@ -96,7 +99,7 @@ interface Country {
                     </div>
 
                     <!-- Number Input -->
-                    <input [(ngModel)]="phoneNumber" (input)="onPhoneInput()" (keypress)="onlyNumbers($event)" name="phoneNumber" type="tel" required
+                    <input [(ngModel)]="phoneNumber" (input)="onPhoneInput()" appOnlyNumbers name="phoneNumber" type="tel"
                       inputmode="numeric" pattern="[0-9]*"
                       placeholder="9876543210"
                       class="flex-1 min-w-0 px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white text-sm placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all"
@@ -271,47 +274,17 @@ export class ProfileSettingsComponent implements OnInit, OnDestroy {
   searchQuery = '';
   selectedCountry = signal<Country>({ name: 'India', code: '+91', flag: '🇮🇳' });
 
-  countries: Country[] = [
-    { name: 'India', code: '+91', flag: '🇮🇳' },
-    { name: 'United States', code: '+1', flag: '🇺🇸' },
-    { name: 'United Kingdom', code: '+44', flag: '🇬🇧' },
-    { name: 'Australia', code: '+61', flag: '🇦🇺' },
-    { name: 'Canada', code: '+1', flag: '🇨🇦' },
-    { name: 'China', code: '+86', flag: '🇨🇳' },
-    { name: 'France', code: '+33', flag: '🇫🇷' },
-    { name: 'Germany', code: '+49', flag: '🇩🇪' },
-    { name: 'Japan', code: '+81', flag: '🇯🇵' },
-    { name: 'Singapore', code: '+65', flag: '🇸🇬' },
-    { name: 'United Arab Emirates', code: '+971', flag: '🇦🇪' },
-    { name: 'Saudi Arabia', code: '+966', flag: '🇸🇦' },
-    { name: 'Netherlands', code: '+31', flag: '🇳🇱' },
-    { name: 'Ireland', code: '+353', flag: '🇮🇪' },
-    { name: 'New Zealand', code: '+64', flag: '🇳🇿' },
-    { name: 'South Africa', code: '+27', flag: '🇿🇦' },
-    { name: 'Malaysia', code: '+60', flag: '🇲🇾' },
-    { name: 'Indonesia', code: '+62', flag: '🇮🇩' },
-    { name: 'Thailand', code: '+66', flag: '🇹🇭' },
-  ];
+  countries = COUNTRIES;
 
   private authService = inject(AuthService);
   private router = inject(Router);
 
   getPasswordRequirements(pass: string) {
-    return [
-      { label: '8+ Characters', met: pass.length >= 8 },
-      { label: 'Lowercase (a-z)', met: /[a-z]/.test(pass) },
-      { label: 'Uppercase (A-Z)', met: /[A-Z]/.test(pass) },
-      { label: 'Numbers (0-9)', met: /[0-9]/.test(pass) },
-      { label: 'Special Char (!@#)', met: /[!@#$%^&*(),.?":{}|<>]/.test(pass) }
-    ];
+    return resetFormFields(pass);
   }
 
   isPasswordValid(pass: string): boolean {
-    return pass.length >= 8 &&
-           /[a-z]/.test(pass) &&
-           /[A-Z]/.test(pass) &&
-           /[0-9]/.test(pass) &&
-           /[!@#$%^&*(),.?":{}|<>]/.test(pass);
+    return isPasswordValid(pass);
   }
 
   ngOnInit(): void {
@@ -333,7 +306,20 @@ export class ProfileSettingsComponent implements OnInit, OnDestroy {
       this.phoneNumber = rawPhone;
     }
 
-    this.setupAvailabilityChecks();
+    mapValidationErrors({
+      usernameSubject: this.usernameSubject,
+      emailSubject: this.emailSubject,
+      phoneSubject: this.phoneSubject,
+      usernameTaken: this.usernameTaken,
+      emailTaken: this.emailTaken,
+      phoneTaken: this.phoneTaken,
+      destroy$: this.destroy$,
+      authService: this.authService,
+      selectedCountryCode: () => this.selectedCountry().code,
+      currentUsername: this.username,
+      currentEmail: this.email,
+      currentPhone: rawPhone
+    });
   }
 
   ngOnDestroy(): void {
@@ -341,53 +327,16 @@ export class ProfileSettingsComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  private setupAvailabilityChecks() {
-    this.usernameSubject.pipe(debounceTime(500), takeUntil(this.destroy$)).subscribe(val => {
-      if (!val || val.toLowerCase() === this.authService.currentUser()?.toLowerCase()) {
-        this.usernameTaken.set(false);
-        return;
-      }
-      this.authService.checkUsername(val).subscribe(taken => this.usernameTaken.set(taken));
-    });
-
-    this.emailSubject.pipe(debounceTime(500), takeUntil(this.destroy$)).subscribe(val => {
-      if (!val || val.toLowerCase() === this.authService.currentUserEmail()?.toLowerCase()) {
-        this.emailTaken.set(false);
-        return;
-      }
-      this.authService.checkEmail(val).subscribe(taken => this.emailTaken.set(taken));
-    });
-
-    this.phoneSubject.pipe(debounceTime(500), takeUntil(this.destroy$)).subscribe(val => {
-      const fullPhone = this.selectedCountry().code + val.replace(/\D/g, '');
-      if (!val || fullPhone === this.authService.currentUserPhone()) {
-        this.phoneTaken.set(false);
-        return;
-      }
-      this.authService.checkPhone(fullPhone).subscribe(taken => this.phoneTaken.set(taken));
-    });
-  }
-
   onUsernameInput() {
-    this.username = this.username.toLowerCase();
-    this.usernameSubject.next(this.username);
+    this.username = handleUsernameInput(this.username, this.usernameSubject);
   }
 
   onEmailInput() {
-    this.email = this.email.toLowerCase();
-    this.emailSubject.next(this.email);
+    this.email = handleEmailInput(this.email, this.emailSubject);
   }
 
   onPhoneInput() {
-    this.phoneNumber = this.phoneNumber.replace(/\D/g, '');
-    this.phoneSubject.next(this.phoneNumber);
-  }
-
-  onlyNumbers(event: KeyboardEvent) {
-    const charCode = event.which ? event.which : event.keyCode;
-    if (charCode > 31 && (charCode < 48 || charCode > 57)) {
-      event.preventDefault();
-    }
+    this.phoneNumber = handlePhoneInput(this.phoneNumber, this.phoneSubject);
   }
 
   togglePasswordFields() {
@@ -404,16 +353,14 @@ export class ProfileSettingsComponent implements OnInit, OnDestroy {
   }
 
   toggleDropdown(event: Event) {
-    event.stopPropagation();
-    this.showDropdown.update(v => !v);
+    toggleDropdown(event, this.showDropdown);
   }
 
   selectCountry(country: Country, event: Event) {
-    event.stopPropagation();
-    this.selectedCountry.set(country);
-    this.showDropdown.set(false);
+    selectCountry(country, event, this.selectedCountry, this.showDropdown, this.phoneSubject, this.phoneNumber);
     this.searchQuery = '';
   }
+
 
   filteredCountries() {
     if (!this.searchQuery) return this.countries;
