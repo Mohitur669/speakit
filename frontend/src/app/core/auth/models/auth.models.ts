@@ -22,10 +22,4 @@ export interface RegisterCredentials {
   password: string;
 }
 
-export interface User {
-  username: string;
-  email: string;
-  phoneNumber: string;
-  hasNaturalAccess: boolean;
-  planType: string;
-}
+
