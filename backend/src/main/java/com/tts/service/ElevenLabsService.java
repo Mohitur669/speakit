@@ -26,6 +26,11 @@ public class ElevenLabsService {
     private String apiKey;
 
     private final RestTemplate restTemplate = new RestTemplate();
+    private List<Map<String, Object>> cachedVoices;
+    private long lastCacheUpdate = 0;
+
+    // Cache duration: 24 hours
+    private static final long CACHE_DURATION = 24 * 60 * 60 * 1000;
 
     public InputStream synthesizeSpeech(String text, String voiceId) {
         String url = "https://api.elevenlabs.io/v1/text-to-speech/" + voiceId;
@@ -62,6 +67,10 @@ public class ElevenLabsService {
             return List.of();
         }
 
+        if (cachedVoices != null && (System.currentTimeMillis() - lastCacheUpdate < CACHE_DURATION)) {
+            return cachedVoices;
+        }
+
         String url = "https://api.elevenlabs.io/v1/voices";
 
         HttpHeaders headers = new HttpHeaders();
@@ -84,10 +93,14 @@ public class ElevenLabsService {
                     map.put("isElevenLabs", true);
                     result.add(map);
                 }
-                return result;
+                cachedVoices = result;
+                lastCacheUpdate = System.currentTimeMillis();
+                log.info("ElevenLabs voices cache updated. Found {} voices.", cachedVoices.size());
+                return cachedVoices;
             }
         } catch (Exception e) {
             log.warn("ElevenLabs: API Key restricted or invalid. Voices disabled. Message: {}", e.getMessage());
+            return cachedVoices != null ? cachedVoices : List.of();
         }
         return List.of();
     }

@@ -43,7 +43,8 @@ public class GlobalExceptionHandler {
         log.error("TTS conversion failed: {}", ex.getMessage());
         Map<String, String> error = new HashMap<>();
         error.put("type", "TTS_ERROR");
-        error.put("message", ex.getMessage());
+        // Security: Return a user-friendly message rather than the raw internal error
+        error.put("message", "Speech synthesis failed. Please try a different voice or shorter text.");
 
         return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
     }

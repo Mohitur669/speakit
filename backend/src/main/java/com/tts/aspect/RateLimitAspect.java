@@ -71,6 +71,7 @@ public class RateLimitAspect {
             case AUTH -> rateLimitConfig.createAuthBucket();
             case TTS -> rateLimitConfig.createTtsBucket();
             case PUBLIC -> rateLimitConfig.createPublicBucket();
+            case LIVE_PARAM -> rateLimitConfig.createLiveParamBucket();
         };
     }
 
@@ -81,6 +82,7 @@ public class RateLimitAspect {
         String clientIp = extractRealIp(req);
 
         return switch (action) {
+            case LIVE_PARAM -> "LIVE_PARAM_" + clientIp;
             case TTS -> {
                 // For expensive operations, bind the limit to the authenticated User ID.
                 // We fetch this from request attributes (populated by JwtAuthenticationFilter).
@@ -105,22 +107,11 @@ public class RateLimitAspect {
     }
 
     /**
-     * Extracts the real client IP, strictly prioritizing trusted proxy headers.
-     * Prevents bypassing via basic IP spoofing.
+     * Extracts the client IP from the request.
+     * Security: Relies on server.forward-headers-strategy=FRAMEWORK 
+     * in application.properties to handle trusted proxies (Cloudflare/Render).
      */
     private String extractRealIp(HttpServletRequest request) {
-        // Cloudflare awareness (Strongest signal if using CF proxy)
-        String cfIp = request.getHeader("CF-Connecting-IP");
-        if (cfIp != null && !cfIp.isEmpty()) {
-            return cfIp;
-        }
-
-        // Standard load balancer awareness
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-            return xForwardedFor.split(",")[0].trim(); // Take the true origin, ignoring intermediate proxies
-        }
-
         return request.getRemoteAddr();
     }
 

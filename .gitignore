@@ -6,5 +6,6 @@
 deployment/
 frontend/Refactoring_PLAN.md
 ORACLE_CLOUD_DEPLOYMENT_GUIDE.md
+security-audit-report.md
 
 *.log

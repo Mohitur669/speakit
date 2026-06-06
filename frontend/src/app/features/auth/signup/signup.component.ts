@@ -108,6 +108,7 @@ import { PasswordPolicyModalComponent } from '../../../shared/components/passwor
 
                 <button type="submit" [disabled]="loading() || !username || !email || !phoneNumber || usernameTaken() || emailTaken() || phoneTaken() || !isPasswordValid(password) || password !== confirmPassword || !acceptedTerms"
                   class="w-full mt-6 py-3 px-6 rounded-xl font-semibold text-white bg-brand-blue hover:bg-brand-blue/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center justify-center gap-2">
+
                   <svg *ngIf="loading()" class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>

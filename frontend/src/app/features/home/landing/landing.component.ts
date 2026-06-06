@@ -210,8 +210,10 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
                   {{ feature }}
                 </li>
               </ul>
-              <button (click)="onStartTrial()" class="block w-full py-3 text-center font-semibold text-primary-700 dark:text-primary-200 bg-primary-100 dark:bg-primary-800 hover:bg-primary-200 dark:hover:bg-primary-700 rounded-xl transition-all">
-                {{ authService.currentUser() ? 'Go to App' : 'Get Started' }}
+              <button (click)="onStartTrial()" 
+                [disabled]="authService.currentPlanType() === 'FREE' && authService.isLoggedIn()"
+                class="block w-full py-3 text-center font-semibold text-primary-700 dark:text-primary-200 bg-primary-100 dark:bg-primary-800 hover:bg-primary-200 dark:hover:bg-primary-700 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                {{ authService.currentPlanType() === 'FREE' && authService.isLoggedIn() ? 'Current Plan' : (authService.currentUser() ? 'Go to App' : 'Get Started') }}
               </button>
             </div>
 
@@ -228,7 +230,11 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
                   {{ feature }}
                 </li>
               </ul>
-              <button (click)="buyPlan('PRO', proPrice())" class="block w-full py-3 text-center font-semibold text-white bg-brand-blue hover:bg-brand-blue/90 rounded-xl shadow-lg transition-all">Upgrade to Pro</button>
+              <button (click)="buyPlan('PRO', proPrice())" 
+                [disabled]="authService.currentPlanType() === 'PRO'"
+                class="block w-full py-3 text-center font-semibold text-white bg-brand-blue hover:bg-brand-blue/90 rounded-xl shadow-lg transition-all disabled:bg-primary-200 dark:disabled:bg-primary-800 disabled:text-primary-500 disabled:shadow-none disabled:cursor-not-allowed">
+                {{ authService.currentPlanType() === 'PRO' ? 'Current Plan' : 'Upgrade to Pro' }}
+              </button>
             </div>
 
             <!-- Pro Plus Plan -->
@@ -245,7 +251,12 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
                   {{ feature }}
                 </li>
               </ul>
-              <button (click)="buyPlan('PRO_PLUS', proPlusPrice())" class="block w-full py-3 text-center font-semibold text-white bg-brand-blue hover:bg-brand-blue/90 rounded-xl shadow-lg transition-all">Go Pro Plus</button>
+              <button (click)="buyPlan('PRO_PLUS', proPlusPrice())" 
+                [disabled]="authService.currentPlanType() === 'PRO_PLUS'"
+                class="block w-full py-3 text-center font-semibold text-white bg-brand-blue hover:bg-brand-blue/90 rounded-xl shadow-lg transition-all disabled:bg-primary-200 dark:disabled:bg-primary-800 disabled:text-primary-500 disabled:shadow-none disabled:cursor-not-allowed">
+                {{ authService.currentPlanType() === 'PRO_PLUS' ? 'Current Plan' : 'Go Pro Plus' }}
+              </button>
+
             </div>
 
             <!-- Enterprise Plan -->
@@ -260,7 +271,11 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
                   {{ feature }}
                 </li>
               </ul>
-              <a routerLink="/contact" class="block w-full py-3 text-center font-semibold text-primary-700 dark:text-primary-200 bg-primary-100 dark:bg-primary-800 hover:bg-primary-200 dark:hover:bg-primary-700 rounded-xl transition-all">Contact Sales</a>
+              <a [routerLink]="authService.currentPlanType() === 'ENTERPRISE' ? null : '/contact'" 
+                [ngClass]="{'opacity-50 cursor-not-allowed pointer-events-none': authService.currentPlanType() === 'ENTERPRISE'}"
+                class="block w-full py-3 text-center font-semibold text-primary-700 dark:text-primary-200 bg-primary-100 dark:bg-primary-800 hover:bg-primary-200 dark:hover:bg-primary-700 rounded-xl transition-all">
+                {{ authService.currentPlanType() === 'ENTERPRISE' ? 'Current Plan' : 'Contact Sales' }}
+              </a>
             </div>
           </div>
         </div>

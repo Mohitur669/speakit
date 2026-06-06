@@ -122,10 +122,10 @@ public class TtsController {
         }
 
         // Enforce plan-based character limits
-        int maxChars = 200;
-        if ("PRO".equalsIgnoreCase(planType)) maxChars = 5000;
-        else if ("PRO_PLUS".equalsIgnoreCase(planType)) maxChars = 20000;
-        else if ("ENTERPRISE".equalsIgnoreCase(planType)) maxChars = 100000;
+        int maxChars = Integer.parseInt(systemParameterService.getLiveParameter("MAX_FREE_CHARACTERS", "200"));
+        if ("PRO".equalsIgnoreCase(planType)) maxChars = Integer.parseInt(systemParameterService.getLiveParameter("MAX_PRO_CHARACTERS", "5000"));
+        else if ("PRO_PLUS".equalsIgnoreCase(planType)) maxChars = Integer.parseInt(systemParameterService.getLiveParameter("MAX_PRO_PLUS_CHARACTERS", "20000"));
+        else if ("ENTERPRISE".equalsIgnoreCase(planType)) maxChars = Integer.parseInt(systemParameterService.getLiveParameter("MAX_ENTERPRISE_CHARACTERS", "100000"));
 
         if (sanitizedText.length() > maxChars) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -178,10 +178,10 @@ public class TtsController {
         }
 
         // Enforce plan-based character limits
-        int maxChars = 200;
-        if ("PRO".equalsIgnoreCase(planType)) maxChars = 5000;
-        else if ("PRO_PLUS".equalsIgnoreCase(planType)) maxChars = 20000;
-        else if ("ENTERPRISE".equalsIgnoreCase(planType)) maxChars = 100000;
+        int maxChars = Integer.parseInt(systemParameterService.getLiveParameter("MAX_FREE_CHARACTERS", "200"));
+        if ("PRO".equalsIgnoreCase(planType)) maxChars = Integer.parseInt(systemParameterService.getLiveParameter("MAX_PRO_CHARACTERS", "5000"));
+        else if ("PRO_PLUS".equalsIgnoreCase(planType)) maxChars = Integer.parseInt(systemParameterService.getLiveParameter("MAX_PRO_PLUS_CHARACTERS", "20000"));
+        else if ("ENTERPRISE".equalsIgnoreCase(planType)) maxChars = Integer.parseInt(systemParameterService.getLiveParameter("MAX_ENTERPRISE_CHARACTERS", "100000"));
 
         if (sanitizedText.length() > maxChars) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -235,6 +235,7 @@ public class TtsController {
     @RateLimited
     @GetMapping("/voices")
     public ResponseEntity<List<Map<String, Object>>> getVoices(HttpServletRequest httpRequest) {
+        String planType = (String) httpRequest.getAttribute("planType");
         List<Map<String, Object>> allVoices = new ArrayList<>();
 
         // AWS Polly Voices
@@ -251,8 +252,11 @@ public class TtsController {
             allVoices.add(map);
         });
 
-        // ElevenLabs Voices (Only if API Key is configured)
-        allVoices.addAll(elevenLabsService.getAvailableVoices());
+        // ElevenLabs Voices (Only if API Key is configured and user is eligible)
+        boolean isEligibleForElevenLabs = "PRO_PLUS".equalsIgnoreCase(planType) || "ENTERPRISE".equalsIgnoreCase(planType);
+        if (isEligibleForElevenLabs) {
+            allVoices.addAll(elevenLabsService.getAvailableVoices());
+        }
 
         return ResponseEntity.ok(allVoices);
     }

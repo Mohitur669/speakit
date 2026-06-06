@@ -1912,4 +1912,49 @@ _From day one, we built it like something that needs to survive a viral Product 
 
 ---
 
-_Document version: 2.0 | Last updated: June 2025 | Project: github.com/Mohitur669/speakit_
+## 16. DETAILED ARCHITECTURAL COMPONENT ANALYSIS
+
+Based on a comprehensive repository scan, the following details the current state of routing, APIs, data flows, and hidden features within the SpeakIT platform.
+
+### Routing & Pages
+* **Public Routes:** `''` (Landing), `/about`, `/contact`, `/blog`, `/blog/:slug`, `/privacy`, `/terms`, `/login`, `/signup`.
+* **Protected Routes (AuthGuard):**
+  * `/tts`: The core TTS Studio where users generate audio.
+  * `/settings/profile`: User profile and subscription management.
+* **Navigation:** Managed via Angular's `provideRouter` with scroll restoration and anchor scrolling enabled.
+
+### API Architecture
+* **Auth Endpoints (`/api/auth`):** `POST /register`, `POST /login`, `GET /me`, `GET /ping` (Health/Keep-alive), `POST /logout` (Session Invalidation), `POST /ws-ticket` (WebSocket Handshake), and username/email/phone availability checks.
+* **TTS Endpoints (`/api/tts`):**
+  * `POST /synthesize`: Buffered audio generation.
+  * `POST /synthesize-stream`: Chunked audio streaming (AWS Polly only).
+  * `GET /voices`: Fetches metadata for AWS Polly and ElevenLabs voices (Plan-restricted).
+  * `GET /usage`: Returns daily synthesis counts and plan limits.
+* **Payment Endpoints (`/api/v1/payments`):** `POST /create-order` and `POST /verify` for Razorpay integration.
+* **System Parameters (`/api/system-parameters`):** `GET /bulk` and `GET /live/{name}` for feature flags and dynamic config (limits, prices, status).
+
+### Core Services & State Management
+* **State:** Transitioned to **Angular Signals** for fine-grained reactivity in UI components.
+* **TTS Services:** `PollyService` (AWS SDK v2) and `ElevenLabsService` (Rest-based).
+* **Security Services:** `AuthService` handles JWT and session versioning; `WSTicketService` manages one-time tokens for WebSockets.
+* **Infrastructure Services:** `KeepAliveService` prevents Render spin-down via scheduled self-pings; `SystemParameterService` provides a DB-backed configuration layer.
+
+### Database Schema (PostgreSQL)
+* **Entities:** `User` (Auth & Plan state), `TtsHistory` (Usage logs), `Subscription` (Razorpay link), `Payment` (Transaction logs), `WebhookEvent` (Idempotency), `SystemParameter` (Dynamic config).
+* **Optimization:** Uses `SEQUENCE` generators with `allocationSize=50` for batch-insert efficiency and B-Tree indexes on lookup columns.
+
+### AI & Third-Party Integrations
+* **AWS Polly:** Supports Standard and Neural engines.
+* **ElevenLabs:** Integrated for high-end AI voices, restricted to `PRO_PLUS` and `ENTERPRISE` tiers.
+* **Razorpay:** Handles INR payments with a signature verification flow for subscription activation.
+
+### Security & Performance
+* **Rate Limiting:** Multi-layered using `Bucket4j` and AOP. Zones: `AUTH`, `TTS`, `PUBLIC`, `LIVE_PARAM`.
+* **Sanitization:** Strict `Jsoup` stripping of HTML before processing TTS text to prevent XSS and limit-probing.
+* **Performance:** Multi-stage Docker builds (~150MB image), OSIV disabled to prevent connection exhaustion, and interface projections for optimized JPA queries.
+
+### Hidden Features & Tools
+* **Load Tester:** `speakit-api-load-tester.py` is a specialized Python utility for stress-testing rate limits, IP-binding, and JWT flows.
+* **WebSockets:** Infrastructure present (`WebSocketConfig`, `WSTicketService`) for real-time updates.
+
+_Document version: 2.1 | Last updated: June 2026 | Project: github.com/Mohitur669/speakit_

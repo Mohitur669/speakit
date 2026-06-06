@@ -84,7 +84,7 @@ import { PlanInfoComponent } from './components/plan-info/plan-info.component';
                 <button type="button" routerLink="/tts" class="px-6 py-3 rounded-xl text-primary-600 dark:text-primary-400 font-medium hover:bg-primary-50 dark:hover:bg-primary-800 transition-all">
                   Cancel
                 </button>
-                <button type="submit" [disabled]="loading() || usernameTaken() || emailTaken() || phoneTaken() || (newPassword && !isPasswordValid(newPassword))"
+                <button type="submit" [disabled]="loading() || !currentPassword || usernameTaken() || emailTaken() || phoneTaken() || (newPassword && (!isPasswordValid(newPassword) || newPassword !== confirmPassword))"
                   class="px-8 py-3 rounded-xl bg-brand-blue hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold shadow-lg shadow-blue-500/25 transition-all">
                   {{ loading() ? 'Saving Changes...' : 'Save All Changes' }}
                 </button>
