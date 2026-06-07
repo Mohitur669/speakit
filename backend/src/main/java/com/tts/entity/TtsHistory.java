@@ -34,18 +34,17 @@ public class TtsHistory extends BaseEntity {
     @Column(name = "voice_id", nullable = false, length = 50)
     private String voiceId;
 
+    @Column(name = "voice_name", length = 100)
+    private String voiceName;
+
+    @Column(name = "voice_type", nullable = false, length = 20, columnDefinition = "VARCHAR(20) DEFAULT 'STANDARD'")
+    private String voiceType; // STANDARD, NEURAL, NATURAL
+
     @Column(name = "output_format", nullable = false, length = 10)
     private String outputFormat;
 
     @Column(name = "character_count", nullable = false)
     private int characterCount;
-
-    @Column(name = "is_neural", nullable = false)
-    private boolean isNeural;
-
-    @Column(name = "is_eleven_labs", nullable = false)
-    @Builder.Default
-    private boolean isElevenLabs = false;
     
     // We only store a snippet or hash for privacy, not full text in DB
     @Column(name = "text_snippet", length = 100)

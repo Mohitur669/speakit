@@ -18,7 +18,7 @@ import { ThemeService } from '../../../core/services/theme.service';
         <div class="flex items-center justify-between h-16 gap-4">
 
           <!-- Logo -->
-          <a routerLink="/" class="flex items-center gap-2 sm:gap-3 group flex-shrink-0">
+          <a routerLink="/" class="flex items-center gap-2 sm:gap-3 group shrink-0">
             <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-blue to-brand-purple flex items-center justify-center shadow-md group-hover:shadow-lg group-hover:scale-105 transition-all">
               <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
@@ -35,7 +35,7 @@ import { ThemeService } from '../../../core/services/theme.service';
           </nav>
 
           <!-- Actions -->
-          <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+          <div class="flex items-center gap-2 sm:gap-3 shrink-0">
             <!-- Theme Toggle -->
             <button (click)="themeService.toggleTheme()"
               class="p-2 rounded-lg text-primary-500 hover:text-primary-900 hover:bg-primary-100 dark:text-primary-400 dark:hover:text-white dark:hover:bg-primary-800 transition-all"
@@ -56,7 +56,7 @@ import { ThemeService } from '../../../core/services/theme.service';
                   class="flex items-center justify-center gap-2 sm:gap-3 h-9 px-3 rounded-full bg-primary-100 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 cursor-pointer hover:border-brand-blue/50 transition-all select-none"
                   [ngClass]="{'bg-accent-50 dark:bg-accent-500/10 border-accent-200 dark:border-accent-500/30': authService.hasNaturalAccess()}">
                   <div class="relative">
-                    <div class="w-6 h-6 rounded-full bg-gradient-to-br from-brand-blue to-brand-purple flex items-center justify-center flex-shrink-0">
+                    <div class="w-6 h-6 rounded-full bg-gradient-to-br from-brand-blue to-brand-purple flex items-center justify-center shrink-0">
                       <span class="text-[10px] font-bold text-white">{{ user.charAt(0).toUpperCase() }}</span>
                     </div>
                     <!-- Minimal Status Indicator -->
@@ -99,6 +99,12 @@ import { ThemeService } from '../../../core/services/theme.service';
                     class="flex items-center gap-3 px-4 py-2 text-sm text-primary-700 dark:text-primary-200 hover:bg-primary-50 dark:hover:bg-primary-800 transition-colors">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
                     Profile Settings
+                  </a>
+
+                  <a routerLink="/settings/history" (click)="showUserMenu.set(false)"
+                    class="flex items-center gap-3 px-4 py-2 text-sm text-primary-700 dark:text-primary-200 hover:bg-primary-50 dark:hover:bg-primary-800 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    Chat History
                   </a>
 
                   <button (click)="logout()"

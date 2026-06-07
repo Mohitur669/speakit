@@ -15,9 +15,13 @@ public class TtsRequest {
     @NotNull(message = "Voice ID cannot be null")
     private String voiceId = "Joanna";   // AWS Polly voice
 
+    private String voiceName;            // Human readable name
+
+    private String voiceType;            // STANDARD | NEURAL | NATURAL
+
     @NotNull(message = "Output format cannot be null")
     private String outputFormat = "mp3";  // mp3 | ogg_vorbis | pcm
 
     @JsonProperty("isElevenLabs")
-    private boolean isElevenLabs = false;
+    private boolean elevenLabs = false;
 }

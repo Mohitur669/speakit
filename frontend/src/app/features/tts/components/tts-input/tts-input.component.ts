@@ -42,11 +42,11 @@ import { FormsModule } from '@angular/forms';
         <div class="mt-4 flex items-center justify-end">
           <button (click)="convert.emit()" [disabled]="loading || !text.trim() || !voiceId"
             class="flex items-center justify-center gap-2 w-40 h-12 rounded-xl font-semibold text-sm text-white bg-brand-blue hover:bg-brand-blue/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl active:scale-[0.98]">
-            <svg *ngIf="loading" class="w-5 h-5 animate-spin flex-shrink-0" fill="none" viewBox="0 0 24 24">
+            <svg *ngIf="loading" class="w-5 h-5 animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
             </svg>
-            <svg *ngIf="!loading" class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg *ngIf="!loading" class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
             </svg>
             <span class="whitespace-nowrap">{{ loading ? 'Generating...' : 'Generate' }}</span>
