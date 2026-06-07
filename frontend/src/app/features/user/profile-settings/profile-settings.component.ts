@@ -14,7 +14,6 @@ import {
 } from '../../../shared';
 import { ProfileFormComponent } from './components/profile-form/profile-form.component';
 import { PasswordFormComponent } from './components/password-form/password-form.component';
-import { PlanInfoComponent } from './components/plan-info/plan-info.component';
 
 @Component({
   selector: 'app-profile-settings',
@@ -25,8 +24,7 @@ import { PlanInfoComponent } from './components/plan-info/plan-info.component';
     RouterLink, 
     NavbarComponent,
     ProfileFormComponent,
-    PasswordFormComponent,
-    PlanInfoComponent
+    PasswordFormComponent
   ],
   template: `
     <div class="min-h-screen bg-primary-50 dark:bg-primary-950">
@@ -47,9 +45,8 @@ import { PlanInfoComponent } from './components/plan-info/plan-info.component';
           </button>
         </div>
 
-        <app-plan-info [planType]="authService.currentPlanType()"></app-plan-info>
-
         <div class="bg-white dark:bg-primary-900 rounded-2xl border border-primary-200 dark:border-primary-700 shadow-xl overflow-hidden">
+
           <div class="p-8">
             <form (submit)="onSubmit()" class="space-y-8">
               <div>

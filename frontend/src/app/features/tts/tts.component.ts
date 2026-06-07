@@ -164,6 +164,14 @@ export class TtsComponent implements OnInit {
     this.showNotification(event.message, event.type);
   }
 
+  handleVoiceChange(voiceId: string): void {
+    this.selectedVoiceId = voiceId;
+    if (this.audioUrl()) {
+      URL.revokeObjectURL(this.audioUrl()!);
+      this.audioUrl.set(null);
+    }
+  }
+
   convert(): void {
     if (!this.validateInput()) return;
 
