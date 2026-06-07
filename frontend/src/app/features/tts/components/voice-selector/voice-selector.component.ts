@@ -7,11 +7,12 @@ import { Voice } from '../../../../core/services/tts.service';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="flex-1 bg-white dark:bg-primary-900 rounded-xl border border-primary-200 dark:border-primary-700 p-6">
-      <h2 class="text-lg sm:text-sm font-semibold text-primary-900 dark:text-white mb-4">Select Voice</h2>
+    <div class="flex-1 bg-white dark:bg-primary-900 rounded-xl border border-primary-200 dark:border-primary-700 p-4 sm:p-6">
+      <h2 class="text-lg sm:text-sm font-semibold text-primary-900 dark:text-white mb-3 sm:mb-4">Select Voice</h2>
 
       <!-- Filter Tabs -->
-      <div class="flex gap-1 p-1 bg-primary-100 dark:bg-primary-800 rounded-lg mb-4">
+      <div class="flex gap-1 p-1 bg-primary-100 dark:bg-primary-800 rounded-lg mb-3 sm:mb-4">
+
         <ng-container *ngFor="let filter of filterOptions()">
           <button *ngIf="filter !== 'All'"
             (click)="setFilter(filter)"
@@ -126,6 +127,12 @@ export class VoiceSelectorComponent {
     }
     this.currentFilter.set(filter);
     this.filterChanged.emit(filter);
+
+    // Auto-select first voice in the new category
+    const voices = this.getFilteredVoices();
+    if (voices.length > 0) {
+      this.selectVoice(voices[0].id);
+    }
   }
 
   getFilteredVoices(): Voice[] {

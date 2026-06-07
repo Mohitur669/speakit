@@ -8,14 +8,15 @@ import { FormsModule } from '@angular/forms';
   imports: [CommonModule, FormsModule],
   template: `
     <div class="flex-1 bg-white dark:bg-primary-900 rounded-xl border border-primary-200 dark:border-primary-700 overflow-hidden flex flex-col">
-      <div class="px-6 py-4 border-b border-primary-100 dark:border-primary-800 flex items-center justify-between">
+      <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-primary-100 dark:border-primary-800 flex items-center justify-between">
+
         <div class="flex items-center gap-4">
           <h2 class="text-lg sm:text-sm font-semibold text-primary-900 dark:text-white">Script</h2>
           <span *ngIf="usage?.dailyLimit > 0" class="text-xs font-semibold px-2 py-1 rounded-md bg-accent-500/10 text-accent-600 dark:text-accent-400">
             {{ usage?.dailyCount }}/{{ usage?.dailyLimit }} credits used
           </span>
           <!-- Mobile-Only Quick Stats -->
-          <div class="lg:hidden flex items-center gap-3 bg-primary-100 dark:bg-primary-800 px-3 py-1 rounded-full">
+          <div class="md:hidden flex items-center gap-3 bg-primary-100 dark:bg-primary-800 px-3 py-1 rounded-full">
             <span class="text-[10px] font-bold text-primary-500 uppercase tracking-wider">Usage</span>
             <span class="text-[11px] font-medium text-primary-700 dark:text-primary-300">{{ text.length }} / {{ maxChars | number }}</span>
             <div class="w-12 h-1.5 bg-primary-200 dark:bg-primary-700 rounded-full overflow-hidden">

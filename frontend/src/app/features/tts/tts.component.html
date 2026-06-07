@@ -10,16 +10,19 @@
     </div>
 
     <!-- Main Content Grid -->
-    <div class="grid lg:grid-cols-3 gap-6 items-stretch">
+    <div class="grid md:grid-cols-3 gap-2 md:gap-6 items-start">
 
       <!-- Left Column - Voice Selection & Stats -->
-      <div class="lg:col-span-1 flex flex-col gap-6 animate-slide-up">
+      <div class="md:col-span-1 flex flex-col gap-2 md:gap-6 animate-slide-up">
+
+
+
         <app-voice-selector
           [voices]="voices"
           [voiceId]="selectedVoiceId"
           [userCanUseNeural]="userCanUseNeural"
           [userCanUseNatural]="userCanUseNatural"
-          (voiceChange)="selectedVoiceId = $event"
+          (voiceChange)="handleVoiceChange($event)"
           (showNotification)="handleNotification($event)">
         </app-voice-selector>
 
@@ -37,7 +40,7 @@
       </div>
 
       <!-- Right Column - Editor -->
-      <div class="lg:col-span-2 flex flex-col gap-6 animate-slide-up stagger-1">
+      <div class="md:col-span-2 flex flex-col gap-2 md:gap-6 animate-slide-up stagger-1">
         <app-tts-input
           [(text)]="text"
           [maxChars]="maxChars()"

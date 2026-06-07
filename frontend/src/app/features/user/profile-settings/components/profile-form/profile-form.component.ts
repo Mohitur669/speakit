@@ -30,7 +30,7 @@ import { CountrySelectorComponent } from '../../../../../shared/components/count
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <label class="block text-sm font-semibold text-primary-700 dark:text-primary-300">Username</label>
+          <label class="block text-sm font-semibold text-primary-700 dark:text-primary-300 mb-2">Username</label>
           <input [(ngModel)]="username" (input)="onUsernameInput()" name="username" type="text" required
             class="w-full px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all"
             [ngClass]="{'border-red-500': usernameTaken}">
@@ -38,7 +38,7 @@ import { CountrySelectorComponent } from '../../../../../shared/components/count
         </div>
 
         <div>
-          <label class="block text-sm font-semibold text-primary-700 dark:text-primary-300">Email Address</label>
+          <label class="block text-sm font-semibold text-primary-700 dark:text-primary-300 mb-2">Email Address</label>
           <input [(ngModel)]="email" (input)="onEmailInput()" name="email" type="email" required
             class="w-full px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all lowercase"
             [ngClass]="{'border-red-500': emailTaken}">
@@ -46,8 +46,9 @@ import { CountrySelectorComponent } from '../../../../../shared/components/count
         </div>
 
         <div class="md:col-span-2">
-          <label class="block text-sm font-semibold text-primary-700 dark:text-primary-300">Phone Number</label>
+          <label class="block text-sm font-semibold text-primary-700 dark:text-primary-300 mb-2">Phone Number</label>
           <div class="flex items-stretch gap-2">
+
             <app-country-selector
               [(selectedCountry)]="selectedCountry"
               [phoneSubject]="phoneSubject"

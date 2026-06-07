@@ -16,6 +16,7 @@ import { resetFormFields, isPasswordValid } from '../../../../../shared';
             Password Policy
           </button>
         </div>
+
         <div class="relative">
           <input [(ngModel)]="password" (ngModelChange)="passwordChange.emit($event)" name="password" [type]="showPassword() ? 'text' : 'password'" required
             placeholder="••••••••"
