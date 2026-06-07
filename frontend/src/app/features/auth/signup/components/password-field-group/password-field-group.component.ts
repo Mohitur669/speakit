@@ -47,18 +47,18 @@ import { resetFormFields, isPasswordValid } from '../../../../../shared';
       <div *ngIf="password" class="mt-2 space-y-1">
         <ng-container *ngFor="let req of getRequirements(password)">
           <div *ngIf="!req.met" class="flex items-center gap-1.5 text-red-500 animate-fade-in">
-            <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             <span class="text-[10px] font-medium leading-none">{{ req.label }} required</span>
           </div>
         </ng-container>
         
         <div *ngIf="confirmPassword && password !== confirmPassword" class="flex items-center gap-1.5 text-red-500 animate-fade-in">
-          <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
           <span class="text-[10px] font-medium leading-none">Passwords must match</span>
         </div>
 
         <div *ngIf="confirmPassword && password === confirmPassword" class="flex items-center gap-1.5 text-green-600 dark:text-green-400 animate-fade-in">
-          <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+          <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
           <span class="text-[10px] font-medium leading-none">Passwords match</span>
         </div>
       </div>

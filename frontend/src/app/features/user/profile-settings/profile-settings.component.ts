@@ -92,8 +92,7 @@ import { PasswordFormComponent } from './components/password-form/password-form.
       </div>
     </div>
 
-    <!-- Password Policy Modal -->
-    <div *ngIf="showPolicyModal()" class="fixed inset-0 z-[200] flex items-center justify-center p-4">
+    <div *ngIf="showPolicyModal()" class="fixed inset-0 z-200 flex items-center justify-center p-4">
       <div class="absolute inset-0 bg-primary-950/60 backdrop-blur-sm" (click)="showPolicyModal.set(false)"></div>
       <div class="relative bg-white dark:bg-primary-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-scale-in">
         <div class="p-6 border-b border-primary-100 dark:border-primary-800 flex items-center justify-between">

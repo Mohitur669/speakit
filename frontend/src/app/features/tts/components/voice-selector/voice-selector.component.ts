@@ -1,6 +1,7 @@
 import { Component, Input, Output, EventEmitter, signal, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Voice } from '../../../../core/services/tts.service';
+import { getVoiceTypeLabel, getVoiceTypeClass } from '../../../../shared';
 
 @Component({
   selector: 'app-voice-selector',
@@ -157,17 +158,10 @@ export class VoiceSelectorComponent {
   }
 
   getVoiceTypeLabel(voice?: Voice): string {
-    if (!voice) return '';
-    if (this.currentFilter() === 'Standard') return 'Standard';
-    if (voice.isElevenLabs) return 'Natural AI';
-    if (voice.isNeural) return 'Neural';
-    return 'Standard';
+    return getVoiceTypeLabel(voice, this.currentFilter());
   }
 
   getVoiceTypeClass(voice: Voice): string {
-    if (this.currentFilter() === 'Standard') return 'text-primary-400';
-    if (voice.isElevenLabs) return 'text-purple-500';
-    if (voice.isNeural) return 'text-accent-500';
-    return 'text-primary-400';
+    return getVoiceTypeClass(voice, this.currentFilter());
   }
 }

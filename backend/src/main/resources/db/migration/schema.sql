@@ -40,10 +40,10 @@ CREATE TABLE IF NOT EXISTS tts_history (
 
     -- Core Business Data
     voice_id VARCHAR(50) NOT NULL,
+    voice_name VARCHAR(100),
+    voice_type VARCHAR(20) NOT NULL DEFAULT 'STANDARD', -- STANDARD, NEURAL, NATURAL
     output_format VARCHAR(10) NOT NULL,
     character_count INTEGER NOT NULL,
-    is_neural BOOLEAN NOT NULL DEFAULT FALSE,
-    is_eleven_labs BOOLEAN NOT NULL DEFAULT FALSE,
     text_snippet VARCHAR(100),
 
     -- Audit Fields
@@ -173,5 +173,29 @@ BEGIN
 
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='plan_type') THEN
         ALTER TABLE users ADD COLUMN plan_type VARCHAR(20) DEFAULT 'FREE' NOT NULL;
+    END IF;
+
+    -- History Table Migration
+    -- 1. Ensure voice_name exists
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tts_history' AND column_name='voice_name') THEN
+        ALTER TABLE tts_history ADD COLUMN voice_name VARCHAR(100);
+    END IF;
+
+    -- 2. Ensure voice_type exists
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tts_history' AND column_name='voice_type') THEN
+        ALTER TABLE tts_history ADD COLUMN voice_type VARCHAR(20) DEFAULT 'STANDARD' NOT NULL;
+    END IF;
+
+    -- 3. Migrate data if old boolean columns still exist
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tts_history' AND column_name='is_eleven_labs') THEN
+        -- Standardize data first (Handle case where voice_type might already have been added by Hibernate)
+        UPDATE tts_history SET voice_type = 'NATURAL' WHERE is_eleven_labs = TRUE;
+        
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tts_history' AND column_name='is_neural') THEN
+            UPDATE tts_history SET voice_type = 'NEURAL' WHERE is_neural = TRUE AND is_eleven_labs = FALSE;
+            ALTER TABLE tts_history DROP COLUMN is_neural;
+        END IF;
+
+        ALTER TABLE tts_history DROP COLUMN is_eleven_labs;
     END IF;
 END $$;

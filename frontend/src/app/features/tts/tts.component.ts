@@ -50,6 +50,7 @@ export class TtsComponent implements OnInit {
   usage = signal<any>(null);
   text = '';
   selectedVoiceId = '';
+  selectedVoiceType = 'STANDARD';
   voices: Voice[] = [];
   audioUrl = signal<string | null>(null);
   loading = signal(false);
@@ -183,9 +184,9 @@ export class TtsComponent implements OnInit {
       this.audioUrl.set(null);
     }
 
-    const { text, voiceId, isElevenLabs } = this.buildRequest();
+    const { text, voiceId, voiceName, voiceType, isElevenLabs } = this.buildRequest();
     
-    this.ttsService.synthesize(text, voiceId, isElevenLabs).subscribe({
+    this.ttsService.synthesize(text, voiceId, voiceName, voiceType, isElevenLabs).subscribe({
       next: (blob) => {
         const audioBlob = new Blob([blob], { type: blob.type || 'audio/mpeg' });
         this.audioUrl.set(URL.createObjectURL(audioBlob));
@@ -209,9 +210,20 @@ export class TtsComponent implements OnInit {
 
   private buildRequest() {
     const voice = this.selectedVoice;
+    let type = this.selectedVoiceType.toUpperCase();
+    
+    // If user is on "ALL" filter, derive the specific type for better logging
+    if (type === 'ALL' && voice) {
+      if (voice.isElevenLabs) type = 'NATURAL';
+      else if (voice.isNeural && this.userCanUseNeural) type = 'NEURAL';
+      else type = 'STANDARD';
+    }
+
     return {
       text: this.text,
       voiceId: this.selectedVoiceId,
+      voiceName: voice?.name || this.selectedVoiceId,
+      voiceType: type,
       isElevenLabs: !!voice?.isElevenLabs
     };
   }

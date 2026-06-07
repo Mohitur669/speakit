@@ -57,6 +57,11 @@ const routes = [
     canActivate: [authGuard]
   },
   {
+    path: 'settings/history',
+    loadComponent: () => import('./features/user/chat-history/chat-history.component').then(m => m.ChatHistoryComponent),
+    canActivate: [authGuard]
+  },
+  {
     path: '**',
     redirectTo: ''
   }

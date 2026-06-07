@@ -29,13 +29,6 @@ import java.util.stream.Collectors;
 
 /**
  * Primary REST controller for text-to-speech operations.
- *
- * Handles:
- * - Direct synthesis requests (buffered output)
- * - Streaming synthesis requests (chunked output)
- * - Fetching available voice metadata from AWS Polly and ElevenLabs
- * - Enforcing plan-based character limits and voice filtering
- * - Asynchronous recording of usage analytics via TtsHistory
  */
 @RestController
 @RequestMapping("/api/tts")
@@ -56,21 +49,18 @@ public class TtsController {
         this.systemParameterService = systemParameterService;
     }
 
-    /**
-     * Records the TTS generation request to the history log for analytics and billing.
-     */
-    private void recordHistory(HttpServletRequest request, String voiceId, String format, int charCount, boolean isNeural, boolean isElevenLabs, String text) {
+    private void recordHistory(HttpServletRequest httpRequest, String voiceId, String voiceName, String voiceType, String format, int charCount, String text) {
         try {
-            Long userId = (Long) request.getAttribute("userId");
+            Long userId = (Long) httpRequest.getAttribute("userId");
             if (userId != null) {
                 String snippet = text.length() > 50 ? text.substring(0, 47) + "..." : text;
                 TtsHistory history = TtsHistory.builder()
                         .user(userRepository.getReferenceById(userId))
                         .voiceId(voiceId)
+                        .voiceName(voiceName)
+                        .voiceType(voiceType)
                         .outputFormat(format)
                         .characterCount(charCount)
-                        .isNeural(isNeural)
-                        .isElevenLabs(isElevenLabs)
                         .textSnippet(snippet)
                         .build();
                 ttsHistoryRepository.save(history);
@@ -81,14 +71,12 @@ public class TtsController {
     }
 
     private void validatePlanAccess(String planType, TtsRequest request, HttpServletRequest httpRequest) {
-        // 1. ElevenLabs is restricted to PRO_PLUS and ENTERPRISE
         if (request.isElevenLabs()) {
             if (!"PRO_PLUS".equalsIgnoreCase(planType) && !"ENTERPRISE".equalsIgnoreCase(planType)) {
                 throw new RuntimeException("ElevenLabs AI voices require a Pro Plus subscription.");
             }
         }
 
-        // 2. Daily limit for FREE plan
         if ("FREE".equalsIgnoreCase(planType)) {
             Long userId = (Long) httpRequest.getAttribute("userId");
             if (userId != null) {
@@ -115,13 +103,11 @@ public class TtsController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage().getBytes());
         }
 
-        // Sanitize first, then check length
         String sanitizedText = Sanitizer.sanitize(request.getText());
         if (sanitizedText == null || sanitizedText.isEmpty()) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Text content is required.".getBytes());
         }
 
-        // Enforce plan-based character limits
         int maxChars = Integer.parseInt(systemParameterService.getLiveParameter("MAX_FREE_CHARACTERS", "200"));
         if ("PRO".equalsIgnoreCase(planType)) maxChars = Integer.parseInt(systemParameterService.getLiveParameter("MAX_PRO_CHARACTERS", "5000"));
         else if ("PRO_PLUS".equalsIgnoreCase(planType)) maxChars = Integer.parseInt(systemParameterService.getLiveParameter("MAX_PRO_PLUS_CHARACTERS", "20000"));
@@ -137,14 +123,27 @@ public class TtsController {
 
         try {
             InputStream audioStream;
+            String effectiveVoiceType;
             if (request.isElevenLabs()) {
                 audioStream = elevenLabsService.synthesizeSpeech(sanitizedText, sanitizedVoiceId);
+                effectiveVoiceType = "NATURAL";
             } else {
                 audioStream = pollyService.synthesizeSpeech(sanitizedText, sanitizedVoiceId, sanitizedOutputFormat, hasNaturalAccess);
+                
+                // 1. Use user's requested type if valid
+                if (request.getVoiceType() != null && !request.getVoiceType().isEmpty()) {
+                    effectiveVoiceType = request.getVoiceType().toUpperCase();
+                } else {
+                    // 2. Fallback to derived type
+                    boolean isNeural = pollyService.getAvailableVoices().stream()
+                            .filter(v -> v.id().toString().equals(sanitizedVoiceId))
+                            .anyMatch(v -> v.supportedEngines().contains(Engine.NEURAL));
+                    effectiveVoiceType = (hasNaturalAccess && isNeural) ? "NEURAL" : "STANDARD";
+                }
             }
 
             byte[] audioBytes = audioStream.readAllBytes();
-            recordHistory(httpRequest, sanitizedVoiceId, sanitizedOutputFormat, sanitizedText.length(), hasNaturalAccess, request.isElevenLabs(), sanitizedText);
+            recordHistory(httpRequest, sanitizedVoiceId, request.getVoiceName(), effectiveVoiceType, sanitizedOutputFormat, sanitizedText.length(), sanitizedText);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(getMediaType(sanitizedOutputFormat));
@@ -171,13 +170,11 @@ public class TtsController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
         }
 
-        // Sanitize first, then check length
         String sanitizedText = Sanitizer.sanitize(request.getText());
         if (sanitizedText == null || sanitizedText.isEmpty()) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Text content is required.");
         }
 
-        // Enforce plan-based character limits
         int maxChars = Integer.parseInt(systemParameterService.getLiveParameter("MAX_FREE_CHARACTERS", "200"));
         if ("PRO".equalsIgnoreCase(planType)) maxChars = Integer.parseInt(systemParameterService.getLiveParameter("MAX_PRO_CHARACTERS", "5000"));
         else if ("PRO_PLUS".equalsIgnoreCase(planType)) maxChars = Integer.parseInt(systemParameterService.getLiveParameter("MAX_PRO_PLUS_CHARACTERS", "20000"));
@@ -192,7 +189,6 @@ public class TtsController {
         String sanitizedOutputFormat = Sanitizer.sanitize(request.getOutputFormat());
 
         if (request.isElevenLabs()) {
-            // Redirect ElevenLabs to buffered synthesis for now (simpler integration)
             return synthesize(request, httpRequest);
         }
 
@@ -203,7 +199,17 @@ public class TtsController {
                 hasNaturalAccess
         );
 
-        recordHistory(httpRequest, sanitizedVoiceId, sanitizedOutputFormat, sanitizedText.length(), hasNaturalAccess, false, sanitizedText);
+        String effectiveVoiceType;
+        if (request.getVoiceType() != null && !request.getVoiceType().isEmpty()) {
+            effectiveVoiceType = request.getVoiceType().toUpperCase();
+        } else {
+            boolean isNeural = pollyService.getAvailableVoices().stream()
+                    .filter(v -> v.id().toString().equals(sanitizedVoiceId))
+                    .anyMatch(v -> v.supportedEngines().contains(Engine.NEURAL));
+            effectiveVoiceType = (hasNaturalAccess && isNeural) ? "NEURAL" : "STANDARD";
+        }
+
+        recordHistory(httpRequest, sanitizedVoiceId, request.getVoiceName(), effectiveVoiceType, sanitizedOutputFormat, sanitizedText.length(), sanitizedText);
 
         return ResponseEntity.ok()
                 .contentType(getMediaType(sanitizedOutputFormat))
@@ -238,7 +244,6 @@ public class TtsController {
         String planType = (String) httpRequest.getAttribute("planType");
         List<Map<String, Object>> allVoices = new ArrayList<>();
 
-        // AWS Polly Voices
         pollyService.getAvailableVoices().forEach(v -> {
             Map<String, Object> map = new HashMap<>();
             map.put("id", v.id().toString());
@@ -252,7 +257,6 @@ public class TtsController {
             allVoices.add(map);
         });
 
-        // ElevenLabs Voices (Only if API Key is configured and user is eligible)
         boolean isEligibleForElevenLabs = "PRO_PLUS".equalsIgnoreCase(planType) || "ENTERPRISE".equalsIgnoreCase(planType);
         if (isEligibleForElevenLabs) {
             allVoices.addAll(elevenLabsService.getAvailableVoices());

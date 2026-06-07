@@ -9,9 +9,10 @@ import java.time.LocalDateTime;
 public class TtsHistoryDto {
     private Long id;
     private String voiceId;
+    private String voiceName;
+    private String voiceType; // STANDARD, NEURAL, NATURAL
     private String outputFormat;
     private int characterCount;
-    private boolean isNeural;
     private String textSnippet;
     private LocalDateTime createdAt;
 }

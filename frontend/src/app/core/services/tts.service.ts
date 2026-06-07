@@ -52,9 +52,29 @@ function isVoiceArray(obj: unknown): obj is Voice[] {
   return Array.isArray(obj) && (obj.length === 0 || isVoice(obj[0]));
 }
 
+export interface TtsHistoryDto {
+  id: number;
+  voiceId: string;
+  voiceName: string;
+  voiceType: 'STANDARD' | 'NEURAL' | 'NATURAL';
+  outputFormat: string;
+  characterCount: number;
+  textSnippet: string;
+  createdAt: string;
+}
+
+export interface PaginatedHistory {
+  content: TtsHistoryDto[];
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class TtsService {
   private baseUrl: string;
+  private historyUrl: string;
   private voicesCache: Voice[] | null = null;
   private logger = inject(LoggerService);
 
@@ -62,7 +82,22 @@ export class TtsService {
     const env = (window as { __env?: { API_URL?: string } }).__env;
     const apiRoot = (env?.API_URL || environment.apiUrl || 'http://localhost:8080').replace(/\/$/, '');
     this.baseUrl = `${apiRoot}/api/tts`;
+    this.historyUrl = `${apiRoot}/api/history`;
     this.loadCachedVoices();
+  }
+
+  getHistory(page = 0, size = 20): Observable<PaginatedHistory> {
+    return this.http.get<PaginatedHistory>(this.historyUrl, {
+      params: { page: page.toString(), size: size.toString() }
+    });
+  }
+
+  deleteHistoryEntries(ids: number[]): Observable<void> {
+    return this.http.delete<void>(`${this.historyUrl}/delete`, { body: ids });
+  }
+
+  clearAllHistory(): Observable<void> {
+    return this.http.delete<void>(`${this.historyUrl}/clear-all`);
   }
 
   /**
@@ -128,15 +163,17 @@ export class TtsService {
    * Streams the response back as a Blob for immediate playback in the browser.
    * 
    * @param text The source text to synthesize
-   * @param voiceId The specific voice to use (e.g., 'Joanna')
+   * @param voiceId The specific voice ID (e.g., 'Joanna')
+   * @param voiceName The human readable name
+   * @param voiceType The category (STANDARD, NEURAL, NATURAL)
    * @param isElevenLabs Boolean indicating if the voice belongs to ElevenLabs
    * @param format The desired audio format (defaults to 'mp3')
    * @returns Observable containing the audio file as a Blob
    */
-  synthesize(text: string, voiceId: string, isElevenLabs = false, format = 'mp3'): Observable<Blob> {
+  synthesize(text: string, voiceId: string, voiceName: string, voiceType: string, isElevenLabs = false, format = 'mp3'): Observable<Blob> {
     return this.http.post(
       `${this.baseUrl}/synthesize`, // Using /synthesize (buffered) for better ElevenLabs compatibility
-      { text, voiceId, outputFormat: format, isElevenLabs },
+      { text, voiceId, voiceName, voiceType, outputFormat: format, isElevenLabs },
       { responseType: 'blob' }
     );
   }
