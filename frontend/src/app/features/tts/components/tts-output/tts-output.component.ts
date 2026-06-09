@@ -11,8 +11,8 @@ import { CommonModule } from '@angular/common';
         <h2 class="text-lg sm:text-sm font-semibold text-primary-900 dark:text-white">Generated Audio</h2>
       </div>
       <div class="p-6">
-        <div class="flex flex-col sm:flex-row items-center justify-between gap-6">
-          <div class="flex items-center gap-4 w-full sm:w-auto">
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-6 w-full">
+          <div class="flex items-center gap-4 w-full sm:flex-1">
             <button (click)="togglePlayPause()"
               class="w-14 h-14 rounded-full bg-gradient-to-br from-brand-blue to-brand-purple text-white flex items-center justify-center hover:scale-105 hover:shadow-xl hover:shadow-brand-blue/30 active:scale-95 transition-all shadow-lg shrink-0">
               <svg *ngIf="!isPlaying" class="w-6 h-6 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
@@ -23,7 +23,7 @@ import { CommonModule } from '@angular/common';
               </svg>
             </button>
 
-            <div class="flex-1 min-w-[150px]">
+            <div class="flex-1 w-full">
               <div class="flex justify-between text-xs text-primary-400 mb-2">
                 <span>{{ currentTime | number:'1.1-1' }}s</span>
                 <span>{{ duration | number:'1.1-1' }}s</span>
@@ -36,7 +36,7 @@ import { CommonModule } from '@angular/common';
           </div>
 
           <button (click)="download.emit()"
-            class="flex items-center justify-center gap-2 w-40 h-12 rounded-xl font-semibold text-sm text-white bg-accent-500 hover:bg-accent-600 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:scale-95">
+            class="flex items-center justify-center gap-2 w-full sm:w-40 h-12 rounded-xl font-semibold text-sm text-white bg-accent-500 hover:bg-accent-600 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:scale-95 shrink-0">
             <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
             </svg>
