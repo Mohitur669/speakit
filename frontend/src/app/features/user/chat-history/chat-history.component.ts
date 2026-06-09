@@ -92,7 +92,7 @@ import { getVoiceTypeLabel, getVoiceTypeClass } from '../../../shared';
                   </td>
                   <td class="p-2 sm:p-4 border-b border-r border-primary-100 dark:border-primary-800 min-w-37.5 max-w-xs">
                     <p class="text-xs sm:text-sm text-primary-600 dark:text-primary-400 truncate italic">
-                      "{{ item.textSnippet }}"
+                      "{{ item.textSnippet.length > 15 ? (item.textSnippet | slice:0:15) + '...' : item.textSnippet }}"
                     </p>
                   </td>
                   <td class="p-2 sm:p-4 border-b border-r border-primary-100 dark:border-primary-800 text-right whitespace-nowrap">
