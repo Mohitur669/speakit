@@ -142,9 +142,9 @@ export class PaymentHistoryComponent implements OnInit {
     this.loading.set(true);
     this.razorpayService.getPaymentHistory(this.currentPage(), this.pageSize).subscribe({
       next: (res) => {
-        this.history.set(res.content);
-        this.totalPages.set(res.totalPages);
-        this.totalElements.set(res.totalElements);
+        this.history.set(res._embedded?.paymentHistoryDtoList || []);
+        this.totalPages.set(res.page.totalPages);
+        this.totalElements.set(res.page.totalElements);
         this.loading.set(false);
       },
       error: () => {

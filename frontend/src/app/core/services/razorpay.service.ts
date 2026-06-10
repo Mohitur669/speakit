@@ -18,11 +18,15 @@ export interface PaymentHistoryDto {
 }
 
 export interface PaginatedPaymentHistory {
-  content: PaymentHistoryDto[];
-  totalElements: number;
-  totalPages: number;
-  size: number;
-  number: number;
+  _embedded?: {
+    paymentHistoryDtoList: PaymentHistoryDto[];
+  };
+  page: {
+    size: number;
+    totalElements: number;
+    totalPages: number;
+    number: number;
+  };
 }
 
 declare var Razorpay: any;
