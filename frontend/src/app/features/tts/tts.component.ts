@@ -98,8 +98,7 @@ export class TtsComponent implements OnInit {
   }
 
   get userCanUseNeural(): boolean {
-    const plan = this.authService.currentPlanType();
-    return plan === 'PRO' || plan === 'PRO_PLUS' || plan === 'ENTERPRISE' || this.authService.hasNaturalAccess();
+    return true; // AWS Polly Neural is now open to all Free users
   }
 
   get userCanUseNatural(): boolean {

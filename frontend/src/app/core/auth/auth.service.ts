@@ -31,14 +31,12 @@ export class AuthService implements OnDestroy {
   currentUserEmail = signal<string | null>(localStorage.getItem('email'));
   currentUserPhone = signal<string | null>(localStorage.getItem('phoneNumber'));
   token = signal<string | null>(localStorage.getItem('token'));
-  hasNaturalAccess = signal<boolean>(localStorage.getItem('hasNaturalAccess') === 'true');
   
   // Robust plan type tracking using internal signal + computed fallback
   private planTypeSignal = signal<string | null>(localStorage.getItem('planType'));
   currentPlanType = computed(() => {
     const type = this.planTypeSignal();
-    if (type && type !== 'FREE') return type;
-    return this.hasNaturalAccess() ? 'PRO' : 'FREE';
+    return type || 'FREE';
   });
 
   currentSessionVersion = signal<number>(parseInt(localStorage.getItem('sessionVersion') || '0', 10));
@@ -141,7 +139,6 @@ export class AuthService implements OnDestroy {
     this.currentUser.set(null);
     this.currentUserEmail.set(null);
     this.currentUserPhone.set(null);
-    this.hasNaturalAccess.set(false);
     this.planTypeSignal.set(null);
     this.currentSessionVersion.set(0);
 
@@ -167,7 +164,6 @@ export class AuthService implements OnDestroy {
     localStorage.setItem('username', res.username);
     localStorage.setItem('email', res.email || '');
     localStorage.setItem('phoneNumber', res.phoneNumber || '');
-    localStorage.setItem('hasNaturalAccess', String(res.hasNaturalVoiceAccess));
     localStorage.setItem('planType', res.planType || 'FREE');
     localStorage.setItem('loginTimestamp', Date.now().toString());
     localStorage.setItem('sessionVersion', String(res.sessionVersion));
@@ -178,7 +174,6 @@ export class AuthService implements OnDestroy {
     this.currentUser.set(res.username);
     this.currentUserEmail.set(res.email || '');
     this.currentUserPhone.set(res.phoneNumber || '');
-    this.hasNaturalAccess.set(res.hasNaturalVoiceAccess);
     this.planTypeSignal.set(res.planType || 'FREE');
     this.currentSessionVersion.set(res.sessionVersion);
     this.sessionDuration = res.sessionDurationMs;
@@ -248,11 +243,9 @@ export class AuthService implements OnDestroy {
     if (!this.isLoggedIn()) return;
     this.http.get<AuthResponse>(`${this.apiUrl}/me`).subscribe({
       next: (res) => {
-        this.hasNaturalAccess.set(res.hasNaturalVoiceAccess);
         this.currentUserEmail.set(res.email || '');
         this.currentUserPhone.set(res.phoneNumber || '');
-        this.planTypeSignal.set(res.planType || (res.hasNaturalVoiceAccess ? 'PRO' : 'FREE'));
-        localStorage.setItem('hasNaturalAccess', String(res.hasNaturalVoiceAccess));
+        this.planTypeSignal.set(res.planType || 'FREE');
         localStorage.setItem('email', this.currentUserEmail() || '');
         localStorage.setItem('phoneNumber', this.currentUserPhone() || '');
         localStorage.setItem('planType', this.currentPlanType());

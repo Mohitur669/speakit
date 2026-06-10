@@ -54,7 +54,7 @@ import { ThemeService } from '../../../core/services/theme.service';
                 <!-- User Avatar + Menu Trigger -->
                 <div (click)="toggleUserMenu($event)" 
                   class="flex items-center justify-center gap-2 sm:gap-3 h-9 px-3 rounded-full bg-primary-100 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 cursor-pointer hover:border-brand-blue/50 transition-all select-none"
-                  [ngClass]="{'bg-accent-50 dark:bg-accent-500/10 border-accent-200 dark:border-accent-500/30': authService.hasNaturalAccess()}">
+                  [ngClass]="{'bg-accent-50 dark:bg-accent-500/10 border-accent-200 dark:border-accent-500/30': authService.currentPlanType() !== 'FREE'}">
                   <div class="relative">
                     <div class="w-6 h-6 rounded-full bg-gradient-to-br from-brand-blue to-brand-purple flex items-center justify-center shrink-0">
                       <span class="text-[10px] font-bold text-white">{{ user.charAt(0).toUpperCase() }}</span>

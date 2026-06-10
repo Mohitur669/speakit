@@ -115,9 +115,8 @@ public class RazorpayService {
     private void activateSubscription(User user, Payment payment) {
         // Upgrade user based on plan
         String planStr = payment.getSubscription() != null ? 
-            payment.getSubscription().getPlanType().name() : "PRO";
+            payment.getSubscription().getPlanType().name() : "PRO_PLUS";
             
-        user.setHasNaturalVoiceAccess(true);
         user.setPlanType(planStr);
         userRepository.save(user);
 
@@ -126,7 +125,7 @@ public class RazorpayService {
         if (subscription == null) {
             subscription = Subscription.builder()
                     .user(user)
-                    .planType(PlanType.PRO)
+                    .planType(PlanType.PRO_PLUS)
                     .status(SubscriptionStatus.ACTIVE)
                     .currentPeriodStart(LocalDateTime.now())
                     .currentPeriodEnd(LocalDateTime.now().plusMonths(1))

@@ -22,7 +22,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     
     Optional<User> findByUsernameOrEmail(String username, String email);
 
-    @Query("SELECT u.id AS id, u.sessionVersion AS sessionVersion, u.hasNaturalVoiceAccess AS hasNaturalVoiceAccess, u.planType AS planType FROM User u WHERE u.username = :username")
+    @Query("SELECT u.id AS id, u.sessionVersion AS sessionVersion, u.planType AS planType FROM User u WHERE u.username = :username")
     Optional<UserSessionProjection> findSessionAndAccessByUsername(@Param("username") String username);
 
     @Modifying

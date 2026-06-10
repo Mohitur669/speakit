@@ -46,10 +46,6 @@ public class User extends BaseEntity {
     @Builder.Default
     private boolean isActive = true;
 
-    @Column(name = "has_natural_voice_access", nullable = false)
-    @Builder.Default
-    private boolean hasNaturalVoiceAccess = false;
-
     @Column(name = "plan_type", nullable = false, length = 20)
     @ColumnDefault("'FREE'")
     @Builder.Default
