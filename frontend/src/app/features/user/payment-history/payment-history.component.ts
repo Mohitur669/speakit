@@ -45,7 +45,7 @@ import { NavbarComponent } from '../../../shared/components/navbar/navbar.compon
                 <tr *ngFor="let item of history()" 
                   class="hover:bg-primary-50/50 dark:hover:bg-primary-800/30 transition-colors group">
                   <td class="p-2 sm:p-4 border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">
-                    <span class="text-xs sm:text-sm font-bold text-brand-blue">{{ item.planName.replace('_', ' ') }}</span>
+                    <span class="text-xs sm:text-sm font-bold text-brand-blue">{{ item.planName === 'FREE' ? 'Basic' : item.planName.replace('_', ' ') }}</span>
                   </td>
                   <td class="p-2 sm:p-4 border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">
                     <span class="text-xs sm:text-sm font-medium text-primary-900 dark:text-white">{{ item.amount | currency:item.currency:'symbol':'1.2-2' }}</span>

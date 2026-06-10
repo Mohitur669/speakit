@@ -12,7 +12,7 @@ import { CommonModule } from '@angular/common';
         <div>
           <div class="flex justify-between text-base sm:text-sm mb-1">
             <span class="text-primary-500">Current Plan</span>
-            <span class="font-bold text-brand-blue">{{ planType.replace('_', ' ') }}</span>
+            <span class="font-bold text-brand-blue">{{ planType === 'FREE' ? 'Basic' : planType.replace('_', ' ') }}</span>
           </div>
           <div class="flex justify-between text-base sm:text-sm mb-2">
             <span class="text-primary-500">Characters used</span>
