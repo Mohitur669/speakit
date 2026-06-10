@@ -12,6 +12,7 @@ import com.tts.service.RazorpayService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.web.PagedModel;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
@@ -59,7 +60,7 @@ public class PaymentController {
     }
 
     @GetMapping("/history")
-    public ResponseEntity<Page<PaymentHistoryDto>> getPaymentHistory(
+    public ResponseEntity<PagedModel<PaymentHistoryDto>> getPaymentHistory(
             HttpServletRequest request,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
@@ -81,6 +82,6 @@ public class PaymentController {
                         .createdAt(payment.getCreatedAt())
                         .build());
 
-        return ResponseEntity.ok(historyPage);
+        return ResponseEntity.ok(new PagedModel<>(historyPage));
     }
 }

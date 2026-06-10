@@ -64,11 +64,15 @@ export interface TtsHistoryDto {
 }
 
 export interface PaginatedHistory {
-  content: TtsHistoryDto[];
-  totalElements: number;
-  totalPages: number;
-  size: number;
-  number: number;
+  _embedded?: {
+    ttsHistoryDtoList: TtsHistoryDto[];
+  };
+  page: {
+    size: number;
+    totalElements: number;
+    totalPages: number;
+    number: number;
+  };
 }
 
 @Injectable({ providedIn: 'root' })

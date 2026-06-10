@@ -4,6 +4,7 @@ import com.tts.dto.TtsHistoryDto;
 import com.tts.repository.TtsHistoryRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.web.PagedModel;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
@@ -23,7 +24,7 @@ public class HistoryController {
     private final TtsHistoryRepository ttsHistoryRepository;
 
     @GetMapping
-    public ResponseEntity<Page<TtsHistoryDto>> getHistory(
+    public ResponseEntity<PagedModel<TtsHistoryDto>> getHistory(
             HttpServletRequest request,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
@@ -46,7 +47,7 @@ public class HistoryController {
                         .createdAt(history.getCreatedAt())
                         .build());
 
-        return ResponseEntity.ok(historyPage);
+        return ResponseEntity.ok(new PagedModel<>(historyPage));
     }
 
     @DeleteMapping("/delete")
