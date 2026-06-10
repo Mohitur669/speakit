@@ -62,6 +62,11 @@ const routes = [
     canActivate: [authGuard]
   },
   {
+    path: 'settings/payments',
+    loadComponent: () => import('./features/user/payment-history/payment-history.component').then(m => m.PaymentHistoryComponent),
+    canActivate: [authGuard]
+  },
+  {
     path: '**',
     redirectTo: ''
   }
