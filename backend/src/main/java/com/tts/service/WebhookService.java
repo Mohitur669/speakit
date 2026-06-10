@@ -120,8 +120,7 @@ public class WebhookService {
                 User user = payment.getUser();
                 Subscription subscription = payment.getSubscription();
                 
-                String planStr = subscription != null ? subscription.getPlanType().name() : "PRO";
-                user.setHasNaturalVoiceAccess(true);
+                String planStr = subscription != null ? subscription.getPlanType().name() : "PRO_PLUS";
                 user.setPlanType(planStr);
                 userRepository.save(user);
 

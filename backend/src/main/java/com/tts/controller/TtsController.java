@@ -84,7 +84,7 @@ public class TtsController {
                 long count = ttsHistoryRepository.countRecentByUserId(userId, todayStart);
                 int limit = Integer.parseInt(systemParameterService.getLiveParameter("FREE_PLAN_SYNTHESIZE_LIMIT", "3"));
                 if (count >= limit) {
-                    throw new RuntimeException("Daily limit of " + limit + " syntheses reached for Free plan. Please upgrade to Pro.");
+                    throw new RuntimeException("Daily limit of " + limit + " syntheses reached for Free plan. Please upgrade to Pro Plus.");
                 }
             }
         }
@@ -94,8 +94,6 @@ public class TtsController {
     @PostMapping("/synthesize")
     public ResponseEntity<byte[]> synthesize(@Valid @RequestBody TtsRequest request, HttpServletRequest httpRequest) {
         String planType = (String) httpRequest.getAttribute("planType");
-        Boolean accessAttr = (Boolean) httpRequest.getAttribute("hasNaturalVoiceAccess");
-        boolean hasNaturalAccess = accessAttr != null ? accessAttr : false;
 
         try {
             validatePlanAccess(planType, request, httpRequest);
@@ -108,9 +106,8 @@ public class TtsController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Text content is required.".getBytes());
         }
 
-        int maxChars = Integer.parseInt(systemParameterService.getLiveParameter("MAX_FREE_CHARACTERS", "200"));
-        if ("PRO".equalsIgnoreCase(planType)) maxChars = Integer.parseInt(systemParameterService.getLiveParameter("MAX_PRO_CHARACTERS", "5000"));
-        else if ("PRO_PLUS".equalsIgnoreCase(planType)) maxChars = Integer.parseInt(systemParameterService.getLiveParameter("MAX_PRO_PLUS_CHARACTERS", "20000"));
+        int maxChars = Integer.parseInt(systemParameterService.getLiveParameter("MAX_FREE_CHARACTERS", "300"));
+        if ("PRO_PLUS".equalsIgnoreCase(planType)) maxChars = Integer.parseInt(systemParameterService.getLiveParameter("MAX_PRO_PLUS_CHARACTERS", "20000"));
         else if ("ENTERPRISE".equalsIgnoreCase(planType)) maxChars = Integer.parseInt(systemParameterService.getLiveParameter("MAX_ENTERPRISE_CHARACTERS", "100000"));
 
         if (sanitizedText.length() > maxChars) {
@@ -128,7 +125,8 @@ public class TtsController {
                 audioStream = elevenLabsService.synthesizeSpeech(sanitizedText, sanitizedVoiceId);
                 effectiveVoiceType = "NATURAL";
             } else {
-                audioStream = pollyService.synthesizeSpeech(sanitizedText, sanitizedVoiceId, sanitizedOutputFormat, hasNaturalAccess);
+                // Free users get Polly Neural too, no more hasNaturalAccess check for Polly
+                audioStream = pollyService.synthesizeSpeech(sanitizedText, sanitizedVoiceId, sanitizedOutputFormat);
                 
                 // 1. Use user's requested type if valid
                 if (request.getVoiceType() != null && !request.getVoiceType().isEmpty()) {
@@ -138,7 +136,7 @@ public class TtsController {
                     boolean isNeural = pollyService.getAvailableVoices().stream()
                             .filter(v -> v.id().toString().equals(sanitizedVoiceId))
                             .anyMatch(v -> v.supportedEngines().contains(Engine.NEURAL));
-                    effectiveVoiceType = (hasNaturalAccess && isNeural) ? "NEURAL" : "STANDARD";
+                    effectiveVoiceType = isNeural ? "NEURAL" : "STANDARD";
                 }
             }
 
@@ -161,8 +159,6 @@ public class TtsController {
     @PostMapping("/synthesize-stream")
     public ResponseEntity<?> synthesizeStream(@Valid @RequestBody TtsRequest request, HttpServletRequest httpRequest) {
         String planType = (String) httpRequest.getAttribute("planType");
-        Boolean accessAttr = (Boolean) httpRequest.getAttribute("hasNaturalVoiceAccess");
-        boolean hasNaturalAccess = accessAttr != null ? accessAttr : false;
 
         try {
             validatePlanAccess(planType, request, httpRequest);
@@ -175,9 +171,8 @@ public class TtsController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Text content is required.");
         }
 
-        int maxChars = Integer.parseInt(systemParameterService.getLiveParameter("MAX_FREE_CHARACTERS", "200"));
-        if ("PRO".equalsIgnoreCase(planType)) maxChars = Integer.parseInt(systemParameterService.getLiveParameter("MAX_PRO_CHARACTERS", "5000"));
-        else if ("PRO_PLUS".equalsIgnoreCase(planType)) maxChars = Integer.parseInt(systemParameterService.getLiveParameter("MAX_PRO_PLUS_CHARACTERS", "20000"));
+        int maxChars = Integer.parseInt(systemParameterService.getLiveParameter("MAX_FREE_CHARACTERS", "300"));
+        if ("PRO_PLUS".equalsIgnoreCase(planType)) maxChars = Integer.parseInt(systemParameterService.getLiveParameter("MAX_PRO_PLUS_CHARACTERS", "20000"));
         else if ("ENTERPRISE".equalsIgnoreCase(planType)) maxChars = Integer.parseInt(systemParameterService.getLiveParameter("MAX_ENTERPRISE_CHARACTERS", "100000"));
 
         if (sanitizedText.length() > maxChars) {
@@ -195,8 +190,7 @@ public class TtsController {
         InputStream stream = pollyService.synthesizeSpeech(
                 sanitizedText,
                 sanitizedVoiceId,
-                sanitizedOutputFormat,
-                hasNaturalAccess
+                sanitizedOutputFormat
         );
 
         String effectiveVoiceType;
@@ -206,7 +200,7 @@ public class TtsController {
             boolean isNeural = pollyService.getAvailableVoices().stream()
                     .filter(v -> v.id().toString().equals(sanitizedVoiceId))
                     .anyMatch(v -> v.supportedEngines().contains(Engine.NEURAL));
-            effectiveVoiceType = (hasNaturalAccess && isNeural) ? "NEURAL" : "STANDARD";
+            effectiveVoiceType = isNeural ? "NEURAL" : "STANDARD";
         }
 
         recordHistory(httpRequest, sanitizedVoiceId, request.getVoiceName(), effectiveVoiceType, sanitizedOutputFormat, sanitizedText.length(), sanitizedText);

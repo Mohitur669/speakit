@@ -54,7 +54,6 @@ public class AuthService {
                 .email(sanitizedEmail)
                 .phoneNumber(sanitizedPhone)
                 .password(passwordEncoder.encode(request.getPassword()))
-                .hasNaturalVoiceAccess(false)
                 .role("ROLE_USER")
                 .planType("FREE")
                 .build();
@@ -136,7 +135,6 @@ public class AuthService {
                 .email(user.getEmail())
                 .phoneNumber(user.getPhoneNumber())
                 .role(user.getRole())
-                .hasNaturalVoiceAccess(user.isHasNaturalVoiceAccess())
                 .planType(user.getPlanType())
                 .sessionVersion(user.getSessionVersion())
                 .sessionDurationMs(sessionDurationMs)
@@ -220,7 +218,6 @@ public class AuthService {
                 .email(user.getEmail())
                 .phoneNumber(user.getPhoneNumber())
                 .role(role)
-                .hasNaturalVoiceAccess(user.isHasNaturalVoiceAccess())
                 .planType(user.getPlanType())
                 .sessionVersion(sessionVersion)
                 .sessionDurationMs(sessionDurationMs)

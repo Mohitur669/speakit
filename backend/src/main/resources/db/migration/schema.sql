@@ -18,7 +18,6 @@ CREATE TABLE IF NOT EXISTS users (
 
     -- Status/Flags
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    has_natural_voice_access BOOLEAN NOT NULL DEFAULT FALSE,
     plan_type VARCHAR(20) NOT NULL DEFAULT 'FREE',
 
     -- Audit Fields
@@ -133,18 +132,15 @@ CREATE TABLE IF NOT EXISTS system_parameters (
 -- Seed Initial Parameters
 INSERT INTO system_parameters (parameter_name, parameter_value, description) VALUES
 ('ENABLE_RAZORPAY', 'true', 'Global toggle for payment gateway'),
-('PRO_PLAN_PRICE_INR', '499', 'Current price for Pro monthly subscription'),
 ('PRO_PLUS_PLAN_PRICE_INR', '1999', 'Current price for Pro Plus subscription'),
 ('ENTERPRISE_PLAN_PRICE_INR', '0', 'Contact sales for Enterprise pricing'),
 ('MAX_FREE_CHARACTERS', '300', 'Character limit for free tier requests'),
-('MAX_PRO_CHARACTERS', '5000', 'Character limit for Pro tier requests'),
 ('MAX_PRO_PLUS_CHARACTERS', '20000', 'Character limit for Pro Plus tier requests'),
 ('MAX_ENTERPRISE_CHARACTERS', '100000', 'Character limit for Enterprise tier requests'),
 ('SHOW_BETA_FEATURES', 'false', 'Toggle for experimental UI components'),
 ('SYSTEM_STATUS', 'Operational', 'Current live status of the AI voice engine'),
 ('FREE_PLAN_SYNTHESIZE_LIMIT', '3', 'Daily synthesis limit for free tier users'),
-('FREE_PLAN_FEATURES', 'Standard Voices;300 chars / request;3 daily syntheses', 'Features list for free tier'),
-('PRO_PLAN_FEATURES', '5,000 chars / request;Natural/Neural Voices;Priority Support', 'Features list for pro tier'),
+('FREE_PLAN_FEATURES', 'Standard & Neural Voices;300 chars / request;3 daily syntheses', 'Features list for free tier'),
 ('PRO_PLUS_PLAN_FEATURES', '20,000 chars / request;ElevenLabs AI Voices;Dedicated Support', 'Features list for pro plus tier'),
 ('ENTERPRISE_PLAN_FEATURES', 'Custom Character Limits;API Access;SLA Guarantee', 'Features list for enterprise tier')
 ON CONFLICT (parameter_name) DO NOTHING;
@@ -159,6 +155,9 @@ ON CONFLICT (parameter_name) DO NOTHING;
 -- Migration Helper for existing databases
 DO $$
 BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='has_natural_voice_access') THEN
+        ALTER TABLE users DROP COLUMN has_natural_voice_access;
+    END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='phone_number') THEN
         ALTER TABLE users ADD COLUMN phone_number VARCHAR(15);
         -- Populate with username as temporary unique placeholder to avoid nulls

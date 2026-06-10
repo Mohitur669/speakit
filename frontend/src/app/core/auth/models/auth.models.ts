@@ -3,7 +3,6 @@ export interface AuthResponse {
   username: string;
   email: string;
   phoneNumber: string;
-  hasNaturalVoiceAccess: boolean;
   planType: string;
   sessionVersion: number;
   sessionDurationMs: number;

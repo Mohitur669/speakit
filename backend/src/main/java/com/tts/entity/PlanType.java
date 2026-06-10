@@ -1,8 +1,7 @@
 package com.tts.entity;
 
 public enum PlanType {
-    BASIC,
-    PRO,
+    FREE,
     PRO_PLUS,
     ENTERPRISE
 }

@@ -32,25 +32,22 @@ export class UpgradeCardComponent {
   @Output() upgrade = new EventEmitter<string>();
 
   get title(): string {
-    if (this.currentPlan === 'FREE') return 'Go Pro';
-    if (this.currentPlan === 'PRO') return 'Get Pro Plus';
+    if (this.currentPlan === 'FREE') return 'Go Pro Plus';
     return 'Get Enterprise';
   }
 
   get description(): string {
-    if (this.currentPlan === 'FREE') return 'Unlock natural neural voices and higher generation priority.';
-    if (this.currentPlan === 'PRO') return 'Unlock ElevenLabs AI voices and higher character limits.';
+    if (this.currentPlan === 'FREE') return 'Unlock ElevenLabs AI voices and higher character limits.';
     return 'Tailored character limits and dedicated SLA for large scale.';
   }
 
   get nextPlan(): string {
-    if (this.currentPlan === 'FREE') return 'PRO';
-    if (this.currentPlan === 'PRO') return 'PRO_PLUS';
+    if (this.currentPlan === 'FREE') return 'PRO_PLUS';
     return 'ENTERPRISE';
   }
 
   get buttonText(): string {
-    if (this.currentPlan === 'PRO_PLUS') return 'Get Enterprise';
-    return 'Upgrade to ' + (this.currentPlan === 'FREE' ? 'Pro' : 'Pro Plus');
+    if (this.currentPlan === 'FREE') return 'Upgrade to Pro Plus';
+    return 'Get Enterprise';
   }
 }

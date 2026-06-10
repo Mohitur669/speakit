@@ -67,7 +67,7 @@ public class PollyService {
      * @param hasNaturalAccess Boolean indicating if the user has a Pro tier subscription
      * @return InputStream containing the raw audio bytes from AWS Polly
      */
-    public InputStream synthesizeSpeech(String text, String voiceId, String outputFormat, boolean hasNaturalAccess) {
+    public InputStream synthesizeSpeech(String text, String voiceId, String outputFormat) {
         
         // Find voice in cache to check capabilities
         List<Voice> voices = getAvailableVoices();
@@ -78,9 +78,9 @@ public class PollyService {
 
         Engine engine = Engine.STANDARD;
         
-        if (hasNaturalAccess && voice != null && voice.supportedEngines().contains(Engine.NEURAL)) {
+        if (voice != null && voice.supportedEngines().contains(Engine.NEURAL)) {
             engine = Engine.NEURAL;
-            log.info("Server Enforced: Using NEURAL engine for premium user, voice={}", voiceId);
+            log.info("Server Enforced: Using NEURAL engine for voice={}", voiceId);
         } else {
             log.info("Server Enforced: Using STANDARD engine for voice={}", voiceId);
         }

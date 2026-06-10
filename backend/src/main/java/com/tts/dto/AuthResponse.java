@@ -15,8 +15,7 @@ public class AuthResponse {
     private String email;
     private String phoneNumber;
     private String role; // ROLE_USER, ROLE_ADMIN
-    private boolean hasNaturalVoiceAccess;
-    private String planType; // FREE, PRO, ENTERPRISE
+    private String planType; // FREE, PRO_PLUS, ENTERPRISE
     private Long sessionVersion;
     private Long sessionDurationMs;
     private Long idleTimeoutMs;

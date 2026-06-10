@@ -84,7 +84,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 SecurityContextHolder.getContext().setAuthentication(authToken);
 
                 // Pass access flag to request attributes to avoid DB hit in controllers
-                request.setAttribute("hasNaturalVoiceAccess", userProj.getHasNaturalVoiceAccess());
                 request.setAttribute("planType", userProj.getPlanType());
                 request.setAttribute("userId", userProj.getId());
             }
