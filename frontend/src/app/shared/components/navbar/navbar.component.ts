@@ -76,8 +76,8 @@ import { ThemeService } from '../../../core/services/theme.service';
                     <p class="text-xs font-semibold text-primary-400 uppercase tracking-wider">Current Plan</p>
                     <div class="flex flex-col gap-2 mt-1">
                       <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-2">
-                          <span class="text-sm font-bold text-primary-900 dark:text-white">{{ authService.currentPlanType().replace('_', ' ') }}</span>
+                        <div class="flex items-center justify-between">
+                          <span class="text-sm font-bold text-primary-900 dark:text-white">{{ authService.currentPlanType() === 'FREE' ? 'Basic' : authService.currentPlanType().replace('_', ' ') }}</span>
                           <span *ngIf="authService.currentPlanType() !== 'FREE'" class="flex h-2 w-2 relative">
                             <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                             <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
