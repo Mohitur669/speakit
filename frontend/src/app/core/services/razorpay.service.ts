@@ -1,11 +1,29 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Observable } from 'rxjs';
 import { environment } from '../config/environment';
 import { ToastService } from './toast.service';
 import { Router } from '@angular/router';
 import { AuthService } from '../auth/auth.service';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
+
+export interface PaymentHistoryDto {
+  id: number;
+  planName: string;
+  amount: number;
+  currency: string;
+  status: string;
+  razorpayOrderId: string;
+  createdAt: string;
+}
+
+export interface PaginatedPaymentHistory {
+  content: PaymentHistoryDto[];
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
+}
 
 declare var Razorpay: any;
 
@@ -19,6 +37,7 @@ export class RazorpayService {
   private authService = inject(AuthService);
 
   private loadScript(src: string): Promise<boolean> {
+
     return new Promise((resolve) => {
       if ((window as any).Razorpay) {
         resolve(true);
@@ -148,5 +167,13 @@ export class RazorpayService {
       console.error('Payment verification error', error);
       this.toast.show('Payment verification failed. Please contact support.', 'error');
     }
+  }
+
+  getPaymentHistory(page = 0, size = 20): Observable<PaginatedPaymentHistory> {
+    const env = (window as { __env?: { API_URL?: string } }).__env;
+    const apiRoot = (env?.API_URL || environment.apiUrl || 'http://localhost:8080').replace(/\/$/, '');
+    return this.http.get<PaginatedPaymentHistory>(`${apiRoot}/api/v1/payments/history`, {
+      params: { page: page.toString(), size: size.toString() }
+    });
   }
 }
