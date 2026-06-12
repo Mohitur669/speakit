@@ -120,8 +120,8 @@ public class WebhookService {
                 User user = payment.getUser();
                 Subscription subscription = payment.getSubscription();
                 
-                String planStr = subscription != null ? subscription.getPlanType().name() : "PRO_PLUS";
-                user.setPlanType(planStr);
+                PlanType plan = subscription != null ? subscription.getPlanType() : PlanType.PRO_PLUS;
+                user.setPlanType(plan);
                 userRepository.save(user);
 
                 if (subscription != null) {
@@ -130,7 +130,7 @@ public class WebhookService {
                     subscription.setCurrentPeriodEnd(LocalDateTime.now().plusMonths(1));
                     subscriptionRepository.save(subscription);
                 }
-                log.info("Subscription activated via Webhook for user: {} on plan: {}", user.getUsername(), planStr);
+                log.info("Subscription activated via Webhook for user: {} on plan: {}", user.getUsername(), plan);
             } else {
                 log.info("Payment for order {} already marked as SUCCESS", orderId);
             }

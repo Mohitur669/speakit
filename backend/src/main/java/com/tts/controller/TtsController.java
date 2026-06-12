@@ -3,12 +3,13 @@ package com.tts.controller;
 import com.tts.aspect.RateLimitAction;
 import com.tts.aspect.RateLimited;
 import com.tts.dto.TtsRequest;
+import com.tts.entity.PlanType;
 import com.tts.entity.TtsHistory;
 import com.tts.repository.TtsHistoryRepository;
 import com.tts.repository.UserRepository;
 import com.tts.service.ElevenLabsService;
 import com.tts.service.PollyService;
-import com.tts.service.SystemParameterService;
+import com.tts.service.SubscriptionService;
 import com.tts.util.Sanitizer;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -39,14 +40,14 @@ public class TtsController {
     private final ElevenLabsService elevenLabsService;
     private final UserRepository userRepository;
     private final TtsHistoryRepository ttsHistoryRepository;
-    private final SystemParameterService systemParameterService;
+    private final SubscriptionService subscriptionService;
 
-    public TtsController(PollyService pollyService, ElevenLabsService elevenLabsService, UserRepository userRepository, TtsHistoryRepository ttsHistoryRepository, SystemParameterService systemParameterService) {
+    public TtsController(PollyService pollyService, ElevenLabsService elevenLabsService, UserRepository userRepository, TtsHistoryRepository ttsHistoryRepository, SubscriptionService subscriptionService) {
         this.pollyService = pollyService;
         this.elevenLabsService = elevenLabsService;
         this.userRepository = userRepository;
         this.ttsHistoryRepository = ttsHistoryRepository;
-        this.systemParameterService = systemParameterService;
+        this.subscriptionService = subscriptionService;
     }
 
     private void recordHistory(HttpServletRequest httpRequest, String voiceId, String voiceName, String voiceType, String format, int charCount, String text) {
@@ -70,30 +71,19 @@ public class TtsController {
         }
     }
 
-    private void validatePlanAccess(String planType, TtsRequest request, HttpServletRequest httpRequest) {
-        if (request.isElevenLabs()) {
-            if (!"PRO_PLUS".equalsIgnoreCase(planType) && !"ENTERPRISE".equalsIgnoreCase(planType)) {
-                throw new RuntimeException("ElevenLabs AI voices require a Pro Plus subscription.");
-            }
+    private void validatePlanAccess(PlanType planType, TtsRequest request, HttpServletRequest httpRequest) {
+        if (request.isElevenLabs() && !subscriptionService.canUseElevenLabs(planType)) {
+            throw new RuntimeException("ElevenLabs AI voices require a Pro Plus subscription.");
         }
 
-        if ("FREE".equalsIgnoreCase(planType)) {
-            Long userId = (Long) httpRequest.getAttribute("userId");
-            if (userId != null) {
-                LocalDateTime todayStart = LocalDateTime.now().truncatedTo(ChronoUnit.DAYS);
-                long count = ttsHistoryRepository.countRecentByUserId(userId, todayStart);
-                int limit = Integer.parseInt(systemParameterService.getLiveParameter("FREE_PLAN_SYNTHESIZE_LIMIT", "3"));
-                if (count >= limit) {
-                    throw new RuntimeException("Daily limit of " + limit + " syntheses reached for Free plan. Please upgrade to Pro Plus.");
-                }
-            }
-        }
+        Long userId = (Long) httpRequest.getAttribute("userId");
+        subscriptionService.validateSynthesisLimit(userId, planType);
     }
 
     @RateLimited(action = RateLimitAction.TTS)
     @PostMapping("/synthesize")
     public ResponseEntity<byte[]> synthesize(@Valid @RequestBody TtsRequest request, HttpServletRequest httpRequest) {
-        String planType = (String) httpRequest.getAttribute("planType");
+        PlanType planType = (PlanType) httpRequest.getAttribute("planType");
 
         try {
             validatePlanAccess(planType, request, httpRequest);
@@ -106,9 +96,7 @@ public class TtsController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Text content is required.".getBytes());
         }
 
-        int maxChars = Integer.parseInt(systemParameterService.getLiveParameter("MAX_FREE_CHARACTERS", "300"));
-        if ("PRO_PLUS".equalsIgnoreCase(planType)) maxChars = Integer.parseInt(systemParameterService.getLiveParameter("MAX_PRO_PLUS_CHARACTERS", "20000"));
-        else if ("ENTERPRISE".equalsIgnoreCase(planType)) maxChars = Integer.parseInt(systemParameterService.getLiveParameter("MAX_ENTERPRISE_CHARACTERS", "100000"));
+        int maxChars = subscriptionService.getMaxCharacters(planType);
 
         if (sanitizedText.length() > maxChars) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -125,19 +113,10 @@ public class TtsController {
                 audioStream = elevenLabsService.synthesizeSpeech(sanitizedText, sanitizedVoiceId);
                 effectiveVoiceType = "NATURAL";
             } else {
-                // Free users get Polly Neural too, no more hasNaturalAccess check for Polly
                 audioStream = pollyService.synthesizeSpeech(sanitizedText, sanitizedVoiceId, sanitizedOutputFormat);
                 
-                // 1. Use user's requested type if valid
-                if (request.getVoiceType() != null && !request.getVoiceType().isEmpty()) {
-                    effectiveVoiceType = request.getVoiceType().toUpperCase();
-                } else {
-                    // 2. Fallback to derived type
-                    boolean isNeural = pollyService.getAvailableVoices().stream()
-                            .filter(v -> v.id().toString().equals(sanitizedVoiceId))
-                            .anyMatch(v -> v.supportedEngines().contains(Engine.NEURAL));
-                    effectiveVoiceType = isNeural ? "NEURAL" : "STANDARD";
-                }
+                // Use centralized logic to determine engine for accurate history/cost tracking
+                effectiveVoiceType = pollyService.getBestEngineForVoice(sanitizedVoiceId).toString();
             }
 
             byte[] audioBytes = audioStream.readAllBytes();
@@ -158,7 +137,7 @@ public class TtsController {
     @RateLimited(action = RateLimitAction.TTS)
     @PostMapping("/synthesize-stream")
     public ResponseEntity<?> synthesizeStream(@Valid @RequestBody TtsRequest request, HttpServletRequest httpRequest) {
-        String planType = (String) httpRequest.getAttribute("planType");
+        PlanType planType = (PlanType) httpRequest.getAttribute("planType");
 
         try {
             validatePlanAccess(planType, request, httpRequest);
@@ -171,9 +150,7 @@ public class TtsController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Text content is required.");
         }
 
-        int maxChars = Integer.parseInt(systemParameterService.getLiveParameter("MAX_FREE_CHARACTERS", "300"));
-        if ("PRO_PLUS".equalsIgnoreCase(planType)) maxChars = Integer.parseInt(systemParameterService.getLiveParameter("MAX_PRO_PLUS_CHARACTERS", "20000"));
-        else if ("ENTERPRISE".equalsIgnoreCase(planType)) maxChars = Integer.parseInt(systemParameterService.getLiveParameter("MAX_ENTERPRISE_CHARACTERS", "100000"));
+        int maxChars = subscriptionService.getMaxCharacters(planType);
 
         if (sanitizedText.length() > maxChars) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -193,15 +170,8 @@ public class TtsController {
                 sanitizedOutputFormat
         );
 
-        String effectiveVoiceType;
-        if (request.getVoiceType() != null && !request.getVoiceType().isEmpty()) {
-            effectiveVoiceType = request.getVoiceType().toUpperCase();
-        } else {
-            boolean isNeural = pollyService.getAvailableVoices().stream()
-                    .filter(v -> v.id().toString().equals(sanitizedVoiceId))
-                    .anyMatch(v -> v.supportedEngines().contains(Engine.NEURAL));
-            effectiveVoiceType = isNeural ? "NEURAL" : "STANDARD";
-        }
+        // Use centralized logic to determine engine for accurate history/cost tracking
+        String effectiveVoiceType = pollyService.getBestEngineForVoice(sanitizedVoiceId).toString();
 
         recordHistory(httpRequest, sanitizedVoiceId, request.getVoiceName(), effectiveVoiceType, sanitizedOutputFormat, sanitizedText.length(), sanitizedText);
 
@@ -213,21 +183,17 @@ public class TtsController {
     @GetMapping("/usage")
     public ResponseEntity<Map<String, Object>> getUsage(HttpServletRequest httpRequest) {
         Long userId = (Long) httpRequest.getAttribute("userId");
-        String planType = (String) httpRequest.getAttribute("planType");
+        PlanType planType = (PlanType) httpRequest.getAttribute("planType");
 
         Map<String, Object> usage = new HashMap<>();
-        usage.put("plan", planType);
+        usage.put("plan", planType != null ? planType.name() : "FREE");
 
         if (userId != null) {
             LocalDateTime todayStart = LocalDateTime.now().truncatedTo(ChronoUnit.DAYS);
             long count = ttsHistoryRepository.countRecentByUserId(userId, todayStart);
             usage.put("dailyCount", count);
             
-            int limit = -1;
-            if ("FREE".equalsIgnoreCase(planType)) {
-                limit = Integer.parseInt(systemParameterService.getLiveParameter("FREE_PLAN_SYNTHESIZE_LIMIT", "3"));
-            }
-            usage.put("dailyLimit", limit);
+            usage.put("dailyLimit", subscriptionService.getDailySynthesisLimit(planType));
         }
 
         return ResponseEntity.ok(usage);
@@ -235,7 +201,7 @@ public class TtsController {
     @RateLimited
     @GetMapping("/voices")
     public ResponseEntity<List<Map<String, Object>>> getVoices(HttpServletRequest httpRequest) {
-        String planType = (String) httpRequest.getAttribute("planType");
+        PlanType planType = (PlanType) httpRequest.getAttribute("planType");
         List<Map<String, Object>> allVoices = new ArrayList<>();
 
         pollyService.getAvailableVoices().forEach(v -> {
@@ -243,16 +209,11 @@ public class TtsController {
             map.put("id", v.id().toString());
             map.put("name", v.name());
             map.put("gender", v.genderAsString());
-            boolean supportsPremium = v.supportedEngines().contains(Engine.NEURAL) ||
-                                      v.supportedEngines().stream().anyMatch(e -> e.toString().equalsIgnoreCase("generative") || e.toString().equalsIgnoreCase("long-form"));
-            map.put("isNeural", supportsPremium);
-            map.put("isStandard", v.supportedEngines().contains(Engine.STANDARD));
             map.put("isElevenLabs", false);
             allVoices.add(map);
         });
 
-        boolean isEligibleForElevenLabs = "PRO_PLUS".equalsIgnoreCase(planType) || "ENTERPRISE".equalsIgnoreCase(planType);
-        if (isEligibleForElevenLabs) {
+        if (subscriptionService.canUseElevenLabs(planType)) {
             allVoices.addAll(elevenLabsService.getAvailableVoices());
         }
 

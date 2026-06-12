@@ -3,6 +3,7 @@ package com.tts.service;
 import com.tts.exception.SpeechConversionException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -79,24 +80,44 @@ public class ElevenLabsService {
         HttpEntity<Void> entity = new HttpEntity<>(headers);
 
         try {
-            ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, entity, Map.class);
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    entity,
+                    new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                List<Map<String, Object>> voices = (List<Map<String, Object>>) response.getBody().get("voices");
-                List<Map<String, Object>> result = new ArrayList<>();
-                for (Map<String, Object> v : voices) {
-                    Map<String, Object> map = new HashMap<>();
-                    map.put("id", v.get("voice_id"));
-                    map.put("name", v.get("name"));
-                    map.put("gender", "neutral"); // ElevenLabs doesn't always provide this clearly in basic list
-                    map.put("isNeural", true);
-                    map.put("isStandard", false);
-                    map.put("isElevenLabs", true);
-                    result.add(map);
+                Object voicesObj = response.getBody().get("voices");
+                if (voicesObj instanceof List<?>) {
+                    List<?> voicesList = (List<?>) voicesObj;
+                    List<Map<String, Object>> result = new ArrayList<>();
+                    for (Object vObj : voicesList) {
+                        if (vObj instanceof Map<?, ?>) {
+                            Map<?, ?> v = (Map<?, ?>) vObj;
+                            String category = String.valueOf(v.get("category"));
+                            
+                            // ElevenLabs "library" or community voices often return 402 for non-paid ElevenLabs accounts
+                            // We will only include 'premade' voices to ensure high reliability.
+                            if (!"premade".equalsIgnoreCase(category)) {
+                                continue;
+                            }
+
+                            Map<String, Object> map = new HashMap<>();
+                            map.put("id", v.get("voice_id"));
+                            map.put("name", v.get("name"));
+                            map.put("gender", "neutral");
+                            map.put("isNeural", true);
+                            map.put("isStandard", false);
+                            map.put("isElevenLabs", true);
+                            result.add(map);
+                        }
+                    }
+                    cachedVoices = result;
+                    lastCacheUpdate = System.currentTimeMillis();
+                    log.info("ElevenLabs voices cache updated. Found {} voices.", cachedVoices.size());
+                    return cachedVoices;
                 }
-                cachedVoices = result;
-                lastCacheUpdate = System.currentTimeMillis();
-                log.info("ElevenLabs voices cache updated. Found {} voices.", cachedVoices.size());
-                return cachedVoices;
             }
         } catch (Exception e) {
             log.warn("ElevenLabs: API Key restricted or invalid. Voices disabled. Message: {}", e.getMessage());

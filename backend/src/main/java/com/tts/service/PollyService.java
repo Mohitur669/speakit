@@ -59,33 +59,34 @@ public class PollyService {
 
     /**
      * Synthesizes text into an audio stream, automatically negotiating the best available 
-     * engine (Neural vs. Standard) based on the voice capabilities and the user's plan.
+     * engine (Neural vs. Standard) based on the voice capabilities.
      * 
      * @param text The sanitized text to synthesize
      * @param voiceId The specific AWS Polly voice ID (e.g., 'Joanna')
      * @param outputFormat The requested audio format (mp3, ogg_vorbis, pcm)
-     * @param hasNaturalAccess Boolean indicating if the user has a Pro tier subscription
      * @return InputStream containing the raw audio bytes from AWS Polly
      */
     public InputStream synthesizeSpeech(String text, String voiceId, String outputFormat) {
-        
-        // Find voice in cache to check capabilities
+        Engine engine = getBestEngineForVoice(voiceId);
+        log.info("Server Enforced: Using {} engine for voice={}", engine, voiceId);
+        return synthesize(text, voiceId, outputFormat, engine);
+    }
+
+    /**
+     * Centralized logic to determine the best available engine for a voice.
+     * Prioritizes NEURAL for quality, but falls back to STANDARD.
+     */
+    public Engine getBestEngineForVoice(String voiceId) {
         List<Voice> voices = getAvailableVoices();
         Voice voice = voices.stream()
                 .filter(v -> v.id().toString().equals(voiceId))
                 .findFirst()
                 .orElse(null);
 
-        Engine engine = Engine.STANDARD;
-        
         if (voice != null && voice.supportedEngines().contains(Engine.NEURAL)) {
-            engine = Engine.NEURAL;
-            log.info("Server Enforced: Using NEURAL engine for voice={}", voiceId);
-        } else {
-            log.info("Server Enforced: Using STANDARD engine for voice={}", voiceId);
+            return Engine.NEURAL;
         }
-
-        return synthesize(text, voiceId, outputFormat, engine);
+        return Engine.STANDARD;
     }
 
     /**

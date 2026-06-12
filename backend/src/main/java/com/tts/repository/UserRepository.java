@@ -23,7 +23,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByUsernameOrEmail(String username, String email);
 
     @Query("SELECT u.id AS id, u.sessionVersion AS sessionVersion, u.planType AS planType FROM User u WHERE u.username = :username")
-    Optional<UserSessionProjection> findSessionAndAccessByUsername(@Param("username") String username);
+    Optional<UserSessionProjection> findSessionAndPlanByUsername(@Param("username") String username);
 
     @Modifying
     @Query("UPDATE User u SET u.sessionVersion = u.sessionVersion + 1 WHERE u.username = :username")

@@ -18,9 +18,7 @@ export interface PaymentHistoryDto {
 }
 
 export interface PaginatedPaymentHistory {
-  _embedded?: {
-    paymentHistoryDtoList: PaymentHistoryDto[];
-  };
+  content: PaymentHistoryDto[];
   page: {
     size: number;
     totalElements: number;

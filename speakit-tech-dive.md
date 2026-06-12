@@ -111,7 +111,7 @@ POST /api/tts/synthesize
          ▼
 ┌─────────────────────────┐
 │ JwtAuthenticationFilter │ → Fetches UserSessionProjection (id, sessionVersion,
-└────────┬────────────────┘   hasNaturalVoiceAccess). Validates session version.
+└────────┬────────────────┘   planType). Validates session version.
          ▼                    Injects attributes into HttpServletRequest.
 ┌────────────────────┐
 │   TtsController    │ → Reads pre-cached request attributes (NO extra DB call).
@@ -283,9 +283,8 @@ The tradeoff: Angular has a steeper initial learning curve and a larger bundle s
 
 **A:** A Route Guard is middleware that executes before a route is activated. We implement `CanActivateFn` guards:
 
-- **`AuthGuard`:** Checks if the user has a valid JWT in localStorage. If not, redirects to `/login`. Applied to all `/tts` routes.
-- **`GuestGuard`:** The inverse — prevents authenticated users from visiting `/login` or `/register`. Redirects them to `/tts/studio`. Prevents the awkward UX of a logged-in user seeing the login form.
-- **`ProGuard`:** Checks `hasNaturalVoiceAccess` from the decoded JWT payload. If a Free user tries to access Neural Voice features directly via URL, they get redirected to the pricing page.
+- **`AuthGuard`:** Checks if the user has a valid JWT in localStorage. If not, redirects to `/login`. Applied to all `/tts` and profile routes. Feature-specific access (like ElevenLabs voices) is managed via signal-based logic in the UI and enforced by the backend via `plan_type` validation.
+- **`GuestGuard`:** The inverse — prevents authenticated users from visiting `/login` or `/register`. Redirects them to `/tts`. Prevents the awkward UX of a logged-in user seeing the login form.
 
 ---
 
@@ -374,7 +373,7 @@ JPA Entities are **never** returned to the frontend. All responses are mapped to
 
 **Why?**
 
-1. **Security:** An `@Entity User` object contains `passwordHash`, `sessionVersion`, internal `id` sequences. Accidentally returning the entity exposes all of this. A DTO exposes exactly: `{ id, email, plan, hasNaturalVoiceAccess }`.
+1. **Security:** An `@Entity User` object contains `passwordHash`, `sessionVersion`, internal `id` sequences. Accidentally returning the entity exposes all of this. A DTO exposes exactly: `{ id, email, planType }`.
 
 2. **API Contract Stability:** If you return entities directly, renaming a database column (`voice_id` → `voice_identifier`) breaks all API consumers immediately. DTOs create an abstraction layer. The DB can change; the DTO stays the same.
 
@@ -529,11 +528,11 @@ Optional<UserSessionProjection> findProjectedById(Long id);
 
 ```sql
 -- Without projection
-SELECT id, email, password_hash, plan, created_at, updated_at, version,
-       session_version, has_natural_voice_access FROM users WHERE id = ?
+SELECT id, email, password_hash, plan_type, created_at, updated_at, version,
+       session_version FROM users WHERE id = ?
 
 -- With projection
-SELECT id, session_version, has_natural_voice_access FROM users WHERE id = ?
+SELECT id, session_version, plan_type FROM users WHERE id = ?
 ```
 
 For the JWT validation hot-path (every authenticated request), this executes hundreds of times per second. Loading 3 columns vs 9+ columns reduces network transfer and Hibernate object allocation significantly.
@@ -1704,7 +1703,7 @@ This is a substantial engineering project — worth building only when the use c
 **A:** It's a deliberate, managed tradeoff. The query is:
 
 ```sql
-SELECT id, session_version, has_natural_voice_access FROM users WHERE id = ?
+SELECT id, session_version, plan_type FROM users WHERE id = ?
 ```
 
 This hits a **primary key index** — PostgreSQL B-tree index lookup is O(log n), typically 1-2 page reads from SSD. With PgBouncer and HikariCP maintaining warm connections, this executes in 1-3ms.

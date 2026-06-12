@@ -3,6 +3,7 @@ package com.tts.service;
 import com.tts.config.WebSocketConfig;
 import com.tts.dto.AuthRequest;
 import com.tts.dto.AuthResponse;
+import com.tts.entity.PlanType;
 import com.tts.entity.User;
 import com.tts.repository.UserRepository;
 import com.tts.security.JwtService;
@@ -55,7 +56,7 @@ public class AuthService {
                 .phoneNumber(sanitizedPhone)
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role("ROLE_USER")
-                .planType("FREE")
+                .planType(PlanType.FREE)
                 .build();
         user = userRepository.save(user);
 
@@ -135,7 +136,7 @@ public class AuthService {
                 .email(user.getEmail())
                 .phoneNumber(user.getPhoneNumber())
                 .role(user.getRole())
-                .planType(user.getPlanType())
+                .planType(user.getPlanType().name())
                 .sessionVersion(user.getSessionVersion())
                 .sessionDurationMs(sessionDurationMs)
                 .idleTimeoutMs(idleTimeoutMs)
@@ -218,7 +219,7 @@ public class AuthService {
                 .email(user.getEmail())
                 .phoneNumber(user.getPhoneNumber())
                 .role(role)
-                .planType(user.getPlanType())
+                .planType(user.getPlanType().name())
                 .sessionVersion(sessionVersion)
                 .sessionDurationMs(sessionDurationMs)
                 .idleTimeoutMs(idleTimeoutMs)

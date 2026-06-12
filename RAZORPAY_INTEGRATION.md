@@ -30,7 +30,7 @@ Added `com.razorpay:razorpay-java:1.4.8` to `pom.xml`.
 -   **`RazorpayService`**: 
     -   `createOrder()`: Communicates with Razorpay API to create a unique Order ID.
     -   `verifyPayment()`: Uses Razorpay SDK's `Utils.verifyPaymentSignature` to prevent spoofing.
-    -   `activateSubscription()`: Upgrades the user's `hasNaturalVoiceAccess` flag and creates a `Subscription` record.
+    -   `activateSubscription()`: Upgrades the user's `plan_type` and creates a `Subscription` record.
 -   **`WebhookService`**: 
     -   Verifies the webhook signature using the configured secret.
     -   Implements idempotency by tracking `event_id` in the `webhook_events` table.

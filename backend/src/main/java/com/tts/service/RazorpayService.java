@@ -114,10 +114,10 @@ public class RazorpayService {
 
     private void activateSubscription(User user, Payment payment) {
         // Upgrade user based on plan
-        String planStr = payment.getSubscription() != null ? 
-            payment.getSubscription().getPlanType().name() : "PRO_PLUS";
+        PlanType plan = payment.getSubscription() != null ? 
+            payment.getSubscription().getPlanType() : PlanType.PRO_PLUS;
             
-        user.setPlanType(planStr);
+        user.setPlanType(plan);
         userRepository.save(user);
 
         // Ensure subscription record is consistent and ACTIVE
@@ -141,6 +141,6 @@ public class RazorpayService {
         }
         
         paymentRepository.save(payment);
-        log.info("Subscription ({}) activated for user: {}", planStr, user.getUsername());
+        log.info("Subscription ({}) activated for user: {}", plan, user.getUsername());
     }
 }

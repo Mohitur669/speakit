@@ -61,58 +61,58 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
       </section>
 
       <!-- Trust Section -->
-      <div class="py-12 bg-white dark:bg-primary-900 border-y border-primary-100 dark:border-primary-800 transition-colors duration-300">
+      <div class="py-6 sm:py-12 bg-white dark:bg-primary-900 border-y border-primary-100 dark:border-primary-800 transition-colors duration-300">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <p class="text-sm text-primary-400 dark:text-primary-500 mb-8 text-center">Trusted by 50,000+ creators worldwide</p>
+          <p class="text-xs sm:text-sm text-primary-400 dark:text-primary-500 mb-4 sm:mb-8 text-center">Trusted by 50,000+ creators worldwide</p>
 
           <!-- Row 1 - Left to Right -->
-          <div class="relative overflow-hidden mb-3">
+          <div class="relative overflow-hidden mb-2 sm:mb-3">
             <div class="flex animate-marquee whitespace-nowrap">
-              <div class="flex items-center gap-16 px-8 opacity-30">
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">TechCrunch</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Product Hunt</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Y Combinator</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">The Verge</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Wired</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Forbes</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Fast Company</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Bloomberg</span>
+              <div class="flex items-center gap-8 sm:gap-16 px-4 sm:px-8 opacity-30">
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">TechCrunch</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">Product Hunt</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">Y Combinator</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">The Verge</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">Wired</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">Forbes</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">Fast Company</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">Bloomberg</span>
               </div>
-              <div class="flex items-center gap-16 px-8 opacity-30">
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">TechCrunch</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Product Hunt</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Y Combinator</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">The Verge</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Wired</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Forbes</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Fast Company</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Bloomberg</span>
+              <div class="flex items-center gap-8 sm:gap-16 px-4 sm:px-8 opacity-30">
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">TechCrunch</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">Product Hunt</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">Y Combinator</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">The Verge</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">Wired</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">Forbes</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">Fast Company</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">Bloomberg</span>
               </div>
             </div>
           </div>
 
           <!-- Row 2 - Right to Left (Reverse) -->
-          <div class="relative overflow-hidden mb-3">
+          <div class="relative overflow-hidden mb-2 sm:mb-3">
             <div class="flex animate-marquee-reverse whitespace-nowrap">
-              <div class="flex items-center gap-16 px-8 opacity-50">
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Mashable</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">CNET</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">VentureBeat</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Ars Technica</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">PC Magazine</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Inc.</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Business Insider</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">MIT Tech Review</span>
+              <div class="flex items-center gap-8 sm:gap-16 px-4 sm:px-8 opacity-50">
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">Mashable</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">CNET</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">VentureBeat</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">Ars Technica</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">PC Magazine</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">Inc.</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">Business Insider</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">MIT Tech Review</span>
               </div>
-              <div class="flex items-center gap-16 px-8 opacity-50">
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Mashable</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">CNET</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">VentureBeat</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Ars Technica</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">PC Magazine</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Inc.</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Business Insider</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">MIT Tech Review</span>
+              <div class="flex items-center gap-8 sm:gap-16 px-4 sm:px-8 opacity-50">
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">Mashable</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">CNET</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">VentureBeat</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">Ars Technica</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">PC Magazine</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">Inc.</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">Business Insider</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">MIT Tech Review</span>
               </div>
             </div>
           </div>
@@ -120,25 +120,25 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
           <!-- Row 3 - Left to Right (Fast) -->
           <div class="relative overflow-hidden">
             <div class="flex animate-marquee-fast whitespace-nowrap">
-              <div class="flex items-center gap-16 px-8 opacity-20">
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">The Next Web</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Smashing Magazine</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">CSS-Tricks</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Dev.to</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">HackerNoon</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">G2</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Capterra</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">TrustRadius</span>
+              <div class="flex items-center gap-8 sm:gap-16 px-4 sm:px-8 opacity-20">
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">The Next Web</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">Smashing Magazine</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">CSS-Tricks</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">Dev.to</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">HackerNoon</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">G2</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">Capterra</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">TrustRadius</span>
               </div>
-              <div class="flex items-center gap-16 px-8 opacity-20">
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">The Next Web</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Smashing Magazine</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">CSS-Tricks</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Dev.to</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">HackerNoon</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">G2</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">Capterra</span>
-                <span class="text-xl font-bold text-primary-500 whitespace-nowrap">TrustRadius</span>
+              <div class="flex items-center gap-8 sm:gap-16 px-4 sm:px-8 opacity-20">
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">The Next Web</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">Smashing Magazine</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">CSS-Tricks</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">Dev.to</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">HackerNoon</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">G2</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">Capterra</span>
+                <span class="text-lg sm:text-xl font-bold text-primary-500 whitespace-nowrap">TrustRadius</span>
               </div>
             </div>
           </div>
@@ -146,13 +146,13 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
       </div>
 
       <!-- Features Section -->
-      <section id="features" class="py-20 md:py-32 bg-primary-50 dark:bg-primary-950 scroll-mt-16 transition-colors duration-300">
+      <section id="features" class="py-12 sm:py-20 md:py-32 bg-primary-50 dark:bg-primary-950 scroll-mt-16 transition-colors duration-300">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div class="text-center max-w-2xl mx-auto mb-16">
-            <h2 class="text-3xl sm:text-4xl font-bold text-primary-900 dark:text-white mb-4">Everything you need for voice creation</h2>
-            <p class="text-lg text-primary-500 dark:text-primary-400">From podcasts to audiobooks, create studio-quality voiceovers in minutes.</p>
+          <div class="text-center max-w-2xl mx-auto mb-8 sm:mb-16">
+            <h2 class="text-2xl sm:text-4xl font-bold text-primary-900 dark:text-white mb-4">Everything you need for voice creation</h2>
+            <p class="text-sm sm:text-lg text-primary-500 dark:text-primary-400">From podcasts to audiobooks, create studio-quality voiceovers in minutes.</p>
           </div>
-          <div class="grid md:grid-cols-3 gap-8">
+          <div class="grid md:grid-cols-3 gap-6 sm:gap-8">
             <div class="group p-8 rounded-2xl bg-white dark:bg-primary-900 border border-primary-200 dark:border-primary-700 hover:shadow-lg hover:border-brand-blue/30 transition-all">
               <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-blue to-brand-purple flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                 <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
@@ -179,25 +179,25 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
       </section>
 
       <!-- Stats Section -->
-      <section class="py-16 bg-brand-blue">
+      <section class="py-10 sm:py-16 bg-brand-blue">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
-            <div class="text-center"><div class="text-3xl sm:text-4xl font-bold text-white mb-2">300+</div><div class="text-sm text-white/70">Premium Voices</div></div>
-            <div class="text-center"><div class="text-3xl sm:text-4xl font-bold text-white mb-2">30+</div><div class="text-sm text-white/70">Languages</div></div>
-            <div class="text-center"><div class="text-3xl sm:text-4xl font-bold text-white mb-2">50K+</div><div class="text-sm text-white/70">Active Users</div></div>
-            <div class="text-center"><div class="text-3xl sm:text-4xl font-bold text-white mb-2">4.9</div><div class="text-sm text-white/70">User Rating</div></div>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
+            <div class="text-center"><div class="text-2xl sm:text-4xl font-bold text-white mb-2">300+</div><div class="text-xs sm:text-sm text-white/70">Premium Voices</div></div>
+            <div class="text-center"><div class="text-2xl sm:text-4xl font-bold text-white mb-2">30+</div><div class="text-xs sm:text-sm text-white/70">Languages</div></div>
+            <div class="text-center"><div class="text-2xl sm:text-4xl font-bold text-white mb-2">50K+</div><div class="text-xs sm:text-sm text-white/70">Active Users</div></div>
+            <div class="text-center"><div class="text-2xl sm:text-4xl font-bold text-white mb-2">4.9</div><div class="text-xs sm:text-sm text-white/70">User Rating</div></div>
           </div>
         </div>
       </section>
 
       <!-- Pricing Section -->
-      <section id="pricing" class="py-20 md:py-32 bg-primary-50 dark:bg-primary-950 scroll-mt-16 transition-colors duration-300">
+      <section id="pricing" class="py-12 sm:py-20 md:py-32 bg-primary-50 dark:bg-primary-950 scroll-mt-16 transition-colors duration-300">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div class="text-center max-w-2xl mx-auto mb-16">
-            <h2 class="text-3xl sm:text-4xl font-bold text-primary-900 dark:text-white mb-4">Simple, transparent pricing</h2>
-            <p class="text-lg text-primary-500 dark:text-primary-400">Start free, upgrade when you need more.</p>
+          <div class="text-center max-w-2xl mx-auto mb-10 sm:mb-16">
+            <h2 class="text-2xl sm:text-4xl font-bold text-primary-900 dark:text-white mb-4">Simple, transparent pricing</h2>
+            <p class="text-sm sm:text-lg text-primary-500 dark:text-primary-400">Start free, upgrade when you need more.</p>
           </div>
-          <div class="grid md:grid-cols-3 gap-8 max-w-7xl mx-auto">
+          <div class="grid md:grid-cols-3 gap-6 sm:gap-8 max-w-7xl mx-auto">
             <!-- Free Plan -->
             <div class="p-8 rounded-2xl bg-white dark:bg-primary-900 border border-primary-200 dark:border-primary-700 flex flex-col transition-all">
               <div class="text-sm font-medium text-primary-500 mb-2">Basic</div>
