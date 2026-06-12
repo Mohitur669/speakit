@@ -1,0 +1,16 @@
+{
+  "speakers": ["meera", "shubh", "aditya", "ritu", "priya", "neha", "rahul", "pooja", "rohan", "simran"],
+  "languages": [
+    {"code": "hi-IN", "name": "Hindi"},
+    {"code": "bn-IN", "name": "Bengali"},
+    {"code": "mr-IN", "name": "Marathi"},
+    {"code": "ta-IN", "name": "Tamil"},
+    {"code": "te-IN", "name": "Telugu"},
+    {"code": "kn-IN", "name": "Kannada"},
+    {"code": "ml-IN", "name": "Malayalam"},
+    {"code": "gu-IN", "name": "Gujarati"},
+    {"code": "pa-IN", "name": "Punjabi"},
+    {"code": "or-IN", "name": "Odia"}
+  ],
+  "female_speakers": ["meera", "ritu", "priya", "neha", "pooja", "simran", "anushka", "manisha", "vidya", "arya"]
+}
