@@ -284,14 +284,14 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
       </section>
 
       <!-- Plan Comparison Table Section -->
-      <section class="py-12 sm:py-20 bg-white dark:bg-primary-900 transition-colors duration-300">
+      <section id="compare" class="py-12 sm:py-20 bg-primary-50 dark:bg-primary-950 scroll-mt-16 transition-colors duration-300">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="text-center mb-10 sm:mb-16">
             <h2 class="text-2xl sm:text-3xl font-bold text-primary-900 dark:text-white mb-4">Compare Plans</h2>
             <p class="text-primary-600 dark:text-primary-400 text-sm sm:text-base">Find the perfect plan for your voice creation needs.</p>
           </div>
 
-          <div class="overflow-x-auto rounded-2xl border border-primary-100 dark:border-primary-800 shadow-xl">
+          <div class="overflow-x-auto rounded-2xl border border-primary-200 dark:border-primary-800 shadow-xl bg-white dark:bg-primary-900">
             <table class="w-full text-left border-collapse min-w-[800px]">
               <thead>
                 <tr class="bg-primary-50 dark:bg-primary-800/50">
