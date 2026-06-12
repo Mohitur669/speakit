@@ -281,6 +281,106 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
         </div>
       </section>
 
+      <!-- Plan Comparison Table Section -->
+      <section class="py-12 sm:py-20 bg-white dark:bg-primary-900 transition-colors duration-300">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div class="text-center mb-10 sm:mb-16">
+            <h2 class="text-2xl sm:text-3xl font-bold text-primary-900 dark:text-white mb-4">Compare Plans</h2>
+            <p class="text-primary-600 dark:text-primary-400 text-sm sm:text-base">Find the perfect plan for your voice creation needs.</p>
+          </div>
+
+          <div class="overflow-x-auto rounded-2xl border border-primary-100 dark:border-primary-800 shadow-xl">
+            <table class="w-full text-left border-collapse min-w-[800px]">
+              <thead>
+                <tr class="bg-primary-50 dark:bg-primary-800/50">
+                  <th class="p-6 text-sm font-bold text-primary-900 dark:text-white uppercase tracking-wider border-b border-primary-100 dark:border-primary-800">Feature</th>
+                  <th class="p-6 text-sm font-bold text-primary-900 dark:text-white uppercase tracking-wider text-center border-b border-primary-100 dark:border-primary-800">Basic (Free)</th>
+                  <th class="p-6 text-sm font-bold text-orange-500 uppercase tracking-wider text-center border-b border-primary-100 dark:border-primary-800">PRO</th>
+                  <th class="p-6 text-sm font-bold text-brand-blue uppercase tracking-wider text-center border-b border-primary-100 dark:border-primary-800">Pro Plus</th>
+                  <th class="p-6 text-sm font-bold text-primary-500 uppercase tracking-wider text-center border-b border-primary-100 dark:border-primary-800">Enterprise</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-primary-100 dark:divide-primary-800">
+                <!-- Voice Engines -->
+                <tr>
+                  <td class="p-6 text-sm font-medium text-primary-700 dark:text-primary-200">Standard AWS Voices</td>
+                  <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
+                  <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
+                  <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
+                  <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
+                </tr>
+                <tr>
+                  <td class="p-6 text-sm font-medium text-primary-700 dark:text-primary-200">Neural Engine (AWS)</td>
+                  <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
+                  <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
+                  <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
+                  <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
+                </tr>
+                <tr>
+                  <td class="p-6 text-sm font-medium text-primary-700 dark:text-primary-200">Indian Voices (Sarvam AI)</td>
+                  <td class="p-6 text-center"><span class="text-primary-300 dark:text-primary-700">\u2014</span></td>
+                  <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
+                  <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
+                  <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
+                </tr>
+                <tr>
+                  <td class="p-6 text-sm font-medium text-primary-700 dark:text-primary-200">Natural AI (ElevenLabs)</td>
+                  <td class="p-6 text-center"><span class="text-primary-300 dark:text-primary-700">\u2014</span></td>
+                  <td class="p-6 text-center"><span class="text-primary-300 dark:text-primary-700">\u2014</span></td>
+                  <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
+                  <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
+                </tr>
+
+                <!-- Limits -->
+                <tr class="bg-primary-50/30 dark:bg-primary-800/20">
+                  <td class="p-6 text-sm font-bold text-primary-900 dark:text-white uppercase tracking-tight" colspan="5">Limits & Quotas</td>
+                </tr>
+                <tr>
+                  <td class="p-6 text-sm font-medium text-primary-700 dark:text-primary-200">Characters per request</td>
+                  <td class="p-6 text-center text-sm font-bold text-primary-600 dark:text-primary-300">{{ freeChars() }}</td>
+                  <td class="p-6 text-center text-sm font-bold text-primary-600 dark:text-primary-300">{{ proChars() }}</td>
+                  <td class="p-6 text-center text-sm font-bold text-primary-600 dark:text-primary-300">{{ proPlusChars() }}</td>
+                  <td class="p-6 text-center text-sm font-bold text-primary-600 dark:text-primary-300">{{ enterpriseChars() }}+</td>
+                </tr>
+                <tr>
+                  <td class="p-6 text-sm font-medium text-primary-700 dark:text-primary-200">Daily syntheses</td>
+                  <td class="p-6 text-center text-sm font-bold text-primary-600 dark:text-primary-300">{{ freeDailyLimit() }}</td>
+                  <td class="p-6 text-center text-sm font-bold text-emerald-500">Unlimited</td>
+                  <td class="p-6 text-center text-sm font-bold text-emerald-500">Unlimited</td>
+                  <td class="p-6 text-center text-sm font-bold text-emerald-500">Unlimited</td>
+                </tr>
+
+                <!-- Additional Features -->
+                <tr class="bg-primary-50/30 dark:bg-primary-800/20">
+                  <td class="p-6 text-sm font-bold text-primary-900 dark:text-white uppercase tracking-tight" colspan="5">Support & Platform</td>
+                </tr>
+                <tr>
+                  <td class="p-6 text-sm font-medium text-primary-700 dark:text-primary-200">MP3 Downloads</td>
+                  <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
+                  <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
+                  <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
+                  <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
+                </tr>
+                <tr>
+                  <td class="p-6 text-sm font-medium text-primary-700 dark:text-primary-200">Support</td>
+                  <td class="p-6 text-center text-xs text-primary-500">Community</td>
+                  <td class="p-6 text-center text-xs text-primary-500">Standard</td>
+                  <td class="p-6 text-center text-xs font-bold text-brand-blue">Priority</td>
+                  <td class="p-6 text-center text-xs font-bold text-primary-900 dark:text-white">Dedicated Account Manager</td>
+                </tr>
+                <tr>
+                  <td class="p-6 text-sm font-medium text-primary-700 dark:text-primary-200">API Access</td>
+                  <td class="p-6 text-center"><span class="text-primary-300 dark:text-primary-700">\u2014</span></td>
+                  <td class="p-6 text-center"><span class="text-primary-300 dark:text-primary-700">\u2014</span></td>
+                  <td class="p-6 text-center"><span class="text-primary-300 dark:text-primary-700">\u2014</span></td>
+                  <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
       <app-footer></app-footer>
     </div>
   `
@@ -291,14 +391,21 @@ export class LandingComponent implements OnInit {
   authService = inject(AuthService);
   featureFlags = inject(FeatureFlagService);
 
-  proPrice = computed(() => Number(this.featureFlags.getCached('PRO_PLAN_PRICE_INR', '499')));
-  proPlusPrice = computed(() => Number(this.featureFlags.getCached('PRO_PLUS_PLAN_PRICE_INR', '1999')));
+  proPrice = computed(() => Number(this.featureFlags.getCached('PRO_PLAN_PRICE_INR', '1')));
+  proPlusPrice = computed(() => Number(this.featureFlags.getCached('PRO_PLUS_PLAN_PRICE_INR', '2')));
 
   // Computed signals for features (Cached Track)
   freeFeatures = computed(() => this.getPlanFeatures('FREE'));
   proFeatures = computed(() => this.getPlanFeatures('PRO'));
   proPlusFeatures = computed(() => this.getPlanFeatures('PRO_PLUS'));
   enterpriseFeatures = computed(() => this.getPlanFeatures('ENTERPRISE'));
+
+  // Computed signals for limits in comparison table
+  freeChars = computed(() => this.featureFlags.getCached('MAX_FREE_CHARACTERS', '100'));
+  proChars = computed(() => this.featureFlags.getCached('MAX_PRO_CHARACTERS', '200'));
+  proPlusChars = computed(() => this.featureFlags.getCached('MAX_PRO_PLUS_CHARACTERS', '500'));
+  enterpriseChars = computed(() => this.featureFlags.getCached('MAX_ENTERPRISE_CHARACTERS', '2000'));
+  freeDailyLimit = computed(() => this.featureFlags.getCached('FREE_PLAN_SYNTHESIZE_LIMIT', '5'));
 
   private getPlanFeatures(plan: string): string[] {
     const raw = this.featureFlags.getCached(`${plan}_PLAN_FEATURES`, '');

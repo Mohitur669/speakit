@@ -99,9 +99,23 @@ public class SarvamService {
             );
 
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                String base64Audio = (String) response.getBody().get("audio_content");
+                Map<String, Object> body = response.getBody();
+                String base64Audio = null;
+
+                // Bulbul v3 typically returns an 'audios' array
+                if (body.containsKey("audios") && body.get("audios") instanceof List<?>) {
+                    List<?> audios = (List<?>) body.get("audios");
+                    if (!audios.isEmpty()) {
+                        base64Audio = String.valueOf(audios.get(0));
+                    }
+                }
+                
+                // Fallbacks for older models or variations
                 if (base64Audio == null) {
-                    base64Audio = (String) response.getBody().get("audio_data");
+                    base64Audio = (String) body.get("audio_content");
+                }
+                if (base64Audio == null) {
+                    base64Audio = (String) body.get("audio_data");
                 }
                 
                 if (base64Audio != null) {
