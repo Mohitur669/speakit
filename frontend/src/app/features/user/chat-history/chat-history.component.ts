@@ -233,8 +233,8 @@ export class ChatHistoryComponent implements OnInit {
   }
 
   formatMobileSnippet(text: string): string {
-    if (text.length <= 18) return text;
-    return text.slice(0, 10) + '...' + text.slice(-5);
+    if (text.length <= 10) return text;
+    return text.slice(0, 10) + '...';
   }
 
   loadHistory(): void {
