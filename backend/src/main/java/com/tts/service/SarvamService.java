@@ -1,9 +1,13 @@
 package com.tts.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tts.exception.SpeechConversionException;
+import jakarta.annotation.PostConstruct;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -15,6 +19,7 @@ import java.util.*;
 /**
  * Service for integrating Sarvam AI Text-to-Speech.
  * Specializes in high-quality Indian language synthesis.
+ * Configuration is externalized to sarvam-voices.json.
  */
 @Service
 @Slf4j
@@ -25,6 +30,35 @@ public class SarvamService {
 
     private final String API_URL = "https://api.sarvam.ai/text-to-speech";
     private final RestTemplate restTemplate = new RestTemplate();
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    private SarvamConfig config;
+
+    @PostConstruct
+    public void init() {
+        try {
+            ClassPathResource resource = new ClassPathResource("sarvam-voices.json");
+            config = objectMapper.readValue(resource.getInputStream(), SarvamConfig.class);
+            log.info("Sarvam AI voice configuration loaded successfully ({} speakers, {} languages).", 
+                    config.getSpeakers().size(), config.getLanguages().size());
+        } catch (Exception e) {
+            log.error("Failed to load Sarvam AI voice configuration from sarvam-voices.json", e);
+            config = new SarvamConfig(); // Empty fallback
+        }
+    }
+
+    @Data
+    private static class SarvamConfig {
+        private List<String> speakers = new ArrayList<>();
+        private List<Language> languages = new ArrayList<>();
+        private List<String> female_speakers = new ArrayList<>();
+    }
+
+    @Data
+    private static class Language {
+        private String code;
+        private String name;
+    }
 
     /**
      * Synthesizes text into speech using Sarvam AI.
@@ -67,7 +101,6 @@ public class SarvamService {
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
                 String base64Audio = (String) response.getBody().get("audio_content");
                 if (base64Audio == null) {
-                    // Fallback to audio_data if audio_content is null (some docs mention audio_data)
                     base64Audio = (String) response.getBody().get("audio_data");
                 }
                 
@@ -87,41 +120,22 @@ public class SarvamService {
      * Returns a curated list of supported Sarvam AI voices for the "Indian" filter.
      */
     public List<Map<String, Object>> getAvailableVoices() {
-        if (apiKey == null || apiKey.isEmpty()) {
+        if (apiKey == null || apiKey.isEmpty() || config == null) {
             return List.of();
         }
 
         List<Map<String, Object>> voices = new ArrayList<>();
         
-        // Curated speakers based on documentation
-        String[] speakers = {"meera", "shubh", "aditya", "ritu", "priya", "neha", "rahul", "pooja", "rohan", "simran"};
-        
-        // Supported Indian language codes
-        Map<String, String> languages = new LinkedHashMap<>();
-        languages.put("hi-IN", "Hindi");
-        languages.put("bn-IN", "Bengali");
-        languages.put("mr-IN", "Marathi");
-        languages.put("ta-IN", "Tamil");
-        languages.put("te-IN", "Telugu");
-        languages.put("kn-IN", "Kannada");
-        languages.put("ml-IN", "Malayalam");
-        languages.put("gu-IN", "Gujarati");
-        languages.put("pa-IN", "Punjabi");
-        languages.put("or-IN", "Odia");
-
-        // Generate voices for the main languages
-        for (String speaker : speakers) {
-            for (Map.Entry<String, String> entry : languages.entrySet()) {
+        for (String speaker : config.getSpeakers()) {
+            for (Language lang : config.getLanguages()) {
                 Map<String, Object> map = new HashMap<>();
-                String langCode = entry.getKey();
-                String langName = entry.getValue();
                 
                 map.put("id", speaker);
-                map.put("name", capitalize(speaker) + " (" + langName + ")");
+                map.put("name", capitalize(speaker) + " (" + lang.getName() + ")");
                 map.put("gender", isFemale(speaker) ? "Female" : "Male");
                 map.put("isElevenLabs", false);
                 map.put("isSarvam", true);
-                map.put("languageCode", langCode);
+                map.put("languageCode", lang.getCode());
                 voices.add(map);
             }
         }
@@ -135,7 +149,7 @@ public class SarvamService {
     }
 
     private boolean isFemale(String speaker) {
-        List<String> females = Arrays.asList("meera", "ritu", "priya", "neha", "pooja", "simran", "anushka", "manisha", "vidya", "arya");
-        return females.contains(speaker.toLowerCase());
+        if (config == null || config.getFemale_speakers() == null) return false;
+        return config.getFemale_speakers().contains(speaker.toLowerCase());
     }
 }
