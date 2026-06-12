@@ -197,7 +197,7 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
             <h2 class="text-2xl sm:text-4xl font-bold text-primary-900 dark:text-white mb-4">Simple, transparent pricing</h2>
             <p class="text-sm sm:text-lg text-primary-500 dark:text-primary-400">Start free, upgrade when you need more.</p>
           </div>
-          <div class="grid md:grid-cols-3 gap-6 sm:gap-8 max-w-7xl mx-auto">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 max-w-7xl mx-auto">
             <!-- Free Plan -->
             <div class="p-8 rounded-2xl bg-white dark:bg-primary-900 border border-primary-200 dark:border-primary-700 flex flex-col transition-all">
               <div class="text-sm font-medium text-primary-500 mb-2">Basic</div>
@@ -214,6 +214,26 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
                 [disabled]="authService.currentPlanType() === 'FREE' && authService.isLoggedIn()"
                 class="block w-full py-3 text-center font-semibold text-primary-700 dark:text-primary-200 bg-primary-100 dark:bg-primary-800 hover:bg-primary-200 dark:hover:bg-primary-700 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                 {{ authService.currentPlanType() === 'FREE' && authService.isLoggedIn() ? 'Current Plan' : (authService.currentUser() ? 'Go to App' : 'Get Started') }}
+              </button>
+            </div>
+
+            <!-- PRO Plan -->
+            <div class="p-8 rounded-2xl bg-white dark:bg-primary-900 border border-primary-200 dark:border-primary-700 flex flex-col transition-all">
+              <div class="text-sm font-medium text-orange-500 mb-2">PRO</div>
+              <div class="flex items-baseline gap-1 mb-6">
+                <span class="text-4xl font-bold text-primary-900 dark:text-white">₹{{ proPrice() }}</span>
+                <span class="text-primary-400">/mo</span>
+              </div>
+              <ul class="space-y-4 mb-8 flex-grow text-left">
+                <li *ngFor="let feature of proFeatures()" class="flex items-center gap-3 text-primary-600 dark:text-primary-300">
+                  <svg class="w-5 h-5 text-accent-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                  {{ feature }}
+                </li>
+              </ul>
+              <button (click)="buyPlan('PRO', proPrice())" 
+                [disabled]="authService.currentPlanType() === 'PRO'"
+                class="block w-full py-3 text-center font-semibold text-primary-700 dark:text-primary-200 bg-primary-100 dark:bg-primary-800 hover:bg-primary-200 dark:hover:bg-primary-700 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                {{ authService.currentPlanType() === 'PRO' ? 'Current Plan' : 'Go PRO' }}
               </button>
             </div>
 
@@ -271,10 +291,12 @@ export class LandingComponent implements OnInit {
   authService = inject(AuthService);
   featureFlags = inject(FeatureFlagService);
 
+  proPrice = computed(() => Number(this.featureFlags.getCached('PRO_PLAN_PRICE_INR', '499')));
   proPlusPrice = computed(() => Number(this.featureFlags.getCached('PRO_PLUS_PLAN_PRICE_INR', '1999')));
 
   // Computed signals for features (Cached Track)
   freeFeatures = computed(() => this.getPlanFeatures('FREE'));
+  proFeatures = computed(() => this.getPlanFeatures('PRO'));
   proPlusFeatures = computed(() => this.getPlanFeatures('PRO_PLUS'));
   enterpriseFeatures = computed(() => this.getPlanFeatures('ENTERPRISE'));
 
@@ -288,11 +310,14 @@ export class LandingComponent implements OnInit {
     // Computed signals will auto-update when this finishes
     await this.featureFlags.init([
       'MAX_FREE_CHARACTERS', 
+      'MAX_PRO_CHARACTERS',
       'MAX_PRO_PLUS_CHARACTERS',
       'ENABLE_RAZORPAY',
       'FREE_PLAN_FEATURES',
+      'PRO_PLAN_FEATURES',
       'PRO_PLUS_PLAN_FEATURES',
       'ENTERPRISE_PLAN_FEATURES',
+      'PRO_PLAN_PRICE_INR',
       'PRO_PLUS_PLAN_PRICE_INR'
     ]);
   }

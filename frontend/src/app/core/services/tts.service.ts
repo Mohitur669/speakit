@@ -18,6 +18,8 @@ export interface Voice {
   name: string;
   gender: string;
   isElevenLabs?: boolean;
+  isSarvam?: boolean;
+  languageCode?: string;
 }
 
 export interface TtsUsage {
@@ -54,7 +56,7 @@ export interface TtsHistoryDto {
   id: number;
   voiceId: string;
   voiceName: string;
-  voiceType: 'STANDARD' | 'NEURAL' | 'NATURAL';
+  voiceType: 'STANDARD' | 'NEURAL' | 'NATURAL' | 'INDIAN';
   outputFormat: string;
   characterCount: number;
   textSnippet: string;
@@ -161,19 +163,20 @@ export class TtsService {
   /**
    * Submits a request to synthesize text into an audio file.
    * Streams the response back as a Blob for immediate playback in the browser.
-   * 
-   * @param text The source text to synthesize
-   * @param voiceId The specific voice ID (e.g., 'Joanna')
-   * @param voiceName The human readable name
-   * @param voiceType The category (STANDARD, NEURAL, NATURAL)
-   * @param isElevenLabs Boolean indicating if the voice belongs to ElevenLabs
-   * @param format The desired audio format (defaults to 'mp3')
-   * @returns Observable containing the audio file as a Blob
    */
-  synthesize(text: string, voiceId: string, voiceName: string, voiceType: string, isElevenLabs = false, format = 'mp3'): Observable<Blob> {
+  synthesize(
+    text: string, 
+    voiceId: string, 
+    voiceName: string, 
+    voiceType: string, 
+    isElevenLabs = false, 
+    isSarvam = false,
+    languageCode?: string,
+    format = 'mp3'
+  ): Observable<Blob> {
     return this.http.post(
-      `${this.baseUrl}/synthesize`, // Using /synthesize (buffered) for better ElevenLabs compatibility
-      { text, voiceId, voiceName, voiceType, outputFormat: format, isElevenLabs },
+      `${this.baseUrl}/synthesize`, 
+      { text, voiceId, voiceName, voiceType, outputFormat: format, isElevenLabs, isSarvam, languageCode },
       { responseType: 'blob' }
     );
   }

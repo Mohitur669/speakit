@@ -23,4 +23,13 @@ public class TtsRequest {
 
     @JsonProperty("isElevenLabs")
     private boolean elevenLabs = false;
+
+    @JsonProperty("isSarvam")
+    private boolean sarvam = false;
+
+    private String languageCode; // e.g. hi-IN, en-IN
+
+    private Double pace = 1.0;
+
+    private Integer samplingRate;
 }

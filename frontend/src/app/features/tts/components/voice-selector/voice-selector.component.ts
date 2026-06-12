@@ -24,7 +24,7 @@ import { getVoiceTypeLabel, getVoiceTypeClass } from '../../../../shared';
             <span class="opacity-60 ml-0.5">({{ getFilterCount(filter) }})</span>
 
             <!-- Access Badge -->
-            <div *ngIf="filter === 'Natural'"
+            <div *ngIf="filter === 'Natural' || filter === 'Indian'"
               class="absolute -top-1 -right-1 flex items-center justify-center">
 
               <span *ngIf="canUseFilter(filter)" class="relative flex h-2 w-2">
@@ -88,13 +88,14 @@ export class VoiceSelectorComponent {
   @Input() voices: Voice[] = [];
   @Input() voiceId: string = '';
   @Input() userCanUseNatural = false;
+  @Input() userCanUseSarvam = false;
   
   @Output() voiceChange = new EventEmitter<string>();
   @Output() filterChanged = new EventEmitter<string>();
   @Output() showNotification = new EventEmitter<{message: string, type: 'success' | 'error'}>();
 
   currentFilter = signal<string>('Standard');
-  filterOptions = signal<string[]>(['Standard', 'Natural', 'All']);
+  filterOptions = signal<string[]>(['Standard', 'Natural', 'Indian', 'All']);
   isDropdownOpen = false;
 
   get selectedVoice(): Voice | undefined {
@@ -121,6 +122,10 @@ export class VoiceSelectorComponent {
       this.showNotification.emit({ message: 'Natural voices require a Pro Plus subscription', type: 'error' });
       return;
     }
+    if (filter === 'Indian' && !this.userCanUseSarvam) {
+      this.showNotification.emit({ message: 'Indian AI voices require a PRO subscription', type: 'error' });
+      return;
+    }
     this.currentFilter.set(filter);
     this.filterChanged.emit(filter);
 
@@ -133,19 +138,22 @@ export class VoiceSelectorComponent {
 
   getFilteredVoices(): Voice[] {
     const filter = this.currentFilter();
-    if (filter === 'Standard') return this.voices.filter(v => !v.isElevenLabs);
+    if (filter === 'Standard') return this.voices.filter(v => !v.isElevenLabs && !v.isSarvam);
     if (filter === 'Natural') return this.voices.filter(v => v.isElevenLabs);
+    if (filter === 'Indian') return this.voices.filter(v => v.isSarvam);
     return this.voices;
   }
 
   getFilterCount(filter: string): number {
-    if (filter === 'Standard') return this.voices.filter(v => !v.isElevenLabs).length;
+    if (filter === 'Standard') return this.voices.filter(v => !v.isElevenLabs && !v.isSarvam).length;
     if (filter === 'Natural') return this.voices.filter(v => v.isElevenLabs).length;
+    if (filter === 'Indian') return this.voices.filter(v => v.isSarvam).length;
     return this.voices.length;
   }
 
   canUseFilter(filter: string): boolean {
     if (filter === 'Natural') return this.userCanUseNatural;
+    if (filter === 'Indian') return this.userCanUseSarvam;
     return true;
   }
 
