@@ -29,27 +29,27 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
             <!-- Badge -->
             <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-primary-900 border border-primary-200 dark:border-primary-800 shadow-sm mb-8 animate-fade-in">
               <span class="relative flex h-2 w-2">
-                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-500 opacity-75"></span>
-                <span class="relative inline-flex rounded-full h-2 w-2 bg-accent-500"></span>
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-500 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
               </span>
-              <span class="text-sm font-medium text-primary-600 dark:text-primary-300">Now with Neural Voice Engine</span>
+              <span class="text-sm font-medium text-primary-600 dark:text-primary-300">Now with 10+ Indian Regional Languages</span>
             </div>
 
             <!-- Headline -->
             <h1 class="text-4xl sm:text-5xl md:text-6xl font-bold text-primary-900 dark:text-white tracking-tight leading-[1.1] mb-6 animate-slide-up">
               Transform text into
-              <span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-blue to-brand-purple"> natural speech</span>
+              <span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-blue to-brand-purple"> lifelike speech</span>
             </h1>
 
             <!-- Subheadline -->
             <p class="text-lg sm:text-xl text-primary-500 dark:text-primary-400 max-w-2xl mx-auto mb-10 animate-slide-up stagger-1">
-              Professional AI voice generation for content creators, developers, and businesses.
+              Professional AI voice generation featuring Indian Regional, Natural AI, and Neural voices for creators and businesses.
             </p>
 
             <!-- CTAs -->
             <div class="flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up stagger-2">
               <button (click)="onStartTrial()" class="w-full sm:w-auto px-8 py-3.5 text-base font-semibold text-white bg-brand-blue hover:bg-brand-blue/90 rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2">
-                {{ authService.currentUser() ? 'Go to Dashboard' : 'Start Free Trial' }}
+                {{ authService.currentUser() ? 'Go to Studio' : 'Start Free Trial' }}
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
               </button>
               <a [routerLink]="authService.currentUser() ? '/tts' : '/login'" class="w-full sm:w-auto px-8 py-3.5 text-base font-semibold text-primary-700 dark:text-primary-200 bg-white dark:bg-primary-900 hover:bg-primary-100 dark:hover:bg-primary-800 border border-primary-200 dark:border-primary-700 rounded-xl transition-all flex items-center justify-center gap-2">
@@ -153,26 +153,29 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
             <p class="text-sm sm:text-lg text-primary-500 dark:text-primary-400">From podcasts to audiobooks, create studio-quality voiceovers in minutes.</p>
           </div>
           <div class="grid md:grid-cols-3 gap-6 sm:gap-8">
+            <!-- Feature 1: Indian Regional -->
+            <div class="group p-8 rounded-2xl bg-white dark:bg-primary-900 border border-primary-200 dark:border-primary-700 hover:shadow-lg hover:border-orange-500/30 transition-all">
+              <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-amber-400 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5c1.738 0 3.147.162 4.249.448"></path></svg>
+              </div>
+              <h3 class="text-xl font-semibold text-primary-900 dark:text-white mb-3">Indian Regional Voices</h3>
+              <p class="text-primary-500 dark:text-primary-400 text-sm leading-relaxed">Authentic voices for Hindi, Bengali, Tamil, and 7+ regional languages powered by Sarvam AI.</p>
+            </div>
+            <!-- Feature 2: Natural AI -->
             <div class="group p-8 rounded-2xl bg-white dark:bg-primary-900 border border-primary-200 dark:border-primary-700 hover:shadow-lg hover:border-brand-blue/30 transition-all">
               <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-blue to-brand-purple flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                 <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
               </div>
-              <h3 class="text-xl font-semibold text-primary-900 dark:text-white mb-3">300+ Natural Voices</h3>
-              <p class="text-primary-500 dark:text-primary-400">Access a vast library of lifelike voices across 30+ languages and accents.</p>
+              <h3 class="text-xl font-semibold text-primary-900 dark:text-white mb-3">Natural AI Quality</h3>
+              <p class="text-primary-500 dark:text-primary-400 text-sm leading-relaxed">Industry-leading emotional depth and realism for your scripts with ElevenLabs integration.</p>
             </div>
-            <div class="group p-8 rounded-2xl bg-white dark:bg-primary-900 border border-primary-200 dark:border-primary-700 hover:shadow-lg hover:border-accent-500/30 transition-all">
-              <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-accent-500 to-emerald-400 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+            <!-- Feature 3: Neural Engine -->
+            <div class="group p-8 rounded-2xl bg-white dark:bg-primary-900 border border-primary-200 dark:border-primary-700 hover:shadow-lg hover:border-emerald-500/30 transition-all">
+              <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-400 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                 <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
               </div>
-              <h3 class="text-xl font-semibold text-primary-900 dark:text-white mb-3">Lightning Fast</h3>
-              <p class="text-primary-500 dark:text-primary-400">Generate high-quality audio in seconds with our optimized neural engine.</p>
-            </div>
-            <div class="group p-8 rounded-2xl bg-white dark:bg-primary-900 border border-primary-200 dark:border-primary-700 hover:shadow-lg hover:border-purple-500/30 transition-all">
-              <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-              </div>
-              <h3 class="text-xl font-semibold text-primary-900 dark:text-white mb-3">MP3 Export</h3>
-              <p class="text-primary-500 dark:text-primary-400">Download your audio in industry-standard MP3 format.</p>
+              <h3 class="text-xl font-semibold text-primary-900 dark:text-white mb-3">High-Speed Neural Engine</h3>
+              <p class="text-primary-500 dark:text-primary-400 text-sm leading-relaxed">Generate high-quality global voices in seconds using our optimized AWS Polly neural pipeline.</p>
             </div>
           </div>
         </div>
@@ -328,51 +331,6 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
                   <td class="p-6 text-center"><span class="text-primary-300 dark:text-primary-700">\u2014</span></td>
                   <td class="p-6 text-center"><span class="text-primary-300 dark:text-primary-700">\u2014</span></td>
                   <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
-                  <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
-                </tr>
-
-                <!-- Limits -->
-                <tr class="bg-primary-50/30 dark:bg-primary-800/20">
-                  <td class="p-6 text-sm font-bold text-primary-900 dark:text-white uppercase tracking-tight" colspan="5">Limits & Quotas</td>
-                </tr>
-                <tr>
-                  <td class="p-6 text-sm font-medium text-primary-700 dark:text-primary-200">Characters per request</td>
-                  <td class="p-6 text-center text-sm font-bold text-primary-600 dark:text-primary-300">{{ freeChars() }}</td>
-                  <td class="p-6 text-center text-sm font-bold text-primary-600 dark:text-primary-300">{{ proChars() }}</td>
-                  <td class="p-6 text-center text-sm font-bold text-primary-600 dark:text-primary-300">{{ proPlusChars() }}</td>
-                  <td class="p-6 text-center text-sm font-bold text-primary-600 dark:text-primary-300">{{ enterpriseChars() }}+</td>
-                </tr>
-                <tr>
-                  <td class="p-6 text-sm font-medium text-primary-700 dark:text-primary-200">Daily syntheses</td>
-                  <td class="p-6 text-center text-sm font-bold text-primary-600 dark:text-primary-300">{{ freeDailyLimit() }}</td>
-                  <td class="p-6 text-center text-sm font-bold text-emerald-500">Unlimited</td>
-                  <td class="p-6 text-center text-sm font-bold text-emerald-500">Unlimited</td>
-                  <td class="p-6 text-center text-sm font-bold text-emerald-500">Unlimited</td>
-                </tr>
-
-                <!-- Additional Features -->
-                <tr class="bg-primary-50/30 dark:bg-primary-800/20">
-                  <td class="p-6 text-sm font-bold text-primary-900 dark:text-white uppercase tracking-tight" colspan="5">Support & Platform</td>
-                </tr>
-                <tr>
-                  <td class="p-6 text-sm font-medium text-primary-700 dark:text-primary-200">MP3 Downloads</td>
-                  <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
-                  <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
-                  <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
-                  <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
-                </tr>
-                <tr>
-                  <td class="p-6 text-sm font-medium text-primary-700 dark:text-primary-200">Support</td>
-                  <td class="p-6 text-center text-xs text-primary-500">Community</td>
-                  <td class="p-6 text-center text-xs text-primary-500">Standard</td>
-                  <td class="p-6 text-center text-xs font-bold text-brand-blue">Priority</td>
-                  <td class="p-6 text-center text-xs font-bold text-primary-900 dark:text-white">Dedicated Account Manager</td>
-                </tr>
-                <tr>
-                  <td class="p-6 text-sm font-medium text-primary-700 dark:text-primary-200">API Access</td>
-                  <td class="p-6 text-center"><span class="text-primary-300 dark:text-primary-700">\u2014</span></td>
-                  <td class="p-6 text-center"><span class="text-primary-300 dark:text-primary-700">\u2014</span></td>
-                  <td class="p-6 text-center"><span class="text-primary-300 dark:text-primary-700">\u2014</span></td>
                   <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
                 </tr>
               </tbody>
