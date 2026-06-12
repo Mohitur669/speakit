@@ -155,9 +155,11 @@ ON CONFLICT (parameter_name) DO NOTHING;
 -- Migration Helper for existing databases
 DO $$
 BEGIN
+    -- Remove legacy column if it exists
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='has_natural_voice_access') THEN
         ALTER TABLE users DROP COLUMN has_natural_voice_access;
     END IF;
+
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='phone_number') THEN
         ALTER TABLE users ADD COLUMN phone_number VARCHAR(15);
         -- Populate with username as temporary unique placeholder to avoid nulls

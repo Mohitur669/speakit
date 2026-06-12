@@ -29,7 +29,7 @@ SpeakIT is a production-grade SaaS for AI voice generation. It is designed for h
 ## High-Performance Data Access (Mandatory)
 - **Eliminate Over-fetching:** Use projections to pull only required fields.
 - **N+1 Prevention:** Never query the User entity inside a loop or repeatedly across a filter-controller chain.
-- **Request Attribute Caching:** `JwtAuthenticationFilter` pre-fetches `userId` and `hasNaturalVoiceAccess`. Controllers must read from request attributes first.
+- **Request Attribute Caching:** `JwtAuthenticationFilter` pre-fetches `userId` and `planType`. Controllers must read from request attributes first.
 - **Atomic Updates:** Use `@Modifying` queries for session increments or flag toggles.
 - **Relationship Linking:** Use `userRepository.getReferenceById(id)` when saving child entities.
 

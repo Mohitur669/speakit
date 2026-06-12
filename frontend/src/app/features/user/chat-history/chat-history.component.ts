@@ -5,12 +5,13 @@ import { RouterLink } from '@angular/router';
 import { TtsService, TtsHistoryDto } from '../../../core/services/tts.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { NavbarComponent } from '../../../shared/components/navbar/navbar.component';
+import { ConfirmModalComponent } from '../../../shared/components/confirm-modal/confirm-modal.component';
 import { getVoiceTypeLabel, getVoiceTypeClass } from '../../../shared';
 
 @Component({
   selector: 'app-chat-history',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, NavbarComponent],
+  imports: [CommonModule, FormsModule, RouterLink, NavbarComponent, ConfirmModalComponent],
   template: `
     <div class="min-h-screen bg-primary-50 dark:bg-primary-950">
       <app-navbar></app-navbar>
@@ -31,74 +32,59 @@ import { getVoiceTypeLabel, getVoiceTypeClass } from '../../../shared';
           </button>
         </div>
 
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-fade-in">
-          <div class="flex items-center gap-3">
-            <button *ngIf="history().length > 0"
-              (click)="toggleSelectAll()"
-              class="px-4 py-2 bg-brand-blue hover:bg-blue-600 text-white text-sm font-bold rounded-xl shadow-lg transition-all active:scale-95 flex items-center gap-2">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
-              </svg>
-              {{ isAllSelected() ? 'Deselect All' : 'Select All' }}
-            </button>
-            <button *ngIf="selectedIds().size > 0" 
-              (click)="deleteSelected()"
-              class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-bold rounded-xl shadow-lg transition-all active:scale-95 flex items-center gap-2">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-              </svg>
-              Delete ({{ selectedIds().size }})
-            </button>
-            <button *ngIf="history().length > 0"
-              (click)="clearAll()"
-              class="px-4 py-2 bg-white dark:bg-primary-900 border border-primary-200 dark:border-primary-700 text-primary-600 dark:text-primary-400 text-sm font-bold rounded-xl hover:bg-primary-50 dark:hover:bg-primary-800 transition-all active:scale-95">
-              Clear All
-            </button>
-          </div>
-        </div>
-
         <!-- History Table -->
-        <div class="bg-white dark:bg-primary-900 rounded-2xl border border-primary-200 dark:border-primary-700 shadow-xl overflow-hidden animate-slide-up">
+        <div class="bg-white dark:bg-primary-900 rounded-xl border border-primary-200 dark:border-primary-700 shadow-xl overflow-hidden animate-slide-up">
           <div class="overflow-x-auto max-h-150 custom-scrollbar">
             <table class="w-full text-left border-separate border-spacing-0">
               <thead class="sticky top-0 z-10">
                 <tr class="bg-primary-50/95 dark:bg-primary-800/95 backdrop-blur-sm border-t border-primary-100 dark:border-primary-800">
-                  <th class="p-2 sm:p-4 w-10 sm:w-12 border-b border-r border-primary-100 dark:border-primary-800 text-center text-xs font-bold text-primary-500 uppercase">
+                  <th class="px-4 py-4 w-10 sm:w-12 border-b border-r border-primary-100 dark:border-primary-800 text-center text-xs font-bold text-primary-500 uppercase">
                     Sel
                   </th>
-                  <th class="p-2 sm:p-4 text-[10px] sm:text-xs font-bold text-primary-500 uppercase tracking-wider border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">Voice</th>
-                  <th class="p-2 sm:p-4 text-[10px] sm:text-xs font-bold text-primary-500 uppercase tracking-wider border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">Text Snippet</th>
-                  <th class="p-2 sm:p-4 text-[10px] sm:text-xs font-bold text-primary-500 uppercase tracking-wider border-b border-r border-primary-100 dark:border-primary-800 text-right whitespace-nowrap">Chars</th>
-                  <th class="p-2 sm:p-4 text-[10px] sm:text-xs font-bold text-primary-500 uppercase tracking-wider border-b border-primary-100 dark:border-primary-800 whitespace-nowrap">Date & Time</th>
+                  <th class="px-4 py-4 text-[10px] sm:text-xs font-bold text-primary-500 uppercase tracking-wider border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">Voice</th>
+                  <th class="px-4 py-4 text-[10px] sm:text-xs font-bold text-primary-500 uppercase tracking-wider border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">Text Snippet</th>
+                  <th class="px-4 py-4 text-[10px] sm:text-xs font-bold text-primary-500 uppercase tracking-wider border-b border-r border-primary-100 dark:border-primary-800 text-right whitespace-nowrap">Chars</th>
+                  <th class="px-4 py-4 text-[10px] sm:text-xs font-bold text-primary-500 uppercase tracking-wider border-b border-primary-100 dark:border-primary-800 whitespace-nowrap">Date & Time</th>
                 </tr>
               </thead>
               <tbody>
                 <tr *ngFor="let item of history()" 
                   class="hover:bg-primary-50/50 dark:hover:bg-primary-800/30 transition-colors group">
-                  <td class="p-2 sm:p-4 border-b border-r border-primary-100 dark:border-primary-800">
+                  <td class="px-4 py-5 border-b border-r border-primary-100 dark:border-primary-800 align-top">
                     <input type="checkbox" 
                       [checked]="selectedIds().has(item.id)" 
                       (change)="toggleSelect(item.id)"
                       class="w-4 h-4 rounded border-primary-300 text-brand-blue focus:ring-brand-blue/50">
                   </td>
-                  <td class="p-2 sm:p-4 border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">
+                  <td class="px-4 py-5 border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap align-top">
                     <div class="flex items-center gap-1.5 sm:gap-2">
                       <span class="px-1.5 py-0.5 rounded text-[8px] sm:text-[10px] font-bold uppercase"
                         [ngClass]="getVoiceClass(item)">
                         {{ getVoiceLabel(item) }}
                       </span>
-                      <span class="text-xs sm:text-sm text-primary-700 dark:text-primary-200">{{ item.voiceName || item.voiceId }}</span>
+                      <span class="text-xs sm:text-sm text-primary-700 dark:text-primary-200 font-medium">{{ item.voiceName || item.voiceId }}</span>
                     </div>
                   </td>
-                  <td class="p-2 sm:p-4 border-b border-r border-primary-100 dark:border-primary-800 min-w-37.5 max-w-xs">
-                    <p class="text-xs sm:text-sm text-primary-600 dark:text-primary-400 truncate italic">
-                      "{{ item.textSnippet.length > 15 ? (item.textSnippet | slice:0:15) + '...' : item.textSnippet }}"
-                    </p>
+                  <td class="px-4 py-5 border-b border-r border-primary-100 dark:border-primary-800 min-w-37.5 max-w-xs align-top">
+                    <div class="flex items-start justify-between gap-2 group/text">
+                      <p class="text-xs sm:text-sm text-primary-600 dark:text-primary-400 md:line-clamp-2 md:whitespace-normal leading-relaxed"
+                        [title]="item.textSnippet">
+                        <span class="md:hidden">"{{ formatMobileSnippet(item.textSnippet) }}"</span>
+                        <span class="hidden md:inline">"{{ item.textSnippet.length > 60 ? (item.textSnippet | slice:0:60) + '...' : item.textSnippet }}"</span>
+                      </p>
+                      <button (click)="copyToClipboard(item.textSnippet)" 
+                        class="p-1.5 rounded-lg bg-primary-50 dark:bg-primary-800 text-primary-400 hover:text-brand-blue opacity-0 group-hover/text:opacity-100 transition-all shadow-sm shrink-0"
+                        title="Copy to Clipboard">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
+                        </svg>
+                      </button>
+                    </div>
                   </td>
-                  <td class="p-2 sm:p-4 border-b border-r border-primary-100 dark:border-primary-800 text-right whitespace-nowrap">
-                    <span class="text-xs sm:text-sm font-mono text-primary-500">{{ item.characterCount | number }}</span>
+                  <td class="px-4 py-5 border-b border-r border-primary-100 dark:border-primary-800 text-right whitespace-nowrap align-top">
+                    <span class="text-xs sm:text-sm font-mono text-primary-500 font-medium">{{ item.characterCount | number }}</span>
                   </td>
-                  <td class="p-2 sm:p-4 border-b border-primary-100 dark:border-primary-800 whitespace-nowrap">
+                  <td class="px-4 py-5 border-b border-primary-100 dark:border-primary-800 whitespace-nowrap align-top">
                     <div class="flex items-baseline gap-2">
                       <span class="text-xs sm:text-sm font-medium text-primary-900 dark:text-white">{{ item.createdAt | date:'mediumDate' }}</span>
                       <span class="text-[10px] sm:text-xs text-primary-400 font-mono">{{ item.createdAt | date:'shortTime' }}</span>
@@ -156,7 +142,43 @@ import { getVoiceTypeLabel, getVoiceTypeClass } from '../../../shared';
             </div>
           </div>
         </div>
+
+        <!-- Action Buttons (Bottom Right) -->
+        <div *ngIf="history().length > 0" class="flex justify-end gap-3 animate-fade-in mt-2">
+          <button (click)="toggleSelectAll()"
+            class="px-4 py-2 bg-brand-blue hover:bg-blue-600 text-white text-sm font-bold rounded-xl shadow-lg transition-all active:scale-95 flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+            </svg>
+            {{ isAllSelected() ? 'Deselect All' : 'Select All' }}
+          </button>
+          
+          <button *ngIf="selectedIds().size > 0" 
+            (click)="deleteSelected()"
+            class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-bold rounded-xl shadow-lg transition-all active:scale-95 flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+            </svg>
+            Delete ({{ selectedIds().size }})
+          </button>
+
+          <button (click)="clearAll()"
+            class="px-4 py-2 bg-white dark:bg-primary-900 border border-primary-200 dark:border-primary-700 text-primary-600 dark:text-primary-400 text-sm font-bold rounded-xl hover:bg-primary-50 dark:hover:bg-primary-800 transition-all active:scale-95">
+            Clear All
+          </button>
+        </div>
       </div>
+
+      <!-- Custom Confirmation Modal -->
+      <app-confirm-modal
+        *ngIf="showConfirm()"
+        [title]="confirmTitle"
+        [message]="confirmMessage"
+        [isDanger]="true"
+        confirmText="Confirm"
+        (confirm)="executeConfirmedAction()"
+        (cancel)="showConfirm.set(false)">
+      </app-confirm-modal>
     </div>
   `,
   styles: [`
@@ -179,9 +201,15 @@ export class ChatHistoryComponent implements OnInit {
   currentPage = signal(0);
   totalPages = signal(0);
   totalElements = signal(0);
-  pageSize = 15;
+  pageSize = 5;
 
   selectedIds = signal<Set<number>>(new Set());
+
+  // Modal State
+  showConfirm = signal(false);
+  confirmTitle = '';
+  confirmMessage = '';
+  pendingAction: 'DELETE' | 'CLEAR' | null = null;
 
   isAllSelected = computed(() => {
     const currentHistory = this.history();
@@ -204,11 +232,16 @@ export class ChatHistoryComponent implements OnInit {
     return getVoiceTypeClass(mockVoice, filter);
   }
 
+  formatMobileSnippet(text: string): string {
+    if (text.length <= 18) return text;
+    return text.slice(0, 10) + '...' + text.slice(-5);
+  }
+
   loadHistory(): void {
     this.loading.set(true);
     this.ttsService.getHistory(this.currentPage(), this.pageSize).subscribe({
       next: (res) => {
-        this.history.set(res._embedded?.ttsHistoryDtoList || []);
+        this.history.set(res.content || []);
         this.totalPages.set(res.page.totalPages);
         this.totalElements.set(res.page.totalElements);
         this.loading.set(false);
@@ -248,7 +281,32 @@ export class ChatHistoryComponent implements OnInit {
     const ids = Array.from(this.selectedIds());
     if (ids.length === 0) return;
 
-    if (confirm(`Are you sure you want to delete ${ids.length} selected entries?`)) {
+    this.confirmTitle = 'Delete Generations';
+    this.confirmMessage = `Are you sure you want to delete ${ids.length} selected items? This cannot be undone.`;
+    this.pendingAction = 'DELETE';
+    this.showConfirm.set(true);
+  }
+
+  clearAll(): void {
+    this.confirmTitle = 'Clear History';
+    this.confirmMessage = 'Are you sure you want to clear your entire history? This will permanently delete all generations.';
+    this.pendingAction = 'CLEAR';
+    this.showConfirm.set(true);
+  }
+
+  copyToClipboard(text: string): void {
+    navigator.clipboard.writeText(text).then(() => {
+      this.toast.show('Script copied to clipboard', 'success');
+    }).catch(() => {
+      this.toast.show('Failed to copy text', 'error');
+    });
+  }
+
+  executeConfirmedAction(): void {
+    this.showConfirm.set(false);
+    
+    if (this.pendingAction === 'DELETE') {
+      const ids = Array.from(this.selectedIds());
       this.ttsService.deleteHistoryEntries(ids).subscribe({
         next: () => {
           this.toast.show(`Deleted ${ids.length} entries`, 'success');
@@ -257,11 +315,7 @@ export class ChatHistoryComponent implements OnInit {
         },
         error: () => this.toast.show('Failed to delete entries', 'error')
       });
-    }
-  }
-
-  clearAll(): void {
-    if (confirm('Are you sure you want to clear your entire history? This cannot be undone.')) {
+    } else if (this.pendingAction === 'CLEAR') {
       this.ttsService.clearAllHistory().subscribe({
         next: () => {
           this.toast.show('History cleared successfully', 'success');
@@ -273,5 +327,7 @@ export class ChatHistoryComponent implements OnInit {
         error: () => this.toast.show('Failed to clear history', 'error')
       });
     }
+    
+    this.pendingAction = null;
   }
 }

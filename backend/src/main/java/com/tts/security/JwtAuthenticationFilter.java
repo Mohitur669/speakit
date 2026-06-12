@@ -54,8 +54,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            // Fetch only session version and access flag using projection
-            com.tts.repository.UserSessionProjection userProj = userRepository.findSessionAndAccessByUsername(username).orElse(null);
+            // Fetch only session version and plan type using projection
+            com.tts.repository.UserSessionProjection userProj = userRepository.findSessionAndPlanByUsername(username).orElse(null);
             Long tokenSessionVersion = jwtService.extractSessionVersion(jwt);
 
             if (userProj != null && tokenSessionVersion != null) {

@@ -46,10 +46,11 @@ public class User extends BaseEntity {
     @Builder.Default
     private boolean isActive = true;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "plan_type", nullable = false, length = 20)
     @ColumnDefault("'FREE'")
     @Builder.Default
-    private String planType = "FREE";
+    private PlanType planType = PlanType.FREE;
 
     @Column(name = "role", nullable = false, length = 20)
     @ColumnDefault("'USER'")

@@ -24,7 +24,7 @@ import { getVoiceTypeLabel, getVoiceTypeClass } from '../../../../shared';
             <span class="opacity-60 ml-0.5">({{ getFilterCount(filter) }})</span>
 
             <!-- Access Badge -->
-            <div *ngIf="filter === 'Neural' || filter === 'Natural'"
+            <div *ngIf="filter === 'Natural'"
               class="absolute -top-1 -right-1 flex items-center justify-center">
 
               <span *ngIf="canUseFilter(filter)" class="relative flex h-2 w-2">
@@ -87,7 +87,6 @@ import { getVoiceTypeLabel, getVoiceTypeClass } from '../../../../shared';
 export class VoiceSelectorComponent {
   @Input() voices: Voice[] = [];
   @Input() voiceId: string = '';
-  @Input() userCanUseNeural = false;
   @Input() userCanUseNatural = false;
   
   @Output() voiceChange = new EventEmitter<string>();
@@ -95,7 +94,7 @@ export class VoiceSelectorComponent {
   @Output() showNotification = new EventEmitter<{message: string, type: 'success' | 'error'}>();
 
   currentFilter = signal<string>('Standard');
-  filterOptions = signal<string[]>(['Standard', 'Neural', 'Natural', 'All']);
+  filterOptions = signal<string[]>(['Standard', 'Natural', 'All']);
   isDropdownOpen = false;
 
   get selectedVoice(): Voice | undefined {
@@ -118,12 +117,8 @@ export class VoiceSelectorComponent {
   }
 
   setFilter(filter: string): void {
-    if (filter === 'Neural' && !this.userCanUseNeural) {
-      this.showNotification.emit({ message: 'Neural voices require a Pro subscription', type: 'error' });
-      return;
-    }
     if (filter === 'Natural' && !this.userCanUseNatural) {
-      this.showNotification.emit({ message: 'Natural AI voices require a Pro Plus subscription', type: 'error' });
+      this.showNotification.emit({ message: 'Natural voices require a Pro Plus subscription', type: 'error' });
       return;
     }
     this.currentFilter.set(filter);
@@ -138,21 +133,18 @@ export class VoiceSelectorComponent {
 
   getFilteredVoices(): Voice[] {
     const filter = this.currentFilter();
-    if (filter === 'Standard') return this.voices.filter(v => v.isStandard);
-    if (filter === 'Neural') return this.voices.filter(v => v.isNeural && !v.isElevenLabs);
+    if (filter === 'Standard') return this.voices.filter(v => !v.isElevenLabs);
     if (filter === 'Natural') return this.voices.filter(v => v.isElevenLabs);
     return this.voices;
   }
 
   getFilterCount(filter: string): number {
-    if (filter === 'Standard') return this.voices.filter(v => v.isStandard).length;
-    if (filter === 'Neural') return this.voices.filter(v => v.isNeural && !v.isElevenLabs).length;
+    if (filter === 'Standard') return this.voices.filter(v => !v.isElevenLabs).length;
     if (filter === 'Natural') return this.voices.filter(v => v.isElevenLabs).length;
     return this.voices.length;
   }
 
   canUseFilter(filter: string): boolean {
-    if (filter === 'Neural') return this.userCanUseNeural;
     if (filter === 'Natural') return this.userCanUseNatural;
     return true;
   }

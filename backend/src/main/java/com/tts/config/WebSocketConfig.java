@@ -1,7 +1,6 @@
 package com.tts.config;
 
 import com.tts.repository.UserRepository;
-import com.tts.entity.User;
 import com.tts.security.JwtService;
 import com.tts.service.WSTicketService;
 import lombok.RequiredArgsConstructor;
@@ -59,7 +58,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
                 String ticket = query.substring(7);
                 try {
                     String username = wsTicketService.consumeTicket(ticket);
-                    
+
                     if (username != null) {
                         userSessions.computeIfAbsent(username, k -> new CopyOnWriteArraySet<>()).add(session);
                         System.out.println("WS Connected: " + username + " (Total sessions: " + userSessions.get(username).size() + ")");

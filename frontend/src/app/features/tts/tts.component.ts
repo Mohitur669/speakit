@@ -11,6 +11,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { ToastService } from '../../core/services/toast.service';
 import { FeatureFlagService } from '../../core/services/feature-flag.service';
 import { RazorpayService } from '../../core/services/razorpay.service';
+import { deriveVoiceType } from '../../shared';
 import { ToastComponent } from '../../shared/components/toast/toast.component';
 import { NavbarComponent } from '../../shared/components/navbar/navbar.component';
 import { VoiceSelectorComponent } from './components/voice-selector/voice-selector.component';
@@ -58,7 +59,11 @@ export class TtsComponent implements OnInit {
 
   constructor() {
     effect(() => {
-      if (this.authService.isLoggedIn()) {
+      // Track both login status and plan type to ensure UI refreshes after upgrade
+      const isLoggedIn = this.authService.isLoggedIn();
+      const plan = this.authService.currentPlanType();
+      
+      if (isLoggedIn) {
         this.refreshVoices();
         this.refreshLimits();
         this.refreshUsage();
@@ -148,7 +153,7 @@ export class TtsComponent implements OnInit {
       next: (voices) => {
         this.voices = voices;
         if (this.voices.length > 0 && !this.selectedVoiceId) {
-          const standard = this.voices.filter(v => v.isStandard);
+          const standard = this.voices.filter(v => !v.isElevenLabs);
           if (standard.length > 0) this.selectedVoiceId = standard[0].id;
         }
       },
@@ -209,14 +214,7 @@ export class TtsComponent implements OnInit {
 
   private buildRequest() {
     const voice = this.selectedVoice;
-    let type = this.selectedVoiceType.toUpperCase();
-    
-    // If user is on "ALL" filter, derive the specific type for better logging
-    if (type === 'ALL' && voice) {
-      if (voice.isElevenLabs) type = 'NATURAL';
-      else if (voice.isNeural && this.userCanUseNeural) type = 'NEURAL';
-      else type = 'STANDARD';
-    }
+    const type = deriveVoiceType(voice);
 
     return {
       text: this.text,

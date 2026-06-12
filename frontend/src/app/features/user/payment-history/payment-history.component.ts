@@ -30,27 +30,27 @@ import { NavbarComponent } from '../../../shared/components/navbar/navbar.compon
         </div>
 
         <!-- History Table -->
-        <div class="bg-white dark:bg-primary-900 rounded-2xl border border-primary-200 dark:border-primary-700 shadow-xl overflow-hidden animate-slide-up">
+        <div class="bg-white dark:bg-primary-900 rounded-xl border border-primary-200 dark:border-primary-700 shadow-xl overflow-hidden animate-slide-up">
           <div class="overflow-x-auto max-h-150 custom-scrollbar">
             <table class="w-full text-left border-separate border-spacing-0">
               <thead class="sticky top-0 z-10">
                 <tr class="bg-primary-50/95 dark:bg-primary-800/95 backdrop-blur-sm border-t border-primary-100 dark:border-primary-800">
-                  <th class="p-2 sm:p-4 text-[10px] sm:text-xs font-bold text-primary-500 uppercase tracking-wider border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">Plan</th>
-                  <th class="p-2 sm:p-4 text-[10px] sm:text-xs font-bold text-primary-500 uppercase tracking-wider border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">Amount</th>
-                  <th class="p-2 sm:p-4 text-[10px] sm:text-xs font-bold text-primary-500 uppercase tracking-wider border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">Status</th>
-                  <th class="p-2 sm:p-4 text-[10px] sm:text-xs font-bold text-primary-500 uppercase tracking-wider border-b border-primary-100 dark:border-primary-800 whitespace-nowrap">Date & Time</th>
+                  <th class="px-4 py-4 text-[10px] sm:text-xs font-bold text-primary-500 uppercase tracking-wider border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">Plan</th>
+                  <th class="px-4 py-4 text-[10px] sm:text-xs font-bold text-primary-500 uppercase tracking-wider border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">Amount</th>
+                  <th class="px-4 py-4 text-[10px] sm:text-xs font-bold text-primary-500 uppercase tracking-wider border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">Status</th>
+                  <th class="px-4 py-4 text-[10px] sm:text-xs font-bold text-primary-500 uppercase tracking-wider border-b border-primary-100 dark:border-primary-800 whitespace-nowrap">Date & Time</th>
                 </tr>
               </thead>
               <tbody>
                 <tr *ngFor="let item of history()" 
                   class="hover:bg-primary-50/50 dark:hover:bg-primary-800/30 transition-colors group">
-                  <td class="p-2 sm:p-4 border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">
+                  <td class="px-4 py-5 border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">
                     <span class="text-xs sm:text-sm font-bold text-brand-blue">{{ item.planName === 'FREE' ? 'Basic' : item.planName.replace('_', ' ') }}</span>
                   </td>
-                  <td class="p-2 sm:p-4 border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">
+                  <td class="px-4 py-5 border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">
                     <span class="text-xs sm:text-sm font-medium text-primary-900 dark:text-white">{{ item.amount | currency:item.currency:'symbol':'1.2-2' }}</span>
                   </td>
-                  <td class="p-2 sm:p-4 border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">
+                  <td class="px-4 py-5 border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">
                     <span class="px-2 py-1 rounded text-[10px] sm:text-xs font-bold uppercase"
                       [ngClass]="{
                         'bg-green-500/10 text-green-600': item.status === 'SUCCESS' || item.status === 'CAPTURED',
@@ -60,7 +60,7 @@ import { NavbarComponent } from '../../../shared/components/navbar/navbar.compon
                       {{ item.status }}
                     </span>
                   </td>
-                  <td class="p-2 sm:p-4 border-b border-primary-100 dark:border-primary-800 whitespace-nowrap">
+                  <td class="px-4 py-5 border-b border-primary-100 dark:border-primary-800 whitespace-nowrap">
                     <div class="flex items-baseline gap-2">
                       <span class="text-xs sm:text-sm font-medium text-primary-900 dark:text-white">{{ item.createdAt | date:'mediumDate' }}</span>
                       <span class="text-[10px] sm:text-xs text-primary-400 font-mono">{{ item.createdAt | date:'shortTime' }}</span>
@@ -132,7 +132,7 @@ export class PaymentHistoryComponent implements OnInit {
   currentPage = signal(0);
   totalPages = signal(0);
   totalElements = signal(0);
-  pageSize = 15;
+  pageSize = 5;
 
   ngOnInit(): void {
     this.loadHistory();
@@ -142,7 +142,7 @@ export class PaymentHistoryComponent implements OnInit {
     this.loading.set(true);
     this.razorpayService.getPaymentHistory(this.currentPage(), this.pageSize).subscribe({
       next: (res) => {
-        this.history.set(res._embedded?.paymentHistoryDtoList || []);
+        this.history.set(res.content || []);
         this.totalPages.set(res.page.totalPages);
         this.totalElements.set(res.page.totalElements);
         this.loading.set(false);

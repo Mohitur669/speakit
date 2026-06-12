@@ -17,8 +17,6 @@ export interface Voice {
   id: string;
   name: string;
   gender: string;
-  isNeural: boolean;
-  isStandard: boolean;
   isElevenLabs?: boolean;
 }
 
@@ -64,9 +62,7 @@ export interface TtsHistoryDto {
 }
 
 export interface PaginatedHistory {
-  _embedded?: {
-    ttsHistoryDtoList: TtsHistoryDto[];
-  };
+  content: TtsHistoryDto[];
   page: {
     size: number;
     totalElements: number;
