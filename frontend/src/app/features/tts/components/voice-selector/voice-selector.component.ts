@@ -17,8 +17,8 @@ import { getVoiceTypeLabel, getVoiceTypeClass } from '../../../../shared';
         <ng-container *ngFor="let filter of filterOptions()">
           <button *ngIf="filter !== 'All'"
             (click)="setFilter(filter)"
-            [ngClass]="currentFilter() === filter ? 'bg-white dark:bg-primary-700 text-primary-900 dark:text-white shadow-sm' : 'text-primary-500 dark:text-primary-400 hover:text-primary-700 dark:hover:text-white'"
-            class="flex-1 py-2 sm:py-1.5 text-[11px] sm:text-[10px] font-bold rounded-md transition-all relative uppercase tracking-tight">
+            [ngClass]="currentFilter() === filter ? 'bg-brand-blue text-white shadow-md' : 'text-primary-500 dark:text-primary-400 hover:text-primary-700 dark:hover:text-white'"
+            class="flex-1 py-2 sm:py-1.5 text-[11px] sm:text-[10px] font-bold rounded-md transition-all duration-300 ease-in-out relative uppercase tracking-tight">
 
             {{ filter }}
             <span class="opacity-60 ml-0.5">({{ getFilterCount(filter) }})</span>
@@ -46,10 +46,8 @@ import { getVoiceTypeLabel, getVoiceTypeClass } from '../../../../shared';
         <button (click)="toggleDropdown($event)"
           class="w-full flex items-center justify-between px-4 py-3 bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 rounded-xl hover:border-brand-blue/50 transition-colors">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-brand-blue/10 flex items-center justify-center text-brand-blue">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-              </svg>
+            <div class="w-10 h-10 rounded-lg bg-brand-blue/10 flex items-center justify-center text-brand-blue shrink-0">
+              <span class="text-xl">{{ selectedVoice?.gender === 'Female' ? '👩' : (selectedVoice?.gender === 'Male' ? '👨' : '👤') }}</span>
             </div>
             <div class="text-left">
               <div class="text-base sm:text-sm font-medium text-primary-900 dark:text-white">{{ selectedVoice?.name || 'Select a voice' }}</div>
@@ -95,7 +93,7 @@ export class VoiceSelectorComponent {
   @Output() showNotification = new EventEmitter<{message: string, type: 'success' | 'error'}>();
 
   currentFilter = signal<string>('Standard');
-  filterOptions = signal<string[]>(['Standard', 'Natural', 'Indian', 'All']);
+  filterOptions = signal<string[]>(['Standard', 'Indian', 'Natural', 'All']);
   isDropdownOpen = false;
 
   get selectedVoice(): Voice | undefined {
