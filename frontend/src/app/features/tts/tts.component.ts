@@ -111,6 +111,11 @@ export class TtsComponent implements OnInit {
     return plan === 'PRO_PLUS' || plan === 'ENTERPRISE';
   }
 
+  get userCanUseSarvam(): boolean {
+    const plan = this.authService.currentPlanType();
+    return plan === 'PRO' || plan === 'PRO_PLUS' || plan === 'ENTERPRISE';
+  }
+
   async refreshUsage() {
     this.ttsService.getUsage().subscribe(u => this.usage.set(u));
   }
@@ -153,7 +158,7 @@ export class TtsComponent implements OnInit {
       next: (voices) => {
         this.voices = voices;
         if (this.voices.length > 0 && !this.selectedVoiceId) {
-          const standard = this.voices.filter(v => !v.isElevenLabs);
+          const standard = this.voices.filter(v => !v.isElevenLabs && !v.isSarvam);
           if (standard.length > 0) this.selectedVoiceId = standard[0].id;
         }
       },
@@ -188,9 +193,9 @@ export class TtsComponent implements OnInit {
       this.audioUrl.set(null);
     }
 
-    const { text, voiceId, voiceName, voiceType, isElevenLabs } = this.buildRequest();
+    const { text, voiceId, voiceName, voiceType, isElevenLabs, isSarvam, languageCode } = this.buildRequest();
     
-    this.ttsService.synthesize(text, voiceId, voiceName, voiceType, isElevenLabs).subscribe({
+    this.ttsService.synthesize(text, voiceId, voiceName, voiceType, isElevenLabs, isSarvam, languageCode).subscribe({
       next: (blob) => {
         const audioBlob = new Blob([blob], { type: blob.type || 'audio/mpeg' });
         this.audioUrl.set(URL.createObjectURL(audioBlob));
@@ -221,7 +226,9 @@ export class TtsComponent implements OnInit {
       voiceId: this.selectedVoiceId,
       voiceName: voice?.name || this.selectedVoiceId,
       voiceType: type,
-      isElevenLabs: !!voice?.isElevenLabs
+      isElevenLabs: !!voice?.isElevenLabs,
+      isSarvam: !!voice?.isSarvam,
+      languageCode: voice?.languageCode
     };
   }
 

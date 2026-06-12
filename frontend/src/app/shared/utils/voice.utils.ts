@@ -1,16 +1,18 @@
 import { Voice } from '../../core/services/tts.service';
 
-export type VoiceFilter = 'Standard' | 'Natural' | 'All';
+export type VoiceFilter = 'Standard' | 'Natural' | 'Indian' | 'All';
 
 export function getVoiceTypeLabel(voice: Voice | undefined, activeFilter: string): string {
   if (!voice) return '';
   if (voice.isElevenLabs) return 'Natural';
+  if (voice.isSarvam) return 'Indian';
   return 'Standard';
 }
 
 export function getVoiceTypeClass(voice: Voice | undefined, activeFilter: string): string {
   if (!voice) return '';
   if (voice.isElevenLabs) return 'text-purple-500';
+  if (voice.isSarvam) return 'text-orange-500';
   return 'text-primary-400';
 }
 
@@ -21,5 +23,6 @@ export function getVoiceTypeClass(voice: Voice | undefined, activeFilter: string
 export function deriveVoiceType(voice: Voice | undefined): string {
   if (!voice) return 'STANDARD';
   if (voice.isElevenLabs) return 'NATURAL';
+  if (voice.isSarvam) return 'INDIAN';
   return 'STANDARD';
 }

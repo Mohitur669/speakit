@@ -221,14 +221,22 @@ export class ChatHistoryComponent implements OnInit {
   }
 
   getVoiceLabel(item: TtsHistoryDto): string {
-    const filter = item.voiceType === 'NATURAL' ? 'Natural' : (item.voiceType === 'NEURAL' ? 'Neural' : 'Standard');
-    const mockVoice: any = { isElevenLabs: item.voiceType === 'NATURAL', isNeural: item.voiceType === 'NEURAL' };
+    const filter = item.voiceType === 'NATURAL' ? 'Natural' : (item.voiceType === 'INDIAN' ? 'Indian' : (item.voiceType === 'NEURAL' ? 'Neural' : 'Standard'));
+    const mockVoice: any = { 
+      isElevenLabs: item.voiceType === 'NATURAL', 
+      isSarvam: item.voiceType === 'INDIAN',
+      isNeural: item.voiceType === 'NEURAL' 
+    };
     return getVoiceTypeLabel(mockVoice, filter);
   }
 
   getVoiceClass(item: TtsHistoryDto): string {
-    const filter = item.voiceType === 'NATURAL' ? 'Natural' : (item.voiceType === 'NEURAL' ? 'Neural' : 'Standard');
-    const mockVoice: any = { isElevenLabs: item.voiceType === 'NATURAL', isNeural: item.voiceType === 'NEURAL' };
+    const filter = item.voiceType === 'NATURAL' ? 'Natural' : (item.voiceType === 'INDIAN' ? 'Indian' : (item.voiceType === 'NEURAL' ? 'Neural' : 'Standard'));
+    const mockVoice: any = { 
+      isElevenLabs: item.voiceType === 'NATURAL', 
+      isSarvam: item.voiceType === 'INDIAN',
+      isNeural: item.voiceType === 'NEURAL' 
+    };
     return getVoiceTypeClass(mockVoice, filter);
   }
 

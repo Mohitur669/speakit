@@ -9,6 +9,7 @@ import com.tts.repository.TtsHistoryRepository;
 import com.tts.repository.UserRepository;
 import com.tts.service.ElevenLabsService;
 import com.tts.service.PollyService;
+import com.tts.service.SarvamService;
 import com.tts.service.SubscriptionService;
 import com.tts.util.Sanitizer;
 import jakarta.servlet.http.HttpServletRequest;
@@ -38,13 +39,15 @@ public class TtsController {
 
     private final PollyService pollyService;
     private final ElevenLabsService elevenLabsService;
+    private final SarvamService sarvamService;
     private final UserRepository userRepository;
     private final TtsHistoryRepository ttsHistoryRepository;
     private final SubscriptionService subscriptionService;
 
-    public TtsController(PollyService pollyService, ElevenLabsService elevenLabsService, UserRepository userRepository, TtsHistoryRepository ttsHistoryRepository, SubscriptionService subscriptionService) {
+    public TtsController(PollyService pollyService, ElevenLabsService elevenLabsService, SarvamService sarvamService, UserRepository userRepository, TtsHistoryRepository ttsHistoryRepository, SubscriptionService subscriptionService) {
         this.pollyService = pollyService;
         this.elevenLabsService = elevenLabsService;
+        this.sarvamService = sarvamService;
         this.userRepository = userRepository;
         this.ttsHistoryRepository = ttsHistoryRepository;
         this.subscriptionService = subscriptionService;
@@ -74,6 +77,10 @@ public class TtsController {
     private void validatePlanAccess(PlanType planType, TtsRequest request, HttpServletRequest httpRequest) {
         if (request.isElevenLabs() && !subscriptionService.canUseElevenLabs(planType)) {
             throw new RuntimeException("ElevenLabs AI voices require a Pro Plus subscription.");
+        }
+
+        if (request.isSarvam() && !subscriptionService.canUseSarvam(planType)) {
+            throw new RuntimeException("Sarvam AI Indian voices require a PRO subscription.");
         }
 
         Long userId = (Long) httpRequest.getAttribute("userId");
@@ -112,6 +119,15 @@ public class TtsController {
             if (request.isElevenLabs()) {
                 audioStream = elevenLabsService.synthesizeSpeech(sanitizedText, sanitizedVoiceId);
                 effectiveVoiceType = "NATURAL";
+            } else if (request.isSarvam()) {
+                audioStream = sarvamService.synthesizeSpeech(
+                        sanitizedText, 
+                        sanitizedVoiceId, 
+                        request.getLanguageCode(), 
+                        request.getPace(), 
+                        request.getSamplingRate()
+                );
+                effectiveVoiceType = "INDIAN";
             } else {
                 audioStream = pollyService.synthesizeSpeech(sanitizedText, sanitizedVoiceId, sanitizedOutputFormat);
                 
@@ -160,7 +176,7 @@ public class TtsController {
         String sanitizedVoiceId = Sanitizer.sanitize(request.getVoiceId());
         String sanitizedOutputFormat = Sanitizer.sanitize(request.getOutputFormat());
 
-        if (request.isElevenLabs()) {
+        if (request.isElevenLabs() || request.isSarvam()) {
             return synthesize(request, httpRequest);
         }
 
@@ -215,6 +231,10 @@ public class TtsController {
 
         if (subscriptionService.canUseElevenLabs(planType)) {
             allVoices.addAll(elevenLabsService.getAvailableVoices());
+        }
+
+        if (subscriptionService.canUseSarvam(planType)) {
+            allVoices.addAll(sarvamService.getAvailableVoices());
         }
 
         return ResponseEntity.ok(allVoices);
