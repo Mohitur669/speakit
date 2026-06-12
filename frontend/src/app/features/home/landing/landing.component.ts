@@ -150,7 +150,7 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="text-center max-w-2xl mx-auto mb-8 sm:mb-16">
             <h2 class="text-2xl sm:text-4xl font-bold text-primary-900 dark:text-white mb-4">Everything you need for voice creation</h2>
-            <p class="text-sm sm:text-lg text-primary-500 dark:text-primary-400">From podcasts to audiobooks, create studio-quality voiceovers in minutes.</p>
+            <p class="text-sm sm:text-lg text-primary-500 dark:text-primary-400">From podcasts to regional content, create studio-quality voiceovers in minutes.</p>
           </div>
           <div class="grid md:grid-cols-3 gap-6 sm:gap-8">
             <!-- Feature 1: Indian Regional -->
@@ -213,7 +213,7 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
                   {{ feature }}
                 </li>
               </ul>
-              <button (click)="onStartTrial()" 
+              <button (click)="onStartTrial()"
                 [disabled]="authService.currentPlanType() === 'FREE' && authService.isLoggedIn()"
                 class="block w-full py-3 text-center font-semibold text-primary-700 dark:text-primary-200 bg-primary-100 dark:bg-primary-800 hover:bg-primary-200 dark:hover:bg-primary-700 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                 {{ authService.currentPlanType() === 'FREE' && authService.isLoggedIn() ? 'Current Plan' : (authService.currentUser() ? 'Go to App' : 'Get Started') }}
@@ -233,7 +233,7 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
                   {{ feature }}
                 </li>
               </ul>
-              <button (click)="buyPlan('PRO', proPrice())" 
+              <button (click)="buyPlan('PRO', proPrice())"
                 [disabled]="authService.currentPlanType() === 'PRO'"
                 class="block w-full py-3 text-center font-semibold text-primary-700 dark:text-primary-200 bg-primary-100 dark:bg-primary-800 hover:bg-primary-200 dark:hover:bg-primary-700 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                 {{ authService.currentPlanType() === 'PRO' ? 'Current Plan' : 'Go PRO' }}
@@ -254,12 +254,11 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
                   {{ feature }}
                 </li>
               </ul>
-              <button (click)="buyPlan('PRO_PLUS', proPlusPrice())" 
+              <button (click)="buyPlan('PRO_PLUS', proPlusPrice())"
                 [disabled]="authService.currentPlanType() === 'PRO_PLUS'"
                 class="block w-full py-3 text-center font-semibold text-white bg-brand-blue hover:bg-brand-blue/90 rounded-xl shadow-lg transition-all disabled:bg-primary-200 dark:disabled:bg-primary-800 disabled:text-primary-500 disabled:shadow-none disabled:cursor-not-allowed">
                 {{ authService.currentPlanType() === 'PRO_PLUS' ? 'Current Plan' : 'Go Pro Plus' }}
               </button>
-
             </div>
 
             <!-- Enterprise Plan -->
@@ -274,7 +273,7 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
                   {{ feature }}
                 </li>
               </ul>
-              <a [routerLink]="authService.currentPlanType() === 'ENTERPRISE' ? null : '/contact'" 
+              <a [routerLink]="authService.currentPlanType() === 'ENTERPRISE' ? null : '/contact'"
                 [ngClass]="{'opacity-50 cursor-not-allowed pointer-events-none': authService.currentPlanType() === 'ENTERPRISE'}"
                 class="block w-full py-3 text-center font-semibold text-primary-700 dark:text-primary-200 bg-primary-100 dark:bg-primary-800 hover:bg-primary-200 dark:hover:bg-primary-700 rounded-xl transition-all">
                 {{ authService.currentPlanType() === 'ENTERPRISE' ? 'Current Plan' : 'Contact Sales' }}
@@ -306,14 +305,7 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
               <tbody class="divide-y divide-primary-100 dark:divide-primary-800">
                 <!-- Voice Engines -->
                 <tr>
-                  <td class="p-6 text-sm font-medium text-primary-700 dark:text-primary-200">Standard AWS Voices</td>
-                  <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
-                  <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
-                  <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
-                  <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
-                </tr>
-                <tr>
-                  <td class="p-6 text-sm font-medium text-primary-700 dark:text-primary-200">Neural Engine (AWS)</td>
+                  <td class="p-6 text-sm font-medium text-primary-700 dark:text-primary-200">Global AWS Voices</td>
                   <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
                   <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
                   <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
@@ -331,6 +323,45 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
                   <td class="p-6 text-center"><span class="text-primary-300 dark:text-primary-700">\u2014</span></td>
                   <td class="p-6 text-center"><span class="text-primary-300 dark:text-primary-700">\u2014</span></td>
                   <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
+                  <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
+                </tr>
+
+                <!-- Limits -->
+                <tr>
+                  <td class="p-6 text-sm font-medium text-primary-700 dark:text-primary-200">Characters per request</td>
+                  <td class="p-6 text-center text-sm font-bold text-primary-600 dark:text-primary-300">{{ freeChars() }}</td>
+                  <td class="p-6 text-center text-sm font-bold text-primary-600 dark:text-primary-300">{{ proChars() }}</td>
+                  <td class="p-6 text-center text-sm font-bold text-primary-600 dark:text-primary-300">{{ proPlusChars() }}</td>
+                  <td class="p-6 text-center text-sm font-bold text-primary-600 dark:text-primary-300">{{ enterpriseChars() }}+</td>
+                </tr>
+                <tr>
+                  <td class="p-6 text-sm font-medium text-primary-700 dark:text-primary-200">Daily syntheses</td>
+                  <td class="p-6 text-center text-sm font-bold text-primary-600 dark:text-primary-300">{{ freeDailyLimit() }}</td>
+                  <td class="p-6 text-center text-sm font-bold text-emerald-500">Unlimited</td>
+                  <td class="p-6 text-center text-sm font-bold text-emerald-500">Unlimited</td>
+                  <td class="p-6 text-center text-sm font-bold text-emerald-500">Unlimited</td>
+                </tr>
+
+                <!-- Additional Features -->
+                <tr>
+                  <td class="p-6 text-sm font-medium text-primary-700 dark:text-primary-200">MP3 Downloads</td>
+                  <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
+                  <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
+                  <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
+                  <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
+                </tr>
+                <tr>
+                  <td class="p-6 text-sm font-medium text-primary-700 dark:text-primary-200">Support</td>
+                  <td class="p-6 text-center text-xs text-primary-500">Community</td>
+                  <td class="p-6 text-center text-xs text-primary-500">Standard</td>
+                  <td class="p-6 text-center text-xs font-bold text-brand-blue">Priority</td>
+                  <td class="p-6 text-center text-xs font-bold text-primary-900 dark:text-white">Dedicated Account Manager</td>
+                </tr>
+                <tr>
+                  <td class="p-6 text-sm font-medium text-primary-700 dark:text-primary-200">API Access</td>
+                  <td class="p-6 text-center"><span class="text-primary-300 dark:text-primary-700">\u2014</span></td>
+                  <td class="p-6 text-center"><span class="text-primary-300 dark:text-primary-700">\u2014</span></td>
+                  <td class="p-6 text-center"><span class="text-primary-300 dark:text-primary-700">\u2014</span></td>
                   <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
                 </tr>
               </tbody>
@@ -374,7 +405,7 @@ export class LandingComponent implements OnInit {
     // Combine everything into ONE batch request for maximum speed
     // Computed signals will auto-update when this finishes
     await this.featureFlags.init([
-      'MAX_FREE_CHARACTERS', 
+      'MAX_FREE_CHARACTERS',
       'MAX_PRO_CHARACTERS',
       'MAX_PRO_PLUS_CHARACTERS',
       'ENABLE_RAZORPAY',
