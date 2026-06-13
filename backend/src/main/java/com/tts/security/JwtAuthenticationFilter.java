@@ -85,6 +85,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 // Pass access flag to request attributes to avoid DB hit in controllers
                 request.setAttribute("planType", userProj.getPlanType());
+                request.setAttribute("subscriptionStatus", userProj.getSubscriptionStatus());
+                request.setAttribute("planExpiry", userProj.getPlanExpiry());
                 request.setAttribute("userId", userProj.getId());
             }
         }

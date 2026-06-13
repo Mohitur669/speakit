@@ -150,7 +150,7 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="text-center max-w-2xl mx-auto mb-8 sm:mb-16">
             <h2 class="text-2xl sm:text-4xl font-bold text-primary-900 dark:text-white mb-4">Everything you need for voice creation</h2>
-            <p class="text-sm sm:text-lg text-primary-600 dark:text-primary-400">From podcasts to audiobooks, create studio-quality voiceovers in minutes.</p>
+            <p class="text-sm sm:text-lg text-primary-600 dark:text-primary-400">From podcasts to regional content, create studio-quality voiceovers in minutes.</p>
           </div>
           <div class="grid md:grid-cols-3 gap-6 sm:gap-8">
             <!-- Feature 1: Indian Regional -->
@@ -194,7 +194,7 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
       </section>
 
       <!-- Pricing Section -->
-      <section id="pricing" class="py-12 sm:py-20 md:py-32 bg-primary-50 dark:bg-primary-950 scroll-mt-16 transition-colors duration-300">
+      <section id="pricing" class="pt-12 sm:pt-20 md:pt-32 pb-6 sm:pb-10 bg-primary-50 dark:bg-primary-950 scroll-mt-16 transition-colors duration-300">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="text-center max-w-2xl mx-auto mb-10 sm:mb-16">
             <h2 class="text-2xl sm:text-4xl font-bold text-primary-900 dark:text-white mb-4">Simple, transparent pricing</h2>
@@ -213,9 +213,10 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
                   {{ feature }}
                 </li>
               </ul>
-              <button (click)="onStartTrial()"
+              <button (click)="onStartTrial()" 
                 [disabled]="authService.currentPlanType() === 'FREE' && authService.isLoggedIn()"
-                class="block w-full py-3 text-center font-semibold text-primary-700 dark:text-primary-200 bg-primary-100 dark:bg-primary-800 hover:bg-primary-200 dark:hover:bg-primary-700 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                [ngClass]="authService.currentPlanType() === 'FREE' && authService.isLoggedIn() ? 'bg-primary-100 dark:bg-primary-800 text-primary-400 cursor-not-allowed opacity-50' : 'bg-primary-900 dark:bg-white text-white dark:text-primary-900 hover:opacity-90 active:scale-95'"
+                class="block w-full py-3 text-center font-bold rounded-xl transition-all shadow-lg text-sm uppercase tracking-wider">
                 {{ authService.currentPlanType() === 'FREE' && authService.isLoggedIn() ? 'Current Plan' : (authService.currentUser() ? 'Go to App' : 'Get Started') }}
               </button>
             </div>
@@ -233,9 +234,10 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
                   {{ feature }}
                 </li>
               </ul>
-              <button (click)="buyPlan('PRO', proPrice())"
+              <button (click)="buyPlan('PRO', proPrice())" 
                 [disabled]="authService.currentPlanType() === 'PRO'"
-                class="block w-full py-3 text-center font-semibold text-primary-700 dark:text-primary-200 bg-primary-100 dark:bg-primary-800 hover:bg-primary-200 dark:hover:bg-primary-700 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                [ngClass]="authService.currentPlanType() === 'PRO' ? 'bg-primary-100 dark:bg-primary-800 text-primary-400 cursor-not-allowed opacity-50' : 'bg-brand-blue text-white hover:bg-blue-600 shadow-brand-blue/20 active:scale-95'"
+                class="block w-full py-3 text-center font-bold rounded-xl shadow-lg transition-all text-sm uppercase tracking-wider">
                 {{ authService.currentPlanType() === 'PRO' ? 'Current Plan' : 'Go PRO' }}
               </button>
             </div>
@@ -254,9 +256,10 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
                   {{ feature }}
                 </li>
               </ul>
-              <button (click)="buyPlan('PRO_PLUS', proPlusPrice())"
+              <button (click)="buyPlan('PRO_PLUS', proPlusPrice())" 
                 [disabled]="authService.currentPlanType() === 'PRO_PLUS'"
-                class="block w-full py-3 text-center font-semibold text-white bg-brand-blue hover:bg-brand-blue/90 rounded-xl shadow-lg transition-all disabled:bg-primary-200 dark:disabled:bg-primary-800 disabled:text-primary-500 disabled:shadow-none disabled:cursor-not-allowed">
+                [ngClass]="authService.currentPlanType() === 'PRO_PLUS' ? 'bg-primary-100 dark:bg-primary-800 text-primary-400 cursor-not-allowed opacity-50' : 'bg-brand-blue text-white hover:bg-blue-600 shadow-brand-blue/20 active:scale-95'"
+                class="block w-full py-3 text-center font-bold rounded-xl shadow-lg transition-all text-sm uppercase tracking-wider">
                 {{ authService.currentPlanType() === 'PRO_PLUS' ? 'Current Plan' : 'Go Pro Plus' }}
               </button>
             </div>
@@ -273,9 +276,9 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
                   {{ feature }}
                 </li>
               </ul>
-              <a [routerLink]="authService.currentPlanType() === 'ENTERPRISE' ? null : '/contact'"
-                [ngClass]="{'opacity-50 cursor-not-allowed pointer-events-none': authService.currentPlanType() === 'ENTERPRISE'}"
-                class="block w-full py-3 text-center font-semibold text-primary-700 dark:text-primary-200 bg-primary-100 dark:bg-primary-800 hover:bg-primary-200 dark:hover:bg-primary-700 rounded-xl transition-all">
+              <a [routerLink]="authService.currentPlanType() === 'ENTERPRISE' ? null : '/contact'" 
+                [ngClass]="authService.currentPlanType() === 'ENTERPRISE' ? 'bg-primary-100 dark:bg-primary-800 text-primary-400 cursor-not-allowed opacity-50 pointer-events-none' : 'bg-primary-900 dark:bg-white text-white dark:text-primary-900 hover:opacity-90 active:scale-95'"
+                class="block w-full py-3 text-center font-bold rounded-xl shadow-lg transition-all text-sm uppercase tracking-wider">
                 {{ authService.currentPlanType() === 'ENTERPRISE' ? 'Current Plan' : 'Contact Sales' }}
               </a>
             </div>
@@ -284,7 +287,7 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
       </section>
 
       <!-- Plan Comparison Table Section -->
-      <section id="compare" class="py-12 sm:py-20 bg-primary-50 dark:bg-primary-950 scroll-mt-16 transition-colors duration-300">
+      <section id="compare" class="pt-6 sm:pt-10 pb-12 sm:pb-20 bg-primary-50 dark:bg-primary-950 scroll-mt-16 transition-colors duration-300">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="text-center mb-10 sm:mb-16">
             <h2 class="text-2xl sm:text-3xl font-bold text-primary-900 dark:text-white mb-4">Compare Plans</h2>
@@ -405,7 +408,7 @@ export class LandingComponent implements OnInit {
     // Combine everything into ONE batch request for maximum speed
     // Computed signals will auto-update when this finishes
     await this.featureFlags.init([
-      'MAX_FREE_CHARACTERS',
+      'MAX_FREE_CHARACTERS', 
       'MAX_PRO_CHARACTERS',
       'MAX_PRO_PLUS_CHARACTERS',
       'ENABLE_RAZORPAY',
@@ -414,7 +417,8 @@ export class LandingComponent implements OnInit {
       'PRO_PLUS_PLAN_FEATURES',
       'ENTERPRISE_PLAN_FEATURES',
       'PRO_PLAN_PRICE_INR',
-      'PRO_PLUS_PLAN_PRICE_INR'
+      'PRO_PLUS_PLAN_PRICE_INR',
+      'FREE_PLAN_SYNTHESIZE_LIMIT'
     ]);
   }
 

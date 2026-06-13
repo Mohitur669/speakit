@@ -78,10 +78,15 @@ CREATE TABLE IF NOT EXISTS subscriptions (
     id BIGINT PRIMARY KEY,
     user_id BIGINT NOT NULL REFERENCES users(id),
     razorpay_subscription_id VARCHAR(100) UNIQUE,
-    plan_type VARCHAR(20) NOT NULL, -- BASIC, PRO, ENTERPRISE
-    status VARCHAR(20) NOT NULL, -- CREATED, ACTIVE, CANCELLED, EXPIRED, PENDING
+    plan_type VARCHAR(20) NOT NULL, -- FREE, PRO, PRO_PLUS, ENTERPRISE
+    status VARCHAR(20) NOT NULL, -- ACTIVE, TRIAL, PAST_DUE, CANCELLED, EXPIRED, etc.
     current_period_start TIMESTAMP WITH TIME ZONE,
     current_period_end TIMESTAMP WITH TIME ZONE,
+    next_billing_date TIMESTAMP WITH TIME ZONE,
+    cancel_at_period_end BOOLEAN DEFAULT FALSE,
+    cancelled_at TIMESTAMP WITH TIME ZONE,
+    trial_start TIMESTAMP WITH TIME ZONE,
+    trial_end TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     version BIGINT NOT NULL DEFAULT 0
@@ -97,7 +102,9 @@ CREATE TABLE IF NOT EXISTS payments (
     razorpay_signature VARCHAR(255),
     amount DECIMAL(19, 4) NOT NULL,
     currency VARCHAR(10) NOT NULL DEFAULT 'INR',
-    status VARCHAR(20) NOT NULL, -- INITIATED, SUCCESS, FAILED, REFUNDED
+    tax_amount DECIMAL(19, 4) DEFAULT 0,
+    invoice_number VARCHAR(50),
+    status VARCHAR(20) NOT NULL, -- SUCCESS, FAILED, PENDING, REFUNDED, etc.
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     version BIGINT NOT NULL DEFAULT 0
@@ -161,6 +168,28 @@ BEGIN
     -- Remove legacy column if it exists
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='has_natural_voice_access') THEN
         ALTER TABLE users DROP COLUMN has_natural_voice_access;
+    END IF;
+
+    -- Normalize Subscription Status (Migration from PENDING to PAYMENT_PENDING)
+    UPDATE subscriptions SET status = 'PAYMENT_PENDING' WHERE status = 'PENDING';
+
+    -- Ensure new subscription columns exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='subscriptions' AND column_name='cancel_at_period_end') THEN
+        ALTER TABLE subscriptions ADD COLUMN cancel_at_period_end BOOLEAN DEFAULT FALSE;
+        UPDATE subscriptions SET cancel_at_period_end = FALSE WHERE cancel_at_period_end IS NULL;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='subscriptions' AND column_name='next_billing_date') THEN
+        ALTER TABLE subscriptions ADD COLUMN next_billing_date TIMESTAMP WITH TIME ZONE;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='subscriptions' AND column_name='cancelled_at') THEN
+        ALTER TABLE subscriptions ADD COLUMN cancelled_at TIMESTAMP WITH TIME ZONE;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='subscriptions' AND column_name='trial_start') THEN
+        ALTER TABLE subscriptions ADD COLUMN trial_start TIMESTAMP WITH TIME ZONE;
+        ALTER TABLE subscriptions ADD COLUMN trial_end TIMESTAMP WITH TIME ZONE;
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='phone_number') THEN

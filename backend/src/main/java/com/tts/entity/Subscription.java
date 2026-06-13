@@ -46,4 +46,20 @@ public class Subscription extends BaseEntity {
 
     @Column(name = "current_period_end")
     private LocalDateTime currentPeriodEnd;
+
+    @Column(name = "next_billing_date")
+    private LocalDateTime nextBillingDate;
+
+    @Column(name = "cancel_at_period_end")
+    @Builder.Default
+    private Boolean cancelAtPeriodEnd = false;
+
+    @Column(name = "cancelled_at")
+    private LocalDateTime cancelledAt;
+
+    @Column(name = "trial_start")
+    private LocalDateTime trialStart;
+
+    @Column(name = "trial_end")
+    private LocalDateTime trialEnd;
 }

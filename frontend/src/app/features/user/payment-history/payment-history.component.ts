@@ -44,13 +44,13 @@ import { NavbarComponent } from '../../../shared/components/navbar/navbar.compon
               <tbody>
                 <tr *ngFor="let item of history()" 
                   class="hover:bg-primary-50/50 dark:hover:bg-primary-800/30 transition-colors group">
-                  <td class="px-4 py-5 border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">
+                  <td class="px-4 py-2.5 md:py-5 border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">
                     <span class="text-xs sm:text-sm font-bold text-brand-blue">{{ item.planName === 'FREE' ? 'Basic' : item.planName.replace('_', ' ') }}</span>
                   </td>
-                  <td class="px-4 py-5 border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">
+                  <td class="px-4 py-2.5 md:py-5 border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">
                     <span class="text-xs sm:text-sm font-medium text-primary-900 dark:text-white">{{ item.amount | currency:item.currency:'symbol':'1.2-2' }}</span>
                   </td>
-                  <td class="px-4 py-5 border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">
+                  <td class="px-4 py-2.5 md:py-5 border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">
                     <span class="px-2 py-1 rounded text-[10px] sm:text-xs font-bold uppercase"
                       [ngClass]="{
                         'bg-green-500/10 text-green-600': item.status === 'SUCCESS' || item.status === 'CAPTURED',
@@ -60,7 +60,7 @@ import { NavbarComponent } from '../../../shared/components/navbar/navbar.compon
                       {{ item.status }}
                     </span>
                   </td>
-                  <td class="px-4 py-5 border-b border-primary-100 dark:border-primary-800 whitespace-nowrap">
+                  <td class="px-4 py-2.5 md:py-5 border-b border-primary-100 dark:border-primary-800 whitespace-nowrap">
                     <div class="flex items-baseline gap-2">
                       <span class="text-xs sm:text-sm font-medium text-primary-900 dark:text-white">{{ item.createdAt | date:'mediumDate' }}</span>
                       <span class="text-[10px] sm:text-xs text-primary-400 font-mono">{{ item.createdAt | date:'shortTime' }}</span>
@@ -98,7 +98,7 @@ import { NavbarComponent } from '../../../shared/components/navbar/navbar.compon
           </div>
 
           <!-- Pagination -->
-          <div *ngIf="totalPages() > 1" class="p-4 bg-white dark:bg-primary-900 border-t border-primary-100 dark:border-primary-800 flex items-center justify-between">
+          <div *ngIf="totalPages() > 1" class="py-2 px-4 bg-white dark:bg-primary-900 border-t border-primary-100 dark:border-primary-800 flex items-center justify-between">
             <span class="text-xs text-primary-500 dark:text-primary-400 font-medium">
               Showing {{ history().length }} of {{ totalElements() }} entries
             </span>

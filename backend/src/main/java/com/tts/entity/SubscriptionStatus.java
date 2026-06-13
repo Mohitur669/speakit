@@ -3,7 +3,11 @@ package com.tts.entity;
 public enum SubscriptionStatus {
     CREATED,
     ACTIVE,
+    TRIAL,
+    PAST_DUE,
     CANCELLED,
     EXPIRED,
-    PENDING
+    SUSPENDED,
+    PAYMENT_PENDING,
+    @Deprecated PENDING // Legacy status, use PAYMENT_PENDING
 }

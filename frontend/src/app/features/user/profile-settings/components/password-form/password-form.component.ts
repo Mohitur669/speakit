@@ -9,15 +9,15 @@ import { resetFormFields } from '../../../../../shared';
   imports: [CommonModule, FormsModule],
   template: `
     <section class="space-y-6">
-      <div class="flex items-center justify-between border-b border-primary-100 dark:border-primary-800 pb-2">
-        <div class="flex items-center gap-2">
-          <svg class="w-5 h-5 text-brand-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div class="flex items-center justify-between gap-2 border-b border-primary-100 dark:border-primary-800 pb-2 flex-nowrap">
+        <div class="flex items-center gap-2 min-w-0">
+          <svg class="w-5 h-5 text-brand-blue shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
           </svg>
-          <h2 class="text-lg font-semibold text-primary-800 dark:text-primary-200">Security Verification</h2>
+          <h2 class="text-base sm:text-lg font-semibold text-primary-800 dark:text-primary-200 whitespace-nowrap">Security Verification</h2>
         </div>
         <button type="button" (click)="togglePasswordFields()" 
-          class="text-sm font-medium text-brand-blue hover:text-blue-600 transition-colors">
+          class="text-xs sm:text-sm font-medium text-brand-blue hover:text-blue-600 transition-colors whitespace-nowrap shrink-0">
           {{ showNewPasswordFields() ? 'Cancel Change' : 'Change Password' }}
         </button>
       </div>
@@ -78,27 +78,23 @@ import { resetFormFields } from '../../../../../shared';
           </div>
         </div>
 
-        <div *ngIf="newPassword" class="p-4 rounded-xl bg-primary-50 dark:bg-primary-800/50 border border-primary-100 dark:border-primary-700">
-          <p class="text-xs font-semibold text-primary-500 dark:text-primary-400 mb-3 uppercase tracking-wider">New Password Requirements</p>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <div *ngFor="let req of getPasswordRequirements(newPassword)" 
-              class="flex items-center gap-2 text-xs transition-all"
-              [ngClass]="req.met ? 'text-green-600 dark:text-green-400' : 'text-primary-400 dark:text-primary-500'">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path *ngIf="req.met" stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
-                <circle *ngIf="!req.met" cx="12" cy="12" r="8" stroke-width="2"></circle>
-              </svg>
-              {{ req.label }}
+        <!-- Password Feedback (Matches Signup Style) -->
+        <div *ngIf="newPassword" class="mt-2 space-y-1">
+          <ng-container *ngFor="let req of getRequirements(newPassword)">
+            <div *ngIf="!req.met" class="flex items-center gap-1.5 text-red-500 animate-fade-in">
+              <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+              <span class="text-[10px] font-medium leading-none">{{ req.label }} required</span>
             </div>
-            
-            <div class="flex items-center gap-2 text-xs transition-all"
-              [ngClass]="confirmPassword && newPassword === confirmPassword ? 'text-green-600 dark:text-green-400' : 'text-red-500'">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path *ngIf="confirmPassword && newPassword === confirmPassword" stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
-                <path *ngIf="!confirmPassword || newPassword !== confirmPassword" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-              </svg>
-              {{ confirmPassword && newPassword === confirmPassword ? 'Passwords match' : 'Passwords must match' }}
-            </div>
+          </ng-container>
+          
+          <div *ngIf="confirmPassword && newPassword !== confirmPassword" class="flex items-center gap-1.5 text-red-500 animate-fade-in">
+            <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            <span class="text-[10px] font-medium leading-none">Passwords must match</span>
+          </div>
+
+          <div *ngIf="confirmPassword && newPassword === confirmPassword && newPassword" class="flex items-center gap-1.5 text-green-600 dark:text-green-400 animate-fade-in">
+            <svg class="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+            <span class="text-[10px] font-medium leading-none">Passwords match</span>
           </div>
         </div>
       </div>
@@ -130,7 +126,7 @@ export class PasswordFormComponent {
     }
   }
 
-  getPasswordRequirements(pass: string) {
+  getRequirements(pass: string) {
     return resetFormFields(pass);
   }
 }

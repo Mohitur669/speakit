@@ -123,17 +123,17 @@ export class TtsComponent implements OnInit {
   async refreshLimits() {
     const plan = this.authService.currentPlanType();
     let limitKey = 'MAX_FREE_CHARACTERS';
-    let defaultVal = 300;
+    let defaultVal = 100;
 
     if (plan === 'ENTERPRISE') {
       limitKey = 'MAX_ENTERPRISE_CHARACTERS';
-      defaultVal = 100000;
+      defaultVal = 2000;
     } else if (plan === 'PRO_PLUS') {
       limitKey = 'MAX_PRO_PLUS_CHARACTERS';
-      defaultVal = 20000;
+      defaultVal = 500;
     } else if (plan === 'PRO') {
       limitKey = 'MAX_PRO_CHARACTERS';
-      defaultVal = 5000;
+      defaultVal = 200;
     }
     
     const limit = await this.featureFlags.getLiveNumber(limitKey, defaultVal);
