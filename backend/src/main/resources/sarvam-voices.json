@@ -1,5 +1,11 @@
 {
-  "speakers": ["meera", "shubh", "aditya", "ritu", "priya", "neha", "rahul", "pooja", "rohan", "simran"],
+  "speakers": [
+    "aditya", "ritu", "ashutosh", "priya", "neha", "rahul", "pooja", "rohan", 
+    "simran", "kavya", "amit", "dev", "ishita", "shreya", "ratan", "varun", 
+    "manan", "sumit", "roopa", "kabir", "aayan", "shubh", "advait", "anand", 
+    "tanya", "tarun", "sunny", "mani", "gokul", "vijay", "shruti", "suhani", 
+    "mohit", "kavitha", "rehan", "soham", "rupali", "niharika"
+  ],
   "languages": [
     {"code": "hi-IN", "name": "Hindi"},
     {"code": "bn-IN", "name": "Bengali"},
@@ -12,5 +18,8 @@
     {"code": "pa-IN", "name": "Punjabi"},
     {"code": "or-IN", "name": "Odia"}
   ],
-  "female_speakers": ["meera", "ritu", "priya", "neha", "pooja", "simran", "anushka", "manisha", "vidya", "arya"]
+  "female_speakers": [
+    "ritu", "priya", "neha", "pooja", "simran", "kavya", "ishita", "shreya", 
+    "roopa", "tanya", "shruti", "suhani", "kavitha", "rupali", "niharika"
+  ]
 }

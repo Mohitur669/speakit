@@ -14,6 +14,7 @@ import {
 } from '../../../shared';
 import { ProfileFormComponent } from './components/profile-form/profile-form.component';
 import { PasswordFormComponent } from './components/password-form/password-form.component';
+import { PasswordPolicyModalComponent } from '../../../shared/components/password-policy-modal/password-policy-modal.component';
 
 @Component({
   selector: 'app-profile-settings',
@@ -24,7 +25,8 @@ import { PasswordFormComponent } from './components/password-form/password-form.
     RouterLink, 
     NavbarComponent,
     ProfileFormComponent,
-    PasswordFormComponent
+    PasswordFormComponent,
+    PasswordPolicyModalComponent
   ],
   template: `
     <div class="min-h-screen bg-primary-50 dark:bg-primary-950">
@@ -78,12 +80,13 @@ import { PasswordFormComponent } from './components/password-form/password-form.
               </div>
 
               <div class="flex items-center justify-end gap-4 pt-4 border-t border-primary-100 dark:border-primary-800">
-                <button type="button" routerLink="/tts" class="px-6 py-3 rounded-xl text-primary-600 dark:text-primary-400 font-medium hover:bg-primary-50 dark:hover:bg-primary-800 transition-all">
+                <button type="button" routerLink="/tts" 
+                  class="px-6 py-3 rounded-xl bg-primary-100 dark:bg-primary-800 text-primary-700 dark:text-primary-200 font-bold hover:bg-primary-200 dark:hover:bg-primary-700 transition-all active:scale-95 shadow-sm">
                   Cancel
                 </button>
                 <button type="submit" [disabled]="loading() || !currentPassword || usernameTaken() || emailTaken() || phoneTaken() || (newPassword && (!isPasswordValid(newPassword) || newPassword !== confirmPassword))"
-                  class="px-8 py-3 rounded-xl bg-brand-blue hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold shadow-lg shadow-blue-500/25 transition-all">
-                  {{ loading() ? 'Saving Changes...' : 'Save All Changes' }}
+                  class="px-8 py-3 rounded-xl bg-brand-blue hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold shadow-lg shadow-brand-blue/20 transition-all active:scale-95">
+                  {{ loading() ? 'Saving Changes...' : 'Save Changes' }}
                 </button>
               </div>
             </form>
@@ -92,47 +95,11 @@ import { PasswordFormComponent } from './components/password-form/password-form.
       </div>
     </div>
 
-    <div *ngIf="showPolicyModal()" class="fixed inset-0 z-200 flex items-center justify-center p-4">
-      <div class="absolute inset-0 bg-primary-950/60 backdrop-blur-sm" (click)="showPolicyModal.set(false)"></div>
-      <div class="relative bg-white dark:bg-primary-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-scale-in">
-        <div class="p-6 border-b border-primary-100 dark:border-primary-800 flex items-center justify-between">
-          <h3 class="text-xl font-bold text-primary-900 dark:text-white">Password Policy</h3>
-          <button (click)="showPolicyModal.set(false)" class="text-primary-400 hover:text-primary-600">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-          </button>
-        </div>
-        <div class="p-6 space-y-4">
-          <p class="text-sm text-primary-600 dark:text-primary-400">To ensure the security of your account, your password must meet the following criteria:</p>
-          <ul class="space-y-3">
-            <li class="flex items-start gap-3 text-sm text-primary-700 dark:text-primary-300">
-              <span class="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-brand-blue flex items-center justify-center text-xs font-bold shrink-0">1</span>
-              At least 8 characters in length.
-            </li>
-            <li class="flex items-start gap-3 text-sm text-primary-700 dark:text-primary-300">
-              <span class="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-brand-blue flex items-center justify-center text-xs font-bold shrink-0">2</span>
-              Include at least one lowercase letter (a-z).
-            </li>
-            <li class="flex items-start gap-3 text-sm text-primary-700 dark:text-primary-300">
-              <span class="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-brand-blue flex items-center justify-center text-xs font-bold shrink-0">3</span>
-              Include at least one uppercase letter (A-Z).
-            </li>
-            <li class="flex items-start gap-3 text-sm text-primary-700 dark:text-primary-300">
-              <span class="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-brand-blue flex items-center justify-center text-xs font-bold shrink-0">4</span>
-              Include at least one number (0-9).
-            </li>
-            <li class="flex items-start gap-3 text-sm text-primary-700 dark:text-primary-300">
-              <span class="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-brand-blue flex items-center justify-center text-xs font-bold shrink-0">5</span>
-              Include at least one special character (e.g., ! @ # $ %).
-            </li>
-          </ul>
-        </div>
-        <div class="p-6 bg-primary-50 dark:bg-primary-800/50">
-          <button (click)="showPolicyModal.set(false)" class="w-full py-3 rounded-xl bg-brand-blue text-white font-bold hover:bg-blue-600 transition-all">
-            Got it, thanks!
-          </button>
-        </div>
-      </div>
-    </div>
+    <app-password-policy-modal
+      *ngIf="showPolicyModal()"
+      [password]="newPassword"
+      (close)="showPolicyModal.set(false)">
+    </app-password-policy-modal>
   `
 })
 export class ProfileSettingsComponent implements OnInit, OnDestroy {

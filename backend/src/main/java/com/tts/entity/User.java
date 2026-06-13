@@ -52,6 +52,15 @@ public class User extends BaseEntity {
     @Builder.Default
     private PlanType planType = PlanType.FREE;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "subscription_status", nullable = false, length = 20)
+    @ColumnDefault("'ACTIVE'")
+    @Builder.Default
+    private SubscriptionStatus subscriptionStatus = SubscriptionStatus.ACTIVE;
+
+    @Column(name = "plan_expiry")
+    private java.time.LocalDateTime planExpiry;
+
     @Column(name = "role", nullable = false, length = 20)
     @ColumnDefault("'USER'")
     @Builder.Default

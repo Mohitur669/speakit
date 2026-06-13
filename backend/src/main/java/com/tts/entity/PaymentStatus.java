@@ -2,7 +2,10 @@ package com.tts.entity;
 
 public enum PaymentStatus {
     INITIATED,
+    PENDING,
     SUCCESS,
     FAILED,
-    REFUNDED
+    REFUNDED,
+    PARTIALLY_REFUNDED,
+    CHARGEBACK
 }

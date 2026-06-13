@@ -144,7 +144,7 @@ public class SarvamService {
             for (Language lang : config.getLanguages()) {
                 Map<String, Object> map = new HashMap<>();
                 
-                map.put("id", speaker);
+                map.put("id", speaker + ":" + lang.getCode());
                 map.put("name", capitalize(speaker) + " (" + lang.getName() + ")");
                 map.put("gender", isFemale(speaker) ? "Female" : "Male");
                 map.put("isElevenLabs", false);

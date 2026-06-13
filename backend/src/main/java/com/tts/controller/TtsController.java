@@ -4,6 +4,7 @@ import com.tts.aspect.RateLimitAction;
 import com.tts.aspect.RateLimited;
 import com.tts.dto.TtsRequest;
 import com.tts.entity.PlanType;
+import com.tts.entity.SubscriptionStatus;
 import com.tts.entity.TtsHistory;
 import com.tts.repository.TtsHistoryRepository;
 import com.tts.repository.UserRepository;
@@ -23,14 +24,11 @@ import software.amazon.awssdk.services.polly.model.Engine;
 import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.*;
 
 /**
- * Primary REST controller for text-to-speech operations.
+ * Controller for Text-to-Speech operations including buffered and streaming synthesis,
+ * usage tracking, and voice metadata retrieval.
  */
 @RestController
 @RequestMapping("/api/tts")
@@ -57,7 +55,6 @@ public class TtsController {
         try {
             Long userId = (Long) httpRequest.getAttribute("userId");
             if (userId != null) {
-                String snippet = text.length() > 50 ? text.substring(0, 47) + "..." : text;
                 TtsHistory history = TtsHistory.builder()
                         .user(userRepository.getReferenceById(userId))
                         .voiceId(voiceId)
@@ -65,7 +62,7 @@ public class TtsController {
                         .voiceType(voiceType)
                         .outputFormat(format)
                         .characterCount(charCount)
-                        .textSnippet(snippet)
+                        .textSnippet(text.length() > 100 ? text.substring(0, 100) : text)
                         .build();
                 ttsHistoryRepository.save(history);
             }
@@ -74,56 +71,67 @@ public class TtsController {
         }
     }
 
-    private void validatePlanAccess(PlanType planType, TtsRequest request, HttpServletRequest httpRequest) {
-        if (request.isElevenLabs() && !subscriptionService.canUseElevenLabs(planType)) {
+    private void validatePlanAccess(PlanType planType, SubscriptionStatus status, LocalDateTime expiry, TtsRequest request, HttpServletRequest httpRequest) {
+        if (request.isElevenLabs() && !subscriptionService.canUseElevenLabs(planType, status, expiry)) {
             throw new RuntimeException("ElevenLabs AI voices require a Pro Plus subscription.");
         }
 
-        if (request.isSarvam() && !subscriptionService.canUseSarvam(planType)) {
+        if (request.isSarvam() && !subscriptionService.canUseSarvam(planType, status, expiry)) {
             throw new RuntimeException("Sarvam AI Indian voices require a PRO subscription.");
         }
 
         Long userId = (Long) httpRequest.getAttribute("userId");
-        subscriptionService.validateSynthesisLimit(userId, planType);
+        subscriptionService.validateSynthesisLimit(userId, planType, status, expiry);
     }
 
     @RateLimited(action = RateLimitAction.TTS)
     @PostMapping("/synthesize")
     public ResponseEntity<byte[]> synthesize(@Valid @RequestBody TtsRequest request, HttpServletRequest httpRequest) {
         PlanType planType = (PlanType) httpRequest.getAttribute("planType");
+        SubscriptionStatus status = (SubscriptionStatus) httpRequest.getAttribute("subscriptionStatus");
+        LocalDateTime expiry = (LocalDateTime) httpRequest.getAttribute("planExpiry");
 
         try {
-            validatePlanAccess(planType, request, httpRequest);
+            validatePlanAccess(planType, status, expiry, request, httpRequest);
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage().getBytes());
         }
 
-        String sanitizedText = Sanitizer.sanitize(request.getText());
-        if (sanitizedText == null || sanitizedText.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Text content is required.".getBytes());
-        }
-
-        int maxChars = subscriptionService.getMaxCharacters(planType);
-
-        if (sanitizedText.length() > maxChars) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(("Character limit exceeded for your plan (" + maxChars + " characters).").getBytes());
-        }
-
-        String sanitizedVoiceId = Sanitizer.sanitize(request.getVoiceId());
-        String sanitizedOutputFormat = Sanitizer.sanitize(request.getOutputFormat());
-
         try {
+            String sanitizedText = Sanitizer.sanitize(request.getText());
+            if (sanitizedText == null || sanitizedText.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Text content is required.".getBytes());
+            }
+
+            int maxChars = subscriptionService.getMaxCharacters(planType, status, expiry);
+
+            if (sanitizedText.length() > maxChars) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(("Character limit exceeded for your plan (" + maxChars + " characters).").getBytes());
+            }
+
+            String sanitizedVoiceId = Sanitizer.sanitize(request.getVoiceId());
+            String sanitizedOutputFormat = Sanitizer.sanitize(request.getOutputFormat());
+
             InputStream audioStream;
             String effectiveVoiceType;
             if (request.isElevenLabs()) {
                 audioStream = elevenLabsService.synthesizeSpeech(sanitizedText, sanitizedVoiceId);
                 effectiveVoiceType = "NATURAL";
             } else if (request.isSarvam()) {
+                String speaker = sanitizedVoiceId;
+                String langCode = request.getLanguageCode();
+                
+                if (sanitizedVoiceId.contains(":")) {
+                    String[] parts = sanitizedVoiceId.split(":");
+                    speaker = parts[0];
+                    langCode = parts[1];
+                }
+
                 audioStream = sarvamService.synthesizeSpeech(
                         sanitizedText, 
-                        sanitizedVoiceId, 
-                        request.getLanguageCode(), 
+                        speaker, 
+                        langCode, 
                         request.getPace(), 
                         request.getSamplingRate()
                 );
@@ -154,52 +162,62 @@ public class TtsController {
     @PostMapping("/synthesize-stream")
     public ResponseEntity<?> synthesizeStream(@Valid @RequestBody TtsRequest request, HttpServletRequest httpRequest) {
         PlanType planType = (PlanType) httpRequest.getAttribute("planType");
+        SubscriptionStatus status = (SubscriptionStatus) httpRequest.getAttribute("subscriptionStatus");
+        LocalDateTime expiry = (LocalDateTime) httpRequest.getAttribute("planExpiry");
 
         try {
-            validatePlanAccess(planType, request, httpRequest);
+            validatePlanAccess(planType, status, expiry, request, httpRequest);
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
         }
 
-        String sanitizedText = Sanitizer.sanitize(request.getText());
-        if (sanitizedText == null || sanitizedText.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Text content is required.");
+        try {
+            String sanitizedText = Sanitizer.sanitize(request.getText());
+            if (sanitizedText == null || sanitizedText.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Text content is required.");
+            }
+
+            int maxChars = subscriptionService.getMaxCharacters(planType, status, expiry);
+
+            if (sanitizedText.length() > maxChars) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body("Character limit exceeded for your plan (" + maxChars + " characters).");
+            }
+
+            String sanitizedVoiceId = Sanitizer.sanitize(request.getVoiceId());
+            String sanitizedOutputFormat = Sanitizer.sanitize(request.getOutputFormat());
+
+            if (request.isElevenLabs() || request.isSarvam()) {
+                return synthesize(request, httpRequest);
+            }
+
+            InputStream stream = pollyService.synthesizeSpeech(
+                    sanitizedText,
+                    sanitizedVoiceId,
+                    sanitizedOutputFormat
+            );
+
+            // Use centralized logic to determine engine for accurate history/cost tracking
+            String effectiveVoiceType = pollyService.getBestEngineForVoice(sanitizedVoiceId).toString();
+
+            recordHistory(httpRequest, sanitizedVoiceId, request.getVoiceName(), effectiveVoiceType, sanitizedOutputFormat, sanitizedText.length(), sanitizedText);
+
+            return ResponseEntity.ok()
+                    .contentType(getMediaType(sanitizedOutputFormat))
+                    .body(new InputStreamResource(stream));
+        } catch (Exception e) {
+            log.error("Streaming TTS failed", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Streaming conversion failed: " + e.getMessage());
         }
-
-        int maxChars = subscriptionService.getMaxCharacters(planType);
-
-        if (sanitizedText.length() > maxChars) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("Character limit exceeded for your plan (" + maxChars + " characters).");
-        }
-
-        String sanitizedVoiceId = Sanitizer.sanitize(request.getVoiceId());
-        String sanitizedOutputFormat = Sanitizer.sanitize(request.getOutputFormat());
-
-        if (request.isElevenLabs() || request.isSarvam()) {
-            return synthesize(request, httpRequest);
-        }
-
-        InputStream stream = pollyService.synthesizeSpeech(
-                sanitizedText,
-                sanitizedVoiceId,
-                sanitizedOutputFormat
-        );
-
-        // Use centralized logic to determine engine for accurate history/cost tracking
-        String effectiveVoiceType = pollyService.getBestEngineForVoice(sanitizedVoiceId).toString();
-
-        recordHistory(httpRequest, sanitizedVoiceId, request.getVoiceName(), effectiveVoiceType, sanitizedOutputFormat, sanitizedText.length(), sanitizedText);
-
-        return ResponseEntity.ok()
-                .contentType(getMediaType(sanitizedOutputFormat))
-                .body(new InputStreamResource(stream));
     }
 
     @GetMapping("/usage")
     public ResponseEntity<Map<String, Object>> getUsage(HttpServletRequest httpRequest) {
         Long userId = (Long) httpRequest.getAttribute("userId");
         PlanType planType = (PlanType) httpRequest.getAttribute("planType");
+        SubscriptionStatus status = (SubscriptionStatus) httpRequest.getAttribute("subscriptionStatus");
+        LocalDateTime expiry = (LocalDateTime) httpRequest.getAttribute("planExpiry");
 
         Map<String, Object> usage = new HashMap<>();
         usage.put("plan", planType != null ? planType.name() : "FREE");
@@ -209,15 +227,18 @@ public class TtsController {
             long count = ttsHistoryRepository.countRecentByUserId(userId, todayStart);
             usage.put("dailyCount", count);
             
-            usage.put("dailyLimit", subscriptionService.getDailySynthesisLimit(planType));
+            usage.put("dailyLimit", subscriptionService.getDailySynthesisLimit(planType, status, expiry));
         }
 
         return ResponseEntity.ok(usage);
     }
+
     @RateLimited
     @GetMapping("/voices")
     public ResponseEntity<List<Map<String, Object>>> getVoices(HttpServletRequest httpRequest) {
         PlanType planType = (PlanType) httpRequest.getAttribute("planType");
+        SubscriptionStatus status = (SubscriptionStatus) httpRequest.getAttribute("subscriptionStatus");
+        LocalDateTime expiry = (LocalDateTime) httpRequest.getAttribute("planExpiry");
         List<Map<String, Object>> allVoices = new ArrayList<>();
 
         pollyService.getAvailableVoices().forEach(v -> {
@@ -226,14 +247,15 @@ public class TtsController {
             map.put("name", v.name());
             map.put("gender", v.genderAsString());
             map.put("isElevenLabs", false);
+            map.put("isSarvam", false);
             allVoices.add(map);
         });
 
-        if (subscriptionService.canUseElevenLabs(planType)) {
+        if (subscriptionService.canUseElevenLabs(planType, status, expiry)) {
             allVoices.addAll(elevenLabsService.getAvailableVoices());
         }
 
-        if (subscriptionService.canUseSarvam(planType)) {
+        if (subscriptionService.canUseSarvam(planType, status, expiry)) {
             allVoices.addAll(sarvamService.getAvailableVoices());
         }
 
@@ -244,7 +266,7 @@ public class TtsController {
         if (format == null) return MediaType.APPLICATION_OCTET_STREAM;
         return switch (format.toLowerCase()) {
             case "mp3" -> MediaType.parseMediaType("audio/mpeg");
-            case "ogg" -> MediaType.parseMediaType("audio/ogg");
+            case "ogg", "ogg_vorbis" -> MediaType.parseMediaType("audio/ogg");
             case "pcm" -> MediaType.parseMediaType("audio/wave");
             default -> MediaType.APPLICATION_OCTET_STREAM;
         };

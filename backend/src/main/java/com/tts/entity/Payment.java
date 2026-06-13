@@ -50,6 +50,13 @@ public class Payment extends BaseEntity {
     @Builder.Default
     private String currency = "INR";
 
+    @Column(name = "tax_amount", precision = 19, scale = 4)
+    @Builder.Default
+    private BigDecimal taxAmount = BigDecimal.ZERO;
+
+    @Column(name = "invoice_number", length = 50)
+    private String invoiceNumber;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private PaymentStatus status;

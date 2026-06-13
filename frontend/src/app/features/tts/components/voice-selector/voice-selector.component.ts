@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, signal, HostListener } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal, HostListener, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Voice } from '../../../../core/services/tts.service';
 import { getVoiceTypeLabel, getVoiceTypeClass } from '../../../../shared';
@@ -39,6 +39,70 @@ import { getVoiceTypeLabel, getVoiceTypeClass } from '../../../../shared';
             </div>
           </button>
         </ng-container>
+      </div>
+
+      <!-- Indian Sub-Filters -->
+      <div *ngIf="currentFilter() === 'Indian'" class="grid grid-cols-2 gap-3 mb-4 animate-fade-in">
+        
+        <!-- Language Multi-Select Dropdown -->
+        <div class="relative">
+          <button (click)="toggleLanguageDropdown($event)"
+            class="w-full flex items-center justify-between px-3 py-2 bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 rounded-lg hover:border-brand-blue/30 transition-all text-left">
+            <div>
+              <p class="text-[9px] font-bold text-primary-400 uppercase tracking-wider leading-none mb-1">Language</p>
+              <p class="text-[11px] font-bold text-primary-900 dark:text-white truncate max-w-[80px]">
+                {{ getLanguageSummary() }}
+              </p>
+            </div>
+            <svg class="w-3 h-3 text-primary-400 transition-transform" [ngClass]="isLanguageDropdownOpen ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+          </button>
+
+          <!-- Dropdown -->
+          <div *ngIf="isLanguageDropdownOpen" (click)="$event.stopPropagation()"
+            class="absolute top-full left-0 mt-1 w-48 bg-white dark:bg-primary-900 border border-primary-200 dark:border-primary-700 rounded-xl shadow-elevated z-[60] max-h-60 overflow-y-auto p-2 flex flex-col gap-1">
+            <button *ngFor="let lang of languageOptions()"
+              (click)="toggleLanguage(lang.code)"
+              class="flex items-center gap-2 w-full px-3 py-2 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-800 transition-colors text-left group">
+              <div class="w-4 h-4 rounded border flex items-center justify-center transition-colors shrink-0"
+                [ngClass]="selectedLanguages().has(lang.code) ? 'bg-brand-blue border-brand-blue' : 'border-primary-300 dark:border-primary-600'">
+                <svg *ngIf="selectedLanguages().has(lang.code)" class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+              </div>
+              <span class="text-xs font-medium text-primary-700 dark:text-primary-200 group-hover:text-primary-900 dark:group-hover:text-white truncate">
+                {{ lang.name }}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Gender Multi-Select Dropdown -->
+        <div class="relative">
+          <button (click)="toggleGenderDropdown($event)"
+            class="w-full flex items-center justify-between px-3 py-2 bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 rounded-lg hover:border-brand-blue/30 transition-all text-left">
+            <div>
+              <p class="text-[9px] font-bold text-primary-400 uppercase tracking-wider leading-none mb-1">Gender</p>
+              <p class="text-[11px] font-bold text-primary-900 dark:text-white truncate max-w-[80px]">
+                {{ getGenderSummary() }}
+              </p>
+            </div>
+            <svg class="w-3 h-3 text-primary-400 transition-transform" [ngClass]="isGenderDropdownOpen ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+          </button>
+
+          <!-- Dropdown -->
+          <div *ngIf="isGenderDropdownOpen" (click)="$event.stopPropagation()"
+            class="absolute top-full right-0 mt-1 w-32 bg-white dark:bg-primary-900 border border-primary-200 dark:border-primary-700 rounded-xl shadow-elevated z-[60] p-2 flex flex-col gap-1">
+            <button *ngFor="let gender of genderOptions"
+              (click)="toggleGender(gender)"
+              class="flex items-center gap-2 w-full px-3 py-2 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-800 transition-colors text-left group">
+              <div class="w-4 h-4 rounded border flex items-center justify-center transition-colors shrink-0"
+                [ngClass]="selectedGenders().has(gender) ? 'bg-brand-blue border-brand-blue' : 'border-primary-300 dark:border-primary-600'">
+                <svg *ngIf="selectedGenders().has(gender)" class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+              </div>
+              <span class="text-xs font-medium text-primary-700 dark:text-primary-200 group-hover:text-primary-900 dark:group-hover:text-white capitalize">
+                {{ gender }}
+              </span>
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- Voice Dropdown -->
@@ -96,6 +160,41 @@ export class VoiceSelectorComponent {
   filterOptions = signal<string[]>(['Standard', 'Indian', 'Natural', 'All']);
   isDropdownOpen = false;
 
+  // Sub-filter signals
+  selectedGenders = signal<Set<string>>(new Set(['Male', 'Female']));
+  selectedLanguages = signal<Set<string>>(new Set(['hi-IN'])); // Default to Hindi
+  genderOptions = ['Male', 'Female'];
+  
+  isLanguageDropdownOpen = false;
+  isGenderDropdownOpen = false;
+
+  languageOptions = computed(() => {
+    const indianVoices = this.voices.filter(v => v.isSarvam);
+    const langs = new Map<string, string>();
+    
+    indianVoices.forEach(v => {
+      if (v.languageCode) {
+        const match = v.name.match(/\(([^)]+)\)/);
+        const name = match ? match[1] : v.languageCode;
+        langs.set(v.languageCode, name);
+      }
+    });
+    
+    return Array.from(langs.entries()).map(([code, name]) => ({ code, name }));
+  });
+
+  constructor() {
+    effect(() => {
+      if (this.currentFilter() === 'Indian') {
+        const filtered = this.getFilteredVoices();
+        // If current selection is NOT in the filtered list, pick the first available
+        if (filtered.length > 0 && !filtered.find(v => v.id === this.voiceId)) {
+          this.selectVoice(filtered[0].id);
+        }
+      }
+    });
+  }
+
   get selectedVoice(): Voice | undefined {
     return this.voices.find(v => v.id === this.voiceId);
   }
@@ -103,11 +202,70 @@ export class VoiceSelectorComponent {
   @HostListener('document:click')
   onDocumentClick(): void {
     this.isDropdownOpen = false;
+    this.isLanguageDropdownOpen = false;
+    this.isGenderDropdownOpen = false;
   }
 
   toggleDropdown(event: Event): void {
     event.stopPropagation();
     this.isDropdownOpen = !this.isDropdownOpen;
+    this.isLanguageDropdownOpen = false;
+    this.isGenderDropdownOpen = false;
+  }
+
+  toggleLanguageDropdown(event: Event): void {
+    event.stopPropagation();
+    this.isLanguageDropdownOpen = !this.isLanguageDropdownOpen;
+    this.isDropdownOpen = false;
+    this.isGenderDropdownOpen = false;
+  }
+
+  toggleGenderDropdown(event: Event): void {
+    event.stopPropagation();
+    this.isGenderDropdownOpen = !this.isGenderDropdownOpen;
+    this.isDropdownOpen = false;
+    this.isLanguageDropdownOpen = false;
+  }
+
+  toggleLanguage(code: string): void {
+    this.selectedLanguages.update(set => {
+      const newSet = new Set(set);
+      if (newSet.has(code)) {
+        if (newSet.size > 1) newSet.delete(code);
+      } else {
+        newSet.add(code);
+      }
+      return newSet;
+    });
+  }
+
+  toggleGender(gender: string): void {
+    this.selectedGenders.update(set => {
+      const newSet = new Set(set);
+      if (newSet.has(gender)) {
+        if (newSet.size > 1) newSet.delete(gender);
+      } else {
+        newSet.add(gender);
+      }
+      return newSet;
+    });
+  }
+
+  getLanguageSummary(): string {
+    const selected = this.selectedLanguages();
+    const options = this.languageOptions();
+    if (selected.size === options.length) return 'All Languages';
+    if (selected.size === 1) {
+      const lang = options.find(o => o.code === Array.from(selected)[0]);
+      return lang ? lang.name : 'Selected';
+    }
+    return `${selected.size} Languages`;
+  }
+
+  getGenderSummary(): string {
+    const selected = this.selectedGenders();
+    if (selected.size === 2) return 'All Genders';
+    return Array.from(selected)[0];
   }
 
   selectVoice(id: string): void {
@@ -127,7 +285,6 @@ export class VoiceSelectorComponent {
     this.currentFilter.set(filter);
     this.filterChanged.emit(filter);
 
-    // Auto-select first voice in the new category
     const voices = this.getFilteredVoices();
     if (voices.length > 0) {
       this.selectVoice(voices[0].id);
@@ -136,10 +293,23 @@ export class VoiceSelectorComponent {
 
   getFilteredVoices(): Voice[] {
     const filter = this.currentFilter();
-    if (filter === 'Standard') return this.voices.filter(v => !v.isElevenLabs && !v.isSarvam);
-    if (filter === 'Natural') return this.voices.filter(v => v.isElevenLabs);
-    if (filter === 'Indian') return this.voices.filter(v => v.isSarvam);
-    return this.voices;
+    let filtered = this.voices;
+
+    if (filter === 'Standard') {
+      filtered = this.voices.filter(v => !v.isElevenLabs && !v.isSarvam);
+    } else if (filter === 'Natural') {
+      filtered = this.voices.filter(v => v.isElevenLabs);
+    } else if (filter === 'Indian') {
+      filtered = this.voices.filter(v => v.isSarvam);
+      
+      const languages = this.selectedLanguages();
+      filtered = filtered.filter(v => v.languageCode && languages.has(v.languageCode));
+      
+      const genders = this.selectedGenders();
+      filtered = filtered.filter(v => genders.has(v.gender));
+    }
+    
+    return filtered;
   }
 
   getFilterCount(filter: string): number {

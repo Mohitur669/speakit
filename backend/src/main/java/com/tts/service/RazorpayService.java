@@ -19,9 +19,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.UUID;
 
+/**
+ * Service handling Razorpay payment orchestration.
+ * Integrates with SubscriptionManagementService for lifecycle changes.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -33,7 +36,12 @@ public class RazorpayService {
     private final SubscriptionRepository subscriptionRepository;
     private final UserRepository userRepository;
     private final SystemParameterService systemParameterService;
+    private final SubscriptionManagementService subscriptionManagementService;
 
+    /**
+     * Creates a Razorpay order and an internal PENDING subscription.
+     * Idempotency is handled by order creation tracking.
+     */
     @Transactional
     public PaymentOrderResponse createOrder(PaymentOrderRequest request, User user) throws RazorpayException {
         // Fetch LIVE price from system parameters to ensure accuracy
@@ -56,7 +64,7 @@ public class RazorpayService {
         Subscription subscription = Subscription.builder()
                 .user(user)
                 .planType(PlanType.valueOf(request.getPlanType().toUpperCase()))
-                .status(SubscriptionStatus.PENDING)
+                .status(SubscriptionStatus.PAYMENT_PENDING)
                 .build();
         subscriptionRepository.save(subscription);
 
@@ -66,7 +74,7 @@ public class RazorpayService {
                 .razorpayOrderId(orderId)
                 .amount(planPrice)
                 .currency(request.getCurrency())
-                .status(PaymentStatus.INITIATED)
+                .status(PaymentStatus.PENDING)
                 .build();
         
         paymentRepository.save(payment);
@@ -79,6 +87,10 @@ public class RazorpayService {
                 .build();
     }
 
+    /**
+     * Verifies the Razorpay signature and activates the subscription.
+     * Ensures idempotency to prevent double-upgrades.
+     */
     @Transactional
     public boolean verifyPayment(PaymentVerificationRequest request, User user) {
         try {
@@ -94,53 +106,27 @@ public class RazorpayService {
                         .orElseThrow(() -> new RuntimeException("Payment record not found"));
 
                 if (payment.getStatus() == PaymentStatus.SUCCESS) {
-                    log.warn("Replay attempt detected for order: {}", request.getRazorpayOrderId());
+                    log.warn("Idempotency Triggered: Payment already processed for order {}", request.getRazorpayOrderId());
                     return true; 
                 }
 
+                // 1. Update Payment Record
                 payment.setRazorpayPaymentId(request.getRazorpayPaymentId());
                 payment.setRazorpaySignature(request.getRazorpaySignature());
                 payment.setStatus(PaymentStatus.SUCCESS);
                 paymentRepository.save(payment);
 
-                activateSubscription(user, payment);
+                // 2. Delegate Plan Change (Safe, Rank-Aware)
+                PlanType targetPlan = payment.getSubscription() != null ? 
+                    payment.getSubscription().getPlanType() : PlanType.PRO_PLUS;
+                
+                subscriptionManagementService.changePlan(user, targetPlan, null);
+                
                 return true;
             }
         } catch (Exception e) {
             log.error("Payment verification failed", e);
         }
         return false;
-    }
-
-    private void activateSubscription(User user, Payment payment) {
-        // Upgrade user based on plan
-        PlanType plan = payment.getSubscription() != null ? 
-            payment.getSubscription().getPlanType() : PlanType.PRO_PLUS;
-            
-        user.setPlanType(plan);
-        userRepository.save(user);
-
-        // Ensure subscription record is consistent and ACTIVE
-        Subscription subscription = payment.getSubscription();
-        if (subscription == null) {
-            subscription = Subscription.builder()
-                    .user(user)
-                    .planType(PlanType.PRO_PLUS)
-                    .status(SubscriptionStatus.ACTIVE)
-                    .currentPeriodStart(LocalDateTime.now())
-                    .currentPeriodEnd(LocalDateTime.now().plusMonths(1))
-                    .build();
-            
-            subscriptionRepository.save(subscription);
-            payment.setSubscription(subscription);
-        } else {
-            subscription.setStatus(SubscriptionStatus.ACTIVE);
-            subscription.setCurrentPeriodStart(LocalDateTime.now());
-            subscription.setCurrentPeriodEnd(LocalDateTime.now().plusMonths(1));
-            subscriptionRepository.save(subscription);
-        }
-        
-        paymentRepository.save(payment);
-        log.info("Subscription ({}) activated for user: {}", plan, user.getUsername());
     }
 }
