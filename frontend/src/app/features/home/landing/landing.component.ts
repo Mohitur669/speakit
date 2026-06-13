@@ -42,7 +42,7 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
             </h1>
 
             <!-- Subheadline -->
-            <p class="text-lg sm:text-xl text-primary-500 dark:text-primary-400 max-w-2xl mx-auto mb-10 animate-slide-up stagger-1">
+            <p class="text-lg sm:text-xl text-primary-600 dark:text-primary-400 max-w-2xl mx-auto mb-10 animate-slide-up stagger-1">
               Professional AI voice generation featuring Indian Regional, Natural AI, and Neural voices for creators and businesses.
             </p>
 
@@ -52,7 +52,7 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
                 {{ authService.currentUser() ? 'Go to Studio' : 'Start Free Trial' }}
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
               </button>
-              <a [routerLink]="authService.currentUser() ? '/tts' : '/login'" class="w-full sm:w-auto px-8 py-3.5 text-base font-semibold text-primary-700 dark:text-primary-200 bg-white dark:bg-primary-900 hover:bg-primary-100 dark:hover:bg-primary-800 border border-primary-200 dark:border-primary-700 rounded-xl transition-all flex items-center justify-center gap-2">
+              <a [routerLink]="authService.currentUser() ? '/tts' : '/login'" class="w-full sm:w-auto px-8 py-3.5 text-base font-semibold text-primary-700 dark:text-primary-200 bg-white dark:bg-primary-900 hover:bg-primary-50 dark:hover:bg-primary-800 border border-primary-200 dark:border-primary-700 rounded-xl transition-all flex items-center justify-center gap-2">
                 {{ authService.currentUser() ? 'Open App' : 'View Demo' }}
               </a>
             </div>
@@ -150,7 +150,7 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="text-center max-w-2xl mx-auto mb-8 sm:mb-16">
             <h2 class="text-2xl sm:text-4xl font-bold text-primary-900 dark:text-white mb-4">Everything you need for voice creation</h2>
-            <p class="text-sm sm:text-lg text-primary-500 dark:text-primary-400">From podcasts to regional content, create studio-quality voiceovers in minutes.</p>
+            <p class="text-sm sm:text-lg text-primary-600 dark:text-primary-400">From podcasts to audiobooks, create studio-quality voiceovers in minutes.</p>
           </div>
           <div class="grid md:grid-cols-3 gap-6 sm:gap-8">
             <!-- Feature 1: Indian Regional -->
@@ -198,7 +198,7 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="text-center max-w-2xl mx-auto mb-10 sm:mb-16">
             <h2 class="text-2xl sm:text-4xl font-bold text-primary-900 dark:text-white mb-4">Simple, transparent pricing</h2>
-            <p class="text-sm sm:text-lg text-primary-500 dark:text-primary-400">Start free, upgrade when you need more.</p>
+            <p class="text-sm sm:text-lg text-primary-600 dark:text-primary-400">Start free, upgrade when you need more.</p>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 max-w-7xl mx-auto">
             <!-- Free Plan -->
@@ -288,7 +288,7 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="text-center mb-10 sm:mb-16">
             <h2 class="text-2xl sm:text-3xl font-bold text-primary-900 dark:text-white mb-4">Compare Plans</h2>
-            <p class="text-primary-600 dark:text-primary-400 text-sm sm:text-base">Find the perfect plan for your voice creation needs.</p>
+            <p class="text-primary-700 dark:text-primary-400 text-sm sm:text-base">Find the perfect plan for your voice creation needs.</p>
           </div>
 
           <div class="overflow-x-auto rounded-2xl border border-primary-200 dark:border-primary-800 shadow-xl bg-white dark:bg-primary-900">
