@@ -39,7 +39,7 @@ import { ThemeService } from '../../../core/services/theme.service';
           <div class="flex items-center gap-2 sm:gap-3 shrink-0">
             <!-- Theme Toggle -->
             <button (click)="themeService.toggleTheme()"
-              class="p-2 rounded-lg text-primary-500 hover:text-primary-900 hover:bg-primary-100 dark:text-primary-400 dark:hover:text-white dark:hover:bg-primary-800 transition-all"
+              class="p-2 rounded-lg text-primary-500 hover:text-primary-900 hover:bg-primary-50 dark:text-primary-400 dark:hover:text-white dark:hover:bg-primary-800 transition-all"
               aria-label="Toggle theme">
               <svg *ngIf="themeService.isDarkMode()" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
@@ -54,7 +54,7 @@ import { ThemeService } from '../../../core/services/theme.service';
               <div class="flex items-center gap-2 sm:gap-3 relative">
                 <!-- User Avatar + Menu Trigger -->
                 <div (click)="toggleUserMenu($event)" 
-                  class="flex items-center justify-center gap-2 sm:gap-3 h-9 px-3 rounded-full bg-primary-100 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 cursor-pointer hover:border-brand-blue/50 transition-all select-none"
+                  class="flex items-center justify-center gap-2 sm:gap-3 h-9 px-3 rounded-full bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 cursor-pointer hover:border-brand-blue/50 transition-all select-none"
                   [ngClass]="{'bg-accent-50 dark:bg-accent-500/10 border-accent-200 dark:border-accent-500/30': authService.currentPlanType() !== 'FREE'}">
                   <div class="relative">
                     <div class="w-6 h-6 rounded-full bg-gradient-to-br from-brand-blue to-brand-purple flex items-center justify-center shrink-0">
@@ -126,7 +126,7 @@ import { ThemeService } from '../../../core/services/theme.service';
             <ng-template #guest>
               <div class="flex items-center gap-1 sm:gap-2">
                 <a routerLink="/login"
-                  class="px-2 sm:px-4 py-2 text-xs sm:text-sm font-medium text-primary-600 hover:text-primary-900 hover:bg-primary-100 dark:text-primary-300 dark:hover:text-white dark:hover:bg-primary-800 rounded-lg transition-all">
+                  class="px-2 sm:px-4 py-2 text-xs sm:text-sm font-medium text-primary-600 hover:text-primary-900 hover:bg-primary-50 dark:text-primary-300 dark:hover:text-white dark:hover:bg-primary-800 rounded-lg transition-all">
                   Sign in
                 </a>
                 <a routerLink="/signup"

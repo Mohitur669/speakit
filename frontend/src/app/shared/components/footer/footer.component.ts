@@ -18,7 +18,7 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
               </div>
               <span class="text-lg font-bold text-primary-900 dark:text-white">SpeakIT</span>
             </div>
-            <p class="text-sm text-primary-500 dark:text-primary-400 mb-6 leading-relaxed">
+            <p class="text-sm text-primary-600 dark:text-primary-400 mb-6 leading-relaxed">
               Transforming digital content with lifelike AI-powered speech synthesis. Professional quality, available to everyone.
             </p>
             <div class="flex items-center gap-4">
@@ -33,31 +33,31 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
           <div>
             <h4 class="text-sm font-bold text-primary-900 dark:text-white uppercase tracking-wider mb-6">Product</h4>
             <ul class="space-y-4">
-              <li><a routerLink="/" fragment="features" class="text-sm text-primary-500 dark:text-primary-400 hover:text-brand-blue transition-colors">Features</a></li>
-              <li><a routerLink="/" fragment="pricing" class="text-sm text-primary-500 dark:text-primary-400 hover:text-brand-blue transition-colors">Pricing</a></li>
-              <li><a routerLink="/login" class="text-sm text-primary-500 dark:text-primary-400 hover:text-brand-blue transition-colors">Demo</a></li>
+              <li><a routerLink="/" fragment="features" class="text-sm text-primary-600 dark:text-primary-400 hover:text-brand-blue transition-colors">Features</a></li>
+              <li><a routerLink="/" fragment="pricing" class="text-sm text-primary-600 dark:text-primary-400 hover:text-brand-blue transition-colors">Pricing</a></li>
+              <li><a routerLink="/login" class="text-sm text-primary-600 dark:text-primary-400 hover:text-brand-blue transition-colors">Demo</a></li>
             </ul>
           </div>
           <div>
             <h4 class="text-sm font-bold text-primary-900 dark:text-white uppercase tracking-wider mb-6">Company</h4>
             <ul class="space-y-4">
-              <li><a routerLink="/about" class="text-sm text-primary-500 dark:text-primary-400 hover:text-brand-blue transition-colors">About Us</a></li>
-              <li><a routerLink="/blog" class="text-sm text-primary-500 dark:text-primary-400 hover:text-brand-blue transition-colors">Blog</a></li>
-              <li><a routerLink="/contact" class="text-sm text-primary-500 dark:text-primary-400 hover:text-brand-blue transition-colors">Contact</a></li>
+              <li><a routerLink="/about" class="text-sm text-primary-600 dark:text-primary-400 hover:text-brand-blue transition-colors">About Us</a></li>
+              <li><a routerLink="/blog" class="text-sm text-primary-600 dark:text-primary-400 hover:text-brand-blue transition-colors">Blog</a></li>
+              <li><a routerLink="/contact" class="text-sm text-primary-600 dark:text-primary-400 hover:text-brand-blue transition-colors">Contact</a></li>
             </ul>
           </div>
           <div>
             <h4 class="text-sm font-bold text-primary-900 dark:text-white uppercase tracking-wider mb-6">Legal</h4>
             <ul class="space-y-4">
-              <li><a routerLink="/privacy" class="text-sm text-primary-500 dark:text-primary-400 hover:text-brand-blue transition-colors">Privacy Policy</a></li>
-              <li><a routerLink="/terms" class="text-sm text-primary-500 dark:text-primary-400 hover:text-brand-blue transition-colors">Terms of Service</a></li>
+              <li><a routerLink="/privacy" class="text-sm text-primary-600 dark:text-primary-400 hover:text-brand-blue transition-colors">Privacy Policy</a></li>
+              <li><a routerLink="/terms" class="text-sm text-primary-600 dark:text-primary-400 hover:text-brand-blue transition-colors">Terms of Service</a></li>
             </ul>
           </div>
         </div>
-        <div class="pt-8 border-t border-primary-100 dark:border-primary-800 flex flex-col md:flex-row items-center justify-between gap-6">
-          <p class="text-xs text-primary-400">&copy; {{ currentYear }} SpeakIT. All rights reserved. Built for professional voice generation.</p>
+        <div class="pt-8 border-t border-primary-200 dark:border-primary-800 flex flex-col md:flex-row items-center justify-between gap-6">
+          <p class="text-xs text-primary-600">&copy; {{ currentYear }} SpeakIT. All rights reserved. Built for professional voice generation.</p>
           <div class="flex items-center gap-6">
-            <span class="text-xs text-primary-400 flex items-center gap-2">
+            <span class="text-xs text-primary-600 flex items-center gap-2">
               <span class="w-1.5 h-1.5 rounded-full"
                 [ngClass]="{
                   'bg-emerald-500': systemStatus() === 'Operational',

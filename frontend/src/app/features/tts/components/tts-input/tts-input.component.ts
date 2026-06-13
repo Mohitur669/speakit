@@ -16,7 +16,7 @@ import { FormsModule } from '@angular/forms';
             {{ usage?.dailyCount }}/{{ usage?.dailyLimit }} credits used
           </span>
           <!-- Mobile-Only Quick Stats -->
-          <div class="md:hidden flex items-center gap-3 bg-primary-100 dark:bg-primary-800 px-3 py-1 rounded-full">
+          <div class="md:hidden flex items-center gap-3 bg-primary-50 dark:bg-primary-800 px-3 py-1 rounded-full border border-primary-100 dark:border-transparent">
             <span class="text-[10px] font-bold text-primary-500 uppercase tracking-wider">Usage</span>
             <span class="text-[11px] font-medium text-primary-700 dark:text-primary-300">{{ text.length }} / {{ maxChars | number }}</span>
             <div class="w-12 h-1.5 bg-primary-200 dark:bg-primary-700 rounded-full overflow-hidden">
@@ -27,7 +27,7 @@ import { FormsModule } from '@angular/forms';
           </div>
         </div>
         <button *ngIf="text" (click)="clearText()"
-          class="text-sm sm:text-xs text-primary-400 hover:text-primary-600 dark:hover:text-primary-300 transition-colors">
+          class="text-sm sm:text-xs text-primary-500 hover:text-primary-700 dark:hover:text-primary-300 transition-colors">
           Clear
         </button>
       </div>
@@ -37,7 +37,7 @@ import { FormsModule } from '@angular/forms';
           placeholder="Enter your text here..."
           rows="12"
           [maxlength]="maxChars"
-          class="flex-1 w-full bg-primary-50 dark:bg-primary-800 text-primary-900 dark:text-white placeholder-primary-400 rounded-xl border border-primary-200 dark:border-primary-700 p-3 sm:p-4 text-base sm:text-sm leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all min-h-[300px]"></textarea>
+          class="flex-1 w-full bg-primary-50 dark:bg-primary-800 text-primary-900 dark:text-white placeholder-primary-400 rounded-xl border border-primary-300 dark:border-primary-700 p-3 sm:p-4 text-base sm:text-sm leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all min-h-[300px]"></textarea>
 
         <div class="mt-4 flex items-center justify-end">
           <button (click)="convert.emit()" [disabled]="loading || !text.trim() || !voiceId"

@@ -19,10 +19,10 @@ import { NavbarComponent } from '../../../shared/components/navbar/navbar.compon
 
       <div class="flex items-center justify-center px-4 py-16">
         <div class="w-full max-w-md animate-fade-in">
-          <div class="bg-white dark:bg-primary-900 rounded-2xl border border-primary-200 dark:border-primary-700 shadow-xl overflow-hidden">
+          <div class="bg-white dark:bg-primary-900 rounded-2xl border border-primary-300 dark:border-primary-700 shadow-xl overflow-hidden">
             <div class="p-8 pb-0">
               <h1 class="text-2xl font-bold text-primary-900 dark:text-white mb-2">Welcome back</h1>
-              <p class="text-primary-500 dark:text-primary-400">Sign in to your SpeakIT account</p>
+              <p class="text-primary-600 dark:text-primary-400">Sign in to your SpeakIT account</p>
             </div>
 
             <div class="p-8">
@@ -31,7 +31,7 @@ import { NavbarComponent } from '../../../shared/components/navbar/navbar.compon
                   <label class="block text-sm font-medium text-primary-700 dark:text-primary-300 mb-2">Phone, email or username</label>
                   <input [(ngModel)]="username" (input)="username = username.toLowerCase()" name="username" type="text" required
                     placeholder="Enter your phone, email or username"
-                    class="w-full px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all lowercase">
+                    class="w-full px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-300 dark:border-primary-700 text-primary-900 dark:text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all lowercase">
                 </div>
 
                 <div>
@@ -39,7 +39,7 @@ import { NavbarComponent } from '../../../shared/components/navbar/navbar.compon
                   <div class="relative">
                     <input [(ngModel)]="password" name="password" [type]="showPassword() ? 'text' : 'password'" required
                       placeholder="••••••••"
-                      class="w-full px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all">
+                      class="w-full px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-300 dark:border-primary-700 text-primary-900 dark:text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all">
                     <button type="button" (click)="togglePassword()"
                       class="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-primary-400 hover:text-primary-600 dark:hover:text-primary-300 transition-colors">
                       <svg *ngIf="!showPassword()" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
@@ -76,14 +76,14 @@ import { NavbarComponent } from '../../../shared/components/navbar/navbar.compon
                 </div>
               </div>
 
-              <p class="text-center text-primary-500 dark:text-primary-400">
+              <p class="text-center text-primary-600 dark:text-primary-400">
                 Don't have an account?
                 <a routerLink="/signup" class="font-semibold text-brand-blue hover:text-brand-blue/80 transition-colors">Create one</a>
               </p>
             </div>
           </div>
 
-          <p class="text-center text-sm text-primary-400 mt-6">
+          <p class="text-center text-sm text-primary-500 mt-6">
             By signing in, you agree to our Terms of Service and Privacy Policy.
           </p>
         </div>

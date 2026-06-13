@@ -12,7 +12,7 @@ import { getVoiceTypeLabel, getVoiceTypeClass } from '../../../../shared';
       <h2 class="text-lg sm:text-sm font-semibold text-primary-900 dark:text-white mb-3 sm:mb-4">Select Voice</h2>
 
       <!-- Filter Tabs -->
-      <div class="flex gap-1 p-1 bg-primary-100 dark:bg-primary-800 rounded-lg mb-3 sm:mb-4">
+      <div class="flex gap-1 p-1 bg-primary-50 dark:bg-primary-800 rounded-lg mb-3 sm:mb-4 border border-primary-100 dark:border-transparent">
 
         <ng-container *ngFor="let filter of filterOptions()">
           <button *ngIf="filter !== 'All'"
@@ -44,14 +44,14 @@ import { getVoiceTypeLabel, getVoiceTypeClass } from '../../../../shared';
       <!-- Voice Dropdown -->
       <div class="relative">
         <button (click)="toggleDropdown($event)"
-          class="w-full flex items-center justify-between px-4 py-3 bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 rounded-xl hover:border-brand-blue/50 transition-colors">
+          class="w-full flex items-center justify-between px-4 py-3 bg-white dark:bg-primary-800 border border-primary-300 dark:border-primary-700 rounded-xl hover:border-brand-blue/50 transition-colors shadow-sm">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-lg bg-brand-blue/10 flex items-center justify-center text-brand-blue shrink-0">
               <span class="text-xl">{{ selectedVoice?.gender === 'Female' ? '👩' : (selectedVoice?.gender === 'Male' ? '👨' : '👤') }}</span>
             </div>
             <div class="text-left">
               <div class="text-base sm:text-sm font-medium text-primary-900 dark:text-white">{{ selectedVoice?.name || 'Select a voice' }}</div>
-              <div class="text-sm sm:text-xs text-primary-400">{{ selectedVoice?.gender }} · {{ getVoiceTypeLabel(selectedVoice) }}</div>
+              <div class="text-sm sm:text-xs text-primary-600 dark:text-primary-400">{{ selectedVoice?.gender }} · {{ getVoiceTypeLabel(selectedVoice) }}</div>
             </div>
           </div>
           <svg [ngClass]="isDropdownOpen ? 'rotate-180' : ''" class="w-4 h-4 text-primary-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -70,10 +70,10 @@ import { getVoiceTypeLabel, getVoiceTypeClass } from '../../../../shared';
               <span class="text-lg">{{ voice.gender === 'Female' ? '👩' : '👨' }}</span>
               <div>
                 <div class="text-sm font-medium text-primary-900 dark:text-white">{{ voice.name }}</div>
-                <div class="text-xs text-primary-400 uppercase">{{ voice.gender }}</div>
+                <div class="text-xs text-primary-500 dark:text-primary-400 uppercase font-semibold">{{ voice.gender }}</div>
               </div>
             </div>
-            <span [ngClass]="getVoiceTypeClass(voice)" class="text-[10px] font-medium uppercase">
+            <span [ngClass]="getVoiceTypeClass(voice)" class="text-[10px] font-bold uppercase">
               {{ getVoiceTypeLabel(voice) }}
             </span>
           </button>
