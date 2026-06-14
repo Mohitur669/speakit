@@ -42,57 +42,68 @@ import { NavbarComponent } from '../../../shared/components/navbar/navbar.compon
                 </tr>
               </thead>
               <tbody>
-                <tr *ngFor="let item of history()" 
-                  class="hover:bg-primary-50/50 dark:hover:bg-primary-800/30 transition-colors group">
-                  <td class="px-4 py-2.5 md:py-5 border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">
-                    <span class="text-xs sm:text-sm font-bold text-brand-blue">{{ item.planName === 'FREE' ? 'Basic' : item.planName.replace('_', ' ') }}</span>
-                  </td>
-                  <td class="px-4 py-2.5 md:py-5 border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">
-                    <span class="text-xs sm:text-sm font-medium text-primary-900 dark:text-white">{{ item.amount | currency:item.currency:'symbol':'1.2-2' }}</span>
-                  </td>
-                  <td class="px-4 py-2.5 md:py-5 border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">
-                    <span class="px-2 py-1 rounded text-[10px] sm:text-xs font-bold uppercase"
-                      [ngClass]="{
-                        'bg-green-500/10 text-green-600': item.status === 'SUCCESS' || item.status === 'CAPTURED',
-                        'bg-red-500/10 text-red-600': item.status === 'FAILED',
-                        'bg-yellow-500/10 text-yellow-600': item.status === 'PENDING' || item.status === 'CREATED' || item.status === 'INITIATED'
-                      }">
-                      {{ item.status }}
-                    </span>
-                  </td>
-                  <td class="px-4 py-2.5 md:py-5 border-b border-primary-100 dark:border-primary-800 whitespace-nowrap">
-                    <div class="flex items-baseline gap-2">
-                      <span class="text-xs sm:text-sm font-medium text-primary-900 dark:text-white">{{ item.createdAt | date:'mediumDate' }}</span>
-                      <span class="text-[10px] sm:text-xs text-primary-400 font-mono">{{ item.createdAt | date:'shortTime' }}</span>
-                    </div>
-                  </td>
-                </tr>
-
-                <!-- Empty State -->
-                <tr *ngIf="history().length === 0 && !loading()">
-                  <td colspan="4" class="p-20 text-center">
-                    <div class="flex flex-col items-center gap-4">
-                      <div class="w-16 h-16 rounded-full bg-primary-100 dark:bg-primary-800 flex items-center justify-center text-primary-400">
-                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                        </svg>
+                <ng-container *ngIf="!loading(); else skeletonLoader">
+                  <tr *ngFor="let item of history()" 
+                    class="hover:bg-primary-50/50 dark:hover:bg-primary-800/30 transition-colors group">
+                    <td class="px-4 py-2.5 md:py-5 border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">
+                      <span class="text-xs sm:text-sm font-bold text-brand-blue">{{ item.planName === 'FREE' ? 'Basic' : item.planName.replace('_', ' ') }}</span>
+                    </td>
+                    <td class="px-4 py-2.5 md:py-5 border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">
+                      <span class="text-xs sm:text-sm font-medium text-primary-900 dark:text-white">{{ item.amount | currency:item.currency:'symbol':'1.2-2' }}</span>
+                    </td>
+                    <td class="px-4 py-2.5 md:py-5 border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">
+                      <span class="px-2 py-1 rounded text-[10px] sm:text-xs font-bold uppercase"
+                        [ngClass]="{
+                          'bg-green-500/10 text-green-600': item.status === 'SUCCESS' || item.status === 'CAPTURED',
+                          'bg-red-500/10 text-red-600': item.status === 'FAILED',
+                          'bg-yellow-500/10 text-yellow-600': item.status === 'PENDING' || item.status === 'CREATED' || item.status === 'INITIATED'
+                        }">
+                        {{ item.status }}
+                      </span>
+                    </td>
+                    <td class="px-4 py-2.5 md:py-5 border-b border-primary-100 dark:border-primary-800 whitespace-nowrap">
+                      <div class="flex items-baseline gap-2">
+                        <span class="text-xs sm:text-sm font-medium text-primary-900 dark:text-white">{{ item.createdAt | date:'mediumDate' }}</span>
+                        <span class="text-[10px] sm:text-xs text-primary-400 font-mono">{{ item.createdAt | date:'shortTime' }}</span>
                       </div>
-                      <div>
-                        <h3 class="text-lg font-bold text-primary-900 dark:text-white">No payments yet</h3>
-                        <p class="text-sm text-primary-500">Your subscription payments will appear here.</p>
-                      </div>
-                    </div>
-                  </td>
-                </tr>
+                    </td>
+                  </tr>
 
-                <!-- Loading State -->
-                <tr *ngIf="loading()">
-                  <td colspan="4" class="p-12 text-center">
-                    <div class="flex justify-center">
-                      <div class="w-8 h-8 border-4 border-brand-blue border-t-transparent rounded-full animate-spin"></div>
-                    </div>
-                  </td>
-                </tr>
+                  <!-- Empty State -->
+                  <tr *ngIf="history().length === 0">
+                    <td colspan="4" class="p-20 text-center">
+                      <div class="flex flex-col items-center gap-4">
+                        <div class="w-16 h-16 rounded-full bg-primary-100 dark:bg-primary-800 flex items-center justify-center text-primary-400">
+                          <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                          </svg>
+                        </div>
+                        <div>
+                          <h3 class="text-lg font-bold text-primary-900 dark:text-white">No payments yet</h3>
+                          <p class="text-sm text-primary-500">Your subscription payments will appear here.</p>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                </ng-container>
+
+                <!-- Skeleton Loader -->
+                <ng-template #skeletonLoader>
+                  <tr *ngFor="let i of [1,2,3,4,5]" class="animate-pulse">
+                    <td class="px-4 py-5 border-b border-r border-primary-100 dark:border-primary-800">
+                      <div class="w-20 h-4 bg-primary-200 dark:bg-primary-700 rounded"></div>
+                    </td>
+                    <td class="px-4 py-5 border-b border-r border-primary-100 dark:border-primary-800">
+                      <div class="w-16 h-4 bg-primary-100 dark:bg-primary-800 rounded"></div>
+                    </td>
+                    <td class="px-4 py-5 border-b border-r border-primary-100 dark:border-primary-800">
+                      <div class="w-12 h-4 bg-primary-100 dark:bg-primary-800 rounded"></div>
+                    </td>
+                    <td class="px-4 py-5 border-b border-primary-100 dark:border-primary-800">
+                      <div class="w-32 h-4 bg-primary-100 dark:bg-primary-800 rounded"></div>
+                    </td>
+                  </tr>
+                </ng-template>
               </tbody>
             </table>
           </div>
@@ -103,12 +114,12 @@ import { NavbarComponent } from '../../../shared/components/navbar/navbar.compon
               Showing {{ history().length }} of {{ totalElements() }} entries
             </span>
             <div class="flex items-center gap-2">
-              <button (click)="changePage(currentPage() - 1)" [disabled]="currentPage() === 0"
+              <button (click)="changePage(currentPage() - 1)" [disabled]="currentPage() === 0 || loading()"
                 class="p-2 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-800 disabled:opacity-30 transition-colors text-primary-600 dark:text-primary-300">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
               </button>
               <span class="text-sm font-bold text-primary-700 dark:text-primary-200">{{ currentPage() + 1 }} / {{ totalPages() }}</span>
-              <button (click)="changePage(currentPage() + 1)" [disabled]="currentPage() >= totalPages() - 1"
+              <button (click)="changePage(currentPage() + 1)" [disabled]="currentPage() >= totalPages() - 1 || loading()"
                 class="p-2 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-800 disabled:opacity-30 transition-colors text-primary-600 dark:text-primary-300">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
               </button>

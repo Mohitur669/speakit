@@ -48,8 +48,8 @@ import { FooterComponent } from '../../../../shared/components/footer/footer.com
             <h2 class="text-2xl font-bold text-primary-900 dark:text-white mt-12 mb-4">5. Grievance Redressal</h2>
             <p>As mandated by <strong>Rule 3(11) of the IT Rules, 2021</strong>, if you have any complaints regarding data processing, please contact our Grievance Officer:</p>
             <p class="mt-4 font-medium text-primary-900 dark:text-white">
-              Name: [VERIFY WITH COUNSEL: INSERT NAME]<br>
-              Email: [VERIFY WITH COUNSEL: INSERT EMAIL ADDRESS]<br>
+              Name: Mohd Mohitur Rahaman<br>
+              Email: grievance&#64;mohitur.com<br>
               Jurisdiction: India
             </p>
           </div>

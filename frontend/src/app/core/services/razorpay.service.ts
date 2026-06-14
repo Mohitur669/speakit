@@ -162,7 +162,10 @@ export class RazorpayService {
       );
 
       this.toast.show('Payment successful! Your subscription is now active.', 'success');
-      this.authService.refreshStatus();
+      
+      // Wait for status refresh (clears voice cache) before navigating to studio
+      await firstValueFrom(this.authService.refreshStatus());
+      
       this.router.navigate(['/tts']);
       
     } catch (error) {

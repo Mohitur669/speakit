@@ -42,7 +42,7 @@ import { FooterComponent } from '../../../../shared/components/footer/footer.com
             <p>Payments for Pro plans are handled via <strong>Razorpay</strong>. All transactions are in <strong>Indian Rupees (INR)</strong>. Since this is a digital SaaS product with an immediate consumption nature, refunds are generally not provided once a synthesis has been performed, as per the <strong>Consumer Protection (e-Commerce) Rules, 2020</strong>.</p>
 
             <h2 class="text-2xl font-bold text-primary-900 dark:text-white mt-12 mb-4">5. Governing Law</h2>
-            <p>These Terms shall be governed by and constructed in accordance with the laws of India. Any disputes shall be subject to the exclusive jurisdiction of the courts in <strong>[VERIFY WITH COUNSEL: INSERT CITY]</strong>.</p>
+            <p>These Terms shall be governed by and constructed in accordance with the laws of India. Any disputes shall be subject to the exclusive jurisdiction of the courts in <strong>West Bengal</strong>.</p>
           </div>
         </div>
       </main>

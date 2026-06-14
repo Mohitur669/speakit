@@ -160,7 +160,26 @@ ON CONFLICT (parameter_name) DO NOTHING;
 -- Amber: "Maintenance"
 -- Red: "Outage"
 
+-- 7. Contact Us Submissions
+CREATE SEQUENCE IF NOT EXISTS contact_seq START WITH 1 INCREMENT BY 50;
 
+CREATE TABLE IF NOT EXISTS contact_submissions (
+    id BIGINT PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) NOT NULL,
+    topic VARCHAR(50) NOT NULL,
+    message TEXT NOT NULL,
+    ip_address VARCHAR(45),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    version BIGINT NOT NULL DEFAULT 0
+);
+
+COMMENT ON TABLE contact_submissions IS 'Secure registry for public contact form inquiries and support requests';
+
+CREATE INDEX IF NOT EXISTS idx_contact_email ON contact_submissions(email);
+CREATE INDEX IF NOT EXISTS idx_contact_created_at ON contact_submissions(created_at);
 
 -- Migration Helper for existing databases
 DO $$

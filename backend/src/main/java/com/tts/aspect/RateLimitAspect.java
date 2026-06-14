@@ -47,21 +47,47 @@ public class RateLimitAspect {
         RateLimited rateLimited = signature.getMethod().getAnnotation(RateLimited.class);
         RateLimitAction action = rateLimited.action();
 
-        String bucketKey = generateBucketKey(action, currentRequest);
-        
-        // Performance: Avoid repeated creation of buckets
-        Bucket bucket = rateLimitBuckets.computeIfAbsent(bucketKey, k -> createBucketForAction(action));
+        if (action == RateLimitAction.PUBLIC) {
+            return handlePublicMultiLimit(joinPoint, currentRequest);
+        }
 
+        String bucketKey = generateBucketKey(action, currentRequest, joinPoint.getArgs());
+        return checkBucket(bucketKey, action, joinPoint);
+    }
+
+    private Object handlePublicMultiLimit(ProceedingJoinPoint joinPoint, HttpServletRequest req) throws Throwable {
+        String clientIp = extractRealIp(req);
+        
+        // Signal 1: IP-based limiting (The standard shield)
+        checkBucket("PUB_IP_" + clientIp, RateLimitAction.PUBLIC, null);
+
+        // Signal 2: Identity-based limiting (Email)
+        for (Object arg : joinPoint.getArgs()) {
+            if (arg instanceof com.tts.dto.ContactRequest) {
+                String email = ((com.tts.dto.ContactRequest) arg).getEmail();
+                if (email != null && !email.isEmpty()) {
+                    String emailHash = hashString(email.toLowerCase().trim());
+                    checkBucket("PUB_EMAIL_" + emailHash, RateLimitAction.PUBLIC, null);
+                }
+            }
+        }
+
+        return joinPoint.proceed();
+    }
+
+    private Object checkBucket(String key, RateLimitAction action, ProceedingJoinPoint joinPoint) throws Throwable {
+        Bucket bucket = rateLimitBuckets.computeIfAbsent(key, k -> createBucketForAction(action));
         ConsumptionProbe probe = bucket.tryConsumeAndReturnRemaining(1);
 
         if (probe.isConsumed()) {
-            return joinPoint.proceed();
+            return joinPoint != null ? joinPoint.proceed() : null;
         } else {
-            long waitForRefillSeconds = probe.getNanosToWaitForRefill() / 1_000_000_000;
-            log.warn("Rate limit exceeded for key: {} (Action: {}). Must wait {} seconds.", bucketKey, action, waitForRefillSeconds);
-            throw new RateLimitExceededException("Too many requests. Please try again later.", waitForRefillSeconds);
+            long wait = probe.getNanosToWaitForRefill() / 1_000_000_000;
+            log.warn("Rate limit hit for key: {} (Action: {})", key, action);
+            throw new RateLimitExceededException("Too many requests. Please try again later.", wait);
         }
     }
+
 
     /**
      * Determines the correct bucket configuration based on the endpoint's sensitivity.
@@ -78,31 +104,38 @@ public class RateLimitAspect {
     /**
      * Generates a unique rate-limiting key based on layered signals to prevent bypasses.
      */
-    private String generateBucketKey(RateLimitAction action, HttpServletRequest req) {
+    private String generateBucketKey(RateLimitAction action, HttpServletRequest req, Object[] args) {
         String clientIp = extractRealIp(req);
 
         return switch (action) {
             case LIVE_PARAM -> "LIVE_PARAM_" + clientIp;
             case TTS -> {
                 // For expensive operations, bind the limit to the authenticated User ID.
-                // We fetch this from request attributes (populated by JwtAuthenticationFilter).
                 Long userId = (Long) req.getAttribute("userId");
-                
                 if (userId != null) {
-                    log.debug("Rate limiting bound to USER_ID: {}", userId);
                     yield "TTS_USER_" + userId;
-                } else {
-                    log.warn("Authenticated endpoint hit but userId attribute missing. Falling back to IP: {}", clientIp);
-                    yield "TTS_IP_" + clientIp;
                 }
+                yield "TTS_IP_" + clientIp;
             }
             case AUTH -> {
-                // For Auth (Login/Register), combine IP and User-Agent to stop basic botnet rotation
                 String userAgent = req.getHeader("User-Agent");
                 String fingerprint = hashString(clientIp + (userAgent != null ? userAgent : ""));
                 yield "AUTH_" + fingerprint;
             }
-            case PUBLIC -> "PUBLIC_" + clientIp;
+            case PUBLIC -> {
+                // Defense-in-Depth: If it's a contact form, we also limit by the email provided in the body
+                // to prevent one email from being used across 10,000 IPs.
+                String emailSuffix = "";
+                for (Object arg : args) {
+                    if (arg instanceof com.tts.dto.ContactRequest) {
+                        String email = ((com.tts.dto.ContactRequest) arg).getEmail();
+                        if (email != null && !email.isEmpty()) {
+                            emailSuffix = "_EMAIL_" + hashString(email.toLowerCase().trim());
+                        }
+                    }
+                }
+                yield "PUBLIC_" + clientIp + emailSuffix;
+            }
         };
     }
 

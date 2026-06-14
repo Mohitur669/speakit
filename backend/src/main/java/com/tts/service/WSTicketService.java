@@ -3,6 +3,7 @@ package com.tts.service;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import org.springframework.lang.Nullable;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -30,6 +31,7 @@ public class WSTicketService {
         return ticket;
     }
 
+    @Nullable
     public String consumeTicket(String ticket) {
         cleanupExpiredTickets();
         
