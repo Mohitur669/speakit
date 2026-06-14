@@ -61,6 +61,7 @@ public class AuthController {
     /**
      * Lightweight endpoint for Render spin-down prevention and basic health monitoring.
      */
+    @RateLimited(action = RateLimitAction.PING)
     @GetMapping("/ping")
     public ResponseEntity<Void> ping() {
         return ResponseEntity.ok().build();

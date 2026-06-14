@@ -98,6 +98,7 @@ public class RateLimitAspect {
             case TTS -> rateLimitConfig.createTtsBucket();
             case PUBLIC -> rateLimitConfig.createPublicBucket();
             case LIVE_PARAM -> rateLimitConfig.createLiveParamBucket();
+            case PING -> rateLimitConfig.createPingBucket();
         };
     }
 
@@ -108,6 +109,7 @@ public class RateLimitAspect {
         String clientIp = extractRealIp(req);
 
         return switch (action) {
+            case PING -> "PING_" + clientIp;
             case LIVE_PARAM -> "LIVE_PARAM_" + clientIp;
             case TTS -> {
                 // For expensive operations, bind the limit to the authenticated User ID.

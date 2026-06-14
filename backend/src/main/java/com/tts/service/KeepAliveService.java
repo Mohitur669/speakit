@@ -4,20 +4,21 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
 
 @Service
 @Slf4j
 public class KeepAliveService {
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestClient restClient = RestClient.create();
 
     @Value("${auth.keep-alive-url:}")
     private String externalUrl;
 
     /**
      * Pings the application at a dynamic interval to prevent Render spin-down.
-     * Uses fixedRateString to allow dynamic configuration from properties.
+     * Render Free sleeps after 15 minutes of inactivity. 
+     * Default configured to 14 minutes (840,000ms).
      */
     @Scheduled(fixedRateString = "${auth.keep-alive-interval-ms}")
     public void keepAlive() {
@@ -29,7 +30,10 @@ public class KeepAliveService {
         try {
             String pingUrl = externalUrl + "/api/auth/ping";
             log.info("Sending keep-alive ping to: {}", pingUrl);
-            restTemplate.getForObject(pingUrl, Void.class);
+            restClient.get()
+                    .uri(pingUrl)
+                    .retrieve()
+                    .toBodilessEntity();
         } catch (Exception e) {
             log.warn("Keep-alive ping failed (this is expected if the app is already spinning down): {}", e.getMessage());
         }
