@@ -141,8 +141,14 @@ public class RateLimitAspect {
 
     /**
      * Extracts the client IP from the request.
-     * Security: Relies on server.forward-headers-strategy=FRAMEWORK 
-     * in application.properties to handle trusted proxies (Cloudflare/Render).
+     * 
+     * Security Notice: This method relies on 'server.forward-headers-strategy=FRAMEWORK' 
+     * in application.properties. This configuration ensures that Spring correctly 
+     * processes X-Forwarded-For headers from trusted proxies (like Cloudflare or Render)
+     * and returns the true client IP in request.getRemoteAddr().
+     * 
+     * Without this strategy, an attacker could spoof their IP by providing a 
+     * fake X-Forwarded-For header.
      */
     private String extractRealIp(HttpServletRequest request) {
         return request.getRemoteAddr();

@@ -53,7 +53,7 @@ public class HistoryController {
     @DeleteMapping("/delete")
     public ResponseEntity<Void> deleteSelected(
             HttpServletRequest request,
-            @RequestBody List<Long> ids
+            @RequestBody @jakarta.validation.constraints.Size(max = 100, message = "Maximum 100 items can be deleted at once") List<Long> ids
     ) {
         Long userId = (Long) request.getAttribute("userId");
         if (userId == null) {
