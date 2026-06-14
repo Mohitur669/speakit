@@ -126,9 +126,18 @@ def record(endpoint, method, status, code, duration_ms, note="", ip=None):
 
 # ── Core API Operations ──────────────────────────────────────────────────────
 
+# Generate a pool of 100 unique IPs for rotation
+IP_POOL = [_faker.ipv4_public() for _ in range(100)]
+
 async def call(client, method, path, json=None, headers=None, label="", test_name=""):
     t0 = time.perf_counter()
     h = {}
+
+    # Enable IP Rotation for every request
+    rotated_ip = random.choice(IP_POOL)
+    h["X-Forwarded-For"] = rotated_ip
+    h["CF-Connecting-IP"] = rotated_ip
+
     if cfg.token:
         h["Authorization"] = f"Bearer {cfg.token}"
     if headers: h.update(headers)
@@ -144,8 +153,9 @@ async def call(client, method, path, json=None, headers=None, label="", test_nam
 
         color = "green" if status == "OK" else "yellow" if status == "RATELIMIT" else "red"
         symbol = "✓" if status == "OK" else "⚡" if status == "RATELIMIT" else "✗"
-        cprint(f"  [{color}]{symbol}[/{color}] {method} {path} → {r.status_code} [{ms:.0f}ms] [dim]{label}[/dim]")
+        cprint(f"  [{color}]{symbol}[/{color}] {method} {path} → {r.status_code} [{ms:.0f}ms] [dim]ip:{rotated_ip} {label}[/dim]")
         return r
+
     except Exception as e:
         ms = (time.perf_counter() - t0) * 1000
         record(path, method, "FAIL", 0, ms, str(e))

@@ -17,8 +17,6 @@ public class KeepAliveService {
 
     /**
      * Pings the application at a dynamic interval to prevent Render spin-down.
-     * Render Free sleeps after 15 minutes of inactivity. 
-     * Default configured to 14 minutes (840,000ms).
      */
     @Scheduled(fixedRateString = "${auth.keep-alive-interval-ms}")
     public void keepAlive() {
@@ -35,7 +33,8 @@ public class KeepAliveService {
                     .retrieve()
                     .toBodilessEntity();
         } catch (Exception e) {
-            log.warn("Keep-alive ping failed (this is expected if the app is already spinning down): {}", e.getMessage());
+            log.warn("Keep-alive ping failed (this is expected if the app is already spinning down): {}",
+                    e.getMessage());
         }
     }
 }
