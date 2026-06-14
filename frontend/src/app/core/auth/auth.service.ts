@@ -239,18 +239,24 @@ export class AuthService implements OnDestroy {
     );
   }
 
-  refreshStatus(): void {
-    if (!this.isLoggedIn()) return;
-    this.http.get<AuthResponse>(`${this.apiUrl}/me`).subscribe({
-      next: (res) => {
+  refreshStatus(): Observable<AuthResponse> {
+    return this.http.get<AuthResponse>(`${this.apiUrl}/me`).pipe(
+      tap((res) => {
+        const oldPlan = this.planTypeSignal();
         this.currentUserEmail.set(res.email || '');
         this.currentUserPhone.set(res.phoneNumber || '');
         this.planTypeSignal.set(res.planType || 'FREE');
         localStorage.setItem('email', this.currentUserEmail() || '');
         localStorage.setItem('phoneNumber', this.currentUserPhone() || '');
         localStorage.setItem('planType', this.currentPlanType());
-      },
-      error: (err) => this.logger.error('Failed to refresh user status', err)
-    });
+
+        // CRITICAL: If plan has changed (e.g. after upgrade), clear the voice cache
+        // to ensure the next fetch retrieves the newly unlocked voices.
+        if (oldPlan !== res.planType) {
+          this.logger.info(`Plan upgraded from ${oldPlan} to ${res.planType}. Clearing voice cache.`);
+          this.ttsService.clearCache();
+        }
+      })
+    );
   }
 }

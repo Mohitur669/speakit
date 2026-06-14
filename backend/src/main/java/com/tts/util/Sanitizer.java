@@ -3,6 +3,7 @@ package com.tts.util;
 import com.tts.exception.SpeechConversionException;
 import org.jsoup.Jsoup;
 import org.jsoup.safety.Safelist;
+import org.springframework.lang.Nullable;
 import java.util.regex.Pattern;
 
 public class Sanitizer {
@@ -16,7 +17,8 @@ public class Sanitizer {
      * Sanitizes a string by removing all HTML tags and trimming whitespace.
      * Also performs heuristic checks for abuse patterns.
      */
-    public static String sanitize(String input) {
+    @Nullable
+    public static String sanitize(@Nullable String input) {
         if (input == null) return null;
         
         String cleaned = Jsoup.clean(input, Safelist.none()).trim();

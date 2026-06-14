@@ -83,22 +83,27 @@ export class TtsComponent implements OnInit {
 
   async ngOnInit() {
     this.checkAutostart();
-    this.route.queryParams.subscribe(params => {
-      if (params['autostart']) {
-        this.invokeUpgrade(params['autostart']);
-        this.router.navigate([], {
-          relativeTo: this.route,
-          queryParams: { autostart: null },
-          queryParamsHandling: 'merge'
-        });
+    this.route.queryParams.subscribe(async params => {
+      const autostart = params['autostart'];
+      if (autostart) {
+        const redirected = await this.invokeUpgrade(autostart);
+        
+        // Only clear params if we are still on the same page
+        if (!redirected) {
+          this.router.navigate([], {
+            relativeTo: this.route,
+            queryParams: { autostart: null },
+            queryParamsHandling: 'merge'
+          });
+        }
       }
     });
   }
 
-  private checkAutostart() {
+  private async checkAutostart() {
     const autostart = this.route.snapshot.queryParams['autostart'];
     if (autostart) {
-      this.invokeUpgrade(autostart);
+      await this.invokeUpgrade(autostart);
     }
   }
 
@@ -140,10 +145,10 @@ export class TtsComponent implements OnInit {
     this.maxChars.set(limit);
   }
 
-  async invokeUpgrade(plan: string) {
+  async invokeUpgrade(plan: string): Promise<boolean> {
     if (plan === 'ENTERPRISE') {
       this.router.navigate(['/contact']);
-      return;
+      return true;
     }
 
     const amount = plan === 'PRO' ? 
@@ -151,6 +156,7 @@ export class TtsComponent implements OnInit {
       await this.featureFlags.getLiveNumber('PRO_PLUS_PLAN_PRICE_INR', 1999);
     
     this.razorpayService.initiatePayment(plan, amount);
+    return false;
   }
 
   refreshVoices(): void {

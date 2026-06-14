@@ -6,7 +6,7 @@ import { TtsService, TtsHistoryDto } from '../../../core/services/tts.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { NavbarComponent } from '../../../shared/components/navbar/navbar.component';
 import { ConfirmModalComponent } from '../../../shared/components/confirm-modal/confirm-modal.component';
-import { getVoiceTypeLabel, getVoiceTypeClass } from '../../../shared';
+import { getVoiceTypeLabel, getVoiceTypeClass, getVoiceLabelFromType, getVoiceClassFromType } from '../../../shared';
 
 @Component({
   selector: 'app-chat-history',
@@ -48,78 +48,96 @@ import { getVoiceTypeLabel, getVoiceTypeClass } from '../../../shared';
                 </tr>
               </thead>
               <tbody>
-                <tr *ngFor="let item of history()" 
-                  class="hover:bg-primary-50/50 dark:hover:bg-primary-800/30 transition-colors group">
-                  <td class="px-4 py-2.5 md:py-5 border-b border-r border-primary-100 dark:border-primary-800 align-top">
-                    <input type="checkbox" 
-                      [checked]="selectedIds().has(item.id)" 
-                      (change)="toggleSelect(item.id)"
-                      class="w-4 h-4 rounded border-primary-300 text-brand-blue focus:ring-brand-blue/50">
-                  </td>
-                  <td class="px-4 py-2.5 md:py-5 border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap align-top">
-                    <div class="flex items-center gap-1.5 sm:gap-2">
-                      <span class="px-1.5 py-0.5 rounded text-[8px] sm:text-[10px] font-bold uppercase"
-                        [ngClass]="getVoiceClass(item)">
-                        {{ getVoiceLabel(item) }}
-                      </span>
-                      <span class="text-xs sm:text-sm text-primary-700 dark:text-primary-200 font-medium">{{ item.voiceName || item.voiceId }}</span>
-                    </div>
-                  </td>
-                  <td class="px-4 py-2.5 md:py-5 border-b border-r border-primary-100 dark:border-primary-800 min-w-37.5 max-w-xs align-top">
-                    <div class="flex items-start justify-between gap-2 group/text">
-                      <p class="text-xs sm:text-sm text-primary-600 dark:text-primary-400 md:line-clamp-2 md:whitespace-normal leading-relaxed"
-                        [title]="item.textSnippet">
-                        <span class="md:hidden">"{{ formatMobileSnippet(item.textSnippet) }}"</span>
-                        <span class="hidden md:inline">"{{ item.textSnippet.length > 60 ? (item.textSnippet | slice:0:60) + '...' : item.textSnippet }}"</span>
-                      </p>
-                      <button (click)="copyToClipboard(item.textSnippet)" 
-                        class="p-1.5 rounded-lg bg-primary-50 dark:bg-primary-800 text-primary-400 hover:text-brand-blue opacity-0 group-hover/text:opacity-100 transition-all shadow-sm shrink-0"
-                        title="Copy to Clipboard">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
-                  <td class="px-4 py-2.5 md:py-5 border-b border-r border-primary-100 dark:border-primary-800 text-right whitespace-nowrap align-top">
-                    <span class="text-xs sm:text-sm font-mono text-primary-500 font-medium">{{ item.characterCount | number }}</span>
-                  </td>
-                  <td class="px-4 py-2.5 md:py-5 border-b border-primary-100 dark:border-primary-800 whitespace-nowrap align-top">
-                    <div class="flex items-baseline gap-2">
-                      <span class="text-xs sm:text-sm font-medium text-primary-900 dark:text-white">{{ item.createdAt | date:'mediumDate' }}</span>
-                      <span class="text-[10px] sm:text-xs text-primary-400 font-mono">{{ item.createdAt | date:'shortTime' }}</span>
-                    </div>
-                  </td>
-                </tr>
-
-                <!-- Empty State -->
-                <tr *ngIf="history().length === 0 && !loading()">
-                  <td colspan="5" class="p-20 text-center">
-                    <div class="flex flex-col items-center gap-4">
-                      <div class="w-16 h-16 rounded-full bg-primary-100 dark:bg-primary-800 flex items-center justify-center text-primary-400">
-                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
+                <ng-container *ngIf="!loading(); else skeletonLoader">
+                  <tr *ngFor="let item of history()" 
+                    class="hover:bg-primary-50/50 dark:hover:bg-primary-800/30 transition-colors group">
+                    <td class="px-4 py-2.5 md:py-5 border-b border-r border-primary-100 dark:border-primary-800 align-top">
+                      <input type="checkbox" 
+                        [checked]="selectedIds().has(item.id)" 
+                        (change)="toggleSelect(item.id)"
+                        class="w-4 h-4 rounded border-primary-300 text-brand-blue focus:ring-brand-blue/50">
+                    </td>
+                    <td class="px-4 py-2.5 md:py-5 border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap align-top">
+                      <div class="flex items-center gap-1.5 sm:gap-2">
+                        <span class="px-1.5 py-0.5 rounded text-[8px] sm:text-[10px] font-bold uppercase"
+                          [ngClass]="getVoiceClass(item)">
+                          {{ getVoiceLabel(item) }}
+                        </span>
+                        <span class="text-xs sm:text-sm text-primary-700 dark:text-primary-200 font-medium">{{ item.voiceName || item.voiceId }}</span>
                       </div>
-                      <div>
-                        <h3 class="text-lg font-bold text-primary-900 dark:text-white">No history yet</h3>
-                        <p class="text-sm text-primary-500">Generations will appear here once you start using the studio.</p>
+                    </td>
+                    <td class="px-4 py-2.5 md:py-5 border-b border-r border-primary-100 dark:border-primary-800 min-w-37.5 max-w-xs align-top">
+                      <div class="flex items-start justify-between gap-2 group/text">
+                        <p class="text-xs sm:text-sm text-primary-600 dark:text-primary-400 md:line-clamp-2 md:whitespace-normal leading-relaxed"
+                          [title]="item.textSnippet">
+                          <span class="md:hidden">"{{ formatMobileSnippet(item.textSnippet) }}"</span>
+                          <span class="hidden md:inline">"{{ item.textSnippet.length > 60 ? (item.textSnippet | slice:0:60) + '...' : item.textSnippet }}"</span>
+                        </p>
+                        <button (click)="copyToClipboard(item.textSnippet)" 
+                          class="p-1.5 rounded-lg bg-primary-50 dark:bg-primary-800 text-primary-400 hover:text-brand-blue opacity-0 group-hover/text:opacity-100 transition-all shadow-sm shrink-0"
+                          title="Copy to Clipboard">
+                          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
+                          </svg>
+                        </button>
                       </div>
-                      <button routerLink="/tts" class="mt-2 px-6 py-2 bg-brand-blue text-white font-bold rounded-xl shadow-lg hover:bg-blue-600 transition-all">
-                        Go to Studio
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+                    </td>
+                    <td class="px-4 py-2.5 md:py-5 border-b border-r border-primary-100 dark:border-primary-800 text-right whitespace-nowrap align-top">
+                      <span class="text-xs sm:text-sm font-mono text-primary-500 font-medium">{{ item.characterCount | number }}</span>
+                    </td>
+                    <td class="px-4 py-2.5 md:py-5 border-b border-primary-100 dark:border-primary-800 whitespace-nowrap align-top">
+                      <div class="flex items-baseline gap-2">
+                        <span class="text-xs sm:text-sm font-medium text-primary-900 dark:text-white">{{ item.createdAt | date:'mediumDate' }}</span>
+                        <span class="text-[10px] sm:text-xs text-primary-400 font-mono">{{ item.createdAt | date:'shortTime' }}</span>
+                      </div>
+                    </td>
+                  </tr>
 
-                <!-- Loading State -->
-                <tr *ngIf="loading()">
-                  <td colspan="5" class="p-12 text-center">
-                    <div class="flex justify-center">
-                      <div class="w-8 h-8 border-4 border-brand-blue border-t-transparent rounded-full animate-spin"></div>
-                    </div>
-                  </td>
-                </tr>
+                  <!-- Empty State -->
+                  <tr *ngIf="history().length === 0">
+                    <td colspan="5" class="p-20 text-center">
+                      <div class="flex flex-col items-center gap-4">
+                        <div class="w-16 h-16 rounded-full bg-primary-100 dark:bg-primary-800 flex items-center justify-center text-primary-400">
+                          <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                          </svg>
+                        </div>
+                        <div>
+                          <h3 class="text-lg font-bold text-primary-900 dark:text-white">No history yet</h3>
+                          <p class="text-sm text-primary-500">Generations will appear here once you start using the studio.</p>
+                        </div>
+                        <button routerLink="/tts" class="mt-2 px-6 py-2 bg-brand-blue text-white font-bold rounded-xl shadow-lg hover:bg-blue-600 transition-all">
+                          Go to Studio
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </ng-container>
+
+                <!-- Skeleton Loader -->
+                <ng-template #skeletonLoader>
+                  <tr *ngFor="let i of [1,2,3,4,5]" class="animate-pulse">
+                    <td class="px-4 py-5 border-b border-r border-primary-100 dark:border-primary-800">
+                      <div class="w-4 h-4 bg-primary-200 dark:bg-primary-700 rounded mx-auto"></div>
+                    </td>
+                    <td class="px-4 py-5 border-b border-r border-primary-100 dark:border-primary-800">
+                      <div class="flex items-center gap-2">
+                        <div class="w-12 h-4 bg-primary-200 dark:bg-primary-700 rounded"></div>
+                        <div class="w-20 h-4 bg-primary-200 dark:bg-primary-700 rounded"></div>
+                      </div>
+                    </td>
+                    <td class="px-4 py-5 border-b border-r border-primary-100 dark:border-primary-800">
+                      <div class="w-full h-4 bg-primary-100 dark:bg-primary-800 rounded mb-2"></div>
+                      <div class="w-2/3 h-4 bg-primary-100 dark:bg-primary-800 rounded"></div>
+                    </td>
+                    <td class="px-4 py-5 border-b border-r border-primary-100 dark:border-primary-800">
+                      <div class="w-10 h-4 bg-primary-100 dark:bg-primary-800 rounded ml-auto"></div>
+                    </td>
+                    <td class="px-4 py-5 border-b border-primary-100 dark:border-primary-800">
+                      <div class="w-24 h-4 bg-primary-100 dark:bg-primary-800 rounded"></div>
+                    </td>
+                  </tr>
+                </ng-template>
               </tbody>
             </table>
           </div>
@@ -130,12 +148,12 @@ import { getVoiceTypeLabel, getVoiceTypeClass } from '../../../shared';
               Showing {{ history().length }} of {{ totalElements() }} entries
             </span>
             <div class="flex items-center gap-2">
-              <button (click)="changePage(currentPage() - 1)" [disabled]="currentPage() === 0"
+              <button (click)="changePage(currentPage() - 1)" [disabled]="currentPage() === 0 || loading()"
                 class="p-2 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-800 disabled:opacity-30 transition-colors text-primary-600 dark:text-primary-300">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
               </button>
               <span class="text-sm font-bold text-primary-700 dark:text-primary-200">{{ currentPage() + 1 }} / {{ totalPages() }}</span>
-              <button (click)="changePage(currentPage() + 1)" [disabled]="currentPage() >= totalPages() - 1"
+              <button (click)="changePage(currentPage() + 1)" [disabled]="currentPage() >= totalPages() - 1 || loading()"
                 class="p-2 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-800 disabled:opacity-30 transition-colors text-primary-600 dark:text-primary-300">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
               </button>
@@ -221,23 +239,11 @@ export class ChatHistoryComponent implements OnInit {
   }
 
   getVoiceLabel(item: TtsHistoryDto): string {
-    const filter = item.voiceType === 'NATURAL' ? 'Natural' : (item.voiceType === 'INDIAN' ? 'Indian' : (item.voiceType === 'NEURAL' ? 'Neural' : 'Standard'));
-    const mockVoice: any = { 
-      isElevenLabs: item.voiceType === 'NATURAL', 
-      isSarvam: item.voiceType === 'INDIAN',
-      isNeural: item.voiceType === 'NEURAL' 
-    };
-    return getVoiceTypeLabel(mockVoice, filter);
+    return getVoiceLabelFromType(item.voiceType);
   }
 
   getVoiceClass(item: TtsHistoryDto): string {
-    const filter = item.voiceType === 'NATURAL' ? 'Natural' : (item.voiceType === 'INDIAN' ? 'Indian' : (item.voiceType === 'NEURAL' ? 'Neural' : 'Standard'));
-    const mockVoice: any = { 
-      isElevenLabs: item.voiceType === 'NATURAL', 
-      isSarvam: item.voiceType === 'INDIAN',
-      isNeural: item.voiceType === 'NEURAL' 
-    };
-    return getVoiceTypeClass(mockVoice, filter);
+    return getVoiceClassFromType(item.voiceType);
   }
 
   formatMobileSnippet(text: string): string {

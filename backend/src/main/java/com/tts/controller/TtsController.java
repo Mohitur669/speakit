@@ -97,17 +97,18 @@ public class TtsController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage().getBytes());
         }
 
+        // plan access validation is already throwing RuntimeException, which is good.
+
         try {
             String sanitizedText = Sanitizer.sanitize(request.getText());
             if (sanitizedText == null || sanitizedText.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Text content is required.".getBytes());
+                throw new RuntimeException("Text content is required.");
             }
 
             int maxChars = subscriptionService.getMaxCharacters(planType, status, expiry);
 
             if (sanitizedText.length() > maxChars) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body(("Character limit exceeded for your plan (" + maxChars + " characters).").getBytes());
+                throw new RuntimeException("Character limit exceeded for your plan (" + maxChars + " characters).");
             }
 
             String sanitizedVoiceId = Sanitizer.sanitize(request.getVoiceId());
@@ -242,13 +243,7 @@ public class TtsController {
         List<Map<String, Object>> allVoices = new ArrayList<>();
 
         pollyService.getAvailableVoices().forEach(v -> {
-            Map<String, Object> map = new HashMap<>();
-            map.put("id", v.id().toString());
-            map.put("name", v.name());
-            map.put("gender", v.genderAsString());
-            map.put("isElevenLabs", false);
-            map.put("isSarvam", false);
-            allVoices.add(map);
+            allVoices.add(v);
         });
 
         if (subscriptionService.canUseElevenLabs(planType, status, expiry)) {
