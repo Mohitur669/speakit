@@ -45,5 +45,18 @@ This document outlines the security vulnerabilities identified during the v1.2 a
 
 ---
 
-### **Verification Strategy**
-Dedicated security probes have been added to `speakit-api-load-tester.py` to empirically confirm these vulnerabilities.
+### **Verification Status Report (v1.2 Final)**
+
+| Vulnerability | Priority | Status | Fix Confirmation |
+| :--- | :--- | :--- | :--- |
+| **Payment Logic IDOR** | CRITICAL | **FIXED** | Ownership verified in `RazorpayService` via `Principal`. |
+| **Polly Neural Auth Bypass** | HIGH | **FIXED** | `PollyService` strictly enforces fallback to STANDARD for non-premium users. |
+| **Rate Limit IP Spoofing** | HIGH | **FIXED** | Hardened `FRAMEWORK` forwarding and explicit Tomcat proxy trust. |
+| **TTS Info Disclosure** | MEDIUM | **FIXED** | `TtsController` returns generic messages; raw exceptions masked. |
+| **Webhook Info Disclosure** | MEDIUM | **FIXED** | `WebhookController` sanitized to prevent internal system leak. |
+| **History Deletion DOS** | MEDIUM | **FIXED** | `@Size(max = 100)` applied to batch deletion payloads. |
+| **Contact Form Spam** | MEDIUM | **FIXED** | Intersection (IP+Email) limiting and Honeypot active. |
+
+---
+
+_Verification performed on 14/06/2026. All critical and high-priority risks resolved._
