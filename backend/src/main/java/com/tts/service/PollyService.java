@@ -67,22 +67,21 @@ public class PollyService implements SpeechProvider {
 
     @Override
     public InputStream synthesizeSpeech(String text, String voiceId, String outputFormat, Map<String, Object> additionalParams) {
-        return synthesizeSpeech(text, voiceId, outputFormat);
+        // Use provided engine if present, otherwise negotiate
+        Engine engine = (additionalParams != null && additionalParams.containsKey("engine")) 
+                ? (Engine) additionalParams.get("engine") 
+                : getBestEngineForVoice(voiceId, null);
+        
+        log.info("Speech Synthesis: Using {} engine for voice={}", engine, voiceId);
+        return synthesize(text, voiceId, outputFormat, engine);
     }
 
     /**
-     * Synthesizes text into an audio stream, automatically negotiating the best available 
-     * engine (Neural vs. Standard) based on the voice capabilities.
-     * 
-     * @param text The sanitized text to synthesize
-     * @param voiceId The specific AWS Polly voice ID (e.g., 'Joanna')
-     * @param outputFormat The requested audio format (mp3, ogg_vorbis, pcm)
-     * @return InputStream containing the raw audio bytes from AWS Polly
+     * Legacy/Helper method for simple synthesis.
+     * Negotiates the best available engine (Neural/Standard).
      */
     public InputStream synthesizeSpeech(String text, String voiceId, String outputFormat) {
-        Engine engine = getBestEngineForVoice(voiceId, null);
-        log.info("Server Enforced: Using {} engine for voice={}", engine, voiceId);
-        return synthesize(text, voiceId, outputFormat, engine);
+        return synthesizeSpeech(text, voiceId, outputFormat, null);
     }
 
     /**

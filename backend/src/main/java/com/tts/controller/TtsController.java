@@ -143,7 +143,12 @@ public class TtsController {
                 Engine engine = pollyService.getBestEngineForVoice(sanitizedVoiceId, planType);
                 log.info("Negotiated Engine: {} for User: {} (Plan: {})", engine, userId, planType);
                 
-                audioStream = pollyService.synthesizeSpeech(sanitizedText, sanitizedVoiceId, sanitizedOutputFormat);
+                audioStream = pollyService.synthesizeSpeech(
+                        sanitizedText, 
+                        sanitizedVoiceId, 
+                        sanitizedOutputFormat, 
+                        Map.of("engine", engine)
+                );
                 effectiveVoiceType = engine.toString();
             }
 
@@ -205,7 +210,8 @@ public class TtsController {
             InputStream stream = pollyService.synthesizeSpeech(
                     sanitizedText,
                     sanitizedVoiceId,
-                    sanitizedOutputFormat
+                    sanitizedOutputFormat,
+                    Map.of("engine", engine)
             );
 
             // Use centralized logic to determine engine for accurate history/cost tracking
