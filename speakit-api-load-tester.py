@@ -1,17 +1,17 @@
 """
-SpeakIT: Enterprise API Load Tester & Security Auditor
-=====================================================
+SpeakIT: Full-Surface API Load Tester & Security Auditor (v1.2)
+============================================================
 
-This script is a production-grade testing utility designed to validate the
-performance, scalability, and security of the SpeakIT platform. It specifically
-targets the multi-layered rate limiting and identity-bound protection systems.
+Comprehensive testing utility designed to validate every REST endpoint in the
+SpeakIT platform. Targets performance, security, and rate-limiting integrity.
 
-Key Testing Vectors:
-1. Dynamic JWT Authentication flow.
-2. Token Bucket algorithm burst and refill verification.
-3. Multi-IP bypass resistance (Cloudflare/Proxy spoofing).
-4. Concurrent request handling under load.
-5. Heuristic abuse pattern rejection.
+Core Coverage:
+- Auth Lifecycle: Login, Register, Session Metadata, Discovery, Logout.
+- TTS Studio: Buffered & Streaming Synthesis, Usage Metrics, Voice Inventory.
+- User Data: Paginated History, Targeted Deletion, Global Cleanup.
+- Secure Contact: Intersection Rate Limiting, Replay Protection, Honeypot.
+- Payments: Order Creation, Verification, Transaction History.
+- System: Health Pings, Parameter Discovery.
 
 Requirements:
 - httpx, rich, faker, asyncio (Python 3.10+)
@@ -24,10 +24,11 @@ import argparse
 import sys
 import logging
 import io
-import ipaddress
 import random
+import uuid
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from faker import Faker
 from rich.console import Console
@@ -44,38 +45,22 @@ from rich.panel import Panel
 from rich.prompt import Prompt, IntPrompt, Confirm
 
 # ── Log rotation ─────────────────────────────────────────────────────────────
-# This logic ensures that every test run starts with fresh log files while
-# archiving the previous run's data for historical comparison and audit trails.
-
 APP_LOG = Path("automation-script-logs/app.log")
 RESULT_LOG = Path("automation-script-logs/result.log")
 
 APP_LOG.parent.mkdir(parents=True, exist_ok=True)
 
-
 def _rotate(path: Path):
-    """
-    Renames an existing log file to a timestamped archive version.
-    Example: app.log -> app_20260517_120000.log
-    """
     if path.exists():
         mtime = path.stat().st_mtime
         ts = datetime.fromtimestamp(mtime).strftime("%Y%m%d_%H%M%S")
         archive = path.with_name(f"{path.stem}_{ts}{path.suffix}")
         path.rename(archive)
-        print(f"[log] {path.name} archived as {archive.name}")
 
-
-# Standardize log directory existence
-Path("logs").mkdir(exist_ok=True)
 _rotate(APP_LOG)
 _rotate(RESULT_LOG)
 
 # ── Logger Initialization ───────────────────────────────────────────────────
-# Configures a dual-output logging system:
-# 1. app.log: Raw DEBUG-level data for deep architectural investigation.
-# 2. result.log: A rendered mirror of the terminal output for easy reporting.
-
 logging.basicConfig(
     filename=APP_LOG,
     level=logging.DEBUG,
@@ -86,13 +71,9 @@ logging.basicConfig(
 log = logging.getLogger("speakit")
 
 _res_buf = io.StringIO()
-_res_console = Console(
-    file=_res_buf, highlight=False, markup=True, force_terminal=False
-)
-
+_res_console = Console(file=_res_buf, highlight=False, markup=True, force_terminal=False)
 
 def _flush():
-    """Writes the internal string buffer to the physical result.log file."""
     txt = _res_buf.getvalue()
     if txt:
         with open(RESULT_LOG, "a", encoding="utf-8") as f:
@@ -100,633 +81,272 @@ def _flush():
         _res_buf.truncate(0)
         _res_buf.seek(0)
 
-
 console = Console()
+_faker = Faker()
 
 # ── UI Wrappers ──────────────────────────────────────────────────────────────
-# These methods wrap the 'Rich' library to provide consistent, professional
-# terminal output while ensuring every printed line is also mirrored to logs.
-
-
 def cprint(msg="", **kw):
-    """Prints a message to both the terminal and the result log."""
     console.print(msg, **kw)
     _res_console.print(msg, **kw)
     _flush()
 
-
 def crule(title=""):
-    """Draws a horizontal line rule with an optional title."""
     console.rule(title)
     _res_console.rule(title)
     _flush()
 
-
 def cpanel(content, **kw):
-    """Wraps content in a styled panel/box."""
     console.print(Panel(content, **kw))
     _res_console.print(Panel(content, **kw))
     _flush()
 
-
-def ctable(tbl):
-    """Renders a data table to the console and log file."""
-    console.print(tbl)
-    _res_console.print(tbl)
-    _flush()
-
-
-# ── Identity Simulation ─────────────────────────────────────────────────────
-# Uses the Faker library to generate realistic but fake public IP addresses.
-# Used to test the backend's ability to distinguish between users behind proxies.
-
-_faker = Faker()
-_used_ips: set[str] = set()
-
-
-def fresh_ip() -> str:
-    """Generates a unique public IPv4 address. Includes manual fallback ranges."""
-    for _ in range(50):
-        ip = _faker.ipv4_public()
-        if ip not in _used_ips:
-            _used_ips.add(ip)
-            return ip
-    while True:
-        a = random.choice([1, 2, 5, 14, 31, 45, 100, 128, 192])
-        ip = f"{a}.{random.randint(1,254)}.{random.randint(1,254)}.{random.randint(1,254)}"
-        if ip not in _used_ips:
-            _used_ips.add(ip)
-            return ip
-
-
-def ip_pool(n: int) -> list[str]:
-    """Returns a list of N unique simulated IP addresses."""
-    return [fresh_ip() for _ in range(n)]
-
-
 # ── Runtime Configuration ───────────────────────────────────────────────────
-
-
 class Cfg:
-    """
-    Central configuration object for the test run.
-    Defaults are aligned with the SpeakIT Production RateLimitConfig (TTS Zone).
-    """
-
     base_url: str = "http://localhost:8080"
-    auth_username: str = "loadtester"
-    auth_password: str = "loadtester123"
-    rate_capacity: int = 30  # Max burst requests allowed
-    rate_refill_tokens: int = 10  # Tokens refilled per minute
-    rate_refill_secs: int = 60  # Time window for refill
-    refill_buffer_secs: int = 5  # Safety buffer to ensure DB counters reset
-    use_dynamic_ip: bool = True
-    requests_per_ip: int = 3
-    ip_count: int = 5
-    test: str = "all"
-    token: str = ""  # Stores the acquired JWT Bearer token
-
+    auth_username: str = "test"
+    auth_password: str = "Mohitur669@"
+    token: str = ""
+    user_id: int = 0
+    test_target: str = "all"
 
 cfg = Cfg()
-
-
-def refill_wait() -> int:
-    """Calculates the total time (seconds) required to wait for a full bucket refill."""
-    return cfg.rate_refill_secs + cfg.refill_buffer_secs
-
-
-# ── Result Orchestration ────────────────────────────────────────────────────
-
 results: list[dict] = []
+TIMEOUT = httpx.Timeout(30.0, connect=60.0)
 
+def _ep(path): return cfg.base_url.rstrip("/") + path
+def _auth(): return {"Authorization": f"Bearer {cfg.token}"}
 
-def record(test, label, status, http_code, duration_ms, note="", ip=None):
-    """
-    Logs a single test result to the internal results list and the log files.
-    Determines log severity based on the HTTP status code returned.
-    """
-    results.append(
-        {
-            "test": test,
-            "label": label,
-            "status": status,
-            "http_code": http_code,
-            "duration_ms": round(duration_ms),
-            "note": note,
-            "ip": ip or "-",
-        }
-    )
-    level = (
-        logging.INFO
-        if status == "OK"
-        else logging.WARNING if status == "RATE_LIMITED" else logging.ERROR
-    )
-    log.log(
-        level,
-        "[%-16s] %-28s HTTP=%-3s %5dms ip=%-15s %s",
-        test,
-        label,
-        http_code or "-",
-        round(duration_ms),
-        ip or "-",
-        note,
-    )
+def record(endpoint, method, status, code, duration_ms, note="", ip=None):
+    results.append({
+        "endpoint": endpoint, "method": method, "status": status,
+        "code": code, "duration_ms": round(duration_ms), "note": note
+    })
+    level = logging.INFO if status == "OK" else logging.WARNING if status == "RATELIMIT" else logging.ERROR
+    log.log(level, "[%-6s] %-30s CODE=%-3s %5dms %s", method, endpoint, code or "-", round(duration_ms), note)
 
+# ── Core API Operations ──────────────────────────────────────────────────────
 
-# ── API Workflow Methods ───────────────────────────────────────────────────
-
-TIMEOUT = httpx.Timeout(30.0)
-
-
-def _ep(path):
-    """Helper to construct a full API endpoint URL."""
-    return cfg.base_url.rstrip("/") + path
-
-
-def authenticate(client):
-    """
-    Automated Identity Provisioning.
-    First attempts to log in with the loadtester credentials. If the account
-    does not exist, it registers a new user. On success, it extracts the JWT
-    token and stores it in the global config for use in all subsequent requests.
-    """
-    crule("[bold cyan]Authentication Setup[/bold cyan]")
-    cprint(f"  Authenticating as '{cfg.auth_username}'...")
-
-    # Attempt Login
-    r = client.post(
-        _ep("/api/auth/login"),
-        json={"username": cfg.auth_username, "password": cfg.auth_password},
-    )
-
-    # Fallback to Registration if user not found
-    if r.status_code != 200:
-        cprint("  User not found, registering new loadtester account...")
-        r = client.post(
-            _ep("/api/auth/register"),
-            json={
-                "username": cfg.auth_username,
-                "email": f"{cfg.auth_username}@example.com",
-                "password": cfg.auth_password,
-            },
-        )
-
-    if r.status_code == 200:
-        cfg.token = r.json().get("token")
-        cprint("  [green]✓[/green] Identity verified. JWT acquired.")
-        log.info("JWT session established")
-    else:
-        cprint(
-            f"  [red]✗[/red] Critical Failure: Could not establish identity. {r.text}"
-        )
-        log.error("Auth failed: %s", r.text)
-        sys.exit(1)
-    cprint("")
-
-
-def synthesize(client, label, test, text, voice_id="Joanna", fmt="mp3", ip=None):
-    """
-    Validates the TTS Synthesis hot-path.
-    1. Injects the JWT Bearer token into headers.
-    2. Simulates Cloudflare/Proxy headers (X-Forwarded-For, CF-Connecting-IP).
-    3. Handles 429 responses by parsing the 'Retry-After' header for wait times.
-    """
-    headers = {"Authorization": f"Bearer {cfg.token}"}
-    if ip:
-        headers["X-Forwarded-For"] = ip
-        headers["CF-Connecting-IP"] = ip  # Crucial for testing Proxy-Aware logic
-
-    ip_tag = f" [dim](ip:{ip})[/dim]" if ip else ""
+async def call(client, method, path, json=None, headers=None, label="", test_name=""):
     t0 = time.perf_counter()
+    h = _auth()
+    if headers: h.update(headers)
+
     try:
-        r = client.post(
-            _ep("/api/tts/synthesize-stream"),
-            json={"text": text, "voiceId": voice_id, "outputFormat": fmt},
-            headers=headers,
-            timeout=TIMEOUT,
-        )
+        r = await client.request(method, _ep(path), json=json, headers=h, timeout=TIMEOUT)
         ms = (time.perf_counter() - t0) * 1000
 
-        if r.status_code == 200:
-            note = f"{len(r.content):,} bytes"
-            record(test, label, "OK", 200, ms, note, ip)
-            cprint(f"  [green]✓[/green] {label} → 200 OK [{ms:.0f}ms] {note}{ip_tag}")
-        elif r.status_code == 429:
-            # Captures the server's calculated cooldown time
-            retry_after = r.headers.get("Retry-After", "?")
-            record(
-                test, label, "RATE_LIMITED", 429, ms, f"Retry-After: {retry_after}s", ip
-            )
-            cprint(
-                f"  [yellow]⚡[/yellow] {label} → 429 Rate limited [{ms:.0f}ms] (Wait: {retry_after}s){ip_tag}"
-            )
-        else:
-            note = r.text[:120]
-            record(test, label, "ERROR", r.status_code, ms, note, ip)
-            cprint(
-                f"  [red]✗[/red] {label} → {r.status_code} [{ms:.0f}ms] {note}{ip_tag}"
-            )
-        return r.status_code
-    except httpx.TimeoutException:
-        ms = (time.perf_counter() - t0) * 1000
-        record(test, label, "TIMEOUT", 0, ms, "timed out", ip)
-        cprint(f"  [red]✗[/red] {label} → TIMEOUT [{ms:.0f}ms]{ip_tag}")
-        return 0
+        status = "OK" if r.is_success else "RATELIMIT" if r.status_code == 429 else "ERROR"
+        note = f"{len(r.content):,} bytes" if r.status_code == 200 else r.text[:100]
 
+        record(path, method, status, r.status_code, ms, note)
 
-def fetch_voices(client) -> list[dict]:
-    """
-    Validates the voice metadata endpoint.
-    Tests the platform's in-memory caching logic for AWS Polly responses.
-    """
-    t0 = time.perf_counter()
-    try:
-        r = client.get(_ep("/api/tts/voices"), timeout=TIMEOUT)
-        ms = (time.perf_counter() - t0) * 1000
-        if r.status_code == 200:
-            voices = r.json()
-            record(
-                "voices_fetch", "GET /voices", "OK", 200, ms, f"{len(voices)} voices"
-            )
-            cprint(
-                f"  [green]✓[/green] GET /voices → 200 OK [{ms:.0f}ms] [bold]{len(voices)} voices[/bold]"
-            )
-            return voices
-        elif r.status_code == 429:
-            retry_after = r.headers.get("Retry-After", "?")
-            record("voices_fetch", "GET /voices", "RATE_LIMITED", 429, ms)
-            cprint(
-                f"  [yellow]⚡[/yellow] GET /voices → 429 Rate limited [{ms:.0f}ms] (Wait: {retry_after}s)"
-            )
-        else:
-            record("voices_fetch", "GET /voices", "ERROR", r.status_code, ms)
-            cprint(f"  [red]✗[/red] GET /voices → {r.status_code} [{ms:.0f}ms]")
-    except httpx.TimeoutException:
-        record("voices_fetch", "GET /voices", "TIMEOUT", 0, 0)
-        cprint("  [red]✗[/red] GET /voices → TIMEOUT")
-    return []
-
-
-def wait_refill(label=""):
-    """
-    Simulates real-world user wait time during a rate-limit block.
-    Shows a visual progress bar in the terminal while the token bucket refills.
-    """
-    secs = refill_wait()
-    msg = f"Waiting {secs}s for token bucket to refill" + (
-        f" — {label}" if label else ""
-    )
-    cprint(f"\n  [dim]{msg}[/dim]")
-    log.info(msg)
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        BarColumn(),
-        TimeElapsedColumn(),
-        console=console,
-        transient=True,
-    ) as p:
-        task = p.add_task(f"Refilling ({secs}s)", total=secs)
-        for _ in range(secs):
-            time.sleep(1)
-            p.advance(task)
-    cprint("  [green]✓ Token bucket refilled.[/green]\n")
-
-
-# ── Interactive Setup ────────────────────────────────────────────────────────
-
-
-def interactive_setup():
-    """Provides a CLI-driven UI to configure the test parameters at runtime."""
-    crule("[bold cyan]SpeakIT Load Tester Configuration[/bold cyan]")
-
-    cfg.base_url = Prompt.ask("  Backend URL", default=cfg.base_url).rstrip("/")
-    cfg.rate_capacity = IntPrompt.ask(
-        "  Rate limit burst capacity (TTS Zone)", default=cfg.rate_capacity
-    )
-    cfg.rate_refill_tokens = IntPrompt.ask(
-        "  Refill tokens per minute (TTS Zone)", default=cfg.rate_refill_tokens
-    )
-
-    cfg.use_dynamic_ip = Confirm.ask(
-        "  Simulate different IPs via X-Forwarded-For (Testing Identity-Binding)?",
-        default=True,
-    )
-    if cfg.use_dynamic_ip:
-        cfg.requests_per_ip = IntPrompt.ask(
-            "  Requests per simulated IP", default=cfg.requests_per_ip
-        )
-        cfg.ip_count = IntPrompt.ask(
-            "  Number of different IPs to simulate", default=cfg.ip_count
-        )
-
-    cprint("")
-
-
-# ── Core Test Suites ──────────────────────────────────────────────────────────
-
-
-def test_health(client):
-    """
-    Startup Verification.
-    Pings the health endpoint and handles Render's 'Cold Start' delay if needed.
-    """
-    crule("[bold cyan]Startup — Backend health check[/bold cyan]")
-    log.info("=" * 64)
-    log.info(
-        "RUN STARTED %s  target=%s",
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        cfg.base_url,
-    )
-    log.info("=" * 64)
-    try:
-        r = client.get(_ep("/api/auth/ping"), timeout=httpx.Timeout(120.0))
-        if r.status_code == 200:
-            cprint("  [green]✓[/green] Backend is UP")
-        else:
-            cprint(f"  [yellow]⚠[/yellow] Health → {r.status_code}, proceeding anyway")
-    except httpx.TimeoutException:
-        cprint("  [yellow]⚠[/yellow] Timed out — Render cold start, waiting 20s...")
-        time.sleep(20)
+        color = "green" if status == "OK" else "yellow" if status == "RATELIMIT" else "red"
+        symbol = "✓" if status == "OK" else "⚡" if status == "RATELIMIT" else "✗"
+        cprint(f"  [{color}]{symbol}[/{color}] {method} {path} → {r.status_code} [{ms:.0f}ms] [dim]{label}[/dim]")
+        return r
     except Exception as e:
-        cprint(f"  [red]✗[/red] Cannot reach backend: {e}")
-        sys.exit(1)
-    cprint("")
+        ms = (time.perf_counter() - t0) * 1000
+        record(path, method, "TIMEOUT/FAIL", 0, ms, str(e))
+        cprint(f"  [red]✗[/red] {method} {path} → FAILED [{ms:.0f}ms] {str(e)}")
+        return None
 
+# ── Test Suites ──────────────────────────────────────────────────────────────
 
-def test_normal(client):
-    """
-    Verifies that standard requests within the capacity limit are successful.
-    In identity-bound mode, these all consume from a single per-user bucket.
-    """
-    crule(
-        "[bold cyan]TEST 1 — Normal usage ({cfg.rate_capacity} requests, should be 200)[/bold cyan]"
-    )
-    for i in range(1, cfg.rate_capacity + 1):
-        synthesize(
-            client,
-            f"Normal #{i}",
-            "normal",
-            f"Standard usage test, request number {i}.",
-            ip=fresh_ip(),
-        )
-        time.sleep(0.3)
-    cprint("")
+async def run_auth_suite(client):
+    crule("[bold cyan]Auth & Discovery Suite[/bold cyan]")
 
+    # 1. Discovery
+    await call(client, "GET", "/api/auth/ping", label="Health Check")
+    await call(client, "GET", "/api/auth/check-username", label="Discovery", json={"username": cfg.auth_username})
+    await call(client, "GET", "/api/auth/check-email", label="Discovery", json={"email": f"{cfg.auth_username}@test.com"})
 
-def test_ratelimit(client):
-    """
-    Burst Test.
-    Attempts to exceed the bucket capacity to verify that the server correctly
-    returns a 429 status code and blocks further processing.
-    """
-    crule(
-        "[bold cyan]TEST 2 — Burst over limit (Expect 429 due to Identity-Bound Limiting)[/bold cyan]"
-    )
-    extra = 5
-    for i in range(cfg.rate_capacity + 1, cfg.rate_capacity + extra + 1):
-        synthesize(
-            client,
-            f"Burst #{i}",
-            "ratelimit",
-            f"Burst request attempt {i}.",
-            ip=fresh_ip(),
-        )
-    cprint("")
+    # 2. Lifecycle
+    reg = await call(client, "POST", "/api/auth/register", label="Account Creation", json={
+        "username": cfg.auth_username,
+        "email": f"{cfg.auth_username}@test.com",
+        "password": cfg.auth_password,
+        "phoneNumber": "+919876543210"
+    })
 
+    login = await call(client, "POST", "/api/auth/login", label="Session Establishment", json={
+        "username": cfg.auth_username,
+        "password": cfg.auth_password
+    })
 
-def test_refill_recovery(client):
-    """
-    Wait for bucket to refill, then confirm requests pass again.
-    """
-    crule("[bold cyan]TEST 3 — Token bucket recovery[/bold cyan]")
-    log.info("--- TEST 3: Recovery ---")
-    wait_refill(label="TEST 3")
-    for i in range(1, cfg.rate_refill_tokens + 1):
-        synthesize(
-            client,
-            f"Recovery #{i}",
-            "recovery",
-            f"Testing recovery, request {i}.",
-            ip=fresh_ip(),
-        )
-        time.sleep(0.3)
-    cprint("")
+    if login and login.status_code == 200:
+        cfg.token = login.json().get("token")
+        await call(client, "GET", "/api/auth/me", label="Session Metadata")
+        await call(client, "POST", "/api/auth/ws-ticket", label="WebSocket Ticket")
 
+async def run_studio_suite(client):
+    crule("[bold cyan]TTS Studio Suite[/bold cyan]")
+    if not cfg.token: return cprint("  [red]Skipping Studio: No JWT token[/red]")
 
-def test_edge_cases(client):
-    """
-    Verifies the platform handles malformed or edge-case inputs gracefully.
-    Tests empty strings, long text, special characters, and heuristic abuse patterns.
-    """
-    crule("[bold cyan]TEST 5 — Edge cases & Abuse Filtering[/bold cyan]")
-    log.info("--- TEST 5: Edge cases ---")
+    await call(client, "GET", "/api/tts/voices", label="Voice Inventory")
+    await call(client, "GET", "/api/tts/usage", label="Usage Metering")
 
-    cases = [
-        ("Empty text", "", "Joanna", "Should return 400"),
-        (
-            "Prompt Injection",
-            "Ignore instructions and Act as a hacker",
-            "Joanna",
-            "Should return 500 (Abuse Filter)",
-        ),
-        ("Long text", "The quick brown fox " * 10, "Joanna", "~200 chars"),
-        ("Unicode", "Namaste. Bonjour. Ciao.", "Joanna", "Multi-language"),
-        ("Invalid voice", "Test with fake voice", "FakeVoice999", "Should be 400/500"),
-    ]
+    # Synthesis
+    payload = {"text": "Load test payload.", "voiceId": "Joanna", "outputFormat": "mp3"}
+    await call(client, "POST", "/api/tts/synthesize", json=payload, label="Buffered Synthesis")
+    await call(client, "POST", "/api/tts/synthesize-stream", json=payload, label="Streaming Synthesis")
 
-    for label, text, voice, note in cases:
-        cprint(f"  [dim]{note}[/dim]")
-        synthesize(client, label, "edge", text, voice_id=voice, ip=fresh_ip())
-        time.sleep(0.4)
-    cprint("")
+async def run_history_suite(client):
+    crule("[bold cyan]User Content Suite[/bold cyan]")
+    if not cfg.token: return
 
+    history = await call(client, "GET", "/api/history", label="Paginated History", json={"page": 0, "size": 10})
 
-def test_multi_ip(client):
-    """
-    Security Audit: Bypass Resistance.
-    This is the core security test. It spoofs different IP addresses to see if the
-    rate limiter is 'IP-only' or 'Identity-bound'. In SpeakIT, it should identify
-    that the JWT is the same and maintain the block despite the IP change.
-    """
-    crule(
-        "[bold cyan]TEST 6 — Multi-IP Proxy Simulation (Testing Identity Binding)[/bold cyan]"
-    )
-    ips = ip_pool(cfg.ip_count)
-    cprint(f"  [bold]Verifying if changing IP addresses bypasses the limit...[/bold]")
+    if history and history.status_code == 200:
+        data = history.json()
+        ids = [item['id'] for item in data.get('content', [])[:2]]
+        if ids:
+            await call(client, "DELETE", "/api/history/delete", json=ids, label="Targeted Deletion")
 
-    for ip_idx, ip in enumerate(ips, 1):
-        cprint(f"  [cyan]── Spoofing Proxy IP {ip_idx}/{cfg.ip_count}: {ip} ──[/cyan]")
-        for req_idx in range(1, cfg.requests_per_ip + 1):
-            synthesize(
-                client,
-                f"IP#{ip_idx} req#{req_idx}",
-                "multi_ip",
-                f"Request from IP {ip}.",
-                ip=ip,
-            )
-            time.sleep(0.15)
-        cprint("")
+    await call(client, "DELETE", "/api/history/clear-all", label="Global History Purge")
 
-    rl_count = sum(
-        1 for r in results if r["test"] == "multi_ip" and r["status"] == "RATE_LIMITED"
-    )
-    cprint("  [bold]Security Interpretation:[/bold]")
-    if rl_count > 0:
-        cprint(
-            "  [green]✓ Identity-Binding IS active[/green] — Changing IPs did NOT bypass the limit."
-        )
-    else:
-        cprint(
-            "  [yellow]⚠ Warning[/yellow] — No requests were rate limited. Limits may be too high."
-        )
-    cprint("")
+async def run_contact_suite(client):
+    crule("[bold cyan]Secure Contact Suite[/bold cyan]")
 
+    # 1. Normal Submission
+    await call(client, "POST", "/api/contact", label="Secure Submission", headers={
+        "X-Request-ID": str(uuid.uuid4())
+    }, json={
+        "firstName": "Load", "lastName": "Tester",
+        "email": f"test_{uuid.uuid4().hex[:4]}@example.com",
+        "topic": "enterprise", "message": "Automated security audit message.",
+        "website": "" # Honeypot empty
+    })
 
-def test_concurrent(base_url):
-    """
-    Parallelism Test.
-    Fires multiple requests simultaneously using asyncio to test the thread-safety
-    and performance of the backend's token bucket implementation.
-    """
-    crule(
-        "[bold cyan]TEST 7 — Concurrent requests ({cfg.rate_capacity} simultaneous)[/bold cyan]"
-    )
-    ips = ip_pool(cfg.rate_capacity)
+    # 2. Replay Attack
+    rid = str(uuid.uuid4())
+    await call(client, "POST", "/api/contact", label="Replay Init", headers={"X-Request-ID": rid}, json={
+        "firstName": "Replay", "lastName": "Bot", "email": "replay@bot.com",
+        "topic": "support", "message": "Replay test.", "website": ""
+    })
+    await call(client, "POST", "/api/contact", label="Replay Attack (Expect 200 Idempotent)", headers={"X-Request-ID": rid}, json={
+        "firstName": "Replay", "lastName": "Bot", "email": "replay@bot.com",
+        "topic": "support", "message": "Replay test.", "website": ""
+    })
 
-    async def _run():
-        async with httpx.AsyncClient(base_url=base_url) as ac:
+    # 3. Honeypot Trap
+    await call(client, "POST", "/api/contact", label="Bot Trap (Expect Silent Success)", json={
+        "firstName": "Bot", "lastName": "Scraper", "email": "bot@spam.com",
+        "topic": "feedback", "message": "I am a bot.", "website": "http://evil.com" # Honeypot filled
+    })
 
-            async def _req(i, ip):
-                headers = {
-                    "Authorization": f"Bearer {cfg.token}",
-                    "X-Forwarded-For": ip,
-                    "CF-Connecting-IP": ip,
-                }
-                return await ac.post(
-                    "/api/tts/synthesize",
-                    json={
-                        "text": f"Concurrent {i}",
-                        "voiceId": "Joanna",
-                        "outputFormat": "mp3",
-                    },
-                    headers=headers,
-                    timeout=TIMEOUT,
-                )
+async def run_payment_suite(client):
+    crule("[bold cyan]Payments & Transactions Suite[/bold cyan]")
+    if not cfg.token: return
 
-            t0 = time.perf_counter()
-            responses = await asyncio.gather(
-                *[_req(i, ip) for i, ip in enumerate(ips, 1)], return_exceptions=True
-            )
-            total_ms = (time.perf_counter() - t0) * 1000
+    await call(client, "GET", "/api/v1/payments/history", label="Transaction Ledger")
+    await call(client, "POST", "/api/v1/payments/create-order", label="Order Initialization", json={
+        "planType": "PRO", "amount": 499, "currency": "INR"
+    })
 
-            for i, (r, ip) in enumerate(zip(responses, ips), 1):
-                if isinstance(r, Exception):
-                    cprint(f"  [red]✗[/red] #{i} Exception: {r}")
-                elif r.status_code == 200:
-                    cprint(f"  [green]✓[/green] #{i} 200 OK (ip:{ip})")
-                    record(
-                        "concurrent",
-                        f"Concurrent #{i}",
-                        "OK",
-                        200,
-                        total_ms / len(responses),
-                        "",
-                        ip,
-                    )
-                else:
-                    cprint(f"  [yellow]⚡[/yellow] #{i} {r.status_code} (ip:{ip})")
-                    record(
-                        "concurrent", f"Concurrent #{i}", "RATE_LIMITED", 429, 0, "", ip
-                    )
+async def run_system_suite(client):
+    crule("[bold cyan]System Configuration Suite[/bold cyan]")
 
-    asyncio.run(_run())
-    cprint("")
+    await call(client, "GET", "/api/system-parameters/cached/SYSTEM_STATUS", label="Cached Parameter")
+    await call(client, "GET", "/api/system-parameters/live/PRO_PLAN_PRICE_INR", label="Live Parameter")
+    # Note: Bulk endpoint uses list parameter in URL
+    await call(client, "GET", "/api/system-parameters/bulk?names=SYSTEM_STATUS,ENABLE_RAZORPAY", label="Bulk Parameter")
 
+    # Security Test: Unauthorized parameter
+    await call(client, "GET", "/api/system-parameters/live/DB_PASSWORD", label="Security Breach Attempt (Expect 403)")
 
-# ── Reporting ────────────────────────────────────────────────────────────────
+async def run_security_probes(client):
+    crule("[bold red]Security Vulnerability Probes[/bold red]")
 
+    # Probe 1: Unauthorized Neural Engine Usage (Cost-Exhaustion)
+    # Scenario: Free user attempts to use high-cost NEURAL engine
+    await call(client, "POST", "/api/tts/synthesize", label="Neural Bypass Probe", json={
+        "text": "Security probe.", "voiceId": "Joanna", "outputFormat": "mp3"
+    })
+
+    # Probe 2: IP Spoofing (Rate Limit Bypass)
+    # Scenario: Rapid requests with rotated X-Forwarded-For headers
+    cprint("  [dim]Triggering IP Spoofing Probe...[/dim]")
+    for i in range(5):
+        spoofed_ip = f"1.2.3.{i}"
+        await call(client, "POST", "/api/contact", label=f"Spoof {spoofed_ip}", headers={
+            "X-Forwarded-For": spoofed_ip
+        }, json={
+            "firstName": "Spoof", "lastName": "Bot", "email": "spoof@test.com",
+            "topic": "support", "message": "Bypass test."
+        })
+
+    # Probe 3: Information Disclosure
+    # Scenario: Trigger internal exception to see if raw e.getMessage() is returned
+    await call(client, "POST", "/api/tts/synthesize", label="Info Disclosure Probe", json={
+        "text": "Fail me.", "voiceId": "INVALID_VOICE_ID", "outputFormat": "mp3"
+    })
+
+# ── Summary & Reporting ──────────────────────────────────────────────────────
 
 def print_summary():
-    """Generates the final multi-colored report with success/failure statistics."""
-    crule("[bold]FINAL SUMMARY[/bold]")
+    crule("[bold]AUDIT REPORT[/bold]")
+    table = Table(box=box.ROUNDED, show_header=True, header_style="bold magenta")
+    table.add_column("Endpoint", style="dim")
+    table.add_column("Method")
+    table.add_column("Code", justify="center")
+    table.add_column("Duration", justify="right")
+    table.add_column("Status")
+
+    for r in results:
+        status_color = "green" if r["status"] == "OK" else "yellow" if r["status"] == "RATELIMIT" else "red"
+        table.add_row(
+            r["endpoint"], r["method"], str(r["code"]), f"{r['duration_ms']}ms",
+            f"[{status_color}]{r['status']}[/{status_color}]"
+        )
+
+    console.print(table)
+
     total = len(results)
     ok = sum(1 for r in results if r["status"] == "OK")
-    rl = sum(1 for r in results if r["status"] == "RATE_LIMITED")
+    rl = sum(1 for r in results if r["status"] == "RATELIMIT")
     err = sum(1 for r in results if r["status"] == "ERROR")
-    to = sum(1 for r in results if r["status"] == "TIMEOUT")
 
     cpanel(
         f"[green]✓ Passed:[/green]        {ok}\n"
-        f"[yellow]⚡ Rate limited:[/yellow] {rl}  [dim](Expected high for Identity Binding tests)[/dim]\n"
-        f"[red]✗ Errors:[/red]        {err}\n"
-        f"[red]⏱ Timeouts:[/red]     {to}\n"
-        f"[dim]Total requests:[/dim]  {total}",
-        title="Final Audit Results",
-        border_style="cyan",
+        f"[yellow]⚡ Rate limited:[/yellow] {rl}\n"
+        f"[red]✗ Failed:[/red]        {err}\n"
+        f"[dim]Total Ops:[/dim]       {total}",
+        title="Final Stability Score", border_style="cyan"
     )
 
+# ── Entry Point ─────────────────────────────────────────────────────────────
 
-# ── Entry point ─────────────────────────────────────────────────────────────
-
-
-def main():
-    """CLI Entry point parsing arguments and orchestrating test suites."""
-    parser = argparse.ArgumentParser(description="SpeakIT API load tester")
-    parser.add_argument("--url", default=None, help="Backend base URL")
-    parser.add_argument(
-        "--test",
-        default="all",
-        choices=[
-            "all",
-            "normal",
-            "ratelimit",
-            "recovery",
-            "edge",
-            "multi_ip",
-            "concurrent",
-        ],
-    )
-    parser.add_argument(
-        "--no-prompt", action="store_true", help="Use defaults silently"
-    )
+async def main():
+    parser = argparse.ArgumentParser(description="SpeakIT Full-Surface API Load Tester")
+    parser.add_argument("--url", default=cfg.base_url, help="Target backend URL")
     args = parser.parse_args()
+    cfg.base_url = args.url.rstrip("/")
 
-    if args.url:
-        cfg.base_url = args.url.rstrip("/")
-    cfg.test = args.test
+    cpanel(f"[bold]SpeakIT Full-Surface API Audit[/bold]\nTarget: {cfg.base_url}\nStarted: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", border_style="cyan")
 
-    cpanel(
-        "[bold]SpeakIT Secure API Load Tester[/bold]\nStarted : "
-        + datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        border_style="cyan",
-    )
+    async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+        # Suite 1: Authentication & Account Linking
+        await run_auth_suite(client)
 
-    if not args.no_prompt:
-        interactive_setup()
+        # Suite 2: Public Inquiries (Anonymous)
+        await run_contact_suite(client)
 
-    with httpx.Client(base_url=cfg.base_url, timeout=httpx.Timeout(120.0, connect=60.0)) as client:
-        test_health(client)
-        authenticate(client)
+        # Suite 3: TTS Core Engine
+        await run_studio_suite(client)
 
-        t = cfg.test
-        if t in ("all", "normal"):
-            test_normal(client)
-        if t in ("all", "ratelimit"):
-            test_ratelimit(client)
-        if t in ("all", "recovery"):
-            test_refill_recovery(client)
-        if t in ("all", "edge"):
-            test_edge_cases(client)
-        if t in ("all", "multi_ip"):
-            test_multi_ip(client)
+        # Suite 4: Transactional History
+        await run_history_suite(client)
 
-    if t in ("all", "concurrent"):
-        wait_refill(label="before TEST 7")
-        test_concurrent(cfg.base_url)
+        # Suite 5: Financial Workflow
+        await run_payment_suite(client)
+
+        # Suite 6: System Infrastructure
+        await run_system_suite(client)
+
+        # Suite 7: Security Probes
+        await run_security_probes(client)
 
     print_summary()
 
-
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
