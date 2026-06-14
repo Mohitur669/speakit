@@ -128,7 +128,9 @@ def record(endpoint, method, status, code, duration_ms, note="", ip=None):
 
 async def call(client, method, path, json=None, headers=None, label="", test_name=""):
     t0 = time.perf_counter()
-    h = _auth()
+    h = {}
+    if cfg.token:
+        h["Authorization"] = f"Bearer {cfg.token}"
     if headers: h.update(headers)
 
     try:
@@ -146,10 +148,9 @@ async def call(client, method, path, json=None, headers=None, label="", test_nam
         return r
     except Exception as e:
         ms = (time.perf_counter() - t0) * 1000
-        record(path, method, "TIMEOUT/FAIL", 0, ms, str(e))
+        record(path, method, "FAIL", 0, ms, str(e))
         cprint(f"  [red]✗[/red] {method} {path} → FAILED [{ms:.0f}ms] {str(e)}")
         return None
-
 # ── Test Suites ──────────────────────────────────────────────────────────────
 
 async def run_auth_suite(client):
