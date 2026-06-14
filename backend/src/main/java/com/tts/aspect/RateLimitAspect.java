@@ -99,6 +99,7 @@ public class RateLimitAspect {
             case PUBLIC -> rateLimitConfig.createPublicBucket();
             case LIVE_PARAM -> rateLimitConfig.createLiveParamBucket();
             case PING -> rateLimitConfig.createPingBucket();
+            case STT -> rateLimitConfig.createSttBucket();
         };
     }
 
@@ -109,6 +110,13 @@ public class RateLimitAspect {
         String clientIp = extractRealIp(req);
 
         return switch (action) {
+            case STT -> {
+                Long userId = (Long) req.getAttribute("userId");
+                if (userId != null) {
+                    yield "STT_USER_" + userId;
+                }
+                yield "STT_IP_" + clientIp;
+            }
             case PING -> "PING_" + clientIp;
             case LIVE_PARAM -> "LIVE_PARAM_" + clientIp;
             case TTS -> {

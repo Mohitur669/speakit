@@ -6,8 +6,9 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="bg-white dark:bg-primary-900 rounded-xl border border-primary-200 dark:border-primary-700 overflow-hidden">
-      <div class="px-6 py-4 border-b border-primary-100 dark:border-primary-800">
+    <div class="bg-white dark:bg-primary-900 rounded-xl border border-primary-300 dark:border-primary-700 overflow-hidden">
+      <div class="px-6 py-4 border-b border-primary-200 dark:border-primary-800">
+
         <h2 class="text-lg sm:text-sm font-semibold text-primary-900 dark:text-white">Generated Audio</h2>
       </div>
       <div class="p-6">

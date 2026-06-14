@@ -103,4 +103,17 @@ public class RateLimitConfig {
                         .build())
                 .build();
     }
+
+    /**
+     * Configuration for Speech-to-Text operations.
+     * Restrictive to prevent cost-exhaustion from large file processing.
+     */
+    public Bucket createSttBucket() {
+        return Bucket.builder()
+                .addLimit(Bandwidth.builder()
+                        .capacity(5) // Allow small burst of transcriptions
+                        .refillIntervally(5, Duration.ofHours(1)) // 5 tokens per hour
+                        .build())
+                .build();
+    }
 }

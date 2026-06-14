@@ -37,6 +37,7 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final WebSocketConfig webSocketConfig;
     private final WSTicketService wsTicketService;
+    private final SystemParameterService systemParameterService;
 
     @Value("${auth.session-duration-ms:7200000}")
     private long sessionDurationMs;
