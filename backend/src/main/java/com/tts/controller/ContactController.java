@@ -1,37 +1,41 @@
 package com.tts.controller;
 
+import com.tts.aspect.RateLimitAction;
 import com.tts.aspect.RateLimited;
 import com.tts.dto.ContactRequest;
-import com.tts.util.Sanitizer;
+import com.tts.service.ContactService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.Map;
-
-import com.tts.aspect.RateLimitAction;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/contact")
-@Slf4j
+@RequiredArgsConstructor
 public class ContactController {
 
+    private final ContactService contactService;
+
+    /**
+     * Handles public contact form submissions.
+     * 
+     * Security:
+     * - Write-Only: This controller provides no GET, PUT, or DELETE methods.
+     * - Defense-in-Depth: Rate limited by IP AND Email to prevent distributed bot attacks
+     *   using a single target email or a single IP.
+     */
     @RateLimited(action = RateLimitAction.PUBLIC)
     @PostMapping
-    public ResponseEntity<?> submitContactForm(@Valid @RequestBody ContactRequest request) {
-        // Sanitize inputs
-        String firstName = Sanitizer.sanitize(request.getFirstName());
-        String lastName = Sanitizer.sanitize(request.getLastName());
-        String email = Sanitizer.sanitize(request.getEmail());
-        String topic = Sanitizer.sanitize(request.getTopic());
-        String message = Sanitizer.sanitize(request.getMessage());
-
-        // In a real production app, this would integrate with AWS SES, SendGrid, or a CRM like Salesforce/Zendesk.
-        // For now, we log it securely and return success to the frontend.
-        log.info("Contact form submitted by: {} {} ({}), Topic: {}", firstName, lastName, email, topic);
-        log.debug("Message content: {}", message);
-
-        return ResponseEntity.ok(Map.of("message", "Contact request received successfully"));
+    public ResponseEntity<Void> submitContact(@Valid @RequestBody ContactRequest request, HttpServletRequest httpRequest) {
+        // Use a composite key for rate limiting: IP + Email hash to prevent cross-IP email spam
+        // Note: The @RateLimited aspect already handles IP-based limiting. 
+        // We handle additional business-level email limiting in the service.
+        String ipAddress = httpRequest.getRemoteAddr();
+        contactService.handleSubmission(request, ipAddress);
+        return ResponseEntity.ok().build();
     }
 }

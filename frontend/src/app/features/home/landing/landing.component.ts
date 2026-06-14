@@ -277,6 +277,7 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
                 </li>
               </ul>
               <a [routerLink]="authService.currentPlanType() === 'ENTERPRISE' ? null : '/contact'" 
+                [queryParams]="{ topic: 'enterprise' }"
                 [ngClass]="authService.currentPlanType() === 'ENTERPRISE' ? 'bg-primary-100 dark:bg-primary-800 text-primary-400 cursor-not-allowed opacity-50 pointer-events-none' : 'bg-primary-900 dark:bg-white text-white dark:text-primary-900 hover:opacity-90 active:scale-95'"
                 class="block w-full py-3 text-center font-bold rounded-xl shadow-lg transition-all text-sm uppercase tracking-wider">
                 {{ authService.currentPlanType() === 'ENTERPRISE' ? 'Current Plan' : 'Contact Sales' }}

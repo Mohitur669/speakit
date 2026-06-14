@@ -241,7 +241,7 @@ For startups, enterprises, and businesses looking to:
 - Remove the AGPLv3 restrictions
 - Receive priority technical support and SLA guarantees
 
-Please contact **founders@speakit.ai** to purchase a Commercial License.
+Please contact **support@mohitur.com** to purchase a Commercial License.
 
 ---
 

@@ -1,5 +1,7 @@
 package com.tts.exception;
 
+import com.tts.dto.ApiErrorResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -8,6 +10,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -15,8 +18,18 @@ import java.util.Map;
 @Slf4j
 public class GlobalExceptionHandler {
 
+    private ApiErrorResponse buildResponse(HttpStatus status, String error, String message, HttpServletRequest request) {
+        return ApiErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(status.value())
+                .error(error)
+                .message(message)
+                .path(request.getRequestURI())
+                .build();
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, String>> handleValidationExceptions(MethodArgumentNotValidException ex) {
+    public ResponseEntity<ApiErrorResponse> handleValidationExceptions(MethodArgumentNotValidException ex, HttpServletRequest request) {
         log.warn("Validation failed: {} errors", ex.getBindingResult().getErrorCount());
         Map<String, String> errors = new HashMap<>();
         ex.getBindingResult().getAllErrors().forEach((error) -> {
@@ -24,36 +37,43 @@ public class GlobalExceptionHandler {
             String errorMessage = error.getDefaultMessage();
             errors.put(fieldName, errorMessage);
         });
-        return new ResponseEntity<>(errors, HttpStatus.BAD_REQUEST);
+
+        ApiErrorResponse response = buildResponse(HttpStatus.BAD_REQUEST, "Validation Error", "Invalid input data", request);
+        response.setValidationErrors(errors);
+        
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(RateLimitExceededException.class)
-    public ResponseEntity<Map<String, String>> handleRateLimitExceeded(RateLimitExceededException ex) {
+    public ResponseEntity<ApiErrorResponse> handleRateLimitExceeded(RateLimitExceededException ex, HttpServletRequest request) {
         log.warn("Rate limit exceeded for request. Retry after: {}s", ex.getRetryAfterSeconds());
-        Map<String, String> error = new HashMap<>();
-        error.put("error", "Rate limit exceeded. Please try again later.");
+        
+        ApiErrorResponse response = buildResponse(HttpStatus.TOO_MANY_REQUESTS, "Too Many Requests", "Rate limit exceeded. Please try again later.", request);
         
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                 .header("Retry-After", String.valueOf(ex.getRetryAfterSeconds()))
-                .body(error);
+                .body(response);
     }
 
     @ExceptionHandler(SpeechConversionException.class)
-    public ResponseEntity<Map<String, String>> handleSpeechConversion(SpeechConversionException ex) {
+    public ResponseEntity<ApiErrorResponse> handleSpeechConversion(SpeechConversionException ex, HttpServletRequest request) {
         log.error("TTS conversion failed: {}", ex.getMessage());
-        Map<String, String> error = new HashMap<>();
-        error.put("type", "TTS_ERROR");
-        // Security: Return a user-friendly message rather than the raw internal error
-        error.put("message", "Speech synthesis failed. Please try a different voice or shorter text.");
+        
+        ApiErrorResponse response = buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "TTS_ERROR", "Speech synthesis failed. Please try a different voice or shorter text.", request);
+        return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
 
-        return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<ApiErrorResponse> handleRuntimeException(RuntimeException ex, HttpServletRequest request) {
+        log.warn("Business rule violation: {}", ex.getMessage());
+        ApiErrorResponse response = buildResponse(HttpStatus.BAD_REQUEST, "Bad Request", ex.getMessage(), request);
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<Map<String, String>> handleGeneralException(Exception ex) {
+    public ResponseEntity<ApiErrorResponse> handleGeneralException(Exception ex, HttpServletRequest request) {
         log.error("Unexpected system error", ex);
-        Map<String, String> error = new HashMap<>();
-        error.put("error", "An unexpected error occurred.");
-        return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
+        ApiErrorResponse response = buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Internal Server Error", "An unexpected error occurred.", request);
+        return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }

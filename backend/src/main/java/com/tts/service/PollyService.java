@@ -13,7 +13,10 @@ import software.amazon.awssdk.services.polly.PollyClient;
 import software.amazon.awssdk.services.polly.model.*;
 
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Manages integration with AWS Polly for high-performance text-to-speech synthesis.
@@ -26,7 +29,7 @@ import java.util.List;
  */
 @Service
 @Slf4j
-public class PollyService {
+public class PollyService implements SpeechProvider {
 
     @Value("${aws.accessKeyId}")
     private String accessKeyId;
@@ -57,6 +60,16 @@ public class PollyService {
                 .build();
     }
 
+    @Override
+    public boolean supports(String engineName) {
+        return "polly".equalsIgnoreCase(engineName);
+    }
+
+    @Override
+    public InputStream synthesizeSpeech(String text, String voiceId, String outputFormat, Map<String, Object> additionalParams) {
+        return synthesizeSpeech(text, voiceId, outputFormat);
+    }
+
     /**
      * Synthesizes text into an audio stream, automatically negotiating the best available 
      * engine (Neural vs. Standard) based on the voice capabilities.
@@ -77,7 +90,7 @@ public class PollyService {
      * Prioritizes NEURAL for quality, but falls back to STANDARD.
      */
     public Engine getBestEngineForVoice(String voiceId) {
-        List<Voice> voices = getAvailableVoices();
+        List<Voice> voices = getRawAvailableVoices();
         Voice voice = voices.stream()
                 .filter(v -> v.id().toString().equals(voiceId))
                 .findFirst()
@@ -125,7 +138,41 @@ public class PollyService {
      * 
      * @return A list of Voice objects representing the available options
      */
-    public List<Voice> getAvailableVoices() {
+    @Override
+    public List<Map<String, Object>> getAvailableVoices() {
+        if (cachedVoices != null && (System.currentTimeMillis() - lastCacheUpdate < CACHE_DURATION)) {
+            return mapVoices(cachedVoices);
+        }
+
+        try {
+            DescribeVoicesRequest request = DescribeVoicesRequest.builder()
+                    .languageCode(LanguageCode.EN_US)
+                    .build();
+            cachedVoices = pollyClient.describeVoices(request).voices();
+            lastCacheUpdate = System.currentTimeMillis();
+            log.info("Polly voices cache updated. Found {} voices.", cachedVoices.size());
+            return mapVoices(cachedVoices);
+        } catch (Exception e) {
+            log.error("Failed to fetch voices from Polly", e);
+            return mapVoices(cachedVoices != null ? cachedVoices : List.of());
+        }
+    }
+
+    private List<Map<String, Object>> mapVoices(List<Voice> voices) {
+        List<Map<String, Object>> mappedVoices = new ArrayList<>();
+        for (Voice v : voices) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", v.id().toString());
+            map.put("name", v.name());
+            map.put("gender", v.genderAsString());
+            map.put("isElevenLabs", false);
+            map.put("isSarvam", false);
+            mappedVoices.add(map);
+        }
+        return mappedVoices;
+    }
+
+    public List<Voice> getRawAvailableVoices() {
         if (cachedVoices != null && (System.currentTimeMillis() - lastCacheUpdate < CACHE_DURATION)) {
             return cachedVoices;
         }
@@ -136,10 +183,8 @@ public class PollyService {
                     .build();
             cachedVoices = pollyClient.describeVoices(request).voices();
             lastCacheUpdate = System.currentTimeMillis();
-            log.info("Polly voices cache updated. Found {} voices.", cachedVoices.size());
             return cachedVoices;
         } catch (Exception e) {
-            log.error("Failed to fetch voices from Polly", e);
             return cachedVoices != null ? cachedVoices : List.of();
         }
     }
