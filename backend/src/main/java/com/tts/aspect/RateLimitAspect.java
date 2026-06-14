@@ -98,6 +98,8 @@ public class RateLimitAspect {
             case TTS -> rateLimitConfig.createTtsBucket();
             case PUBLIC -> rateLimitConfig.createPublicBucket();
             case LIVE_PARAM -> rateLimitConfig.createLiveParamBucket();
+            case PING -> rateLimitConfig.createPingBucket();
+            case STT -> rateLimitConfig.createSttBucket();
         };
     }
 
@@ -108,6 +110,14 @@ public class RateLimitAspect {
         String clientIp = extractRealIp(req);
 
         return switch (action) {
+            case STT -> {
+                Long userId = (Long) req.getAttribute("userId");
+                if (userId != null) {
+                    yield "STT_USER_" + userId;
+                }
+                yield "STT_IP_" + clientIp;
+            }
+            case PING -> "PING_" + clientIp;
             case LIVE_PARAM -> "LIVE_PARAM_" + clientIp;
             case TTS -> {
                 // For expensive operations, bind the limit to the authenticated User ID.
@@ -141,8 +151,14 @@ public class RateLimitAspect {
 
     /**
      * Extracts the client IP from the request.
-     * Security: Relies on server.forward-headers-strategy=FRAMEWORK 
-     * in application.properties to handle trusted proxies (Cloudflare/Render).
+     * 
+     * Security Notice: This method relies on 'server.forward-headers-strategy=FRAMEWORK' 
+     * in application.properties. This configuration ensures that Spring correctly 
+     * processes X-Forwarded-For headers from trusted proxies (like Cloudflare or Render)
+     * and returns the true client IP in request.getRemoteAddr().
+     * 
+     * Without this strategy, an attacker could spoof their IP by providing a 
+     * fake X-Forwarded-For header.
      */
     private String extractRealIp(HttpServletRequest request) {
         return request.getRemoteAddr();

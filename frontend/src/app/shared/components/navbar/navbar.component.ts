@@ -29,8 +29,9 @@ import { ThemeService } from '../../../core/services/theme.service';
 
           <!-- Desktop Nav -->
           <nav class="hidden md:flex items-center gap-6 lg:gap-8">
-            <a routerLink="/" fragment="home" class="text-sm font-medium text-primary-500 hover:text-primary-900 dark:text-primary-400 dark:hover:text-white transition-colors">Home</a>
-            <a routerLink="/" fragment="features" class="text-sm font-medium text-primary-500 hover:text-primary-900 dark:text-primary-400 dark:hover:text-white transition-colors">Features</a>
+            <a routerLink="/" class="text-sm font-medium text-primary-500 hover:text-primary-900 dark:text-primary-400 dark:hover:text-white transition-colors">Home</a>
+            <a routerLink="/tts" class="text-sm font-medium text-primary-500 hover:text-primary-900 dark:text-primary-400 dark:hover:text-white transition-colors">Studio</a>
+            <!-- <a routerLink="/stt" class="text-sm font-medium text-primary-500 hover:text-primary-900 dark:text-primary-400 dark:hover:text-white transition-colors">Speech to Text</a> -->
             <a routerLink="/" fragment="pricing" class="text-sm font-medium text-primary-500 hover:text-primary-900 dark:text-primary-400 dark:hover:white transition-colors">Pricing</a>
             <a routerLink="/" fragment="compare" class="text-sm font-medium text-primary-500 hover:text-primary-900 dark:text-primary-400 dark:hover:white transition-colors">Compare</a>
             <a routerLink="/contact" class="text-sm font-medium text-primary-500 hover:text-primary-900 dark:text-primary-400 dark:hover:white transition-colors">Contact Us</a>
@@ -52,6 +53,15 @@ import { ThemeService } from '../../../core/services/theme.service';
 
             <!-- User Menu -->
             <ng-container *ngIf="authService.currentUser() as user; else guest">
+              <!-- Minimal Desktop Upgrade Link -->
+              <a *ngIf="authService.currentPlanType() !== 'ENTERPRISE'" 
+                [routerLink]="getNextPlan() === 'ENTERPRISE' ? '/contact' : '/tts'" 
+                [queryParams]="getNextPlan() === 'ENTERPRISE' ? { topic: 'enterprise' } : { autostart: getNextPlan() }"
+                class="hidden sm:flex items-center gap-1 px-2 py-1 text-accent-600 dark:text-accent-400 hover:text-accent-700 dark:hover:text-accent-300 transition-colors text-[10px] font-bold uppercase tracking-widest group/upg">
+                <svg class="w-3.5 h-3.5 group-hover/upg:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                <span>Upgrade</span>
+              </a>
+
               <div class="flex items-center gap-2 sm:gap-3 relative">
                 <!-- User Avatar + Menu Trigger -->
                 <div (click)="toggleUserMenu($event)" 
@@ -132,7 +142,7 @@ import { ThemeService } from '../../../core/services/theme.service';
                   Sign in
                 </a>
                 <a routerLink="/signup"
-                  class="px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white bg-brand-blue hover:bg-brand-blue/90 rounded-lg shadow-sm hover:shadow-md transition-all whitespace-nowrap">
+                  class="px-4 py-2 text-xs font-bold text-white bg-brand-blue hover:bg-brand-blue/90 rounded-lg shadow-sm transition-all whitespace-nowrap active:scale-[0.95] uppercase tracking-wider">
                   Get Started
                 </a>
               </div>

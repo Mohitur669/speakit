@@ -301,6 +301,10 @@ Before editing any file:
 - Never replace stable architecture unnecessarily.
 - Never remove unused-looking code without investigation.
 
+## Git & Commits
+- **NEVER commit anything without explicit user permission.** Always ask the user before staging (`git add`) or committing (`git commit`) any changes. 
+- AI agents must never automatically push to remote repositories.
+
 ## Enterprise Coding Standards
 All generated code must be:
 - Production-ready

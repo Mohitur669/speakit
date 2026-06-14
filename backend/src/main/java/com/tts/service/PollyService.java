@@ -67,36 +67,43 @@ public class PollyService implements SpeechProvider {
 
     @Override
     public InputStream synthesizeSpeech(String text, String voiceId, String outputFormat, Map<String, Object> additionalParams) {
-        return synthesizeSpeech(text, voiceId, outputFormat);
-    }
-
-    /**
-     * Synthesizes text into an audio stream, automatically negotiating the best available 
-     * engine (Neural vs. Standard) based on the voice capabilities.
-     * 
-     * @param text The sanitized text to synthesize
-     * @param voiceId The specific AWS Polly voice ID (e.g., 'Joanna')
-     * @param outputFormat The requested audio format (mp3, ogg_vorbis, pcm)
-     * @return InputStream containing the raw audio bytes from AWS Polly
-     */
-    public InputStream synthesizeSpeech(String text, String voiceId, String outputFormat) {
-        Engine engine = getBestEngineForVoice(voiceId);
-        log.info("Server Enforced: Using {} engine for voice={}", engine, voiceId);
+        // Use provided engine if present, otherwise negotiate
+        Engine engine = (additionalParams != null && additionalParams.containsKey("engine")) 
+                ? (Engine) additionalParams.get("engine") 
+                : getBestEngineForVoice(voiceId, null);
+        
+        log.info("Speech Synthesis: Using {} engine for voice={}", engine, voiceId);
         return synthesize(text, voiceId, outputFormat, engine);
     }
 
     /**
-     * Centralized logic to determine the best available engine for a voice.
-     * Prioritizes NEURAL for quality, but falls back to STANDARD.
+     * Legacy/Helper method for simple synthesis.
+     * Negotiates the best available engine (Neural/Standard).
      */
-    public Engine getBestEngineForVoice(String voiceId) {
+    public InputStream synthesizeSpeech(String text, String voiceId, String outputFormat) {
+        return synthesizeSpeech(text, voiceId, outputFormat, null);
+    }
+
+    /**
+     * Centralized logic to determine the best available engine for a voice.
+     * Prioritizes NEURAL for quality, but falls back to STANDARD if the user's
+     * plan does not support high-cost engines.
+     */
+    public Engine getBestEngineForVoice(String voiceId, com.tts.entity.PlanType planType) {
         List<Voice> voices = getRawAvailableVoices();
         Voice voice = voices.stream()
                 .filter(v -> v.id().toString().equals(voiceId))
                 .findFirst()
                 .orElse(null);
 
-        if (voice != null && voice.supportedEngines().contains(Engine.NEURAL)) {
+        // Security check: Only PRO/PRO_PLUS/ENTERPRISE users can use NEURAL
+        boolean isPremiumPlan = planType != null && (
+                planType == com.tts.entity.PlanType.PRO || 
+                planType == com.tts.entity.PlanType.PRO_PLUS || 
+                planType == com.tts.entity.PlanType.ENTERPRISE
+        );
+
+        if (isPremiumPlan && voice != null && voice.supportedEngines().contains(Engine.NEURAL)) {
             return Engine.NEURAL;
         }
         return Engine.STANDARD;

@@ -15,7 +15,8 @@ export interface DropdownOption {
       <button
         type="button"
         (click)="toggle()"
-        class="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all"
+        [disabled]="disabled"
+        class="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:grayscale-[0.5]"
         [class.border-brand-blue]="isOpen()"
       >
         <span class="text-sm font-medium">{{ selectedOption?.label || placeholder }}</span>
@@ -72,6 +73,7 @@ export class CustomDropdownComponent {
   @Input() options: DropdownOption[] = [];
   @Input() value: string = '';
   @Input() placeholder: string = 'Select an option';
+  @Input() disabled: boolean = false;
   
   @Output() valueChange = new EventEmitter<string>();
 
@@ -82,6 +84,7 @@ export class CustomDropdownComponent {
   }
 
   toggle() {
+    if (this.disabled) return;
     this.isOpen.update(v => !v);
   }
 
