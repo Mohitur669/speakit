@@ -10,6 +10,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication
 @EnableAspectJAutoProxy
 @EnableScheduling
+@org.springframework.scheduling.annotation.EnableAsync
 @EnableJpaAuditing
 @EnableCaching
 public class TextToSpeechApplication {
