@@ -6,7 +6,7 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="hidden md:block bg-white dark:bg-primary-900 rounded-xl border border-primary-200 dark:border-primary-700 p-6">
+    <div class="hidden md:block bg-white dark:bg-primary-900 rounded-xl border border-primary-300 dark:border-primary-700 p-6">
       <h2 class="text-lg sm:text-sm font-semibold text-primary-900 dark:text-white mb-4">Your Usage</h2>
       <div class="space-y-4">
         <div>

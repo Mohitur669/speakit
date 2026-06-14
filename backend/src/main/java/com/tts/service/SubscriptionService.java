@@ -63,6 +63,11 @@ public class SubscriptionService {
      */
     public boolean canUseElevenLabs(PlanType planType, SubscriptionStatus status, LocalDateTime expiry) {
         if (!hasActivePremiumAccess(planType, status, expiry)) return false;
+
+        // Also check global ElevenLabs feature flag from live parameters
+        boolean elevenLabsEnabled = Boolean.parseBoolean(systemParameterService.getLiveParameter("ELEVENLABS_ENABLED", "true"));
+        if (!elevenLabsEnabled) return false;
+
         return PlanType.PRO_PLUS == planType || PlanType.ENTERPRISE == planType;
     }
 
@@ -71,7 +76,73 @@ public class SubscriptionService {
      */
     public boolean canUseSarvam(PlanType planType, SubscriptionStatus status, LocalDateTime expiry) {
         if (!hasActivePremiumAccess(planType, status, expiry)) return false;
+
+        // Also check global Sarvam feature flag from live parameters
+        boolean sarvamEnabled = Boolean.parseBoolean(systemParameterService.getLiveParameter("SARVAM_ENABLED", "true"));
+        if (!sarvamEnabled) return false;
+
         return PlanType.PRO == planType || PlanType.PRO_PLUS == planType || PlanType.ENTERPRISE == planType;
+    }
+
+    /**
+     * Checks if the user's plan permits access to Speech-to-Text (STT) features.
+     * Restricted to PRO and above.
+     */
+    public boolean hasSpeechToText(PlanType planType, SubscriptionStatus status, LocalDateTime expiry) {
+        if (!hasActivePremiumAccess(planType, status, expiry)) return false;
+        
+        // Also check global STT feature flag from live parameters
+        boolean sttEnabled = Boolean.parseBoolean(systemParameterService.getLiveParameter("STT_ENABLED", "true"));
+        if (!sttEnabled) return false;
+
+        return planType == PlanType.PRO || planType == PlanType.PRO_PLUS || planType == PlanType.ENTERPRISE;
+    }
+
+    /**
+     * Returns the maximum allowed audio file size for STT in bytes.
+     */
+    public long getSttUploadLimitBytes(PlanType planType) {
+        long limitMb;
+        if (planType == PlanType.PRO) {
+            limitMb = Long.parseLong(systemParameterService.getLiveParameter("STT_MAX_FILE_SIZE_MB_PRO", "25"));
+        } else if (planType == PlanType.PRO_PLUS) {
+            limitMb = Long.parseLong(systemParameterService.getLiveParameter("STT_MAX_FILE_SIZE_MB_PRO_PLUS", "50"));
+        } else if (planType == PlanType.ENTERPRISE) {
+            limitMb = Long.parseLong(systemParameterService.getLiveParameter("STT_MAX_FILE_SIZE_MB_ENTERPRISE", "500"));
+        } else {
+            return 0;
+        }
+        return limitMb * 1024 * 1024;
+    }
+
+    /**
+     * Returns the maximum allowed audio duration for STT in minutes.
+     */
+    public int getSttMaxDurationMinutes(PlanType planType) {
+        if (planType == PlanType.PRO) {
+            return Integer.parseInt(systemParameterService.getLiveParameter("STT_MAX_DURATION_MIN_PRO", "15"));
+        } else if (planType == PlanType.PRO_PLUS) {
+            return Integer.parseInt(systemParameterService.getLiveParameter("STT_MAX_DURATION_MIN_PRO_PLUS", "30"));
+        } else if (planType == PlanType.ENTERPRISE) {
+            return Integer.parseInt(systemParameterService.getLiveParameter("STT_MAX_DURATION_MIN_ENTERPRISE", "120"));
+        }
+        return 0;
+    }
+
+    /**
+     * Retrieves the daily STT quota for a given plan.
+     */
+    public int getSttDailyLimit(PlanType planType, SubscriptionStatus status, LocalDateTime expiry) {
+        if (!hasSpeechToText(planType, status, expiry)) return 0;
+        
+        if (planType == PlanType.PRO) {
+            return Integer.parseInt(systemParameterService.getLiveParameter("STT_DAILY_QUOTA_PRO", "100"));
+        } else if (planType == PlanType.PRO_PLUS) {
+            return Integer.parseInt(systemParameterService.getLiveParameter("STT_DAILY_QUOTA_PRO_PLUS", "500"));
+        } else if (planType == PlanType.ENTERPRISE) {
+            return Integer.parseInt(systemParameterService.getLiveParameter("STT_DAILY_QUOTA_ENTERPRISE", "5000"));
+        }
+        return 0;
     }
 
     /**

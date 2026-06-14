@@ -19,7 +19,7 @@ import { TtsInputComponent } from './components/tts-input/tts-input.component';
 import { TtsOutputComponent } from './components/tts-output/tts-output.component';
 import { UsageStatsComponent } from './components/usage-stats/usage-stats.component';
 import { UpgradeCardComponent } from './components/upgrade-card/upgrade-card.component';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-tts',
@@ -33,7 +33,8 @@ import { ActivatedRoute, Router } from '@angular/router';
     TtsInputComponent,
     TtsOutputComponent,
     UsageStatsComponent,
-    UpgradeCardComponent
+    // UpgradeCardComponent,
+    RouterLink
   ],
   templateUrl: './tts.component.html',
   styleUrls: ['./tts.component.scss']

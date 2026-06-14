@@ -1,8 +1,8 @@
 {
 	"info": {
-		"_postman_id": "speakit-api-collection-v2",
-		"name": "SpeakIT API v1.1",
-		"description": "Production API collection for SpeakIT - Includes Auth, Studio, Analytics, and Marketing services.",
+		"_postman_id": "speakit-api-collection-v1.2",
+		"name": "SpeakIT API v1.2",
+		"description": "Enterprise API collection for SpeakIT v1.2 - Modernized with Supabase-aligned JWT verification and secure Contact Us system.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
@@ -21,7 +21,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"username\": \"johndoe\",\n    \"email\": \"john@example.com\",\n    \"password\": \"password123\"\n}"
+							"raw": "{\n    \"username\": \"test\",\n    \"email\": \"test@mohitur.com\",\n    \"password\": \"Mohitur669\",\n    \"phoneNumber\": \"+919876543210\"\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/auth/register",
@@ -62,7 +62,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"username\": \"johndoe\",\n    \"password\": \"password123\"\n}"
+							"raw": "{\n    \"username\": \"test\",\n    \"password\": \"Mohitur669\"\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/auth/login",
@@ -73,6 +73,60 @@
 								"api",
 								"auth",
 								"login"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Current Profile (Me)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"me"
+							]
+						}
+					}
+				},
+				{
+					"name": "Issue WS Ticket",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/ws-ticket",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"ws-ticket"
 							]
 						}
 					}
@@ -91,7 +145,6 @@
 							]
 						},
 						"method": "POST",
-						"header": [],
 						"url": {
 							"raw": "{{baseUrl}}/api/auth/logout",
 							"host": [
@@ -102,27 +155,30 @@
 								"auth",
 								"logout"
 							]
-						},
-						"description": "Invalidates the current session globally by incrementing session_version."
+						}
 					}
 				},
 				{
-					"name": "Platform Ping",
+					"name": "Availability Check (Email)",
 					"request": {
 						"method": "GET",
-						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/api/auth/ping",
+							"raw": "{{baseUrl}}/api/auth/check-email?email=test@mohitur.com",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
 								"api",
 								"auth",
-								"ping"
+								"check-email"
+							],
+							"query": [
+								{
+									"key": "email",
+									"value": "test@mohitur.com"
+								}
 							]
-						},
-						"description": "Lightweight health check for Render keep-alive."
+						}
 					}
 				}
 			]
@@ -144,7 +200,6 @@
 							]
 						},
 						"method": "GET",
-						"header": [],
 						"url": {
 							"raw": "{{baseUrl}}/api/tts/voices",
 							"host": [
@@ -155,12 +210,38 @@
 								"tts",
 								"voices"
 							]
-						},
-						"description": "Returns a list of voices filtered by user plan (Pro users see Neural engines)."
+						}
 					}
 				},
 				{
-					"name": "Synthesize (Buffer)",
+					"name": "Get Usage Stats",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/api/tts/usage",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"tts",
+								"usage"
+							]
+						}
+					}
+				},
+				{
+					"name": "Synthesize",
 					"request": {
 						"auth": {
 							"type": "bearer",
@@ -181,7 +262,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"text\": \"This is a production test synthesis.\",\n    \"voiceId\": \"Joanna\",\n    \"outputFormat\": \"mp3\"\n}"
+							"raw": "{\n    \"text\": \"Welcome to SpeakIT v1.2\",\n    \"voiceId\": \"Joanna\",\n    \"outputFormat\": \"mp3\"\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/tts/synthesize",
@@ -193,12 +274,11 @@
 								"tts",
 								"synthesize"
 							]
-						},
-						"description": "Generates audio bytes. Limits: 200 (Free) / 3000 (Pro)."
+						}
 					}
 				},
 				{
-					"name": "Synthesize (Stream)",
+					"name": "Synthesize (Streaming)",
 					"request": {
 						"auth": {
 							"type": "bearer",
@@ -219,7 +299,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"text\": \"Streaming high-quality audio...\",\n    \"voiceId\": \"Matthew\",\n    \"outputFormat\": \"mp3\"\n}"
+							"raw": "{\n    \"text\": \"Streaming high-quality audio bytes directly from AWS Polly.\",\n    \"voiceId\": \"Matthew\",\n    \"outputFormat\": \"mp3\"\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/tts/synthesize-stream",
@@ -237,10 +317,46 @@
 			]
 		},
 		{
+			"name": "Inquiry & Public",
+			"item": [
+				{
+					"name": "Submit Contact Us",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-Request-ID",
+								"value": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"firstName\": \"Mohitur\",\n    \"lastName\": \"Test\",\n    \"email\": \"test@mohitur.com\",\n    \"topic\": \"enterprise\",\n    \"message\": \"I am interested in the high-volume API access for enterprise synthesis.\",\n    \"website\": \"\" \n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/contact",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"contact"
+							]
+						},
+						"description": "Secured via IP+Email Intersection Limiting, Honeypot, and Replay Protection."
+					}
+				}
+			]
+		},
+		{
 			"name": "Analytics & History",
 			"item": [
 				{
-					"name": "Get Conversion History",
+					"name": "Get Paginated History",
 					"request": {
 						"auth": {
 							"type": "bearer",
@@ -253,9 +369,8 @@
 							]
 						},
 						"method": "GET",
-						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/api/history?page=0&size=20",
+							"raw": "{{baseUrl}}/api/history?page=0&size=10",
 							"host": [
 								"{{baseUrl}}"
 							],
@@ -270,21 +385,67 @@
 								},
 								{
 									"key": "size",
-									"value": "20"
+									"value": "10"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Targeted History Deletion",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
 								}
 							]
 						},
-						"description": "Paginated history of TTS conversion requests."
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[1, 2, 3]"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/history/delete",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"history",
+								"delete"
+							]
+						}
 					}
 				}
 			]
 		},
 		{
-			"name": "Marketing & Public",
+			"name": "Payments & Plans",
 			"item": [
 				{
-					"name": "Submit Contact Form",
+					"name": "Create Razorpay Order",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "POST",
 						"header": [
 							{
@@ -294,16 +455,92 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"firstName\": \"John\",\n    \"lastName\": \"Doe\",\n    \"email\": \"john@example.com\",\n    \"topic\": \"support\",\n    \"message\": \"I need help with my Pro subscription.\"\n}"
+							"raw": "{\n    \"planType\": \"PRO\",\n    \"amount\": 499,\n    \"currency\": \"INR\"\n}"
 						},
 						"url": {
-							"raw": "{{baseUrl}}/api/contact",
+							"raw": "{{baseUrl}}/api/v1/payments/create-order",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
 								"api",
-								"contact"
+								"v1",
+								"payments",
+								"create-order"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Transaction History",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/payments/history",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"payments",
+								"history"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "System Infrastructure",
+			"item": [
+				{
+					"name": "Get Bulk Parameters",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/api/system-parameters/bulk?names=SYSTEM_STATUS,FREE_PLAN_FEATURES",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"system-parameters",
+								"bulk"
+							],
+							"query": [
+								{
+									"key": "names",
+									"value": "SYSTEM_STATUS,FREE_PLAN_FEATURES"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Live Parameter (Whitelist Protected)",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/api/system-parameters/live/PRO_PLAN_PRICE_INR",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"system-parameters",
+								"live",
+								"PRO_PLAN_PRICE_INR"
 							]
 						}
 					}

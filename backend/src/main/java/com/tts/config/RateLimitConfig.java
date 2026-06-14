@@ -89,4 +89,31 @@ public class RateLimitConfig {
                         .build())
                 .build();
     }
+
+    /**
+     * Highly restricted bucket for health checks.
+     * Designed to allow 1 internal ping every 14 minutes for Render free sleep prevention,
+     * while blocking external flooding.
+     */
+    public Bucket createPingBucket() {
+        return Bucket.builder()
+                .addLimit(Bandwidth.builder()
+                        .capacity(3) // Allow small burst
+                        .refillIntervally(1, Duration.ofMinutes(10)) // 1 token every 10 mins
+                        .build())
+                .build();
+    }
+
+    /**
+     * Configuration for Speech-to-Text operations.
+     * Restrictive to prevent cost-exhaustion from large file processing.
+     */
+    public Bucket createSttBucket() {
+        return Bucket.builder()
+                .addLimit(Bandwidth.builder()
+                        .capacity(5) // Allow small burst of transcriptions
+                        .refillIntervally(5, Duration.ofHours(1)) // 5 tokens per hour
+                        .build())
+                .build();
+    }
 }

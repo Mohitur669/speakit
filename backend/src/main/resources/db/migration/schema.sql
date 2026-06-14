@@ -152,7 +152,22 @@ INSERT INTO system_parameters (parameter_name, parameter_value, description) VAL
 ('FREE_PLAN_FEATURES', 'Standard Voices;100 chars / request;5 daily syntheses', 'Features list for free tier'),
 ('PRO_PLAN_FEATURES', '200 chars / request;Indian Voices;Indian Language; Everything From Free', 'Features list for pro tier'),
 ('PRO_PLUS_PLAN_FEATURES', '500 chars / request;ElevenLabs AI Voices; Priority Support; Everything From Pro', 'Features list for pro plus tier'),
-('ENTERPRISE_PLAN_FEATURES', 'Custom Character Limits; API Access; Custom Feature Requests', 'Features list for enterprise tier')
+('ENTERPRISE_PLAN_FEATURES', 'Custom Character Limits; API Access; Custom Feature Requests', 'Features list for enterprise tier'),
+('STT_ENABLED', 'true', 'Global toggle for Speech-to-Text feature'),
+('ELEVENLABS_ENABLED', 'true', 'Global toggle for ElevenLabs Natural AI voices'),
+('SARVAM_ENABLED', 'true', 'Global toggle for Sarvam AI Indian regional voices'),
+('AUTH_SESSION_DURATION_MS', '7200000', 'Maximum duration of a user session (2 hours)'),
+('AUTH_IDLE_TIMEOUT_MS', '60000', 'Maximum idle time before session invalidation (1 minute)'),
+('STT_MAX_FILE_SIZE_MB_PRO', '25', 'Max audio file size (MB) for Pro tier'),
+('STT_MAX_FILE_SIZE_MB_PRO_PLUS', '50', 'Max audio file size (MB) for Pro Plus tier'),
+('STT_MAX_FILE_SIZE_MB_ENTERPRISE', '500', 'Max audio file size (MB) for Enterprise tier'),
+('STT_MAX_DURATION_MIN_PRO', '15', 'Max audio duration (minutes) for Pro tier'),
+('STT_MAX_DURATION_MIN_PRO_PLUS', '30', 'Max audio duration (minutes) for Pro Plus tier'),
+('STT_MAX_DURATION_MIN_ENTERPRISE', '120', 'Max audio duration (minutes) for Enterprise tier'),
+('STT_DAILY_QUOTA_PRO', '100', 'Daily STT transcription limit for Pro tier'),
+('STT_DAILY_QUOTA_PRO_PLUS', '500', 'Daily STT transcription limit for Pro Plus tier'),
+('STT_DAILY_QUOTA_ENTERPRISE', '5000', 'Daily STT transcription limit for Enterprise tier'),
+('STT_DEDUPE_WINDOW_MS', '60000', 'Time window to block duplicate STT requests')
 ON CONFLICT (parameter_name) DO NOTHING;
 
 -- Accepted values for SYSTEM_STATUS
@@ -180,6 +195,28 @@ COMMENT ON TABLE contact_submissions IS 'Secure registry for public contact form
 
 CREATE INDEX IF NOT EXISTS idx_contact_email ON contact_submissions(email);
 CREATE INDEX IF NOT EXISTS idx_contact_created_at ON contact_submissions(created_at);
+
+-- 8. Speech to Text Requests
+CREATE SEQUENCE IF NOT EXISTS stt_seq START WITH 1 INCREMENT BY 50;
+
+CREATE TABLE IF NOT EXISTS speech_to_text_requests (
+    id BIGINT PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id),
+    provider VARCHAR(20) NOT NULL,
+    audio_duration_seconds INTEGER,
+    audio_size_bytes BIGINT,
+    language VARCHAR(10),
+    transcript_length INTEGER,
+    status VARCHAR(20) NOT NULL,
+    failure_reason VARCHAR(255),
+    completed_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    version BIGINT NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_stt_user_id ON speech_to_text_requests(user_id);
+CREATE INDEX IF NOT EXISTS idx_stt_created_at ON speech_to_text_requests(created_at);
 
 -- Migration Helper for existing databases
 DO $$

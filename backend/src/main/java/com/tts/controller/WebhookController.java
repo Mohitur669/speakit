@@ -30,7 +30,8 @@ public class WebhookController {
             return ResponseEntity.ok(Collections.singletonMap("status", "ok"));
         } catch (Exception e) {
             log.error("Webhook processing failed", e);
-            return ResponseEntity.status(400).body(Collections.singletonMap("error", e.getMessage()));
+            // Security Fix: Do not expose internal error details
+            return ResponseEntity.status(400).body(Collections.singletonMap("error", "Webhook processing failed. Check internal logs."));
         }
     }
 }
