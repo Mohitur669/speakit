@@ -31,9 +31,10 @@ import { ThemeService } from '../../../core/services/theme.service';
           <nav class="hidden md:flex items-center gap-6 lg:gap-8">
             <a routerLink="/" fragment="home" class="text-sm font-medium text-primary-500 hover:text-primary-900 dark:text-primary-400 dark:hover:text-white transition-colors">Home</a>
             <a routerLink="/" fragment="features" class="text-sm font-medium text-primary-500 hover:text-primary-900 dark:text-primary-400 dark:hover:text-white transition-colors">Features</a>
-            <a routerLink="/" fragment="pricing" class="text-sm font-medium text-primary-500 hover:text-primary-900 dark:text-primary-400 dark:hover:text-white transition-colors">Pricing</a>
-            <a routerLink="/" fragment="compare" class="text-sm font-medium text-primary-500 hover:text-primary-900 dark:text-primary-400 dark:hover:text-white transition-colors">Compare</a>
-          </nav>
+            <a routerLink="/" fragment="pricing" class="text-sm font-medium text-primary-500 hover:text-primary-900 dark:text-primary-400 dark:hover:white transition-colors">Pricing</a>
+            <a routerLink="/" fragment="compare" class="text-sm font-medium text-primary-500 hover:text-primary-900 dark:text-primary-400 dark:hover:white transition-colors">Compare</a>
+            <a routerLink="/contact" class="text-sm font-medium text-primary-500 hover:text-primary-900 dark:text-primary-400 dark:hover:white transition-colors">Contact Us</a>
+            </nav>
 
           <!-- Actions -->
           <div class="flex items-center gap-2 sm:gap-3 shrink-0">
@@ -77,7 +78,7 @@ import { ThemeService } from '../../../core/services/theme.service';
                     <p class="text-xs font-semibold text-primary-400 uppercase tracking-wider">Current Plan</p>
                     <div class="flex flex-col gap-2 mt-1">
                       <div class="flex items-center justify-between">
-                        <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
                           <span class="text-sm font-bold text-primary-900 dark:text-white">{{ authService.currentPlanType() === 'FREE' ? 'Basic' : authService.currentPlanType().replace('_', ' ') }}</span>
                           <span *ngIf="authService.currentPlanType() !== 'FREE'" class="flex h-2 w-2 relative">
                             <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -88,10 +89,11 @@ import { ThemeService } from '../../../core/services/theme.service';
                       
                       <!-- Mobile-Only Upgrade Button (Matches Desktop Styling) -->
                       <a *ngIf="authService.currentPlanType() !== 'ENTERPRISE'" 
-                        routerLink="/tts" [queryParams]="{autostart: authService.currentPlanType() === 'FREE' ? 'PRO' : (authService.currentPlanType() === 'PRO' ? 'PRO_PLUS' : 'ENTERPRISE')}"
-                        (click)="$event.stopPropagation(); showUserMenu.set(false)"
+                        [routerLink]="getNextPlan() === 'ENTERPRISE' ? '/contact' : '/tts'" 
+                        [queryParams]="getNextPlan() === 'ENTERPRISE' ? { topic: 'enterprise' } : { autostart: getNextPlan() }"
+                        (click)="showUserMenu.set(false)"
                         class="lg:hidden w-full mt-2 py-2.5 px-4 text-center text-xs font-bold text-white bg-accent-500 hover:bg-accent-600 rounded-lg shadow-md hover:shadow-accent-500/20 active:scale-95 transition-all uppercase tracking-wider">
-                        {{ authService.currentPlanType() === 'PRO_PLUS' ? 'Get Enterprise' : 'Get ' + (authService.currentPlanType() === 'FREE' ? 'Pro' : 'Pro Plus') }}
+                        {{ getNextPlan() === 'ENTERPRISE' ? 'Get Enterprise' : 'Get ' + (authService.currentPlanType() === 'FREE' ? 'Pro' : 'Pro Plus') }}
                       </a>
                     </div>
                   </div>
@@ -160,5 +162,12 @@ export class NavbarComponent {
 
   logout(): void {
     this.authService.logout();
+  }
+
+  getNextPlan(): string {
+    const current = this.authService.currentPlanType();
+    if (current === 'FREE') return 'PRO';
+    if (current === 'PRO') return 'PRO_PLUS';
+    return 'ENTERPRISE';
   }
 }

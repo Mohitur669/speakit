@@ -62,6 +62,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/check-email").permitAll()
                         .requestMatchers("/api/auth/check-phone").permitAll()
                         .requestMatchers("/api/auth/ping").permitAll()
+                        .requestMatchers("/api/contact").permitAll()
                         .requestMatchers("/api/v1/webhooks/**").permitAll()
                         .requestMatchers("/api/system-parameters/**").permitAll()
                         .requestMatchers("/ws/**").permitAll()

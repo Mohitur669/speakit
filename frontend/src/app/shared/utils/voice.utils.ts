@@ -9,11 +9,29 @@ export function getVoiceTypeLabel(voice: Voice | undefined, activeFilter: string
   return 'Standard';
 }
 
+export function getVoiceLabelFromType(voiceType: string): string {
+  switch (voiceType) {
+    case 'NATURAL': return 'Natural';
+    case 'INDIAN': return 'Indian';
+    case 'NEURAL': return 'Neural';
+    default: return 'Standard';
+  }
+}
+
 export function getVoiceTypeClass(voice: Voice | undefined, activeFilter: string): string {
   if (!voice) return '';
   if (voice.isElevenLabs) return 'text-purple-500';
   if (voice.isSarvam) return 'text-orange-500';
   return 'text-primary-400';
+}
+
+export function getVoiceClassFromType(voiceType: string): string {
+  switch (voiceType) {
+    case 'NATURAL': return 'text-purple-500';
+    case 'INDIAN': return 'text-orange-500';
+    case 'NEURAL': return 'text-blue-500';
+    default: return 'text-primary-400';
+  }
 }
 
 /**

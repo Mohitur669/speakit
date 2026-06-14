@@ -19,8 +19,8 @@ const routes = [
     loadComponent: () => import('./features/marketing/about/about.component').then(m => m.AboutComponent)
   },
   {
-    path: 'contact',
-    loadComponent: () => import('./features/marketing/contact/contact.component').then(m => m.ContactComponent)
+   path: 'contact',
+   loadComponent: () => import('./features/marketing/contact/contact.component').then(m => m.ContactUsComponent)
   },
   {
     path: 'blog',
