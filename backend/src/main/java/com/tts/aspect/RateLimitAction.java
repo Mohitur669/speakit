@@ -5,5 +5,6 @@ public enum RateLimitAction {
     TTS,        // High-cost AWS Polly operations (Cost explosion)
     PUBLIC,     // General public API (Scraping/Spam)
     LIVE_PARAM, // System parameters (Probing protection)
-    PING        // Keep-alive health check (Render sleep prevention)
+    PING,       // Keep-alive health check (Render sleep prevention)
+    STT         // Speech-to-Text operations (Cost/Abuse protection)
 }

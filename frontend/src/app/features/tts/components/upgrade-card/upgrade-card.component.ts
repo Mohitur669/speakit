@@ -6,22 +6,20 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="hidden md:block bg-white dark:bg-primary-900 p-6 rounded-xl border-2 border-accent-500/20 shadow-lg animate-fade-in group hover:border-accent-500/50 transition-all">
-      <div class="flex items-center gap-3 mb-4">
-        <div class="w-12 h-12 rounded-xl bg-accent-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-          <svg class="w-5 h-5 text-accent-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div class="hidden md:block bg-white dark:bg-primary-900 p-4 rounded-xl border border-accent-500/20 transition-all group hover:border-accent-500/50">
+      <div class="flex items-center gap-2.5 mb-3">
+        <div class="w-7 h-7 rounded-lg bg-accent-500/10 flex items-center justify-center text-accent-500 shrink-0">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
           </svg>
         </div>
-        <h3 class="text-base sm:text-sm font-bold text-primary-900 dark:text-white uppercase tracking-wider">
-          {{ title }}
-        </h3>
+        <h3 class="text-[10px] font-bold text-primary-900 dark:text-white uppercase tracking-widest">{{ title }}</h3>
       </div>
-      <p class="text-sm sm:text-xs text-primary-500 dark:text-primary-400 mb-6 leading-relaxed">
-        {{ description }}
-      </p>
+      
+      <p class="text-[9px] leading-relaxed text-primary-500 dark:text-primary-400 mb-4">{{ description }}</p>
+      
       <button (click)="upgrade.emit(nextPlan)"
-        class="block w-full px-6 py-3.5 sm:py-3 text-center text-sm font-semibold text-white bg-accent-500 hover:bg-accent-600 rounded-xl transition-all shadow-md hover:shadow-lg hover:shadow-accent-500/20 active:scale-95">
+        class="w-full py-2 px-4 rounded-lg bg-accent-500 hover:bg-accent-600 text-white text-[9px] font-extrabold uppercase tracking-widest transition-all active:scale-[0.98]">
         {{ buttonText }}
       </button>
     </div>

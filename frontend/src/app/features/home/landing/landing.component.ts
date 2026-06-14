@@ -178,6 +178,55 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
               <p class="text-primary-500 dark:text-primary-400 text-sm leading-relaxed">Generate high-quality global voices in seconds using our optimized AWS Polly neural pipeline.</p>
             </div>
           </div>
+
+          <!-- New: Speech to Text (STT) Highlight -->
+          <div class="mt-12 group p-8 md:p-12 rounded-3xl bg-linear-to-br from-brand-blue/5 via-brand-purple/5 to-accent-500/5 dark:from-brand-blue/15 dark:via-brand-purple/15 dark:to-accent-500/15 border border-brand-blue/20 dark:border-brand-blue/30 shadow-2xl overflow-hidden relative transition-all hover:shadow-brand-blue/10">
+            <div class="absolute -right-20 -top-20 w-80 h-84 bg-brand-blue/10 rounded-full blur-3xl group-hover:bg-brand-blue/20 transition-all duration-700"></div>
+            <div class="relative flex flex-col lg:flex-row items-center gap-12">
+              <div class="w-24 h-24 md:w-32 md:h-32 rounded-3xl bg-white dark:bg-primary-900 shadow-2xl flex items-center justify-center shrink-0 animate-float border border-primary-100 dark:border-primary-800">
+                <svg class="w-12 h-12 md:w-16 md:h-16 text-brand-blue drop-shadow-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z M19 10v1a7 7 0 01-14 0v-1 M12 18v4 M8 22h8"></path>
+                </svg>
+              </div>
+              <div class="text-center lg:text-left flex-1">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-blue text-white text-[10px] font-bold uppercase tracking-widest mb-6 shadow-sm">Major Update</div>
+                <h3 class="text-3xl md:text-4xl font-bold text-primary-900 dark:text-white mb-6">Professional Speech-to-Text</h3>
+                <p class="text-primary-600 dark:text-primary-400 text-lg md:text-xl leading-relaxed mb-10 max-w-3xl">
+                  Transcribe complex audio files into highly accurate text in seconds. Optimized for regional dialects and professional clear-cut transcription.
+                </p>
+                
+                <!-- STT Key Aspects Grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+                  <div class="p-4 rounded-2xl bg-white/50 dark:bg-primary-900/50 border border-primary-100 dark:border-primary-800">
+                    <div class="text-brand-blue font-bold text-xs uppercase tracking-widest mb-1">Formats</div>
+                    <div class="text-primary-500 dark:text-primary-300 text-sm font-medium">MP3, WAV, M4A, OGG</div>
+                  </div>
+                  <div class="p-4 rounded-2xl bg-white/50 dark:bg-primary-900/50 border border-primary-100 dark:border-primary-800">
+                    <div class="text-brand-purple font-bold text-xs uppercase tracking-widest mb-1">Accuracy</div>
+                    <div class="text-primary-500 dark:text-primary-300 text-sm font-medium">99.9% High Fidelity</div>
+                  </div>
+                  <div class="p-4 rounded-2xl bg-white/50 dark:bg-primary-900/50 border border-primary-100 dark:border-primary-800">
+                    <div class="text-emerald-500 font-bold text-xs uppercase tracking-widest mb-1">Privacy</div>
+                    <div class="text-primary-500 dark:text-primary-300 text-sm font-medium">Zero-Persistence</div>
+                  </div>
+                  <div class="p-4 rounded-2xl bg-white/50 dark:bg-primary-900/50 border border-primary-100 dark:border-primary-800">
+                    <div class="text-orange-500 font-bold text-xs uppercase tracking-widest mb-1">Scale</div>
+                    <div class="text-primary-500 dark:text-primary-300 text-sm font-medium">Up to 500MB Upload</div>
+                  </div>
+                </div>
+
+                <div class="mt-10 flex flex-col sm:flex-row items-center gap-6 justify-center lg:justify-start">
+                  <button (click)="onStartTrial()" class="w-full sm:w-auto px-10 py-4 bg-brand-blue text-white font-extrabold rounded-2xl shadow-xl hover:shadow-brand-blue/30 active:scale-[0.97] transition-all uppercase tracking-wider text-sm">
+                    Start Transcribing
+                  </button>
+                  <div class="flex items-center gap-2 text-primary-400 dark:text-primary-500">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                    <span class="text-xs font-bold uppercase tracking-widest">Enterprise Ready</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -326,6 +375,13 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
                   <td class="p-6 text-sm font-medium text-primary-700 dark:text-primary-200">Natural AI (ElevenLabs)</td>
                   <td class="p-6 text-center"><span class="text-primary-300 dark:text-primary-700">\u2014</span></td>
                   <td class="p-6 text-center"><span class="text-primary-300 dark:text-primary-700">\u2014</span></td>
+                  <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
+                  <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
+                </tr>
+                <tr>
+                  <td class="p-6 text-sm font-medium text-primary-700 dark:text-primary-200">Speech-to-Text AI</td>
+                  <td class="p-6 text-center"><span class="text-primary-300 dark:text-primary-700">\u2014</span></td>
+                  <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
                   <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
                   <td class="p-6 text-center"><svg class="w-5 h-5 text-emerald-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></td>
                 </tr>
