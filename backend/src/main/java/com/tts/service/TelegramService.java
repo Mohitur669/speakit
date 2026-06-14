@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
@@ -48,6 +49,7 @@ public class TelegramService {
                 .build();
     }
 
+    @Async
     public void sendNotification(String name, String email, String subject, String message, String requestId) {
         if (botToken == null || botToken.isEmpty() || chatId == null || chatId.isEmpty() || restClient == null) return;
 
