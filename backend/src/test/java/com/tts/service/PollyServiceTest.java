@@ -1,5 +1,6 @@
 package com.tts.service;
 
+import com.tts.entity.PlanType;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -25,7 +26,7 @@ class PollyServiceTest {
 
     @Test
     void getBestEngineForVoice_Neural() {
-        // We need to spy on pollyService because getAvailableVoices() is often called internally
+        // We need to spy on pollyService because getRawAvailableVoices() is called internally
         PollyService spyService = spy(pollyService);
         
         Voice neuralVoice = Voice.builder()
@@ -35,7 +36,8 @@ class PollyServiceTest {
         
         doReturn(List.of(neuralVoice)).when(spyService).getRawAvailableVoices();
         
-        Engine engine = spyService.getBestEngineForVoice("Joanna");
+        // Premium user should get Neural
+        Engine engine = spyService.getBestEngineForVoice("Joanna", PlanType.PRO);
         
         assertEquals(Engine.NEURAL, engine);
     }
@@ -51,7 +53,24 @@ class PollyServiceTest {
         
         doReturn(List.of(standardVoice)).when(spyService).getRawAvailableVoices();
         
-        Engine engine = spyService.getBestEngineForVoice("Justin");
+        Engine engine = spyService.getBestEngineForVoice("Justin", PlanType.FREE);
+        
+        assertEquals(Engine.STANDARD, engine);
+    }
+
+    @Test
+    void getBestEngineForVoice_NeuralFallbackForFreeUser() {
+        PollyService spyService = spy(pollyService);
+        
+        Voice neuralVoice = Voice.builder()
+                .id("Joanna")
+                .supportedEngines(Engine.NEURAL, Engine.STANDARD)
+                .build();
+        
+        doReturn(List.of(neuralVoice)).when(spyService).getRawAvailableVoices();
+        
+        // Free user should be restricted to Standard even if Neural is available
+        Engine engine = spyService.getBestEngineForVoice("Joanna", PlanType.FREE);
         
         assertEquals(Engine.STANDARD, engine);
     }
