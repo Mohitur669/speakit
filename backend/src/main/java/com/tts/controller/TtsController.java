@@ -90,6 +90,7 @@ public class TtsController {
         PlanType planType = (PlanType) httpRequest.getAttribute("planType");
         SubscriptionStatus status = (SubscriptionStatus) httpRequest.getAttribute("subscriptionStatus");
         LocalDateTime expiry = (LocalDateTime) httpRequest.getAttribute("planExpiry");
+        Long userId = (Long) httpRequest.getAttribute("userId");
 
         try {
             validatePlanAccess(planType, status, expiry, request, httpRequest);
@@ -138,10 +139,12 @@ public class TtsController {
                 );
                 effectiveVoiceType = "INDIAN";
             } else {
-                audioStream = pollyService.synthesizeSpeech(sanitizedText, sanitizedVoiceId, sanitizedOutputFormat);
+                // Security: Pass planType to negotiate authorized engine
+                Engine engine = pollyService.getBestEngineForVoice(sanitizedVoiceId, planType);
+                log.info("Negotiated Engine: {} for User: {} (Plan: {})", engine, userId, planType);
                 
-                // Use centralized logic to determine engine for accurate history/cost tracking
-                effectiveVoiceType = pollyService.getBestEngineForVoice(sanitizedVoiceId).toString();
+                audioStream = pollyService.synthesizeSpeech(sanitizedText, sanitizedVoiceId, sanitizedOutputFormat);
+                effectiveVoiceType = engine.toString();
             }
 
             byte[] audioBytes = audioStream.readAllBytes();
@@ -154,8 +157,10 @@ public class TtsController {
             return new ResponseEntity<>(audioBytes, headers, HttpStatus.OK);
 
         } catch (Exception e) {
-            log.error("TTS failed", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(("TTS failed: " + e.getMessage()).getBytes());
+            log.error("TTS failed for user {}: {}", userId, e.getMessage());
+            // Security Fix: Do not return raw e.getMessage() to prevent information disclosure
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Speech synthesis failed. Please try again or contact support.".getBytes());
         }
     }
 
@@ -165,6 +170,7 @@ public class TtsController {
         PlanType planType = (PlanType) httpRequest.getAttribute("planType");
         SubscriptionStatus status = (SubscriptionStatus) httpRequest.getAttribute("subscriptionStatus");
         LocalDateTime expiry = (LocalDateTime) httpRequest.getAttribute("planExpiry");
+        Long userId = (Long) httpRequest.getAttribute("userId");
 
         try {
             validatePlanAccess(planType, status, expiry, request, httpRequest);
@@ -192,6 +198,10 @@ public class TtsController {
                 return synthesize(request, httpRequest);
             }
 
+            // Security: Negotiate engine based on user plan
+            Engine engine = pollyService.getBestEngineForVoice(sanitizedVoiceId, planType);
+            log.info("Negotiated Stream Engine: {} for User: {} (Plan: {})", engine, userId, planType);
+
             InputStream stream = pollyService.synthesizeSpeech(
                     sanitizedText,
                     sanitizedVoiceId,
@@ -199,7 +209,7 @@ public class TtsController {
             );
 
             // Use centralized logic to determine engine for accurate history/cost tracking
-            String effectiveVoiceType = pollyService.getBestEngineForVoice(sanitizedVoiceId).toString();
+            String effectiveVoiceType = engine.toString();
 
             recordHistory(httpRequest, sanitizedVoiceId, request.getVoiceName(), effectiveVoiceType, sanitizedOutputFormat, sanitizedText.length(), sanitizedText);
 
@@ -207,9 +217,10 @@ public class TtsController {
                     .contentType(getMediaType(sanitizedOutputFormat))
                     .body(new InputStreamResource(stream));
         } catch (Exception e) {
-            log.error("Streaming TTS failed", e);
+            log.error("Streaming TTS failed for user {}: {}", userId, e.getMessage());
+            // Security Fix: Prevent info disclosure
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Streaming conversion failed: " + e.getMessage());
+                    .body("Streaming conversion failed. Please try again later.");
         }
     }
 

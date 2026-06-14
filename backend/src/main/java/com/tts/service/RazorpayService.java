@@ -105,6 +105,14 @@ public class RazorpayService {
                 Payment payment = paymentRepository.findByRazorpayOrderId(request.getRazorpayOrderId())
                         .orElseThrow(() -> new RuntimeException("Payment record not found"));
 
+                // Security Fix: IDOR Check
+                // Ensure that the payment record fetched actually belongs to the authenticated user
+                if (!payment.getUser().getId().equals(user.getId())) {
+                    log.error("SECURITY ALERT: User {} attempted to verify payment for OrderId {} belonging to User {}", 
+                            user.getId(), request.getRazorpayOrderId(), payment.getUser().getId());
+                    return false;
+                }
+
                 if (payment.getStatus() == PaymentStatus.SUCCESS) {
                     log.warn("Idempotency Triggered: Payment already processed for order {}", request.getRazorpayOrderId());
                     return true; 
