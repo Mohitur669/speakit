@@ -7,6 +7,7 @@ import { NavbarComponent } from '../../../shared/components/navbar/navbar.compon
 import { FooterComponent } from '../../../shared/components/footer/footer.component';
 import { CustomDropdownComponent, DropdownOption } from '../../../shared/components/custom-dropdown/custom-dropdown.component';
 import { ToastService } from '../../../core/services/toast.service';
+import { AuthService } from '../../../core/auth/auth.service';
 import { environment } from '../../../core/config/environment';
 
 @Component({
@@ -146,6 +147,7 @@ export class ContactUsComponent implements OnInit {
   private http = inject(HttpClient);
   private toast = inject(ToastService);
   private route = inject(ActivatedRoute);
+  private authService = inject(AuthService);
 
   topicOptions: DropdownOption[] = [
     { value: 'support', label: 'Technical Support' },
@@ -168,7 +170,22 @@ export class ContactUsComponent implements OnInit {
   error = signal('');
 
   ngOnInit() {
-    // Support pre-selecting topic via query params (e.g. /contact?topic=support)
+    // 1. Auto-populate from session if logged in
+    if (this.authService.isLoggedIn()) {
+      this.formData.email = this.authService.currentUserEmail() || '';
+      
+      // Attempt to split full username/name into first and last if available
+      const fullName = this.authService.currentUser() || '';
+      if (fullName.includes(' ')) {
+        const parts = fullName.split(' ');
+        this.formData.firstName = parts[0];
+        this.formData.lastName = parts.slice(1).join(' ');
+      } else {
+        this.formData.firstName = fullName;
+      }
+    }
+
+    // 2. Support pre-selecting topic via query params (e.g. /contact?topic=support)
     this.route.queryParams.subscribe(params => {
       const topic = params['topic'];
       if (topic && this.topicOptions.find(o => o.value === topic)) {
@@ -181,20 +198,25 @@ export class ContactUsComponent implements OnInit {
     this.loading.set(true);
     this.error.set('');
 
-    this.http.post(`${environment.apiUrl}/api/contact`, this.formData).subscribe({
-      next: () => {
+    // Generate unique Request ID for replay protection
+    const requestId = crypto.randomUUID();
+    const headers = { 'X-Request-ID': requestId };
+
+    this.http.post<{message: string}>(`${environment.apiUrl}/api/contact`, this.formData, { headers }).subscribe({
+      next: (res) => {
         this.loading.set(false);
         this.success.set(true);
-        this.toast.show('Message sent successfully', 'success');
+        this.toast.show(res.message, 'success');
 
         // Wait for 2 seconds then reset the form and state
         setTimeout(() => {
           this.success.set(false);
-          this.formData = { firstName: '', lastName: '', email: '', topic: 'support', message: '', website: '' };
+          this.formData = { firstName: '', lastName: '', email: '', topic: 'enterprise', message: '', website: '' };
         }, 2000);
       },
       error: (err) => {
         this.loading.set(false);
+        // Security: Return generic message even for validation errors to prevent enumeration
         const errorMessage = err.error?.message || 'Failed to send message. Please try again later.';
         this.error.set(errorMessage);
         this.toast.show(errorMessage, 'error');
