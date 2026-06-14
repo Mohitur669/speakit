@@ -89,4 +89,18 @@ public class RateLimitConfig {
                         .build())
                 .build();
     }
+
+    /**
+     * Highly restricted bucket for health checks.
+     * Designed to allow 1 internal ping every 14 minutes for Render free sleep prevention,
+     * while blocking external flooding.
+     */
+    public Bucket createPingBucket() {
+        return Bucket.builder()
+                .addLimit(Bandwidth.builder()
+                        .capacity(3) // Allow small burst
+                        .refillIntervally(1, Duration.ofMinutes(10)) // 1 token every 10 mins
+                        .build())
+                .build();
+    }
 }
