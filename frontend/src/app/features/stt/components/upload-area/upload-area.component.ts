@@ -42,7 +42,7 @@ import { CommonModule } from '@angular/common';
 
         <div class="mt-4 flex flex-wrap justify-center gap-2">
           <span *ngFor="let fmt of ['MP3', 'WAV', 'M4A', 'OGG']" 
-            class="px-2.5 py-1 text-[10px] font-bold rounded-lg bg-primary-100 dark:bg-primary-800 text-primary-600 dark:text-primary-400 uppercase">
+            class="px-2.5 py-1 text-[10px] font-bold rounded-lg bg-primary-100 dark:bg-primary-800 text-primary-600 dark:text-primary-400">
             {{ fmt }}
           </span>
         </div>

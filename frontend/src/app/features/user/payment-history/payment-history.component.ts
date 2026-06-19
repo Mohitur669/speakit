@@ -35,10 +35,10 @@ import { NavbarComponent } from '../../../shared/components/navbar/navbar.compon
             <table class="w-full text-left border-separate border-spacing-0">
               <thead class="sticky top-0 z-10">
                 <tr class="bg-primary-50/95 dark:bg-primary-800/95 backdrop-blur-sm border-t border-primary-100 dark:border-primary-800">
-                  <th class="px-4 py-4 text-[10px] sm:text-xs font-bold text-primary-500 uppercase tracking-wider border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">Plan</th>
-                  <th class="px-4 py-4 text-[10px] sm:text-xs font-bold text-primary-500 uppercase tracking-wider border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">Amount</th>
-                  <th class="px-4 py-4 text-[10px] sm:text-xs font-bold text-primary-500 uppercase tracking-wider border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">Status</th>
-                  <th class="px-4 py-4 text-[10px] sm:text-xs font-bold text-primary-500 uppercase tracking-wider border-b border-primary-100 dark:border-primary-800 whitespace-nowrap">Date & Time</th>
+                  <th class="px-4 py-4 text-[10px] sm:text-xs font-bold text-primary-500 tracking-wider border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">Plan</th>
+                  <th class="px-4 py-4 text-[10px] sm:text-xs font-bold text-primary-500 tracking-wider border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">Amount</th>
+                  <th class="px-4 py-4 text-[10px] sm:text-xs font-bold text-primary-500 tracking-wider border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">Status</th>
+                  <th class="px-4 py-4 text-[10px] sm:text-xs font-bold text-primary-500 tracking-wider border-b border-primary-100 dark:border-primary-800 whitespace-nowrap">Date & Time</th>
                 </tr>
               </thead>
               <tbody>
@@ -52,13 +52,13 @@ import { NavbarComponent } from '../../../shared/components/navbar/navbar.compon
                       <span class="text-xs sm:text-sm font-medium text-primary-900 dark:text-white">{{ item.amount | currency:item.currency:'symbol':'1.2-2' }}</span>
                     </td>
                     <td class="px-4 py-2.5 md:py-5 border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">
-                      <span class="px-2 py-1 rounded text-[10px] sm:text-xs font-bold uppercase"
+                      <span class="px-2 py-1 rounded text-[10px] sm:text-xs font-bold capitalize"
                         [ngClass]="{
                           'bg-green-500/10 text-green-600': item.status === 'SUCCESS' || item.status === 'CAPTURED',
                           'bg-red-500/10 text-red-600': item.status === 'FAILED',
                           'bg-yellow-500/10 text-yellow-600': item.status === 'PENDING' || item.status === 'CREATED' || item.status === 'INITIATED'
                         }">
-                        {{ item.status }}
+                        {{ item.status.toLowerCase() }}
                       </span>
                     </td>
                     <td class="px-4 py-2.5 md:py-5 border-b border-primary-100 dark:border-primary-800 whitespace-nowrap">

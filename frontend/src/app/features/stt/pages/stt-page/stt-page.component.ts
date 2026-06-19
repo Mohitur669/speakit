@@ -9,7 +9,9 @@ import { LockedFeatureCardComponent } from '../../components/locked-feature-card
 import { CustomDropdownComponent, DropdownOption } from '../../../../shared/components/custom-dropdown/custom-dropdown.component';
 import { SttResult } from '../../models/stt.models';
 import { ToastService } from '../../../../core/services/toast.service';
-import { RouterLink } from '@angular/router';
+import { RouterLink, ActivatedRoute, Router } from '@angular/router';
+import { RazorpayService } from '../../../../core/services/razorpay.service';
+import { FeatureFlagService } from '../../../../core/services/feature-flag.service';
 
 @Component({
   selector: 'app-stt-page',
@@ -67,11 +69,11 @@ import { RouterLink } from '@angular/router';
               <!-- Sidebar: Configuration -->
               <div class="lg:col-span-1 space-y-6">
                 <div class="bg-white dark:bg-primary-900 rounded-2xl border border-primary-300 dark:border-primary-700 p-6 shadow-lg">
-                  <h3 class="text-sm font-bold text-primary-900 dark:text-white uppercase tracking-wider mb-4">Settings</h3>
+                  <h3 class="text-sm font-bold text-primary-900 dark:text-white tracking-wider mb-4">Settings</h3>
                   
                   <div class="grid grid-cols-2 lg:grid-cols-1 gap-6">
                     <div>
-                      <label class="block text-xs font-semibold text-primary-500 uppercase mb-2 tracking-widest">Engine</label>
+                      <label class="block text-xs font-semibold text-primary-500 mb-2 tracking-widest">Engine</label>
                       <app-custom-dropdown
                         [options]="engines"
                         [(value)]="selectedProvider"
@@ -82,9 +84,9 @@ import { RouterLink } from '@angular/router';
                         * Pro Plus required.
                       </p>
                     </div>
-
+ 
                     <div>
-                      <label class="block text-xs font-semibold text-primary-500 uppercase mb-2 tracking-widest">Language</label>
+                      <label class="block text-xs font-semibold text-primary-500 mb-2 tracking-widest">Language</label>
                       <app-custom-dropdown
                         [options]="languages"
                         [(value)]="selectedLanguage"
@@ -143,6 +145,10 @@ export class SttPageComponent implements OnInit {
   private authService = inject(AuthService);
   private sttService = inject(SttService);
   private toast = inject(ToastService);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
+  private razorpayService = inject(RazorpayService);
+  private featureFlags = inject(FeatureFlagService);
 
   loading = signal(false);
   error = signal('');
@@ -172,15 +178,43 @@ export class SttPageComponent implements OnInit {
     if (this.authService.currentPlanType() === 'PRO') {
       this.selectedProvider = 'SARVAM';
     }
+
+    // Process autostart query parameter for upgrades
+    this.route.queryParams.subscribe(async params => {
+      const autostart = params['autostart'];
+      if (autostart) {
+        await this.invokeUpgrade(autostart);
+        
+        // Clear params after invoking the upgrade
+        this.router.navigate([], {
+          relativeTo: this.route,
+          queryParams: { autostart: null },
+          queryParamsHandling: 'merge'
+        });
+      }
+    });
+  }
+
+  async invokeUpgrade(plan: string) {
+    if (plan === 'ENTERPRISE') {
+      this.router.navigate(['/contact']);
+      return;
+    }
+
+    const amount = plan === 'PRO' ? 
+      await this.featureFlags.getLiveNumber('PRO_PLAN_PRICE_INR', 499) : 
+      await this.featureFlags.getLiveNumber('PRO_PLUS_PLAN_PRICE_INR', 1999);
+    
+    this.razorpayService.initiatePayment(plan, amount);
   }
 
   hasAccess(): boolean {
     const plan = this.authService.currentPlanType();
-    return ['PRO', 'PRO_PLUS', 'ENTERPRISE'].includes(plan);
+    return ['PRO_PLUS', 'ENTERPRISE'].includes(plan);
   }
 
   isProviderLocked(): boolean {
-    return this.authService.currentPlanType() === 'PRO';
+    return false;
   }
 
   get maxFileSize(): number {

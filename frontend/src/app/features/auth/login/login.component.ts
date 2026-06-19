@@ -5,7 +5,7 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../../core/auth/auth.service';
 import { NavbarComponent } from '../../../shared/components/navbar/navbar.component';
 
@@ -78,7 +78,7 @@ import { NavbarComponent } from '../../../shared/components/navbar/navbar.compon
 
               <p class="text-center text-primary-600 dark:text-primary-400">
                 Don't have an account?
-                <a routerLink="/signup" class="font-semibold text-brand-blue hover:text-brand-blue/80 transition-colors">Create one</a>
+                <a [routerLink]="['/signup']" [queryParams]="pendingRedirect ? { redirect: pendingRedirect } : {}" class="font-semibold text-brand-blue hover:text-brand-blue/80 transition-colors">Create one</a>
               </p>
             </div>
           </div>
@@ -97,14 +97,17 @@ export class LoginComponent implements OnInit {
   showPassword = signal(false);
   loading = signal(false);
   error = signal('');
+  pendingRedirect = '';
 
   private authService = inject(AuthService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
 
   ngOnInit(): void {
     if (this.authService.isLoggedIn()) {
       this.router.navigate(['/tts']);
     }
+    this.pendingRedirect = this.route.snapshot.queryParams['redirect'] || '';
   }
 
   togglePassword(): void {
@@ -115,7 +118,13 @@ export class LoginComponent implements OnInit {
     this.loading.set(true);
     this.error.set('');
     this.authService.login({ username: this.username, password: this.password }).subscribe({
-      next: () => this.router.navigate(['/tts']),
+      next: () => {
+        if (this.pendingRedirect) {
+          this.router.navigate([this.pendingRedirect]);
+        } else {
+          this.router.navigate(['/tts']);
+        }
+      },
       error: () => {
         this.error.set('Invalid credentials. Please check your identifier and password.');
         this.loading.set(false);

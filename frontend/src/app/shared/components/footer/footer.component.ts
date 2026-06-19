@@ -31,7 +31,7 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
             </div>
           </div>
           <div>
-            <h4 class="text-sm font-bold text-primary-900 dark:text-white uppercase tracking-wider mb-6">Product</h4>
+            <h4 class="text-sm font-bold text-primary-900 dark:text-white tracking-wider mb-6">Product</h4>
             <ul class="space-y-4">
               <li><a routerLink="/" fragment="features" class="text-sm text-primary-600 dark:text-primary-400 hover:text-brand-blue transition-colors">Features</a></li>
               <li><a routerLink="/" fragment="pricing" class="text-sm text-primary-600 dark:text-primary-400 hover:text-brand-blue transition-colors">Pricing</a></li>
@@ -39,7 +39,7 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
             </ul>
           </div>
           <div>
-            <h4 class="text-sm font-bold text-primary-900 dark:text-white uppercase tracking-wider mb-6">Company</h4>
+            <h4 class="text-sm font-bold text-primary-900 dark:text-white tracking-wider mb-6">Company</h4>
             <ul class="space-y-4">
               <li><a routerLink="/about" class="text-sm text-primary-600 dark:text-primary-400 hover:text-brand-blue transition-colors">About Us</a></li>
               <li><a routerLink="/blog" class="text-sm text-primary-600 dark:text-primary-400 hover:text-brand-blue transition-colors">Blog</a></li>
@@ -47,7 +47,7 @@ import { FeatureFlagService } from '../../../core/services/feature-flag.service'
             </ul>
           </div>
           <div>
-            <h4 class="text-sm font-bold text-primary-900 dark:text-white uppercase tracking-wider mb-6">Legal</h4>
+            <h4 class="text-sm font-bold text-primary-900 dark:text-white tracking-wider mb-6">Legal</h4>
             <ul class="space-y-4">
               <li><a routerLink="/privacy" class="text-sm text-primary-600 dark:text-primary-400 hover:text-brand-blue transition-colors">Privacy Policy</a></li>
               <li><a routerLink="/terms" class="text-sm text-primary-600 dark:text-primary-400 hover:text-brand-blue transition-colors">Terms of Service</a></li>

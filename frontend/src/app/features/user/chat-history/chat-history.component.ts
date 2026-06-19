@@ -38,13 +38,13 @@ import { getVoiceTypeLabel, getVoiceTypeClass, getVoiceLabelFromType, getVoiceCl
             <table class="w-full text-left border-separate border-spacing-0">
               <thead class="sticky top-0 z-10">
                 <tr class="bg-primary-50/95 dark:bg-primary-800/95 backdrop-blur-sm border-t border-primary-100 dark:border-primary-800">
-                  <th class="px-4 py-4 w-10 sm:w-12 border-b border-r border-primary-100 dark:border-primary-800 text-center text-xs font-bold text-primary-500 uppercase">
+                  <th class="px-4 py-4 w-10 sm:w-12 border-b border-r border-primary-100 dark:border-primary-800 text-center text-xs font-bold text-primary-500">
                     Sel
                   </th>
-                  <th class="px-4 py-4 text-[10px] sm:text-xs font-bold text-primary-500 uppercase tracking-wider border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">Voice</th>
-                  <th class="px-4 py-4 text-[10px] sm:text-xs font-bold text-primary-500 uppercase tracking-wider border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">Text Snippet</th>
-                  <th class="px-4 py-4 text-[10px] sm:text-xs font-bold text-primary-500 uppercase tracking-wider border-b border-r border-primary-100 dark:border-primary-800 text-right whitespace-nowrap">Chars</th>
-                  <th class="px-4 py-4 text-[10px] sm:text-xs font-bold text-primary-500 uppercase tracking-wider border-b border-primary-100 dark:border-primary-800 whitespace-nowrap">Date & Time</th>
+                  <th class="px-4 py-4 text-[10px] sm:text-xs font-bold text-primary-500 tracking-wider border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">Voice</th>
+                  <th class="px-4 py-4 text-[10px] sm:text-xs font-bold text-primary-500 tracking-wider border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap">Text Snippet</th>
+                  <th class="px-4 py-4 text-[10px] sm:text-xs font-bold text-primary-500 tracking-wider border-b border-r border-primary-100 dark:border-primary-800 text-right whitespace-nowrap">Chars</th>
+                  <th class="px-4 py-4 text-[10px] sm:text-xs font-bold text-primary-500 tracking-wider border-b border-primary-100 dark:border-primary-800 whitespace-nowrap">Date & Time</th>
                 </tr>
               </thead>
               <tbody>
@@ -59,7 +59,7 @@ import { getVoiceTypeLabel, getVoiceTypeClass, getVoiceLabelFromType, getVoiceCl
                     </td>
                     <td class="px-4 py-2.5 md:py-5 border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap align-top">
                       <div class="flex items-center gap-1.5 sm:gap-2">
-                        <span class="px-1.5 py-0.5 rounded text-[8px] sm:text-[10px] font-bold uppercase"
+                        <span class="px-1.5 py-0.5 rounded text-[8px] sm:text-[10px] font-bold"
                           [ngClass]="getVoiceClass(item)">
                           {{ getVoiceLabel(item) }}
                         </span>
