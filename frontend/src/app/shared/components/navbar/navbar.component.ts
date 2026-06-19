@@ -141,19 +141,19 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
                   <!-- Navigation Settings Links -->
                   <div class="p-1 space-y-0.5">
                     <a routerLink="/settings/profile" (click)="showUserMenu.set(false)"
-                      class="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold text-primary-700 dark:text-primary-200 hover:bg-primary-50 dark:hover:bg-primary-900/60 transition-all hover:translate-x-0.5">
+                      class="flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-semibold text-primary-700 dark:text-primary-200 hover:bg-primary-50 dark:hover:bg-primary-900/60 transition-all hover:translate-x-0.5">
                       <svg class="w-4 h-4 text-primary-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
                       Profile Settings
                     </a>
 
                     <a routerLink="/settings/history" (click)="showUserMenu.set(false)"
-                      class="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold text-primary-700 dark:text-primary-200 hover:bg-primary-50 dark:hover:bg-primary-900/60 transition-all hover:translate-x-0.5">
+                      class="flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-semibold text-primary-700 dark:text-primary-200 hover:bg-primary-50 dark:hover:bg-primary-900/60 transition-all hover:translate-x-0.5">
                       <svg class="w-4 h-4 text-primary-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                       Chat History
                     </a>
 
                     <a routerLink="/settings/payments" (click)="showUserMenu.set(false)"
-                      class="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold text-primary-700 dark:text-primary-200 hover:bg-primary-50 dark:hover:bg-primary-900/60 transition-all hover:translate-x-0.5">
+                      class="flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-semibold text-primary-700 dark:text-primary-200 hover:bg-primary-50 dark:hover:bg-primary-900/60 transition-all hover:translate-x-0.5">
                       <svg class="w-4 h-4 text-primary-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
                       Billing & Plans
                     </a>
@@ -162,7 +162,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
                   <!-- Sign Out footer -->
                   <div class="p-1 border-t border-primary-100 dark:border-primary-800/60 mt-1">
                     <button (click)="logout()"
-                      class="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-all text-left hover:translate-x-0.5">
+                      class="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-semibold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-all text-left hover:translate-x-0.5">
                       <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
                       Sign Out
                     </button>
