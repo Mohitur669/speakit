@@ -11,11 +11,11 @@ import { getVoiceTypeLabel, getVoiceTypeClass } from '../../../../shared';
     <div class="flex-1 bg-white dark:bg-primary-900 rounded-xl border border-primary-300 dark:border-primary-700 p-4 sm:p-6 flex flex-col gap-4">
       
       <div class="flex flex-wrap items-center justify-start gap-3 mb-2 sm:mb-4">
-        <h2 class="text-sm font-bold text-primary-900 dark:text-white uppercase tracking-widest whitespace-nowrap">Settings</h2>
+        <h2 class="text-sm font-bold text-primary-900 dark:text-white tracking-widest whitespace-nowrap">Settings</h2>
         <!-- Dynamic Voice Count Indicator -->
         <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-blue/5 dark:bg-brand-blue/10 border border-brand-blue/10">
           <span class="w-1.5 h-1.5 rounded-full bg-brand-blue animate-pulse shrink-0"></span>
-          <span class="text-[10px] font-bold text-brand-blue uppercase tracking-tight whitespace-nowrap">
+          <span class="text-[10px] font-bold text-brand-blue tracking-tight whitespace-nowrap">
             {{ getFilteredVoices().length }} Voices Available
           </span>
         </div>
@@ -24,7 +24,7 @@ import { getVoiceTypeLabel, getVoiceTypeClass } from '../../../../shared';
       <div class="grid grid-cols-2 gap-3 sm:gap-4">
         <!-- 1. Engine Selection Dropdown -->
         <div class="relative">
-          <label class="block text-xs font-semibold text-primary-500 uppercase mb-2 tracking-widest px-1">Engine</label>
+          <label class="block text-xs font-semibold text-primary-500 mb-2 tracking-widest px-1">Engine</label>
           <button (click)="toggleEngineDropdown($event)"
             class="w-full flex items-center justify-between px-4 py-3 bg-primary-50 dark:bg-primary-800 border border-primary-300 dark:border-primary-700 rounded-xl hover:border-brand-blue/30 transition-all text-left group">
             <span class="text-sm font-bold text-primary-900 dark:text-white truncate">
@@ -32,7 +32,7 @@ import { getVoiceTypeLabel, getVoiceTypeClass } from '../../../../shared';
             </span>
             <svg class="w-4 h-4 text-primary-400 transition-transform shrink-0 ml-1" [class.rotate-180]="isEngineDropdownOpen" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
           </button>
-
+ 
           <!-- Engine Dropdown Panel -->
           <div *ngIf="isEngineDropdownOpen" (click)="$event.stopPropagation()"
             class="absolute top-full left-0 mt-2 w-full bg-white dark:bg-primary-900 border border-primary-300 dark:border-primary-700 rounded-xl shadow-2xl z-[70] p-1.5 flex flex-col gap-0.5 animate-fade-in">
@@ -51,7 +51,7 @@ import { getVoiceTypeLabel, getVoiceTypeClass } from '../../../../shared';
 
         <!-- 2. Gender Multi-Select (Hidden for Global voices) -->
         <div class="relative" *ngIf="currentFilter() !== 'Global'">
-          <label class="block text-xs font-semibold text-primary-500 uppercase mb-2 tracking-widest px-1">Gender</label>
+          <label class="block text-xs font-semibold text-primary-500 mb-2 tracking-widest px-1">Gender</label>
           <button (click)="toggleGenderDropdown($event)"
             class="w-full flex items-center justify-between px-4 py-3 bg-primary-50 dark:bg-primary-800 border border-primary-300 dark:border-primary-700 rounded-xl hover:border-brand-blue/30 transition-all text-left">
             <span class="text-sm font-bold text-primary-900 dark:text-white truncate">
@@ -59,7 +59,7 @@ import { getVoiceTypeLabel, getVoiceTypeClass } from '../../../../shared';
             </span>
             <svg class="w-4 h-4 text-primary-400 transition-transform shrink-0 ml-1" [class.rotate-180]="isGenderDropdownOpen" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
           </button>
-
+ 
           <div *ngIf="isGenderDropdownOpen" (click)="$event.stopPropagation()"
             class="absolute top-full left-0 mt-2 w-full bg-white dark:bg-primary-900 border border-primary-300 dark:border-primary-700 rounded-xl shadow-2xl z-[70] p-2 flex flex-col gap-1 animate-fade-in">
             <button *ngFor="let gender of genderOptions" (click)="toggleGender(gender)"
@@ -76,7 +76,7 @@ import { getVoiceTypeLabel, getVoiceTypeClass } from '../../../../shared';
 
       <!-- 3. Language Filter (Only for Indian Engine) -->
       <div *ngIf="currentFilter() === 'Indian'" class="relative animate-fade-in">
-        <label class="block text-xs font-semibold text-primary-500 uppercase mb-2 tracking-widest px-1">Regional Language</label>
+        <label class="block text-xs font-semibold text-primary-500 mb-2 tracking-widest px-1">Regional Language</label>
         <button (click)="toggleLanguageDropdown($event)"
           class="w-full flex items-center justify-between px-4 py-3 bg-primary-50 dark:bg-primary-800 border border-primary-300 dark:border-primary-700 rounded-xl hover:border-brand-blue/30 transition-all text-left">
           <span class="text-sm font-bold text-primary-900 dark:text-white truncate">
@@ -84,7 +84,7 @@ import { getVoiceTypeLabel, getVoiceTypeClass } from '../../../../shared';
           </span>
           <svg class="w-4 h-4 text-primary-400 transition-transform shrink-0 ml-1" [class.rotate-180]="isLanguageDropdownOpen" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
         </button>
-
+ 
         <div *ngIf="isLanguageDropdownOpen" (click)="$event.stopPropagation()"
           class="absolute top-full left-0 mt-2 w-full bg-white dark:bg-primary-900 border border-primary-300 dark:border-primary-700 rounded-xl shadow-2xl z-[70] max-h-60 overflow-y-auto p-2 flex flex-col gap-1 animate-fade-in custom-scrollbar">
           <button *ngFor="let lang of languageOptions()" (click)="toggleLanguage(lang.code)"
@@ -100,7 +100,7 @@ import { getVoiceTypeLabel, getVoiceTypeClass } from '../../../../shared';
 
       <!-- 4. Voice Selection Dropdown -->
       <div class="relative">
-        <label class="block text-xs font-semibold text-primary-500 uppercase mb-2 tracking-widest px-1">Active Voice</label>
+        <label class="block text-xs font-semibold text-primary-500 mb-2 tracking-widest px-1">Active Voice</label>
         <button (click)="toggleVoiceDropdown($event)"
           class="w-full flex items-center justify-between px-4 py-3 bg-primary-50 dark:bg-primary-800 border border-primary-300 dark:border-primary-700 rounded-xl hover:border-brand-blue/30 transition-all text-left group">
           <div class="flex items-center gap-3">
@@ -115,7 +115,7 @@ import { getVoiceTypeLabel, getVoiceTypeClass } from '../../../../shared';
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
           </svg>
         </button>
-
+ 
         <div *ngIf="isVoiceDropdownOpen" (click)="$event.stopPropagation()"
           class="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-primary-900 border border-primary-300 dark:border-primary-700 rounded-xl shadow-2xl z-[60] overflow-hidden animate-fade-in">
           <div class="max-h-72 overflow-y-auto custom-scrollbar">
@@ -127,10 +127,10 @@ import { getVoiceTypeLabel, getVoiceTypeClass } from '../../../../shared';
                 <span class="text-lg group-hover/item:scale-110 transition-transform">{{ voice.gender === 'Female' ? '👩' : '👨' }}</span>
                 <div>
                   <div class="text-sm font-bold text-primary-900 dark:text-white" [class.text-brand-blue]="voiceId === voice.id">{{ voice.name }}</div>
-                  <div class="text-[10px] text-primary-400 font-bold tracking-wide uppercase">{{ voice.gender }} · {{ voice.languageCode }}</div>
+                  <div class="text-[10px] text-primary-400 font-bold tracking-wide">{{ voice.gender }} · {{ voice.languageCode }}</div>
                 </div>
               </div>
-              <span [ngClass]="getVoiceTypeClass(voice)" class="text-[9px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded bg-primary-100 dark:bg-primary-800">
+              <span [ngClass]="getVoiceTypeClass(voice)" class="text-[9px] font-extrabold tracking-widest px-2 py-0.5 rounded bg-primary-100 dark:bg-primary-800">
                 {{ getVoiceTypeLabel(voice) }}
               </span>
             </button>

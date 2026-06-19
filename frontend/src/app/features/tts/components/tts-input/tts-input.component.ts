@@ -17,7 +17,7 @@ import { FormsModule } from '@angular/forms';
           </span>
           <!-- Mobile-Only Quick Stats -->
           <div class="md:hidden flex items-center gap-3 bg-primary-50 dark:bg-primary-800 px-3 py-1 rounded-full border border-primary-200 dark:border-transparent">
-            <span class="text-[10px] font-bold text-primary-500 uppercase tracking-wider">Usage</span>
+            <span class="text-[10px] font-bold text-primary-500 tracking-wider">Usage</span>
             <span class="text-[11px] font-medium text-primary-700 dark:text-primary-300">{{ text.length }} / {{ maxChars | number }}</span>
             <div class="w-12 h-1.5 bg-primary-200 dark:bg-primary-700 rounded-full overflow-hidden">
               <div [ngClass]="text.length > (maxChars * 0.9) ? 'bg-red-500' : 'bg-brand-blue'"
