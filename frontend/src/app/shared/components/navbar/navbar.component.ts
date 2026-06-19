@@ -68,9 +68,9 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
           <!-- Actions -->
           <div class="flex items-center gap-2 sm:gap-3 shrink-0">
-            <!-- Theme Toggle -->
+            <!-- Theme Toggle (Hidden on mobile/smaller screens) -->
             <button (click)="themeService.toggleTheme()"
-              class="p-2 rounded-lg text-primary-500 hover:text-primary-900 hover:bg-primary-50 dark:text-primary-400 dark:hover:text-white dark:hover:bg-primary-800 transition-all"
+              class="hidden sm:block p-2 rounded-lg text-primary-500 hover:text-primary-900 hover:bg-primary-50 dark:text-primary-400 dark:hover:text-white dark:hover:bg-primary-800 transition-all"
               aria-label="Toggle theme">
               <svg *ngIf="themeService.isDarkMode()" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
@@ -221,6 +221,20 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
               {{ link.label }}
             </a>
           </ng-container>
+
+          <!-- Theme Toggle inside Mobile Menu (Mobile Only) -->
+          <div class="sm:hidden border-t border-primary-100 dark:border-primary-800/60 mt-1.5 pt-1.5">
+            <button (click)="themeService.toggleTheme(); showMobileMenu.set(false)"
+              class="w-full flex items-center gap-3.5 px-4 py-3 rounded-xl text-base font-semibold text-primary-600 dark:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-800/60 hover:text-primary-900 dark:hover:text-white transition-all text-left">
+              <svg *ngIf="themeService.isDarkMode()" class="w-5 h-5 text-primary-400 dark:text-primary-500 shrink-0" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+              </svg>
+              <svg *ngIf="!themeService.isDarkMode()" class="w-5 h-5 text-primary-400 dark:text-primary-500 shrink-0" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+              </svg>
+              <span>{{ themeService.isDarkMode() ? 'Switch to Light Mode' : 'Switch to Dark Mode' }}</span>
+            </button>
+          </div>
         </nav>
       </div>
     </header>
