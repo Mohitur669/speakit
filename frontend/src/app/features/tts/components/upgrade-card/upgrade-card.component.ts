@@ -13,13 +13,13 @@ import { CommonModule } from '@angular/common';
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
           </svg>
         </div>
-        <h3 class="text-[10px] font-bold text-primary-900 dark:text-white uppercase tracking-widest">{{ title }}</h3>
+        <h3 class="text-[10px] font-bold text-primary-900 dark:text-white tracking-widest">{{ title }}</h3>
       </div>
       
       <p class="text-[9px] leading-relaxed text-primary-500 dark:text-primary-400 mb-4">{{ description }}</p>
       
       <button (click)="upgrade.emit(nextPlan)"
-        class="w-full py-2 px-4 rounded-lg bg-accent-500 hover:bg-accent-600 text-white text-[9px] font-extrabold uppercase tracking-widest transition-all active:scale-[0.98]">
+        class="w-full py-2 px-4 rounded-lg bg-accent-500 hover:bg-accent-600 text-white text-[9px] font-extrabold transition-all active:scale-[0.98]">
         {{ buttonText }}
       </button>
     </div>
@@ -30,7 +30,7 @@ export class UpgradeCardComponent {
   @Output() upgrade = new EventEmitter<string>();
 
   get title(): string {
-    if (this.currentPlan === 'FREE') return 'Go PRO';
+    if (this.currentPlan === 'FREE') return 'Go Pro';
     if (this.currentPlan === 'PRO') return 'Go Pro Plus';
     return 'Get Enterprise';
   }
@@ -48,7 +48,7 @@ export class UpgradeCardComponent {
   }
 
   get buttonText(): string {
-    if (this.currentPlan === 'FREE') return 'Upgrade to PRO';
+    if (this.currentPlan === 'FREE') return 'Upgrade to Pro';
     if (this.currentPlan === 'PRO') return 'Upgrade to Pro Plus';
     return 'Get Enterprise';
   }

@@ -14,12 +14,12 @@ import { RouterLink } from '@angular/router';
         </svg>
       </div>
       
-      <h2 class="text-2xl font-bold text-primary-900 dark:text-white mb-4">Speech-to-Text is a Pro feature</h2>
+      <h2 class="text-2xl font-bold text-primary-900 dark:text-white mb-4">Speech-to-Text is a Pro Plus feature</h2>
       <p class="text-primary-600 dark:text-primary-400 mb-8 max-w-md">
         Upgrade to a premium plan to unlock high-accuracy transcription powered by Sarvam and ElevenLabs AI.
       </p>
-
-      <button routerLink="/tts" [queryParams]="{ autostart: 'PRO' }"
+ 
+      <button routerLink="/stt" [queryParams]="{ autostart: 'PRO_PLUS' }"
         class="px-8 py-3.5 bg-brand-blue text-white font-bold rounded-2xl shadow-lg hover:shadow-brand-blue/20 active:scale-[0.98] transition-all">
         Upgrade to Unlock
       </button>

@@ -12,7 +12,7 @@ import { ToastService } from '../../../../core/services/toast.service';
       <div class="p-6 border-b border-primary-200 dark:border-primary-800 flex items-center justify-between">
 
         <div class="flex items-center gap-4">
-          <div class="px-3 py-1 rounded-full bg-brand-blue/10 text-brand-blue text-xs font-bold uppercase tracking-wider">
+          <div class="px-3 py-1 rounded-full bg-brand-blue/10 text-brand-blue text-xs font-bold tracking-wider">
             {{ result.provider === 'SARVAM' ? 'Indian' : (result.provider === 'ELEVEN_LABS' ? 'Global' : result.provider) }}
           </div>
           <span class="text-sm text-primary-500 font-medium">Duration: {{ result.duration | number:'1.1-1' }}s</span>

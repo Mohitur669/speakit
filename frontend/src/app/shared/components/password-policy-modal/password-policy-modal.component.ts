@@ -10,7 +10,7 @@ import { resetFormFields } from '../../utils/form.utils';
     <div class="fixed inset-0 z-200 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in" (click)="close.emit()">
       <div class="bg-white dark:bg-primary-900 rounded-2xl p-6 w-full max-w-xs border border-primary-200 dark:border-primary-700 shadow-2xl animate-scale-up" (click)="$event.stopPropagation()">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="text-sm font-bold text-primary-900 dark:text-white uppercase tracking-wider">Password Policy</h3>
+          <h3 class="text-sm font-bold text-primary-900 dark:text-white tracking-wider">Password Policy</h3>
           <button (click)="close.emit()" class="p-1 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-800 transition-colors">
             <svg class="w-4 h-4 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
           </button>

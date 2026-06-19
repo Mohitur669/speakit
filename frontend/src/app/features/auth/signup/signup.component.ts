@@ -118,7 +118,7 @@ import { PasswordPolicyModalComponent } from '../../../shared/components/passwor
 
                 <p class="text-center text-sm text-primary-600 dark:text-primary-400 mt-6">
                   Already have an account? 
-                  <a routerLink="/login" class="text-brand-blue font-bold hover:underline">Sign in</a>
+                  <a [routerLink]="['/login']" [queryParams]="pendingRedirect ? { redirect: pendingRedirect } : {}" class="text-brand-blue font-bold hover:underline">Sign in</a>
                 </p>
               </form>
             </div>
@@ -168,12 +168,14 @@ export class SignupComponent implements OnInit, OnDestroy {
   }
 
   pendingPlan = '';
+  pendingRedirect = '';
 
   ngOnInit(): void {
     if (this.authService.isLoggedIn()) {
       this.router.navigate(['/tts']);
     }
     this.pendingPlan = this.route.snapshot.queryParams['plan'] || '';
+    this.pendingRedirect = this.route.snapshot.queryParams['redirect'] || '';
     
     mapValidationErrors({
       usernameSubject: this.usernameSubject,
@@ -227,7 +229,9 @@ export class SignupComponent implements OnInit, OnDestroy {
       password: this.password
     }).subscribe({
       next: () => {
-        if (this.pendingPlan) {
+        if (this.pendingRedirect) {
+          this.router.navigate([this.pendingRedirect]);
+        } else if (this.pendingPlan) {
           this.router.navigate(['/tts'], { queryParams: { autostart: this.pendingPlan } });
         } else {
           this.router.navigate(['/tts']);
