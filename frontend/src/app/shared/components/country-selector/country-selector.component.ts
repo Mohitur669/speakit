@@ -11,48 +11,77 @@ import { Subject } from 'rxjs';
   imports: [CommonModule, FormsModule],
   template: `
     <div class="relative w-20 shrink-0 h-full">
-      <button type="button" (click)="onToggleDropdown($event)"
-        class="w-full h-full flex items-center justify-between gap-1 px-2 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white transition-all text-xs sm:text-sm hover:border-brand-blue/50">
+      <button
+        type="button"
+        (click)="onToggleDropdown($event)"
+        class="w-full h-full flex items-center justify-between gap-1 px-2 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white transition-all text-xs sm:text-sm hover:border-brand-blue/50"
+      >
         <span class="flex items-center gap-1">
           <span>{{ selectedCountry.flag }}</span>
           <span class="font-medium">{{ selectedCountry.code }}</span>
         </span>
-        <svg [ngClass]="showDropdown() ? 'rotate-180' : ''" class="w-3 h-3 text-primary-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+        <svg
+          [ngClass]="showDropdown() ? 'rotate-180' : ''"
+          class="w-3 h-3 text-primary-400 transition-transform"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M19 9l-7 7-7-7"
+          ></path>
         </svg>
       </button>
 
       <!-- Dropdown -->
-      <div *ngIf="showDropdown()"
-        class="absolute top-full left-0 mt-2 w-64 bg-white dark:bg-primary-900 border border-primary-200 dark:border-primary-700 rounded-xl shadow-2xl z-[100] overflow-hidden animate-fade-in">
-        <div class="p-2 border-b border-primary-100 dark:border-primary-800">
-          <input [(ngModel)]="searchQuery" name="search" type="text"
-            placeholder="Search country..."
-            (click)="$event.stopPropagation()"
-            class="w-full px-3 py-2 rounded-lg bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-xs text-primary-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-blue/50">
+      @if (showDropdown()) {
+        <div
+          class="absolute top-full left-0 mt-2 w-64 bg-white dark:bg-primary-900 border border-primary-200 dark:border-primary-700 rounded-xl shadow-2xl z-[100] overflow-hidden animate-fade-in"
+        >
+          <div class="p-2 border-b border-primary-100 dark:border-primary-800">
+            <input
+              [(ngModel)]="searchQuery"
+              name="search"
+              type="text"
+              placeholder="Search country..."
+              (click)="$event.stopPropagation()"
+              class="w-full px-3 py-2 rounded-lg bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-xs text-primary-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-blue/50"
+            />
+          </div>
+          <div class="max-h-60 overflow-y-auto custom-scrollbar">
+            @for (c of filteredCountries(); track c) {
+              <button
+                type="button"
+                (click)="onSelectCountry(c, $event)"
+                class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left hover:bg-primary-50 dark:hover:bg-primary-800/50 transition-colors group"
+              >
+                <span class="text-lg">{{ c.flag }}</span>
+                <span class="flex-grow text-primary-700 dark:text-primary-200">{{ c.name }}</span>
+                <span class="text-xs font-bold text-primary-400 group-hover:text-brand-blue">{{
+                  c.code
+                }}</span>
+              </button>
+            }
+          </div>
         </div>
-        <div class="max-h-60 overflow-y-auto custom-scrollbar">
-          <button *ngFor="let c of filteredCountries()" type="button"
-            (click)="onSelectCountry(c, $event)"
-            class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left hover:bg-primary-50 dark:hover:bg-primary-800/50 transition-colors group">
-            <span class="text-lg">{{ c.flag }}</span>
-            <span class="flex-grow text-primary-700 dark:text-primary-200">{{ c.name }}</span>
-            <span class="text-xs font-bold text-primary-400 group-hover:text-brand-blue">{{ c.code }}</span>
-          </button>
-        </div>
-      </div>
+      }
     </div>
   `,
-  styles: [`
-    :host {
-      display: block;
-    }
-  `]
+  styles: [
+    `
+      :host {
+        display: block;
+      }
+    `,
+  ],
 })
 export class CountrySelectorComponent {
   @Input() selectedCountry!: Country;
   @Output() selectedCountryChange = new EventEmitter<Country>();
-  
+
   @Input() phoneSubject?: Subject<string>;
   @Input() phoneNumber: string = '';
 
@@ -71,7 +100,14 @@ export class CountrySelectorComponent {
 
   onSelectCountry(country: Country, event: Event) {
     if (this.phoneSubject) {
-      selectCountry(country, event, signal(this.selectedCountry) as any, this.showDropdown, this.phoneSubject, this.phoneNumber);
+      selectCountry(
+        country,
+        event,
+        signal(this.selectedCountry) as any,
+        this.showDropdown,
+        this.phoneSubject,
+        this.phoneNumber,
+      );
     } else {
       event.stopPropagation();
       this.showDropdown.set(false);
@@ -84,6 +120,6 @@ export class CountrySelectorComponent {
   filteredCountries() {
     if (!this.searchQuery) return this.countries;
     const s = this.searchQuery.toLowerCase();
-    return this.countries.filter(c => c.name.toLowerCase().includes(s) || c.code.includes(s));
+    return this.countries.filter((c) => c.name.toLowerCase().includes(s) || c.code.includes(s));
   }
 }
