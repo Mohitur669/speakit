@@ -126,13 +126,19 @@ public class RateLimitAspect {
                 // Layer 1.5: Device fingerprint limiting (stops IP rotation abuse)
                 checkBucket("OTP_RESEND_DEV_" + deviceFp, RateLimitAction.OTP_RESEND);
 
-                // Layer 2: Identity-based limiting (prevent IP-rotation from mail-bombing a single target email)
-                for (Object arg : joinPoint.getArgs()) {
-                    if (arg instanceof com.tts.dto.ResendOtpRequest) {
-                        String email = ((com.tts.dto.ResendOtpRequest) arg).getEmail();
-                        if (email != null && !email.isEmpty()) {
-                            String emailHash = hashString(email.toLowerCase().trim());
-                            checkBucket("OTP_RESEND_EMAIL_" + emailHash, RateLimitAction.OTP_RESEND);
+                // Layer 2: Identity-based limiting
+                java.security.Principal principal = req.getUserPrincipal();
+                if (principal != null) {
+                    String userHash = hashString(principal.getName().toLowerCase().trim());
+                    checkBucket("OTP_RESEND_USER_" + userHash, RateLimitAction.OTP_RESEND);
+                } else {
+                    for (Object arg : joinPoint.getArgs()) {
+                        if (arg instanceof com.tts.dto.ResendOtpRequest) {
+                            String email = ((com.tts.dto.ResendOtpRequest) arg).getEmail();
+                            if (email != null && !email.isEmpty()) {
+                                String emailHash = hashString(email.toLowerCase().trim());
+                                checkBucket("OTP_RESEND_EMAIL_" + emailHash, RateLimitAction.OTP_RESEND);
+                            }
                         }
                     }
                 }
