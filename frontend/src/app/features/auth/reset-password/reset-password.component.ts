@@ -43,6 +43,9 @@ import { PasswordPolicyModalComponent } from '../../../shared/components/passwor
                     name="email"
                     type="email"
                     required
+                    [readonly]="isEmailPrePopulated"
+                    [class.opacity-60]="isEmailPrePopulated"
+                    [class.cursor-not-allowed]="isEmailPrePopulated"
                     placeholder="you@example.com"
                     class="w-full px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all lowercase"
                   />
@@ -135,6 +138,7 @@ import { PasswordPolicyModalComponent } from '../../../shared/components/passwor
 })
 export class ResetPasswordComponent implements OnInit {
   email = '';
+  isEmailPrePopulated = false;
   otp = '';
   newPassword = '';
   confirmPassword = '';
@@ -148,7 +152,11 @@ export class ResetPasswordComponent implements OnInit {
   private route = inject(ActivatedRoute);
 
   ngOnInit(): void {
-    this.email = this.route.snapshot.queryParams['email'] || '';
+    const emailParam = this.route.snapshot.queryParams['email'] || '';
+    this.email = emailParam;
+    if (emailParam) {
+      this.isEmailPrePopulated = true;
+    }
   }
 
   isPasswordValid(pass: string): boolean {
