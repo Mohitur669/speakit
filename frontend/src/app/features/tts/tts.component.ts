@@ -4,7 +4,7 @@
  * and download functionality.
  */
 import { Component, inject, signal, HostListener, effect, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { TtsService, Voice } from '../../core/services/tts.service';
 import { AuthService } from '../../core/auth/auth.service';
@@ -25,19 +25,17 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
   selector: 'app-tts',
   standalone: true,
   imports: [
-    CommonModule, 
-    FormsModule, 
-    ToastComponent, 
+    FormsModule,
+    ToastComponent,
     NavbarComponent,
     VoiceSelectorComponent,
     TtsInputComponent,
     TtsOutputComponent,
     UsageStatsComponent,
-    // UpgradeCardComponent,
-    RouterLink
+    RouterLink,
   ],
   templateUrl: './tts.component.html',
-  styleUrls: ['./tts.component.scss']
+  styleUrls: ['./tts.component.scss'],
 })
 export class TtsComponent implements OnInit {
   ttsService = inject(TtsService);
@@ -63,7 +61,7 @@ export class TtsComponent implements OnInit {
       // Track both login status and plan type to ensure UI refreshes after upgrade
       const isLoggedIn = this.authService.isLoggedIn();
       const plan = this.authService.currentPlanType();
-      
+
       if (isLoggedIn) {
         this.refreshVoices();
         this.refreshLimits();
@@ -84,17 +82,17 @@ export class TtsComponent implements OnInit {
 
   async ngOnInit() {
     this.checkAutostart();
-    this.route.queryParams.subscribe(async params => {
+    this.route.queryParams.subscribe(async (params) => {
       const autostart = params['autostart'];
       if (autostart) {
         const redirected = await this.invokeUpgrade(autostart);
-        
+
         // Only clear params if we are still on the same page
         if (!redirected) {
           this.router.navigate([], {
             relativeTo: this.route,
             queryParams: { autostart: null },
-            queryParamsHandling: 'merge'
+            queryParamsHandling: 'merge',
           });
         }
       }
@@ -123,7 +121,7 @@ export class TtsComponent implements OnInit {
   }
 
   async refreshUsage() {
-    this.ttsService.getUsage().subscribe(u => this.usage.set(u));
+    this.ttsService.getUsage().subscribe((u) => this.usage.set(u));
   }
 
   async refreshLimits() {
@@ -141,7 +139,7 @@ export class TtsComponent implements OnInit {
       limitKey = 'MAX_PRO_CHARACTERS';
       defaultVal = 200;
     }
-    
+
     const limit = await this.featureFlags.getLiveNumber(limitKey, defaultVal);
     this.maxChars.set(limit);
   }
@@ -152,10 +150,11 @@ export class TtsComponent implements OnInit {
       return true;
     }
 
-    const amount = plan === 'PRO' ? 
-      await this.featureFlags.getLiveNumber('PRO_PLAN_PRICE_INR', 499) : 
-      await this.featureFlags.getLiveNumber('PRO_PLUS_PLAN_PRICE_INR', 1999);
-    
+    const amount =
+      plan === 'PRO'
+        ? await this.featureFlags.getLiveNumber('PRO_PLAN_PRICE_INR', 499)
+        : await this.featureFlags.getLiveNumber('PRO_PLUS_PLAN_PRICE_INR', 1999);
+
     this.razorpayService.initiatePayment(plan, amount);
     return false;
   }
@@ -165,19 +164,19 @@ export class TtsComponent implements OnInit {
       next: (voices) => {
         this.voices = voices;
         if (this.voices.length > 0 && !this.selectedVoiceId) {
-          const standard = this.voices.filter(v => !v.isElevenLabs && !v.isSarvam);
+          const standard = this.voices.filter((v) => !v.isElevenLabs && !v.isSarvam);
           if (standard.length > 0) this.selectedVoiceId = standard[0].id;
         }
       },
-      error: () => this.error.set('Failed to load voices.')
+      error: () => this.error.set('Failed to load voices.'),
     });
   }
 
   get selectedVoice(): Voice | undefined {
-    return this.voices.find(v => v.id === this.selectedVoiceId);
+    return this.voices.find((v) => v.id === this.selectedVoiceId);
   }
 
-  handleNotification(event: {message: string, type: 'success' | 'error'}): void {
+  handleNotification(event: { message: string; type: 'success' | 'error' }): void {
     this.showNotification(event.message, event.type);
   }
 
@@ -200,23 +199,26 @@ export class TtsComponent implements OnInit {
       this.audioUrl.set(null);
     }
 
-    const { text, voiceId, voiceName, voiceType, isElevenLabs, isSarvam, languageCode } = this.buildRequest();
-    
-    this.ttsService.synthesize(text, voiceId, voiceName, voiceType, isElevenLabs, isSarvam, languageCode).subscribe({
-      next: (blob) => {
-        const audioBlob = new Blob([blob], { type: blob.type || 'audio/mpeg' });
-        this.audioUrl.set(URL.createObjectURL(audioBlob));
-        this.loading.set(false);
-        this.showNotification('Audio generated successfully');
-        this.refreshUsage();
-      },
-      error: (err) => this.handleError(err)
-    });
+    const { text, voiceId, voiceName, voiceType, isElevenLabs, isSarvam, languageCode } =
+      this.buildRequest();
+
+    this.ttsService
+      .synthesize(text, voiceId, voiceName, voiceType, isElevenLabs, isSarvam, languageCode)
+      .subscribe({
+        next: (blob) => {
+          const audioBlob = new Blob([blob], { type: blob.type || 'audio/mpeg' });
+          this.audioUrl.set(URL.createObjectURL(audioBlob));
+          this.loading.set(false);
+          this.showNotification('Audio generated successfully');
+          this.refreshUsage();
+        },
+        error: (err) => this.handleError(err),
+      });
   }
 
   private validateInput(): boolean {
     if (!this.text.trim() || !this.selectedVoiceId) return false;
-    
+
     if (this.usage()?.dailyLimit > 0 && this.usage()?.dailyCount >= this.usage()?.dailyLimit) {
       this.showNotification('Daily limit reached for Free plan. Please upgrade to Pro.', 'error');
       return false;
@@ -235,7 +237,7 @@ export class TtsComponent implements OnInit {
       voiceType: type,
       isElevenLabs: !!voice?.isElevenLabs,
       isSarvam: !!voice?.isSarvam,
-      languageCode: voice?.languageCode
+      languageCode: voice?.languageCode,
     };
   }
 
