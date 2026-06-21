@@ -69,14 +69,6 @@ import { ToastService } from '../../../core/services/toast.service';
                   [usernameSubject]="usernameSubject"
                   [emailSubject]="emailSubject"
                   [phoneSubject]="phoneSubject"
-                  [pendingEmail]="pendingEmail()"
-                  [verifyingOtp]="verifyingOtp()"
-                  [otpError]="otpError()"
-                  [resendCooldown]="resendCooldown()"
-                  [resending]="resendingOtp()"
-                  (verifyOtp)="onVerifyEmailChange($event)"
-                  (resendOtp)="onResendEmailChangeOtp()"
-                  (cancelEmailChange)="onCancelEmailChange()"
                 >
                 </app-profile-form>
               </div>
@@ -148,15 +140,6 @@ export class ProfileSettingsComponent implements OnInit, OnDestroy {
   loading = signal(false);
   error = signal('');
   showPolicyModal = signal(false);
-  
-  pendingEmail = signal<string | null>(null);
-  verifyingOtp = signal(false);
-  otpError = signal('');
-  resendCooldown = signal(0);
-  resendingOtp = signal(false);
-  
-  private resendTimer?: any;
-  private cachedPassword = '';
 
   usernameTaken = signal(false);
   emailTaken = signal(false);
@@ -185,9 +168,13 @@ export class ProfileSettingsComponent implements OnInit, OnDestroy {
       return;
     }
 
+    if (this.authService.currentUserPendingEmail()) {
+      this.router.navigate(['/settings/profile/verify']);
+      return;
+    }
+
     this.username = this.authService.currentUser() || '';
     this.email = this.authService.currentUserEmail() || '';
-    this.pendingEmail.set(this.authService.currentUserPendingEmail() || null);
     const rawPhone = this.authService.currentUserPhone() || '';
 
     // Attempt to extract country code from stored phone
@@ -220,9 +207,6 @@ export class ProfileSettingsComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
-    if (this.resendTimer) {
-      clearInterval(this.resendTimer);
-    }
   }
 
   onSubmit(): void {
@@ -244,14 +228,12 @@ export class ProfileSettingsComponent implements OnInit, OnDestroy {
     this.authService.updateProfile(request).subscribe({
       next: (res) => {
         this.loading.set(false);
-        this.cachedPassword = this.currentPassword;
         this.currentPassword = '';
         this.newPassword = '';
         this.confirmPassword = '';
         
         if (res.pendingEmail) {
-          this.pendingEmail.set(res.pendingEmail);
-          this.startResendCooldown();
+          this.router.navigate(['/settings/profile/verify']);
           if (isEmailChanging) {
             this.toastService.info('Verification code sent to your new email.');
           } else {
@@ -268,125 +250,5 @@ export class ProfileSettingsComponent implements OnInit, OnDestroy {
         this.loading.set(false);
       },
     });
-  }
-
-  onVerifyEmailChange(otp: string): void {
-    this.verifyingOtp.set(true);
-    this.otpError.set('');
-    this.authService.verifyEmailChange(otp).subscribe({
-      next: (res) => {
-        this.verifyingOtp.set(false);
-        const isEmailChanging = this.email.toLowerCase() !== this.authService.currentUserEmail()?.toLowerCase();
-        if (isEmailChanging) {
-          this.toastService.success('Email updated and verified successfully.');
-        } else {
-          this.toastService.success('Profile updated and verified successfully.');
-        }
-        this.pendingEmail.set(null);
-        
-        // Refresh local inputs from the new session state
-        this.username = res.username;
-        this.email = res.email;
-        const rawPhone = res.phoneNumber || '';
-        const country = this.countries.find((c: Country) => rawPhone.startsWith(c.code));
-        if (country) {
-          this.selectedCountry = country;
-          this.phoneNumber = rawPhone.substring(country.code.length);
-        } else {
-          this.selectedCountry = this.countries[0];
-          this.phoneNumber = rawPhone;
-        }
-      },
-      error: (err) => {
-        this.verifyingOtp.set(false);
-        this.otpError.set(err.error?.message || 'Invalid or expired verification code.');
-      }
-    });
-  }
-
-  onResendEmailChangeOtp(): void {
-    this.resendingOtp.set(true);
-    this.otpError.set('');
-
-    const fullPhoneNumber = this.selectedCountry.code + this.phoneNumber.replace(/\D/g, '');
-    const request = {
-      username: this.username,
-      email: this.email,
-      phoneNumber: fullPhoneNumber,
-      currentPassword: this.cachedPassword || this.currentPassword,
-      newPassword: '',
-    };
-
-    this.authService.updateProfile(request).subscribe({
-      next: () => {
-        this.resendingOtp.set(false);
-        this.toastService.success('Verification code resent successfully.');
-        this.startResendCooldown();
-      },
-      error: (err) => {
-        this.resendingOtp.set(false);
-        this.otpError.set(err.error?.message || 'Failed to resend verification code.');
-      }
-    });
-  }
-
-  onCancelEmailChange(): void {
-    this.loading.set(true);
-    this.error.set('');
-
-    const originalUsername = this.authService.currentUser() || '';
-    const originalEmail = this.authService.currentUserEmail() || '';
-    const originalPhone = this.authService.currentUserPhone() || '';
-
-    const request = {
-      username: originalUsername,
-      email: originalEmail,
-      phoneNumber: originalPhone,
-      currentPassword: this.cachedPassword || this.currentPassword,
-      newPassword: '',
-    };
-
-    this.authService.updateProfile(request).subscribe({
-      next: () => {
-        this.loading.set(false);
-        this.pendingEmail.set(null);
-        
-        // Reset form inputs to original values
-        this.username = originalUsername;
-        this.email = originalEmail;
-        
-        // Extract country code from stored original phone
-        const country = this.countries.find((c: Country) => originalPhone.startsWith(c.code));
-        if (country) {
-          this.selectedCountry = country;
-          this.phoneNumber = originalPhone.substring(country.code.length);
-        } else {
-          this.selectedCountry = this.countries[0];
-          this.phoneNumber = originalPhone;
-        }
-
-        this.toastService.success('Profile changes cancelled.');
-        // Refresh session status to ensure local storage matches
-        this.authService.refreshStatus().subscribe();
-      },
-      error: (err) => {
-        this.loading.set(false);
-        this.error.set(err.error?.message || 'Failed to cancel changes.');
-      }
-    });
-  }
-
-  private startResendCooldown(): void {
-    this.resendCooldown.set(60);
-    if (this.resendTimer) {
-      clearInterval(this.resendTimer);
-    }
-    this.resendTimer = setInterval(() => {
-      const val = this.resendCooldown() - 1;
-      this.resendCooldown.set(val);
-      if (val <= 0) {
-        clearInterval(this.resendTimer);
-      }
-    }, 1000);
   }
 }
