@@ -2,6 +2,9 @@ package com.tts.controller;
 
 import com.tts.dto.AuthResponse;
 import com.tts.dto.UserProfileUpdateRequest;
+import com.tts.dto.VerifyEmailChangeRequest;
+import com.tts.aspect.RateLimitAction;
+import com.tts.aspect.RateLimited;
 import com.tts.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +32,18 @@ public class UserController {
         
         AuthResponse response = authService.updateProfile(username, request);
         return ResponseEntity.ok(response);
+    }
+
+    @RateLimited(action = RateLimitAction.OTP_VERIFY)
+    @PostMapping("/me/verify-email-change")
+    public ResponseEntity<Void> verifyEmailChange(
+            @RequestBody VerifyEmailChangeRequest request,
+            Principal principal) {
+        
+        String username = principal.getName();
+        log.info("Verifying email change request for user: {}", username);
+        authService.verifyEmailChange(username, request);
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/me")

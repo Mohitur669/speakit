@@ -7,6 +7,7 @@ export interface AuthResponse {
   sessionVersion: number;
   sessionDurationMs: number;
   idleTimeoutMs: number;
+  pendingEmail?: string;
 }
 
 export interface LoginCredentials {
@@ -19,6 +20,12 @@ export interface RegisterCredentials {
   email: string;
   phoneNumber: string;
   password: string;
+}
+
+export interface ResetPasswordCredentials {
+  email: string;
+  otp: string;
+  newPassword?: string;
 }
 
 

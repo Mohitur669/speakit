@@ -116,4 +116,31 @@ public class RateLimitConfig {
                         .build())
                 .build();
     }
+
+    public Bucket createOtpVerifyBucket() {
+        return Bucket.builder()
+                .addLimit(Bandwidth.builder()
+                        .capacity(5) // Allow 5 validation attempts
+                        .refillIntervally(5, Duration.ofMinutes(1)) // Refill 5 tokens every 1 minute
+                        .build())
+                .build();
+    }
+
+    public Bucket createOtpResendBucket() {
+        return Bucket.builder()
+                .addLimit(Bandwidth.builder()
+                        .capacity(1) // Enforce 60-second cooldown
+                        .refillIntervally(1, Duration.ofMinutes(1)) // Refill 1 token every minute
+                        .build())
+                .build();
+    }
+
+    public Bucket createPasswordResetBucket() {
+        return Bucket.builder()
+                .addLimit(Bandwidth.builder()
+                        .capacity(3) // Allow max 3 reset/forgot requests
+                        .refillIntervally(3, Duration.ofMinutes(5)) // Refill 3 tokens every 5 minutes
+                        .build())
+                .build();
+    }
 }

@@ -66,6 +66,10 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ApiErrorResponse> handleRuntimeException(RuntimeException ex, HttpServletRequest request) {
         log.warn("Business rule violation: {}", ex.getMessage());
+        if ("EMAIL_NOT_VERIFIED".equals(ex.getMessage())) {
+            ApiErrorResponse response = buildResponse(HttpStatus.FORBIDDEN, "EMAIL_NOT_VERIFIED", "Please verify your email to access your account.", request);
+            return new ResponseEntity<>(response, HttpStatus.FORBIDDEN);
+        }
         ApiErrorResponse response = buildResponse(HttpStatus.BAD_REQUEST, "Bad Request", ex.getMessage(), request);
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
