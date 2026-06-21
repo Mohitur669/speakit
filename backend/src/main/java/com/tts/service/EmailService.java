@@ -1,5 +1,6 @@
 package com.tts.service;
 
+import jakarta.annotation.PostConstruct;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -8,6 +9,15 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.ses.SesClient;
+import software.amazon.awssdk.services.ses.model.Body;
+import software.amazon.awssdk.services.ses.model.Content;
+import software.amazon.awssdk.services.ses.model.Destination;
+import software.amazon.awssdk.services.ses.model.Message;
+import software.amazon.awssdk.services.ses.model.SendEmailRequest;
 
 import java.nio.charset.StandardCharsets;
 
@@ -29,29 +39,82 @@ public class EmailService {
     @Value("${app.mail.reply-to:support@mohitur.com}")
     private String replyToEmail;
 
+    @Value("${app.email.provider:SMTP}")
+    private String emailProvider;
+
+    @Value("${aws.accessKeyId:}")
+    private String awsAccessKey;
+
+    @Value("${aws.secretKey:}")
+    private String awsSecretKey;
+
+    @Value("${aws.region:ap-south-1}")
+    private String awsRegion;
+
+    private SesClient sesClient;
+
+    @PostConstruct
+    public void init() {
+        if ("SES_API".equalsIgnoreCase(emailProvider)) {
+            if (awsAccessKey != null && !awsAccessKey.isBlank() && awsSecretKey != null && !awsSecretKey.isBlank()) {
+                this.sesClient = SesClient.builder()
+                        .region(Region.of(awsRegion))
+                        .credentialsProvider(StaticCredentialsProvider.create(
+                                AwsBasicCredentials.create(awsAccessKey, awsSecretKey)
+                        ))
+                        .build();
+                log.info("Initialized AWS SES API Client for email delivery");
+            } else {
+                log.warn("AWS SES API selected but AWS credentials are empty. Email service will fallback to SMTP.");
+            }
+        }
+    }
+
     /**
      * General purpose email sending method with TLS.
      */
     @Async
     public void sendEmail(String to, String subject, String htmlContent) {
-        try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(
-                    message,
-                    MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED,
-                    StandardCharsets.UTF_8.name());
+        if ("SES_API".equalsIgnoreCase(emailProvider) && sesClient != null) {
+            try {
+                SendEmailRequest emailRequest = SendEmailRequest.builder()
+                        .destination(Destination.builder().toAddresses(to).build())
+                        .message(Message.builder()
+                                .subject(Content.builder().data(subject).charset("UTF-8").build())
+                                .body(Body.builder()
+                                        .html(Content.builder().data(htmlContent).charset("UTF-8").build())
+                                        .build())
+                                .build())
+                        .source(fromEmail)
+                        .replyToAddresses(replyToEmail)
+                        .build();
 
-            helper.setFrom(fromEmail);
-            helper.setReplyTo(replyToEmail);
-            helper.setTo(to);
-            helper.setSubject(subject);
-            helper.setText(htmlContent, true);
+                sesClient.sendEmail(emailRequest);
+                log.info("Successfully sent transactional email via AWS SES API to: {} with subject: {}", to, subject);
+            } catch (Exception e) {
+                log.error("Failed to send transactional email via AWS SES API to: {} with subject: {}. Error: {}", to, subject,
+                        e.getMessage(), e);
+            }
+        } else {
+            try {
+                MimeMessage message = mailSender.createMimeMessage();
+                MimeMessageHelper helper = new MimeMessageHelper(
+                        message,
+                        MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED,
+                        StandardCharsets.UTF_8.name());
 
-            mailSender.send(message);
-            log.info("Successfully sent transactional email to: {} with subject: {}", to, subject);
-        } catch (Exception e) {
-            log.error("Failed to send transactional email to: {} with subject: {}. Error: {}", to, subject,
-                    e.getMessage(), e);
+                helper.setFrom(fromEmail);
+                helper.setReplyTo(replyToEmail);
+                helper.setTo(to);
+                helper.setSubject(subject);
+                helper.setText(htmlContent, true);
+
+                mailSender.send(message);
+                log.info("Successfully sent transactional email via SMTP to: {} with subject: {}", to, subject);
+            } catch (Exception e) {
+                log.error("Failed to send transactional email via SMTP to: {} with subject: {}. Error: {}", to, subject,
+                        e.getMessage(), e);
+            }
         }
     }
 

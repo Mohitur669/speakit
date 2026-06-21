@@ -65,7 +65,7 @@ import { PasswordPolicyModalComponent } from '../../../shared/components/passwor
                       (click)="showPolicyModal.set(true)"
                       class="text-xs text-brand-blue font-semibold hover:underline"
                     >
-                      View Policy
+                      Password Policy
                     </button>
                   </div>
                   <input
