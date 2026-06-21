@@ -28,6 +28,13 @@ services:
       - RATE_LIMIT_CAPACITY=${RATE_LIMIT_CAPACITY:-5}
       - RATE_LIMIT_REFILL_TOKENS=${RATE_LIMIT_REFILL_TOKENS:-5}
       - RATE_LIMIT_REFILL_DURATION_MINUTES=${RATE_LIMIT_REFILL_DURATION_MINUTES:-1}
+      
+      # Email Configuration
+      - MAIL_HOST=${MAIL_HOST}
+      - MAIL_PORT=${MAIL_PORT}
+      - MAIL_USERNAME=${MAIL_USERNAME}
+      - MAIL_PASSWORD=${MAIL_PASSWORD}
+      - MAIL_FROM=${MAIL_FROM}
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/tts/voices || exit 1"]

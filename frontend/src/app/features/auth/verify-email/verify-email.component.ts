@@ -21,7 +21,7 @@ import { OtpInputComponent } from '../../../shared';
             <div class="p-8 pb-0">
               <h1 class="text-2xl font-bold text-primary-900 dark:text-white mb-2">Verify your email</h1>
               <p class="text-primary-600 dark:text-primary-400 text-sm">
-                Enter the 6-digit verification code sent to your email.
+                Enter the 6-digit verification code sent to @if (isEmailPrePopulated) { <strong class="text-primary-800 dark:text-primary-200">{{ email }}</strong> } @else { your email }.
               </p>
             </div>
 
@@ -34,6 +34,9 @@ import { OtpInputComponent } from '../../../shared';
                     name="email"
                     type="email"
                     required
+                    [readonly]="isEmailPrePopulated"
+                    [class.opacity-60]="isEmailPrePopulated"
+                    [class.cursor-not-allowed]="isEmailPrePopulated"
                     placeholder="you@example.com"
                     class="w-full px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all lowercase"
                   />
@@ -93,6 +96,7 @@ import { OtpInputComponent } from '../../../shared';
 export class VerifyEmailComponent implements OnInit {
   email = '';
   otp = '';
+  isEmailPrePopulated = false;
   loading = signal(false);
   resending = signal(false);
   error = signal('');
@@ -105,7 +109,11 @@ export class VerifyEmailComponent implements OnInit {
   private route = inject(ActivatedRoute);
 
   ngOnInit(): void {
-    this.email = this.route.snapshot.queryParams['email'] || '';
+    const emailParam = this.route.snapshot.queryParams['email'] || '';
+    this.email = emailParam;
+    if (emailParam) {
+      this.isEmailPrePopulated = true;
+    }
   }
 
   onSubmit(): void {
