@@ -108,8 +108,10 @@ export class AuthService implements OnDestroy {
     return this.http.post<void>(`${this.apiUrl}/reset-password`, credentials);
   }
 
-  verifyEmailChange(otp: string): Observable<void> {
-    return this.http.post<void>(`${environment.apiUrl}/api/v1/users/me/verify-email-change`, { otp });
+  verifyEmailChange(otp: string): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${environment.apiUrl}/api/v1/users/me/verify-email-change`, { otp }).pipe(
+      tap(res => this.setSession(res))
+    );
   }
 
   checkUsername(username: string): Observable<boolean> {

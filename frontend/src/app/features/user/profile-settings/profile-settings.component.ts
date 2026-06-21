@@ -249,10 +249,14 @@ export class ProfileSettingsComponent implements OnInit, OnDestroy {
         this.newPassword = '';
         this.confirmPassword = '';
         
-        if (isEmailChanging) {
-          this.pendingEmail.set(res.pendingEmail || this.email);
+        if (res.pendingEmail) {
+          this.pendingEmail.set(res.pendingEmail);
           this.startResendCooldown();
-          this.toastService.info('Verification code sent to your new email.');
+          if (isEmailChanging) {
+            this.toastService.info('Verification code sent to your new email.');
+          } else {
+            this.toastService.info('Verification code sent to your email.');
+          }
         } else {
           this.toastService.success('Profile updated successfully.');
         }
@@ -270,16 +274,28 @@ export class ProfileSettingsComponent implements OnInit, OnDestroy {
     this.verifyingOtp.set(true);
     this.otpError.set('');
     this.authService.verifyEmailChange(otp).subscribe({
-      next: () => {
+      next: (res) => {
         this.verifyingOtp.set(false);
-        this.toastService.success('Email updated and verified successfully.');
+        const isEmailChanging = this.email.toLowerCase() !== this.authService.currentUserEmail()?.toLowerCase();
+        if (isEmailChanging) {
+          this.toastService.success('Email updated and verified successfully.');
+        } else {
+          this.toastService.success('Profile updated and verified successfully.');
+        }
         this.pendingEmail.set(null);
-        // Refresh session status to fetch updated email from backend
-        this.authService.refreshStatus().subscribe({
-          next: (res) => {
-            this.email = res.email;
-          }
-        });
+        
+        // Refresh local inputs from the new session state
+        this.username = res.username;
+        this.email = res.email;
+        const rawPhone = res.phoneNumber || '';
+        const country = this.countries.find((c: Country) => rawPhone.startsWith(c.code));
+        if (country) {
+          this.selectedCountry = country;
+          this.phoneNumber = rawPhone.substring(country.code.length);
+        } else {
+          this.selectedCountry = this.countries[0];
+          this.phoneNumber = rawPhone;
+        }
       },
       error: (err) => {
         this.verifyingOtp.set(false);
@@ -318,13 +334,14 @@ export class ProfileSettingsComponent implements OnInit, OnDestroy {
     this.loading.set(true);
     this.error.set('');
 
+    const originalUsername = this.authService.currentUser() || '';
     const originalEmail = this.authService.currentUserEmail() || '';
-    const fullPhoneNumber = this.selectedCountry.code + this.phoneNumber.replace(/\D/g, '');
+    const originalPhone = this.authService.currentUserPhone() || '';
 
     const request = {
-      username: this.username,
+      username: originalUsername,
       email: originalEmail,
-      phoneNumber: fullPhoneNumber,
+      phoneNumber: originalPhone,
       currentPassword: this.cachedPassword || this.currentPassword,
       newPassword: '',
     };
@@ -333,14 +350,28 @@ export class ProfileSettingsComponent implements OnInit, OnDestroy {
       next: () => {
         this.loading.set(false);
         this.pendingEmail.set(null);
+        
+        // Reset form inputs to original values
+        this.username = originalUsername;
         this.email = originalEmail;
-        this.toastService.success('Email change cancelled.');
+        
+        // Extract country code from stored original phone
+        const country = this.countries.find((c: Country) => originalPhone.startsWith(c.code));
+        if (country) {
+          this.selectedCountry = country;
+          this.phoneNumber = originalPhone.substring(country.code.length);
+        } else {
+          this.selectedCountry = this.countries[0];
+          this.phoneNumber = originalPhone;
+        }
+
+        this.toastService.success('Profile changes cancelled.');
         // Refresh session status to ensure local storage matches
         this.authService.refreshStatus().subscribe();
       },
       error: (err) => {
         this.loading.set(false);
-        this.error.set(err.error?.message || 'Failed to cancel email change.');
+        this.error.set(err.error?.message || 'Failed to cancel changes.');
       }
     });
   }

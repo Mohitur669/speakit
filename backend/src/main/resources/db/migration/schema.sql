@@ -301,6 +301,18 @@ BEGIN
         ALTER TABLE users ADD COLUMN pending_email VARCHAR(100);
     END IF;
 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='pending_username') THEN
+        ALTER TABLE users ADD COLUMN pending_username VARCHAR(50);
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='pending_phone_number') THEN
+        ALTER TABLE users ADD COLUMN pending_phone_number VARCHAR(15);
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='pending_password') THEN
+        ALTER TABLE users ADD COLUMN pending_password VARCHAR(255);
+    END IF;
+
     -- One-time backfill of existing users to verified and ACTIVE status
     -- (Triggers only if the migration completion flag is not set in system_parameters)
     IF NOT EXISTS (SELECT 1 FROM system_parameters WHERE parameter_name = 'migration_email_verification_backfill') THEN
