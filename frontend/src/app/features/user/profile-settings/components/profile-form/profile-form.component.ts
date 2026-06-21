@@ -60,10 +60,17 @@ import { CountrySelectorComponent } from '../../../../../shared/components/count
           @if (pendingEmail) {
             <div class="p-4 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 text-sm space-y-4">
               <div>
-                <p class="font-semibold text-blue-800 dark:text-blue-300">Email change pending: <span class="underline">{{ pendingEmail }}</span></p>
-                <p class="text-xs text-primary-500 dark:text-primary-400 mt-1">
-                  Your current login email (<strong class="lowercase">{{ email }}</strong>) remains active until the new one is verified.
-                </p>
+                @if (pendingEmail.toLowerCase() !== email.toLowerCase()) {
+                  <p class="font-semibold text-blue-800 dark:text-blue-300">Email change pending: <span class="underline">{{ pendingEmail }}</span></p>
+                  <p class="text-xs text-primary-500 dark:text-primary-400 mt-1">
+                    Your current login email (<strong class="lowercase">{{ email }}</strong>) remains active until the new one is verified.
+                  </p>
+                } @else {
+                  <p class="font-semibold text-blue-800 dark:text-blue-300">Profile update pending verification</p>
+                  <p class="text-xs text-primary-500 dark:text-primary-400 mt-1">
+                    Please enter the verification code sent to <strong class="lowercase">{{ email }}</strong> to apply your changes.
+                  </p>
+                }
               </div>
 
               <div class="space-y-2">

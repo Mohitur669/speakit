@@ -121,7 +121,7 @@ public class AuthService {
 
         // OTP Gating: Block login for unverified accounts
         if (!"ACTIVE".equals(user.getAccountStatus()) || !user.isEmailVerified()) {
-            throw new RuntimeException("EMAIL_NOT_VERIFIED");
+            throw new RuntimeException("EMAIL_NOT_VERIFIED:" + user.getEmail());
         }
 
         authenticationManager.authenticate(
@@ -171,6 +171,11 @@ public class AuthService {
         var user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         
+        boolean hasPendingChanges = user.getPendingEmail() != null || 
+                                    user.getPendingUsername() != null || 
+                                    user.getPendingPhoneNumber() != null || 
+                                    user.getPendingPassword() != null;
+        
         return AuthResponse.builder()
                 .username(user.getUsername())
                 .email(user.getEmail())
@@ -180,7 +185,7 @@ public class AuthService {
                 .sessionVersion(user.getSessionVersion())
                 .sessionDurationMs(sessionDurationMs)
                 .idleTimeoutMs(idleTimeoutMs)
-                .pendingEmail(user.getPendingEmail())
+                .pendingEmail(user.getPendingEmail() != null ? user.getPendingEmail() : (hasPendingChanges ? user.getEmail() : null))
                 .build();
     }
 
@@ -194,40 +199,63 @@ public class AuthService {
             throw new RuntimeException("Incorrect current password");
         }
 
-        // 2. Validate Uniqueness (if changed)
+        boolean hasChanges = false;
+
+        // Reset previous pending fields (just in case they are stale)
+        user.setPendingUsername(null);
+        user.setPendingPhoneNumber(null);
+        user.setPendingPassword(null);
+        user.setPendingEmail(null);
+
+        // 2. Stage Username (if changed)
         if (request.getUsername() != null && !request.getUsername().equalsIgnoreCase(user.getUsername())) {
             String sanitizedUsername = Sanitizer.sanitize(request.getUsername()).toLowerCase();
             if (userRepository.findByUsername(sanitizedUsername).isPresent()) {
                 throw new RuntimeException("Username already taken");
             }
-            user.setUsername(sanitizedUsername);
+            user.setPendingUsername(sanitizedUsername);
+            hasChanges = true;
         }
 
-        if (request.getEmail() != null && request.getEmail().equalsIgnoreCase(user.getEmail())) {
-            if (user.getPendingEmail() != null) {
-                otpVerificationRepository.invalidateExistingOtps(user.getPendingEmail(), "EMAIL_CHANGE");
-                user.setPendingEmail(null);
+        // 3. Stage Phone Number (if changed)
+        if (request.getPhoneNumber() != null && !request.getPhoneNumber().equals(user.getPhoneNumber())) {
+            String sanitizedPhone = Sanitizer.sanitize(request.getPhoneNumber());
+            if (userRepository.findByPhoneNumber(sanitizedPhone).isPresent()) {
+                throw new RuntimeException("Phone number already taken");
             }
+            user.setPendingPhoneNumber(sanitizedPhone);
+            hasChanges = true;
         }
 
+        // 4. Stage New Password (if provided)
+        if (request.getNewPassword() != null && !request.getNewPassword().isBlank()) {
+            user.setPendingPassword(passwordEncoder.encode(request.getNewPassword()));
+            hasChanges = true;
+        }
+
+        // 5. Stage Email (if changed)
+        String targetEmail = user.getEmail();
         if (request.getEmail() != null && !request.getEmail().equalsIgnoreCase(user.getEmail())) {
             String sanitizedEmail = Sanitizer.sanitize(request.getEmail()).toLowerCase();
             if (userRepository.findByEmail(sanitizedEmail).isPresent()) {
                 throw new RuntimeException("Email already taken");
             }
-            // Set pending email instead of immediate update
             user.setPendingEmail(sanitizedEmail);
+            targetEmail = sanitizedEmail;
+            hasChanges = true;
+        }
 
-            // Invalidate prior EMAIL_CHANGE OTPs for this pending email
-            otpVerificationRepository.invalidateExistingOtps(sanitizedEmail, "EMAIL_CHANGE");
+        if (hasChanges) {
+            // Invalidate prior EMAIL_CHANGE OTPs for target email
+            otpVerificationRepository.invalidateExistingOtps(targetEmail, "EMAIL_CHANGE");
 
-            // Generate and send OTP to the NEW email
+            // Generate and send OTP to target email
             String rawOtp = generateSecureOtp();
             String otpHash = hashOtp(rawOtp);
 
             OtpVerification verification = OtpVerification.builder()
                     .user(user)
-                    .email(sanitizedEmail)
+                    .email(targetEmail)
                     .otpHash(otpHash)
                     .purpose("EMAIL_CHANGE")
                     .expiresAt(LocalDateTime.now().plusMinutes(otpExpiryMinutes))
@@ -236,31 +264,35 @@ public class AuthService {
                     .build();
             otpVerificationRepository.save(verification);
 
-            emailService.sendOtpEmail(sanitizedEmail, user.getUsername(), rawOtp, otpExpiryMinutes);
-            log.info("Email update OTP generated and sent to pending email: {}", maskEmail(sanitizedEmail));
+            emailService.sendOtpEmail(targetEmail, user.getUsername(), rawOtp, otpExpiryMinutes);
+            log.info("Profile update OTP generated and sent to email: {}", maskEmail(targetEmail));
+            
+            // Save the staged changes to user entity
+            user = userRepository.save(user);
         }
 
-        if (request.getPhoneNumber() != null && !request.getPhoneNumber().equals(user.getPhoneNumber())) {
-            String sanitizedPhone = Sanitizer.sanitize(request.getPhoneNumber());
-            if (userRepository.findByPhoneNumber(sanitizedPhone).isPresent()) {
-                throw new RuntimeException("Phone number already taken");
-            }
-            user.setPhoneNumber(sanitizedPhone);
-        }
+        String role = user.getRole();
+        String roleName = role.startsWith("ROLE_") ? role.substring(5) : role;
+        UserDetails userDetails = org.springframework.security.core.userdetails.User.builder()
+                .username(user.getUsername())
+                .password("")
+                .roles(roleName)
+                .build();
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("sessionVersion", user.getSessionVersion());
+        claims.put("role", role);
+        String jwtToken = jwtService.generateToken(claims, userDetails);
 
-        // 3. Update Password (optional)
-        if (request.getNewPassword() != null && !request.getNewPassword().isBlank()) {
-            user.setPassword(passwordEncoder.encode(request.getNewPassword()));
-            // Invalidate other sessions on password change
-            userRepository.incrementSessionVersion(user.getUsername());
-            user.setSessionVersion(user.getSessionVersion() + 1);
-            webSocketConfig.notifyLogout(user.getUsername());
-        }
-
-        user = userRepository.save(user);
-        log.info("User profile updated for: {}", user.getUsername());
-        
-        return authenticate(user, user.getSessionVersion());
+        return AuthResponse.builder()
+                .token(jwtToken)
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .phoneNumber(user.getPhoneNumber())
+                .role(role)
+                .planType(user.getPlanType().name())
+                .sessionVersion(user.getSessionVersion())
+                .pendingEmail(user.getPendingEmail() != null ? user.getPendingEmail() : (hasChanges ? user.getEmail() : null))
+                .build();
     }
 
     /**
@@ -449,24 +481,32 @@ public class AuthService {
     }
 
     @Transactional
-    public void verifyEmailChange(String username, VerifyEmailChangeRequest request) {
+    public AuthResponse verifyEmailChange(String username, VerifyEmailChangeRequest request) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        String pendingEmail = user.getPendingEmail();
-        if (pendingEmail == null || pendingEmail.isEmpty()) {
-            throw new RuntimeException("No pending email change request found.");
+        // Determine if we are verifying a pending email change or other profile changes
+        String targetEmail = user.getPendingEmail() != null ? user.getPendingEmail() : user.getEmail();
+        
+        // Safety check: verify that there are actually pending changes
+        boolean hasPendingChanges = user.getPendingEmail() != null || 
+                                    user.getPendingUsername() != null || 
+                                    user.getPendingPhoneNumber() != null || 
+                                    user.getPendingPassword() != null;
+                                    
+        if (!hasPendingChanges) {
+            throw new RuntimeException("No pending profile change request found.");
         }
 
         OtpVerification verification = otpVerificationRepository
-                .findFirstByEmailAndPurposeAndConsumedFalseOrderByCreatedAtDesc(pendingEmail, "EMAIL_CHANGE")
+                .findFirstByEmailAndPurposeAndConsumedFalseOrderByCreatedAtDesc(targetEmail, "EMAIL_CHANGE")
                 .orElseThrow(() -> {
-                    log.warn("No active OTP found for email change verification for user: {}", username);
+                    log.warn("No active OTP found for profile change verification for user: {}", username);
                     return new RuntimeException("Invalid or expired verification code.");
                 });
 
         if (verification.getExpiresAt().isBefore(LocalDateTime.now())) {
-            log.warn("Email change OTP expired for user: {}", username);
+            log.warn("Profile change OTP expired for user: {}", username);
             throw new RuntimeException("Invalid or expired verification code.");
         }
 
@@ -476,21 +516,68 @@ public class AuthService {
             verification.setAttemptsRemaining(attempts);
             if (attempts <= 0) {
                 verification.setConsumed(true);
-                log.warn("Email change OTP attempts exhausted for user: {}", username);
+                log.warn("Profile change OTP attempts exhausted for user: {}", username);
             }
             otpVerificationRepository.save(verification);
-            log.warn("Incorrect email change OTP verification attempt for user: {}", username);
+            log.warn("Incorrect profile change OTP verification attempt for user: {}", username);
             throw new RuntimeException("Invalid or expired verification code.");
         }
 
         verification.setConsumed(true);
         otpVerificationRepository.save(verification);
 
-        user.setEmail(pendingEmail);
-        user.setPendingEmail(null);
-        userRepository.save(user);
+        // Apply all pending profile updates
+        if (user.getPendingUsername() != null) {
+            user.setUsername(user.getPendingUsername());
+            user.setPendingUsername(null);
+        }
+        
+        if (user.getPendingEmail() != null) {
+            user.setEmail(user.getPendingEmail());
+            user.setPendingEmail(null);
+        }
+        
+        if (user.getPendingPhoneNumber() != null) {
+            user.setPhoneNumber(user.getPendingPhoneNumber());
+            user.setPendingPhoneNumber(null);
+        }
+        
+        if (user.getPendingPassword() != null) {
+            user.setPassword(user.getPendingPassword());
+            user.setPendingPassword(null);
+            // Invalidate other sessions on password change
+            userRepository.incrementSessionVersion(user.getUsername());
+            user.setSessionVersion(user.getSessionVersion() + 1);
+            webSocketConfig.notifyLogout(user.getUsername());
+        }
 
-        log.info("User {} successfully updated email to: {}", username, maskEmail(pendingEmail));
+        user = userRepository.save(user);
+        log.info("User {} successfully verified and updated profile settings.", username);
+
+        String role = user.getRole();
+        String roleName = role.startsWith("ROLE_") ? role.substring(5) : role;
+        UserDetails userDetails = org.springframework.security.core.userdetails.User.builder()
+                .username(user.getUsername())
+                .password("")
+                .roles(roleName)
+                .build();
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("sessionVersion", user.getSessionVersion());
+        claims.put("role", role);
+        String jwtToken = jwtService.generateToken(claims, userDetails);
+
+        return AuthResponse.builder()
+                .token(jwtToken)
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .phoneNumber(user.getPhoneNumber())
+                .role(role)
+                .planType(user.getPlanType().name())
+                .sessionVersion(user.getSessionVersion())
+                .sessionDurationMs(sessionDurationMs)
+                .idleTimeoutMs(idleTimeoutMs)
+                .pendingEmail(null)
+                .build();
     }
 
     private String generateSecureOtp() {

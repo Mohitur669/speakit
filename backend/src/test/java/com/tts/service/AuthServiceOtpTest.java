@@ -128,7 +128,7 @@ class AuthServiceOtpTest {
         when(userRepository.findByUsername("pendinguser")).thenReturn(Optional.of(pendingUser));
 
         RuntimeException exception = assertThrows(RuntimeException.class, () -> authService.login(req));
-        assertEquals("EMAIL_NOT_VERIFIED", exception.getMessage());
+        assertTrue(exception.getMessage().startsWith("EMAIL_NOT_VERIFIED"));
     }
 
     @Test
@@ -293,9 +293,13 @@ class AuthServiceOtpTest {
         when(userRepository.findByUsername("activeuser")).thenReturn(Optional.of(activeUser));
         when(otpVerificationRepository.findFirstByEmailAndPurposeAndConsumedFalseOrderByCreatedAtDesc("newemail@example.com", "EMAIL_CHANGE"))
                 .thenReturn(Optional.of(verification));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(jwtService.generateToken(anyMap(), any(org.springframework.security.core.userdetails.UserDetails.class))).thenReturn("dummy-token");
 
-        authService.verifyEmailChange("activeuser", req);
+        AuthResponse response = authService.verifyEmailChange("activeuser", req);
 
+        assertNotNull(response);
+        assertEquals("dummy-token", response.getToken());
         assertEquals("newemail@example.com", activeUser.getEmail());
         assertNull(activeUser.getPendingEmail());
         assertTrue(verification.isConsumed());

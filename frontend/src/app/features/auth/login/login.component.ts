@@ -215,7 +215,7 @@ export class LoginComponent implements OnInit {
       },
       error: (err: any) => {
         if (err.status === 403 && err.error?.error === 'EMAIL_NOT_VERIFIED') {
-          const emailGuess = this.username.includes('@') ? this.username : '';
+          const emailGuess = err.error?.message || (this.username.includes('@') ? this.username : '');
           this.router.navigate(['/verify-email'], { queryParams: { email: emailGuess, username: this.username } });
         } else {
           this.error.set('Invalid credentials. Please check your identifier and password.');
