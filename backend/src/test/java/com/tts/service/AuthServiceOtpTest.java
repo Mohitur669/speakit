@@ -305,6 +305,40 @@ class AuthServiceOtpTest {
         assertTrue(verification.isConsumed());
     }
 
+    @Test
+    void cancelProfileChanges_successClearsPendingAndOtps() {
+        activeUser.setPendingEmail("newemail@example.com");
+        activeUser.setPendingUsername("newusername");
+        activeUser.setPendingPhoneNumber("+15555555555");
+        activeUser.setPendingPassword("new_encoded_password");
+
+        when(userRepository.findByUsername("activeuser")).thenReturn(Optional.of(activeUser));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        AuthResponse response = authService.cancelProfileChanges("activeuser");
+
+        assertNotNull(response);
+        assertNull(activeUser.getPendingEmail());
+        assertNull(activeUser.getPendingUsername());
+        assertNull(activeUser.getPendingPhoneNumber());
+        assertNull(activeUser.getPendingPassword());
+        verify(otpVerificationRepository, times(1)).invalidateExistingOtps("active@example.com", "EMAIL_CHANGE");
+        verify(otpVerificationRepository, times(1)).invalidateExistingOtps("newemail@example.com", "EMAIL_CHANGE");
+    }
+
+    @Test
+    void resendProfileOtp_successSendsOtp() {
+        activeUser.setPendingEmail("newemail@example.com");
+
+        when(userRepository.findByUsername("activeuser")).thenReturn(Optional.of(activeUser));
+
+        authService.resendProfileOtp("activeuser");
+
+        verify(otpVerificationRepository, times(1)).invalidateExistingOtps("newemail@example.com", "EMAIL_CHANGE");
+        verify(otpVerificationRepository, times(1)).save(any(OtpVerification.class));
+        verify(emailService, times(1)).sendOtpEmail(eq("newemail@example.com"), eq("activeuser"), anyString(), eq(10));
+    }
+
     private String hashOtp(String otp) {
         try {
             java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");

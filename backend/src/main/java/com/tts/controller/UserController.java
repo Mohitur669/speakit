@@ -52,4 +52,22 @@ public class UserController {
         AuthResponse response = authService.getUserProfile(username);
         return ResponseEntity.ok(response);
     }
+
+    @RateLimited(action = RateLimitAction.PUBLIC)
+    @PostMapping("/me/cancel-profile-changes")
+    public ResponseEntity<AuthResponse> cancelProfileChanges(Principal principal) {
+        String username = principal.getName();
+        log.info("Cancelling profile changes request for user: {}", username);
+        AuthResponse response = authService.cancelProfileChanges(username);
+        return ResponseEntity.ok(response);
+    }
+
+    @RateLimited(action = RateLimitAction.OTP_RESEND)
+    @PostMapping("/me/resend-profile-otp")
+    public ResponseEntity<Void> resendProfileOtp(Principal principal) {
+        String username = principal.getName();
+        log.info("Resending profile update OTP for user: {}", username);
+        authService.resendProfileOtp(username);
+        return ResponseEntity.ok().build();
+    }
 }
