@@ -103,9 +103,21 @@ public class PollyService implements SpeechProvider {
                 planType == com.tts.entity.PlanType.ENTERPRISE
         );
 
-        if (isPremiumPlan && voice != null && voice.supportedEngines().contains(Engine.NEURAL)) {
-            return Engine.NEURAL;
+        if (voice != null) {
+            // Check if the voice supports standard engine. If not, it requires a premium plan.
+            if (!voice.supportedEngines().contains(Engine.STANDARD)) {
+                if (!isPremiumPlan) {
+                    throw new SpeechConversionException("Voice '" + voiceId + "' requires a premium subscription (Neural engine only).");
+                }
+                return Engine.NEURAL;
+            }
+            
+            // If the voice supports neural and user has premium plan, use neural for best quality
+            if (isPremiumPlan && voice.supportedEngines().contains(Engine.NEURAL)) {
+                return Engine.NEURAL;
+            }
         }
+
         return Engine.STANDARD;
     }
 
@@ -147,22 +159,32 @@ public class PollyService implements SpeechProvider {
      */
     @Override
     public List<Map<String, Object>> getAvailableVoices() {
-        if (cachedVoices != null && (System.currentTimeMillis() - lastCacheUpdate < CACHE_DURATION)) {
-            return mapVoices(cachedVoices);
-        }
+        return getAvailableVoices(null);
+    }
 
-        try {
-            DescribeVoicesRequest request = DescribeVoicesRequest.builder()
-                    .languageCode(LanguageCode.EN_US)
-                    .build();
-            cachedVoices = pollyClient.describeVoices(request).voices();
-            lastCacheUpdate = System.currentTimeMillis();
-            log.info("Polly voices cache updated. Found {} voices.", cachedVoices.size());
-            return mapVoices(cachedVoices);
-        } catch (Exception e) {
-            log.error("Failed to fetch voices from Polly", e);
-            return mapVoices(cachedVoices != null ? cachedVoices : List.of());
+    /**
+     * Overloaded method to retrieve voices matching plan access.
+     * Non-premium plans filter out neural-only voices.
+     */
+    public List<Map<String, Object>> getAvailableVoices(com.tts.entity.PlanType planType) {
+        List<Voice> rawVoices = getRawAvailableVoices();
+        
+        boolean isPremiumPlan = planType != null && (
+                planType == com.tts.entity.PlanType.PRO || 
+                planType == com.tts.entity.PlanType.PRO_PLUS || 
+                planType == com.tts.entity.PlanType.ENTERPRISE
+        );
+        
+        List<Voice> filteredVoices;
+        if (!isPremiumPlan) {
+            filteredVoices = rawVoices.stream()
+                    .filter(v -> v.supportedEngines().contains(Engine.STANDARD))
+                    .toList();
+        } else {
+            filteredVoices = rawVoices;
         }
+        
+        return mapVoices(filteredVoices);
     }
 
     private List<Map<String, Object>> mapVoices(List<Voice> voices) {
@@ -190,8 +212,10 @@ public class PollyService implements SpeechProvider {
                     .build();
             cachedVoices = pollyClient.describeVoices(request).voices();
             lastCacheUpdate = System.currentTimeMillis();
+            log.info("Polly voices cache updated. Found {} voices.", cachedVoices.size());
             return cachedVoices;
         } catch (Exception e) {
+            log.error("Failed to fetch voices from Polly", e);
             return cachedVoices != null ? cachedVoices : List.of();
         }
     }
