@@ -2,8 +2,7 @@ package com.tts.controller;
 
 import com.tts.aspect.RateLimitAction;
 import com.tts.aspect.RateLimited;
-import com.tts.dto.AuthRequest;
-import com.tts.dto.AuthResponse;
+import com.tts.dto.*;
 import com.tts.service.AuthService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -47,6 +46,33 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody AuthRequest request) {
         return ResponseEntity.ok(authService.login(request));
+    }
+
+    @RateLimited(action = RateLimitAction.OTP_VERIFY)
+    @PostMapping("/verify-email")
+    public ResponseEntity<AuthResponse> verifyEmail(@RequestBody VerifyEmailRequest request) {
+        return ResponseEntity.ok(authService.verifyEmail(request));
+    }
+
+    @RateLimited(action = RateLimitAction.OTP_RESEND)
+    @PostMapping("/resend-otp")
+    public ResponseEntity<Void> resendOtp(@RequestBody ResendOtpRequest request) {
+        authService.resendOtp(request);
+        return ResponseEntity.ok().build();
+    }
+
+    @RateLimited(action = RateLimitAction.PASSWORD_RESET)
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Void> forgotPassword(@RequestBody ForgotPasswordRequest request) {
+        authService.forgotPassword(request);
+        return ResponseEntity.ok().build();
+    }
+
+    @RateLimited(action = RateLimitAction.PASSWORD_RESET)
+    @PostMapping("/reset-password")
+    public ResponseEntity<Void> resetPassword(@RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request);
+        return ResponseEntity.ok().build();
     }
 
     /**

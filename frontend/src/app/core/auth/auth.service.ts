@@ -9,7 +9,7 @@ import { Observable, tap } from 'rxjs';
 import { TtsService } from '../services/tts.service';
 import { ToastService } from '../services/toast.service';
 import { LoggerService } from '../services/logger.service';
-import { AuthResponse, LoginCredentials, RegisterCredentials } from './models';
+import { AuthResponse, LoginCredentials, RegisterCredentials, ResetPasswordCredentials } from './models';
 import { environment } from '../../../environments/environment';
 
 const DEFAULT_SESSION_DURATION = 2 * 60 * 60 * 1000; // 2 hours
@@ -30,6 +30,7 @@ export class AuthService implements OnDestroy {
   currentUser = signal<string | null>(localStorage.getItem('username'));
   currentUserEmail = signal<string | null>(localStorage.getItem('email'));
   currentUserPhone = signal<string | null>(localStorage.getItem('phoneNumber'));
+  currentUserPendingEmail = signal<string | null>(localStorage.getItem('pendingEmail'));
   token = signal<string | null>(localStorage.getItem('token'));
   
   // Robust plan type tracking using internal signal + computed fallback
@@ -81,12 +82,34 @@ export class AuthService implements OnDestroy {
 
   register(credentials: RegisterCredentials): Observable<AuthResponse> {
     this.clearSession(); // Ensure clean slate for new user
-    return this.http.post<AuthResponse>(`${this.apiUrl}/register`, credentials).pipe(tap(res => this.setSession(res)));
+    return this.http.post<AuthResponse>(`${this.apiUrl}/register`, credentials);
   }
 
   login(credentials: LoginCredentials): Observable<AuthResponse> {
     this.clearSession(); // Ensure clean slate for new session
     return this.http.post<AuthResponse>(`${this.apiUrl}/login`, credentials).pipe(tap(res => this.setSession(res)));
+  }
+
+  verifyEmail(email: string, otp: string): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${this.apiUrl}/verify-email`, { email, otp }).pipe(
+      tap(res => this.setSession(res))
+    );
+  }
+
+  resendOtp(email: string): Observable<void> {
+    return this.http.post<void>(`${this.apiUrl}/resend-otp`, { email });
+  }
+
+  forgotPassword(email: string): Observable<void> {
+    return this.http.post<void>(`${this.apiUrl}/forgot-password`, { email });
+  }
+
+  resetPassword(credentials: ResetPasswordCredentials): Observable<void> {
+    return this.http.post<void>(`${this.apiUrl}/reset-password`, credentials);
+  }
+
+  verifyEmailChange(otp: string): Observable<void> {
+    return this.http.post<void>(`${environment.apiUrl}/api/v1/users/me/verify-email-change`, { otp });
   }
 
   checkUsername(username: string): Observable<boolean> {
@@ -139,6 +162,7 @@ export class AuthService implements OnDestroy {
     this.currentUser.set(null);
     this.currentUserEmail.set(null);
     this.currentUserPhone.set(null);
+    this.currentUserPendingEmail.set(null);
     this.planTypeSignal.set(null);
     this.currentSessionVersion.set(0);
 
@@ -174,6 +198,12 @@ export class AuthService implements OnDestroy {
     this.currentUser.set(res.username);
     this.currentUserEmail.set(res.email || '');
     this.currentUserPhone.set(res.phoneNumber || '');
+    this.currentUserPendingEmail.set(res.pendingEmail || null);
+    if (res.pendingEmail) {
+      localStorage.setItem('pendingEmail', res.pendingEmail);
+    } else {
+      localStorage.removeItem('pendingEmail');
+    }
     this.planTypeSignal.set(res.planType || 'FREE');
     this.currentSessionVersion.set(res.sessionVersion);
     this.sessionDuration = res.sessionDurationMs;
@@ -245,10 +275,16 @@ export class AuthService implements OnDestroy {
         const oldPlan = this.planTypeSignal();
         this.currentUserEmail.set(res.email || '');
         this.currentUserPhone.set(res.phoneNumber || '');
+        this.currentUserPendingEmail.set(res.pendingEmail || null);
         this.planTypeSignal.set(res.planType || 'FREE');
         localStorage.setItem('email', this.currentUserEmail() || '');
         localStorage.setItem('phoneNumber', this.currentUserPhone() || '');
         localStorage.setItem('planType', this.currentPlanType());
+        if (res.pendingEmail) {
+          localStorage.setItem('pendingEmail', res.pendingEmail);
+        } else {
+          localStorage.removeItem('pendingEmail');
+        }
 
         // CRITICAL: If plan has changed (e.g. after upgrade), clear the voice cache
         // to ensure the next fetch retrieves the newly unlocked voices.

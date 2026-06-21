@@ -1,6 +1,6 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { resetFormFields } from '../../utils/form.utils';
+import { getPasswordRequirements } from '../../utils/form.utils';
 
 @Component({
   selector: 'app-password-policy-modal',
@@ -39,7 +39,7 @@ import { resetFormFields } from '../../utils/form.utils';
           </button>
         </div>
         <div class="space-y-3">
-          @for (req of getRequirements(password); track req) {
+          @for (req of getRequirements(password); track req.label) {
             <div class="flex items-center gap-3">
               <div
                 class="w-5 h-5 rounded-full flex items-center justify-center transition-colors"
@@ -93,10 +93,10 @@ import { resetFormFields } from '../../utils/form.utils';
   `,
 })
 export class PasswordPolicyModalComponent {
-  @Input() password = '';
+  @Input() password: string | null | undefined = '';
   @Output() close = new EventEmitter<void>();
 
-  getRequirements(pass: string) {
-    return resetFormFields(pass);
+  getRequirements(pass: string | null | undefined) {
+    return getPasswordRequirements(pass);
   }
 }

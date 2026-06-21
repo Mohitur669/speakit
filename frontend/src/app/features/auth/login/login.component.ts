@@ -92,6 +92,13 @@ import { NavbarComponent } from '../../../shared/components/navbar/navbar.compon
                       }
                     </button>
                   </div>
+                  <div class="flex justify-end mt-2">
+                    <a
+                      routerLink="/forgot-password"
+                      class="text-xs font-semibold text-brand-blue hover:underline transition-colors"
+                      >Forgot password?</a
+                    >
+                  </div>
                 </div>
 
                 @if (error()) {
@@ -206,8 +213,13 @@ export class LoginComponent implements OnInit {
           this.router.navigate(['/tts']);
         }
       },
-      error: () => {
-        this.error.set('Invalid credentials. Please check your identifier and password.');
+      error: (err: any) => {
+        if (err.status === 403 && err.error?.error === 'EMAIL_NOT_VERIFIED') {
+          const emailGuess = this.username.includes('@') ? this.username : '';
+          this.router.navigate(['/verify-email'], { queryParams: { email: emailGuess, username: this.username } });
+        } else {
+          this.error.set('Invalid credentials. Please check your identifier and password.');
+        }
         this.loading.set(false);
       },
     });

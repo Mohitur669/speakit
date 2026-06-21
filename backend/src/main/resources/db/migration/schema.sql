@@ -167,7 +167,9 @@ INSERT INTO system_parameters (parameter_name, parameter_value, description) VAL
 ('STT_DAILY_QUOTA_PRO', '100', 'Daily STT transcription limit for Pro tier'),
 ('STT_DAILY_QUOTA_PRO_PLUS', '500', 'Daily STT transcription limit for Pro Plus tier'),
 ('STT_DAILY_QUOTA_ENTERPRISE', '5000', 'Daily STT transcription limit for Enterprise tier'),
-('STT_DEDUPE_WINDOW_MS', '60000', 'Time window to block duplicate STT requests')
+('STT_DEDUPE_WINDOW_MS', '60000', 'Time window to block duplicate STT requests'),
+('SELF_PING_URL', '', 'Dynamic external URL for system self-ping to prevent spin-down'),
+('KEEP_ALIVE_ENABLED', 'true', 'Toggle to enable or disable the system self-ping dynamically')
 ON CONFLICT (parameter_name) DO NOTHING;
 
 -- Accepted values for SYSTEM_STATUS
@@ -218,6 +220,26 @@ CREATE TABLE IF NOT EXISTS speech_to_text_requests (
 CREATE INDEX IF NOT EXISTS idx_stt_user_id ON speech_to_text_requests(user_id);
 CREATE INDEX IF NOT EXISTS idx_stt_created_at ON speech_to_text_requests(created_at);
 
+-- 9. OTP Verifications Table (Email Verification, Password Reset, Email Change)
+CREATE SEQUENCE IF NOT EXISTS otp_verifications_seq START WITH 1 INCREMENT BY 50;
+
+CREATE TABLE IF NOT EXISTS otp_verifications (
+    id BIGINT PRIMARY KEY,
+    user_id BIGINT REFERENCES users(id),
+    email VARCHAR(100) NOT NULL,
+    otp_hash VARCHAR(255) NOT NULL,
+    purpose VARCHAR(30) NOT NULL,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    attempts_remaining INTEGER NOT NULL DEFAULT 5,
+    consumed BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    version BIGINT NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_otp_email ON otp_verifications(email);
+CREATE INDEX IF NOT EXISTS idx_otp_expires_at ON otp_verifications(expires_at);
+
 -- Migration Helper for existing databases
 DO $$
 BEGIN
@@ -262,6 +284,31 @@ BEGIN
 
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='plan_type') THEN
         ALTER TABLE users ADD COLUMN plan_type VARCHAR(20) DEFAULT 'FREE' NOT NULL;
+    END IF;
+
+    -- Ensure OTP-gating columns exist on users
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='email_verified') THEN
+        ALTER TABLE users ADD COLUMN email_verified BOOLEAN DEFAULT FALSE;
+        ALTER TABLE users ALTER COLUMN email_verified SET NOT NULL;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='account_status') THEN
+        ALTER TABLE users ADD COLUMN account_status VARCHAR(30) DEFAULT 'PENDING_VERIFICATION';
+        ALTER TABLE users ALTER COLUMN account_status SET NOT NULL;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='pending_email') THEN
+        ALTER TABLE users ADD COLUMN pending_email VARCHAR(100);
+    END IF;
+
+    -- One-time backfill of existing users to verified and ACTIVE status
+    -- (Triggers only if the migration completion flag is not set in system_parameters)
+    IF NOT EXISTS (SELECT 1 FROM system_parameters WHERE parameter_name = 'migration_email_verification_backfill') THEN
+        INSERT INTO system_parameters (parameter_name, parameter_value, description, updated_at, updated_by, version)
+        VALUES ('migration_email_verification_backfill', 'COMPLETED', 'One-time backfill of existing users to verified and ACTIVE', CURRENT_TIMESTAMP, 'SYSTEM', 0)
+        ON CONFLICT (parameter_name) DO NOTHING;
+
+        UPDATE users SET email_verified = TRUE, account_status = 'ACTIVE';
     END IF;
 
     -- History Table Migration
