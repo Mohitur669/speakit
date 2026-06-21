@@ -56,7 +56,7 @@ import { PasswordRequirementsComponent } from '../../../../../shared';
             name="currentPassword"
             [type]="showCurrPass ? 'text' : 'password'"
             required
-            placeholder="Enter current password to confirm changes"
+            placeholder="Enter password"
             class="w-full px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all"
           />
           <button
@@ -111,6 +111,7 @@ import { PasswordRequirementsComponent } from '../../../../../shared';
                   (ngModelChange)="newPasswordChange.emit($event)"
                   name="newPassword"
                   [type]="showNewPass ? 'text' : 'password'"
+                  placeholder="Enter your new password"
                   class="w-full px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all"
                 />
                 <button
@@ -149,6 +150,7 @@ import { PasswordRequirementsComponent } from '../../../../../shared';
                   (ngModelChange)="confirmPasswordChange.emit($event)"
                   name="confirmPassword"
                   [type]="showConfirmPass ? 'text' : 'password'"
+                  placeholder="Confirm your new password"
                   class="w-full px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all"
                 />
                 <button

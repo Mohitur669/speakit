@@ -81,4 +81,13 @@ public class User extends BaseEntity {
 
     @Column(name = "pending_email", length = 100)
     private String pendingEmail;
+
+    @Column(name = "pending_username", length = 50)
+    private String pendingUsername;
+
+    @Column(name = "pending_phone_number", length = 15)
+    private String pendingPhoneNumber;
+
+    @Column(name = "pending_password", length = 255)
+    private String pendingPassword;
 }

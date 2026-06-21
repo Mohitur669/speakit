@@ -36,14 +36,14 @@ public class UserController {
 
     @RateLimited(action = RateLimitAction.OTP_VERIFY)
     @PostMapping("/me/verify-email-change")
-    public ResponseEntity<Void> verifyEmailChange(
+    public ResponseEntity<AuthResponse> verifyEmailChange(
             @RequestBody VerifyEmailChangeRequest request,
             Principal principal) {
         
         String username = principal.getName();
         log.info("Verifying email change request for user: {}", username);
-        authService.verifyEmailChange(username, request);
-        return ResponseEntity.ok().build();
+        AuthResponse response = authService.verifyEmailChange(username, request);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/me")
