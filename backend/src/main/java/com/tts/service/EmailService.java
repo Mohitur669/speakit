@@ -42,28 +42,41 @@ public class EmailService {
     @Value("${app.email.provider:SMTP}")
     private String emailProvider;
 
+    @Value("${aws.ses.accessKeyId:}")
+    private String sesAccessKey;
+
+    @Value("${aws.ses.secretKey:}")
+    private String sesSecretKey;
+
+    @Value("${aws.ses.region:}")
+    private String sesRegion;
+
     @Value("${aws.accessKeyId:}")
-    private String awsAccessKey;
+    private String defaultAccessKey;
 
     @Value("${aws.secretKey:}")
-    private String awsSecretKey;
+    private String defaultSecretKey;
 
     @Value("${aws.region:ap-south-1}")
-    private String awsRegion;
+    private String defaultRegion;
 
     private SesClient sesClient;
 
     @PostConstruct
     public void init() {
         if ("SES_API".equalsIgnoreCase(emailProvider)) {
-            if (awsAccessKey != null && !awsAccessKey.isBlank() && awsSecretKey != null && !awsSecretKey.isBlank()) {
+            String activeAccessKey = (sesAccessKey != null && !sesAccessKey.isBlank()) ? sesAccessKey : defaultAccessKey;
+            String activeSecretKey = (sesSecretKey != null && !sesSecretKey.isBlank()) ? sesSecretKey : defaultSecretKey;
+            String activeRegion = (sesRegion != null && !sesRegion.isBlank()) ? sesRegion : defaultRegion;
+
+            if (activeAccessKey != null && !activeAccessKey.isBlank() && activeSecretKey != null && !activeSecretKey.isBlank()) {
                 this.sesClient = SesClient.builder()
-                        .region(Region.of(awsRegion))
+                        .region(Region.of(activeRegion))
                         .credentialsProvider(StaticCredentialsProvider.create(
-                                AwsBasicCredentials.create(awsAccessKey, awsSecretKey)
+                                AwsBasicCredentials.create(activeAccessKey, activeSecretKey)
                         ))
                         .build();
-                log.info("Initialized AWS SES API Client for email delivery");
+                log.info("Initialized AWS SES API Client with active credentials for region: {}", activeRegion);
             } else {
                 log.warn("AWS SES API selected but AWS credentials are empty. Email service will fallback to SMTP.");
             }
