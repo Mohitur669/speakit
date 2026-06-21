@@ -259,7 +259,7 @@ public class TtsController {
         LocalDateTime expiry = (LocalDateTime) httpRequest.getAttribute("planExpiry");
         List<Map<String, Object>> allVoices = new ArrayList<>();
 
-        pollyService.getAvailableVoices().forEach(v -> {
+        pollyService.getAvailableVoices(planType).forEach(v -> {
             allVoices.add(v);
         });
 
