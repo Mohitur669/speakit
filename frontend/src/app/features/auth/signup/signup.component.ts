@@ -330,13 +330,7 @@ export class SignupComponent implements OnInit, OnDestroy {
       })
       .subscribe({
         next: () => {
-          if (this.pendingRedirect) {
-            this.router.navigate([this.pendingRedirect]);
-          } else if (this.pendingPlan) {
-            this.router.navigate(['/tts'], { queryParams: { autostart: this.pendingPlan } });
-          } else {
-            this.router.navigate(['/tts']);
-          }
+          this.router.navigate(['/verify-email'], { queryParams: { email: this.email, username: this.username } });
         },
         error: () => {
           this.error.set(

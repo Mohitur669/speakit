@@ -1,15 +1,15 @@
 import { Component, inject, signal, OnInit, OnDestroy } from '@angular/core';
-
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { Subject } from 'rxjs';
 import { AuthService } from '../../../core/auth/auth.service';
 import { NavbarComponent } from '../../../shared/components/navbar/navbar.component';
 import { Country } from '../../../shared/models/country.model';
-import { isPasswordValid, mapValidationErrors, COUNTRIES, buildFormFields } from '../../../shared';
+import { isPasswordValid, mapValidationErrors, buildFormFields } from '../../../shared';
 import { ProfileFormComponent } from './components/profile-form/profile-form.component';
 import { PasswordFormComponent } from './components/password-form/password-form.component';
 import { PasswordPolicyModalComponent } from '../../../shared/components/password-policy-modal/password-policy-modal.component';
+import { ToastService } from '../../../core/services/toast.service';
 
 @Component({
   selector: 'app-profile-settings',
@@ -69,6 +69,14 @@ import { PasswordPolicyModalComponent } from '../../../shared/components/passwor
                   [usernameSubject]="usernameSubject"
                   [emailSubject]="emailSubject"
                   [phoneSubject]="phoneSubject"
+                  [pendingEmail]="pendingEmail()"
+                  [verifyingOtp]="verifyingOtp()"
+                  [otpError]="otpError()"
+                  [resendCooldown]="resendCooldown()"
+                  [resending]="resendingOtp()"
+                  (verifyOtp)="onVerifyEmailChange($event)"
+                  (resendOtp)="onResendEmailChangeOtp()"
+                  (cancelEmailChange)="onCancelEmailChange()"
                 >
                 </app-profile-form>
               </div>
@@ -140,6 +148,15 @@ export class ProfileSettingsComponent implements OnInit, OnDestroy {
   loading = signal(false);
   error = signal('');
   showPolicyModal = signal(false);
+  
+  pendingEmail = signal<string | null>(null);
+  verifyingOtp = signal(false);
+  otpError = signal('');
+  resendCooldown = signal(0);
+  resendingOtp = signal(false);
+  
+  private resendTimer?: any;
+  private cachedPassword = '';
 
   usernameTaken = signal(false);
   emailTaken = signal(false);
@@ -155,6 +172,7 @@ export class ProfileSettingsComponent implements OnInit, OnDestroy {
   countries = this.formSetup.countries;
 
   authService = inject(AuthService);
+  private toastService = inject(ToastService);
   private router = inject(Router);
 
   isPasswordValid(pass: string): boolean {
@@ -169,6 +187,7 @@ export class ProfileSettingsComponent implements OnInit, OnDestroy {
 
     this.username = this.authService.currentUser() || '';
     this.email = this.authService.currentUserEmail() || '';
+    this.pendingEmail.set(this.authService.currentUserPendingEmail() || null);
     const rawPhone = this.authService.currentUserPhone() || '';
 
     // Attempt to extract country code from stored phone
@@ -201,6 +220,9 @@ export class ProfileSettingsComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+    if (this.resendTimer) {
+      clearInterval(this.resendTimer);
+    }
   }
 
   onSubmit(): void {
@@ -217,11 +239,23 @@ export class ProfileSettingsComponent implements OnInit, OnDestroy {
       newPassword: this.newPassword,
     };
 
+    const isEmailChanging = this.email.toLowerCase() !== this.authService.currentUserEmail()?.toLowerCase();
+
     this.authService.updateProfile(request).subscribe({
-      next: () => {
+      next: (res) => {
         this.loading.set(false);
+        this.cachedPassword = this.currentPassword;
         this.currentPassword = '';
         this.newPassword = '';
+        this.confirmPassword = '';
+        
+        if (isEmailChanging) {
+          this.pendingEmail.set(res.pendingEmail || this.email);
+          this.startResendCooldown();
+          this.toastService.info('Verification code sent to your new email.');
+        } else {
+          this.toastService.success('Profile updated successfully.');
+        }
       },
       error: (err) => {
         this.error.set(
@@ -230,5 +264,98 @@ export class ProfileSettingsComponent implements OnInit, OnDestroy {
         this.loading.set(false);
       },
     });
+  }
+
+  onVerifyEmailChange(otp: string): void {
+    this.verifyingOtp.set(true);
+    this.otpError.set('');
+    this.authService.verifyEmailChange(otp).subscribe({
+      next: () => {
+        this.verifyingOtp.set(false);
+        this.toastService.success('Email updated and verified successfully.');
+        this.pendingEmail.set(null);
+        // Refresh session status to fetch updated email from backend
+        this.authService.refreshStatus().subscribe({
+          next: (res) => {
+            this.email = res.email;
+          }
+        });
+      },
+      error: (err) => {
+        this.verifyingOtp.set(false);
+        this.otpError.set(err.error?.message || 'Invalid or expired verification code.');
+      }
+    });
+  }
+
+  onResendEmailChangeOtp(): void {
+    this.resendingOtp.set(true);
+    this.otpError.set('');
+
+    const fullPhoneNumber = this.selectedCountry.code + this.phoneNumber.replace(/\D/g, '');
+    const request = {
+      username: this.username,
+      email: this.email,
+      phoneNumber: fullPhoneNumber,
+      currentPassword: this.cachedPassword || this.currentPassword,
+      newPassword: '',
+    };
+
+    this.authService.updateProfile(request).subscribe({
+      next: () => {
+        this.resendingOtp.set(false);
+        this.toastService.success('Verification code resent successfully.');
+        this.startResendCooldown();
+      },
+      error: (err) => {
+        this.resendingOtp.set(false);
+        this.otpError.set(err.error?.message || 'Failed to resend verification code.');
+      }
+    });
+  }
+
+  onCancelEmailChange(): void {
+    this.loading.set(true);
+    this.error.set('');
+
+    const originalEmail = this.authService.currentUserEmail() || '';
+    const fullPhoneNumber = this.selectedCountry.code + this.phoneNumber.replace(/\D/g, '');
+
+    const request = {
+      username: this.username,
+      email: originalEmail,
+      phoneNumber: fullPhoneNumber,
+      currentPassword: this.cachedPassword || this.currentPassword,
+      newPassword: '',
+    };
+
+    this.authService.updateProfile(request).subscribe({
+      next: () => {
+        this.loading.set(false);
+        this.pendingEmail.set(null);
+        this.email = originalEmail;
+        this.toastService.success('Email change cancelled.');
+        // Refresh session status to ensure local storage matches
+        this.authService.refreshStatus().subscribe();
+      },
+      error: (err) => {
+        this.loading.set(false);
+        this.error.set(err.error?.message || 'Failed to cancel email change.');
+      }
+    });
+  }
+
+  private startResendCooldown(): void {
+    this.resendCooldown.set(60);
+    if (this.resendTimer) {
+      clearInterval(this.resendTimer);
+    }
+    this.resendTimer = setInterval(() => {
+      const val = this.resendCooldown() - 1;
+      this.resendCooldown.set(val);
+      if (val <= 0) {
+        clearInterval(this.resendTimer);
+      }
+    }, 1000);
   }
 }
