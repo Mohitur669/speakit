@@ -2,19 +2,40 @@
   <app-navbar></app-navbar>
 
   <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 md:py-12">
-
     <!-- Studio Module Toggle -->
     <div class="flex justify-center mb-8 sm:mb-12">
-      <div class="inline-flex p-1.5 bg-primary-100 dark:bg-primary-800/40 rounded-2xl border border-primary-300 dark:border-primary-700/50 shadow-inner backdrop-blur-sm">
-        <button class="flex items-center gap-2.5 px-6 py-2.5 rounded-xl text-sm font-bold transition-all bg-white dark:bg-primary-900 text-brand-blue shadow-xl dark:shadow-[0_10px_25px_-5px_rgba(0,0,0,0.5)] ring-1 ring-black/5 dark:ring-white/10">
+      <div
+        class="inline-flex p-1.5 bg-primary-100 dark:bg-primary-800/40 rounded-2xl border border-primary-300 dark:border-primary-700/50 shadow-inner backdrop-blur-sm"
+      >
+        <button
+          class="flex items-center gap-2.5 px-6 py-2.5 rounded-xl text-sm font-bold transition-all bg-white dark:bg-primary-900 text-brand-blue shadow-xl dark:shadow-[0_10px_25px_-5px_rgba(0,0,0,0.5)] ring-1 ring-black/5 dark:ring-white/10"
+        >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path>
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"
+            ></path>
           </svg>
           Text to Speech
         </button>
-        <a routerLink="/stt" class="flex items-center gap-2.5 px-6 py-2.5 rounded-xl text-sm font-bold transition-all text-primary-500 hover:text-primary-900 dark:text-primary-400 dark:hover:text-white group">
-          <svg class="w-4 h-4 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z M19 10v1a7 7 0 01-14 0v-1 M12 18v4 M8 22h8"></path>
+        <a
+          routerLink="/stt"
+          class="flex items-center gap-2.5 px-6 py-2.5 rounded-xl text-sm font-bold transition-all text-primary-500 hover:text-primary-900 dark:text-primary-400 dark:hover:text-white group"
+        >
+          <svg
+            class="w-4 h-4 transition-transform group-hover:scale-110"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z M19 10v1a7 7 0 01-14 0v-1 M12 18v4 M8 22h8"
+            ></path>
           </svg>
           Speech to Text
         </a>
@@ -23,20 +44,24 @@
 
     <!-- Page Header -->
     <div class="mb-8 sm:mb-12 animate-fade-in">
-      <h1 class="text-4xl md:text-5xl font-bold text-primary-900 dark:text-white tracking-tight mb-4">
-        Text to <span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-blue via-brand-purple to-accent-500">Speech</span>
+      <h1
+        class="text-4xl md:text-5xl font-bold text-primary-900 dark:text-white tracking-tight mb-4"
+      >
+        Text to
+        <span
+          class="text-transparent bg-clip-text bg-gradient-to-r from-brand-blue via-brand-purple to-accent-500"
+          >Speech</span
+        >
       </h1>
-      <p class="text-lg text-primary-600 dark:text-primary-400">Convert text into natural-sounding speech instantly.</p>
+      <p class="text-lg text-primary-600 dark:text-primary-400">
+        Convert text into natural-sounding speech instantly.
+      </p>
     </div>
 
     <!-- Main Content Grid -->
     <div class="grid md:grid-cols-3 gap-3 sm:gap-4 md:gap-6 items-start">
-
       <!-- Left Column - Voice Selection & Stats -->
       <div class="md:col-span-1 flex flex-col gap-3 sm:gap-4 md:gap-6 animate-slide-up">
-
-
-
         <app-voice-selector
           [voices]="voices"
           [voiceId]="selectedVoiceId"
@@ -44,17 +69,19 @@
           [userCanUseSarvam]="userCanUseSarvam"
           (voiceChange)="handleVoiceChange($event)"
           (filterChanged)="selectedVoiceType = $event"
-          (showNotification)="handleNotification($event)">
+          (showNotification)="handleNotification($event)"
+        >
         </app-voice-selector>
 
         <app-usage-stats
           class="hidden md:block"
           [planType]="authService.currentPlanType()"
           [textLength]="text.length"
-          [maxChars]="maxChars()">
+          [maxChars]="maxChars()"
+        >
         </app-usage-stats>
 
-        <!-- 
+        <!--
         <app-upgrade-card
           class="hidden md:block"
           *ngIf="authService.currentPlanType() !== 'ENTERPRISE'"
@@ -72,38 +99,67 @@
           [usage]="usage()"
           [loading]="loading()"
           [voiceId]="selectedVoiceId"
-          (convert)="convert()">
+          (convert)="convert()"
+        >
         </app-tts-input>
 
-        <button 
+        <button
           (click)="convert()"
           [disabled]="loading() || !text.trim() || !selectedVoiceId"
-          class="w-full py-4 px-6 rounded-2xl font-bold text-white bg-brand-blue hover:bg-brand-blue/90 disabled:opacity-50 disabled:cursor-not-allowed shadow-xl hover:shadow-brand-blue/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3">
-          <svg *ngIf="loading()" class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-          </svg>
-          <svg *ngIf="!loading()" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
-          </svg>
+          class="w-full py-4 px-6 rounded-2xl font-bold text-white bg-brand-blue hover:bg-brand-blue/90 disabled:opacity-50 disabled:cursor-not-allowed shadow-xl hover:shadow-brand-blue/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+        >
+          @if (loading()) {
+            <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle
+                class="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                stroke-width="4"
+              ></circle>
+              <path
+                class="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+              ></path>
+            </svg>
+          }
+          @if (!loading()) {
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+              ></path>
+            </svg>
+          }
           <span>{{ loading() ? 'Generating...' : 'Generate Speech' }}</span>
         </button>
 
         <!-- Error Alert -->
-        <div *ngIf="error()" class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 rounded-xl p-4">
-          <p class="text-sm text-red-600 dark:text-red-400 flex items-center gap-2">
-            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-            {{ error() }}
-          </p>
-        </div>
+        @if (error()) {
+          <div
+            class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 rounded-xl p-4"
+          >
+            <p class="text-sm text-red-600 dark:text-red-400 flex items-center gap-2">
+              <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                ></path>
+              </svg>
+              {{ error() }}
+            </p>
+          </div>
+        }
 
-        <app-tts-output
-          *ngIf="audioUrl()"
-          [audioUrl]="audioUrl()"
-          (download)="download()">
-        </app-tts-output>
+        @if (audioUrl()) {
+          <app-tts-output [audioUrl]="audioUrl()" (download)="download()"> </app-tts-output>
+        }
       </div>
     </div>
   </div>
