@@ -74,6 +74,11 @@ const routes = [
     canActivate: [authGuard]
   },
   {
+    path: 'settings/profile/verify',
+    loadComponent: () => import('./features/user/profile-settings/components/verify-profile/verify-profile.component').then(m => m.VerifyProfileComponent),
+    canActivate: [authGuard]
+  },
+  {
     path: 'settings/history',
     loadComponent: () => import('./features/user/chat-history/chat-history.component').then(m => m.ChatHistoryComponent),
     canActivate: [authGuard]

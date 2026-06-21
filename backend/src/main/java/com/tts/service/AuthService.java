@@ -291,6 +291,8 @@ public class AuthService {
                 .role(role)
                 .planType(user.getPlanType().name())
                 .sessionVersion(user.getSessionVersion())
+                .sessionDurationMs(sessionDurationMs)
+                .idleTimeoutMs(idleTimeoutMs)
                 .pendingEmail(user.getPendingEmail() != null ? user.getPendingEmail() : (hasChanges ? user.getEmail() : null))
                 .build();
     }
@@ -578,6 +580,66 @@ public class AuthService {
                 .idleTimeoutMs(idleTimeoutMs)
                 .pendingEmail(null)
                 .build();
+    }
+
+    @Transactional
+    public AuthResponse cancelProfileChanges(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        String pendingEmail = user.getPendingEmail();
+        user.setPendingUsername(null);
+        user.setPendingPhoneNumber(null);
+        user.setPendingPassword(null);
+        user.setPendingEmail(null);
+        user = userRepository.save(user);
+
+        // Invalidate prior EMAIL_CHANGE OTPs
+        otpVerificationRepository.invalidateExistingOtps(user.getEmail(), "EMAIL_CHANGE");
+        if (pendingEmail != null) {
+            otpVerificationRepository.invalidateExistingOtps(pendingEmail, "EMAIL_CHANGE");
+        }
+
+        log.info("Successfully cancelled profile changes for user: {}", username);
+        return getUserProfile(username);
+    }
+
+    @Transactional
+    public void resendProfileOtp(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        boolean hasPendingChanges = user.getPendingEmail() != null || 
+                                    user.getPendingUsername() != null || 
+                                    user.getPendingPhoneNumber() != null || 
+                                    user.getPendingPassword() != null;
+
+        if (!hasPendingChanges) {
+            throw new RuntimeException("No pending profile changes found.");
+        }
+
+        String targetEmail = user.getPendingEmail() != null ? user.getPendingEmail() : user.getEmail();
+
+        // Invalidate prior EMAIL_CHANGE OTPs for target email
+        otpVerificationRepository.invalidateExistingOtps(targetEmail, "EMAIL_CHANGE");
+
+        // Generate and send OTP to target email
+        String rawOtp = generateSecureOtp();
+        String otpHash = hashOtp(rawOtp);
+
+        OtpVerification verification = OtpVerification.builder()
+                .user(user)
+                .email(targetEmail)
+                .otpHash(otpHash)
+                .purpose("EMAIL_CHANGE")
+                .expiresAt(LocalDateTime.now().plusMinutes(otpExpiryMinutes))
+                .attemptsRemaining(5)
+                .consumed(false)
+                .build();
+        otpVerificationRepository.save(verification);
+
+        emailService.sendOtpEmail(targetEmail, user.getUsername(), rawOtp, otpExpiryMinutes);
+        log.info("Profile update OTP resent to email: {}", maskEmail(targetEmail));
     }
 
     private String generateSecureOtp() {

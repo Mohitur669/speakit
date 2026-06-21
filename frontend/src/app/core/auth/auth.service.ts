@@ -114,6 +114,16 @@ export class AuthService implements OnDestroy {
     );
   }
 
+  cancelProfileChanges(): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${environment.apiUrl}/api/v1/users/me/cancel-profile-changes`, {}).pipe(
+      tap(res => this.setSession(res))
+    );
+  }
+
+  resendProfileOtp(): Observable<void> {
+    return this.http.post<void>(`${environment.apiUrl}/api/v1/users/me/resend-profile-otp`, {});
+  }
+
   checkUsername(username: string): Observable<boolean> {
     return this.http.get<boolean>(`${this.apiUrl}/check-username`, { params: { username } });
   }
