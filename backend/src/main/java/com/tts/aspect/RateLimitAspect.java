@@ -41,57 +41,164 @@ public class RateLimitAspect {
 
     @Around("@annotation(com.tts.aspect.RateLimited)")
     public Object enforceRateLimit(ProceedingJoinPoint joinPoint) throws Throwable {
-        HttpServletRequest currentRequest = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
+        HttpServletRequest req = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
         
         MethodSignature signature = (MethodSignature) joinPoint.getSignature();
         RateLimited rateLimited = signature.getMethod().getAnnotation(RateLimited.class);
         RateLimitAction action = rateLimited.action();
 
-        if (action == RateLimitAction.PUBLIC) {
-            return handlePublicMultiLimit(joinPoint, currentRequest);
-        }
-
-        String bucketKey = generateBucketKey(action, currentRequest, joinPoint.getArgs());
-        return checkBucket(bucketKey, action, joinPoint);
-    }
-
-    private Object handlePublicMultiLimit(ProceedingJoinPoint joinPoint, HttpServletRequest req) throws Throwable {
         String clientIp = extractRealIp(req);
-        
-        // Signal 1: IP-based limiting (The standard shield)
-        checkBucket("PUB_IP_" + clientIp, RateLimitAction.PUBLIC, null);
+        String deviceFp = extractDeviceFingerprint(req);
 
-        // Signal 2: Identity-based limiting (Email)
-        for (Object arg : joinPoint.getArgs()) {
-            if (arg instanceof com.tts.dto.ContactRequest) {
-                String email = ((com.tts.dto.ContactRequest) arg).getEmail();
-                if (email != null && !email.isEmpty()) {
-                    String emailHash = hashString(email.toLowerCase().trim());
-                    checkBucket("PUB_EMAIL_" + emailHash, RateLimitAction.PUBLIC, null);
+        switch (action) {
+            case PUBLIC -> {
+                // Layer 1: IP-based limiting (The standard shield)
+                checkBucket("PUB_IP_" + clientIp, RateLimitAction.PUBLIC);
+                
+                // Layer 1.5: Device fingerprint limiting (stops IP rotation enumeration)
+                checkBucket("PUB_DEV_" + deviceFp, RateLimitAction.PUBLIC);
+
+                // Layer 2: Identity-based limiting (Email)
+                for (Object arg : joinPoint.getArgs()) {
+                    if (arg instanceof com.tts.dto.ContactRequest) {
+                        String email = ((com.tts.dto.ContactRequest) arg).getEmail();
+                        if (email != null && !email.isEmpty()) {
+                            String emailHash = hashString(email.toLowerCase().trim());
+                            checkBucket("PUB_EMAIL_" + emailHash, RateLimitAction.PUBLIC);
+                        }
+                    }
                 }
+            }
+            case AUTH -> {
+                // Layer 1: IP-based limiting (brute force protection per IP)
+                checkBucket("AUTH_IP_" + clientIp, RateLimitAction.AUTH);
+
+                // Layer 1.5: Device fingerprint limiting (stops IP rotation scripts)
+                checkBucket("AUTH_DEV_" + deviceFp, RateLimitAction.AUTH);
+
+                // Layer 2: User-based limiting (prevent credential stuffing / brute forcing rotating IPs on a single user)
+                for (Object arg : joinPoint.getArgs()) {
+                    if (arg instanceof com.tts.dto.AuthRequest) {
+                        com.tts.dto.AuthRequest authReq = (com.tts.dto.AuthRequest) arg;
+                        String identifier = null;
+                        if (authReq.getEmail() != null && !authReq.getEmail().isEmpty()) {
+                            identifier = authReq.getEmail().toLowerCase().trim();
+                        } else if (authReq.getUsername() != null && !authReq.getUsername().isEmpty()) {
+                            identifier = authReq.getUsername().toLowerCase().trim();
+                        } else if (authReq.getPhoneNumber() != null && !authReq.getPhoneNumber().isEmpty()) {
+                            identifier = authReq.getPhoneNumber().trim();
+                        }
+                        if (identifier != null) {
+                            String idHash = hashString(identifier);
+                            checkBucket("AUTH_USER_" + idHash, RateLimitAction.AUTH);
+                        }
+                    }
+                }
+            }
+            case OTP_VERIFY -> {
+                // Layer 1: IP-based limiting (prevent a single IP from checking many codes)
+                checkBucket("OTP_VERIFY_IP_" + clientIp, RateLimitAction.OTP_VERIFY);
+
+                // Layer 1.5: Device fingerprint limiting (stops IP rotation brute forcing)
+                checkBucket("OTP_VERIFY_DEV_" + deviceFp, RateLimitAction.OTP_VERIFY);
+
+                // Layer 2: Identity-based limiting (prevent rotating IPs from brute-forcing a single user's OTP)
+                for (Object arg : joinPoint.getArgs()) {
+                    if (arg instanceof com.tts.dto.VerifyEmailRequest) {
+                        String email = ((com.tts.dto.VerifyEmailRequest) arg).getEmail();
+                        if (email != null && !email.isEmpty()) {
+                            String emailHash = hashString(email.toLowerCase().trim());
+                            checkBucket("OTP_VERIFY_EMAIL_" + emailHash, RateLimitAction.OTP_VERIFY);
+                        }
+                    } else if (arg instanceof com.tts.dto.VerifyEmailChangeRequest) {
+                        java.security.Principal principal = req.getUserPrincipal();
+                        if (principal != null) {
+                            String userHash = hashString(principal.getName().toLowerCase().trim());
+                            checkBucket("OTP_VERIFY_USER_" + userHash, RateLimitAction.OTP_VERIFY);
+                        }
+                    }
+                }
+            }
+            case OTP_RESEND -> {
+                // Layer 1: IP-based limiting (prevent a single IP from triggering resends)
+                checkBucket("OTP_RESEND_IP_" + clientIp, RateLimitAction.OTP_RESEND);
+
+                // Layer 1.5: Device fingerprint limiting (stops IP rotation abuse)
+                checkBucket("OTP_RESEND_DEV_" + deviceFp, RateLimitAction.OTP_RESEND);
+
+                // Layer 2: Identity-based limiting (prevent IP-rotation from mail-bombing a single target email)
+                for (Object arg : joinPoint.getArgs()) {
+                    if (arg instanceof com.tts.dto.ResendOtpRequest) {
+                        String email = ((com.tts.dto.ResendOtpRequest) arg).getEmail();
+                        if (email != null && !email.isEmpty()) {
+                            String emailHash = hashString(email.toLowerCase().trim());
+                            checkBucket("OTP_RESEND_EMAIL_" + emailHash, RateLimitAction.OTP_RESEND);
+                        }
+                    }
+                }
+            }
+            case PASSWORD_RESET -> {
+                // Layer 1: IP-based limiting
+                checkBucket("PASSWORD_RESET_IP_" + clientIp, RateLimitAction.PASSWORD_RESET);
+
+                // Layer 1.5: Device fingerprint limiting (stops IP rotation abuse)
+                checkBucket("PASSWORD_RESET_DEV_" + deviceFp, RateLimitAction.PASSWORD_RESET);
+
+                // Layer 2: Identity-based limiting (prevent IP-rotation from mail-bombing password reset requests to one user)
+                for (Object arg : joinPoint.getArgs()) {
+                    if (arg instanceof com.tts.dto.ForgotPasswordRequest) {
+                        String email = ((com.tts.dto.ForgotPasswordRequest) arg).getEmail();
+                        if (email != null && !email.isEmpty()) {
+                            String emailHash = hashString(email.toLowerCase().trim());
+                            checkBucket("PASSWORD_RESET_EMAIL_" + emailHash, RateLimitAction.PASSWORD_RESET);
+                        }
+                    } else if (arg instanceof com.tts.dto.ResetPasswordRequest) {
+                        String email = ((com.tts.dto.ResetPasswordRequest) arg).getEmail();
+                        if (email != null && !email.isEmpty()) {
+                            String emailHash = hashString(email.toLowerCase().trim());
+                            checkBucket("PASSWORD_RESET_EMAIL_" + emailHash, RateLimitAction.PASSWORD_RESET);
+                        }
+                    }
+                }
+            }
+            case TTS -> {
+                Long userId = (Long) req.getAttribute("userId");
+                if (userId != null) {
+                    checkBucket("TTS_USER_" + userId, RateLimitAction.TTS);
+                } else {
+                    checkBucket("TTS_IP_" + clientIp, RateLimitAction.TTS);
+                }
+            }
+            case STT -> {
+                Long userId = (Long) req.getAttribute("userId");
+                if (userId != null) {
+                    checkBucket("STT_USER_" + userId, RateLimitAction.STT);
+                } else {
+                    checkBucket("STT_IP_" + clientIp, RateLimitAction.STT);
+                }
+            }
+            case PING -> {
+                checkBucket("PING_" + clientIp, RateLimitAction.PING);
+            }
+            case LIVE_PARAM -> {
+                checkBucket("LIVE_PARAM_" + clientIp, RateLimitAction.LIVE_PARAM);
             }
         }
 
         return joinPoint.proceed();
     }
 
-    private Object checkBucket(String key, RateLimitAction action, ProceedingJoinPoint joinPoint) throws Throwable {
+    private void checkBucket(String key, RateLimitAction action) {
         Bucket bucket = rateLimitBuckets.computeIfAbsent(key, k -> createBucketForAction(action));
         ConsumptionProbe probe = bucket.tryConsumeAndReturnRemaining(1);
 
-        if (probe.isConsumed()) {
-            return joinPoint != null ? joinPoint.proceed() : null;
-        } else {
+        if (!probe.isConsumed()) {
             long wait = probe.getNanosToWaitForRefill() / 1_000_000_000;
             log.warn("Rate limit hit for key: {} (Action: {})", key, action);
             throw new RateLimitExceededException("Too many requests. Please try again later.", wait);
         }
     }
 
-
-    /**
-     * Determines the correct bucket configuration based on the endpoint's sensitivity.
-     */
     private Bucket createBucketForAction(RateLimitAction action) {
         return switch (action) {
             case AUTH -> rateLimitConfig.createAuthBucket();
@@ -100,73 +207,35 @@ public class RateLimitAspect {
             case LIVE_PARAM -> rateLimitConfig.createLiveParamBucket();
             case PING -> rateLimitConfig.createPingBucket();
             case STT -> rateLimitConfig.createSttBucket();
+            case OTP_VERIFY -> rateLimitConfig.createOtpVerifyBucket();
+            case OTP_RESEND -> rateLimitConfig.createOtpResendBucket();
+            case PASSWORD_RESET -> rateLimitConfig.createPasswordResetBucket();
         };
     }
 
-    /**
-     * Generates a unique rate-limiting key based on layered signals to prevent bypasses.
-     */
-    private String generateBucketKey(RateLimitAction action, HttpServletRequest req, Object[] args) {
-        String clientIp = extractRealIp(req);
-
-        return switch (action) {
-            case STT -> {
-                Long userId = (Long) req.getAttribute("userId");
-                if (userId != null) {
-                    yield "STT_USER_" + userId;
-                }
-                yield "STT_IP_" + clientIp;
-            }
-            case PING -> "PING_" + clientIp;
-            case LIVE_PARAM -> "LIVE_PARAM_" + clientIp;
-            case TTS -> {
-                // For expensive operations, bind the limit to the authenticated User ID.
-                Long userId = (Long) req.getAttribute("userId");
-                if (userId != null) {
-                    yield "TTS_USER_" + userId;
-                }
-                yield "TTS_IP_" + clientIp;
-            }
-            case AUTH -> {
-                String userAgent = req.getHeader("User-Agent");
-                String fingerprint = hashString(clientIp + (userAgent != null ? userAgent : ""));
-                yield "AUTH_" + fingerprint;
-            }
-            case PUBLIC -> {
-                // Defense-in-Depth: If it's a contact form, we also limit by the email provided in the body
-                // to prevent one email from being used across 10,000 IPs.
-                String emailSuffix = "";
-                for (Object arg : args) {
-                    if (arg instanceof com.tts.dto.ContactRequest) {
-                        String email = ((com.tts.dto.ContactRequest) arg).getEmail();
-                        if (email != null && !email.isEmpty()) {
-                            emailSuffix = "_EMAIL_" + hashString(email.toLowerCase().trim());
-                        }
-                    }
-                }
-                yield "PUBLIC_" + clientIp + emailSuffix;
-            }
-        };
-    }
-
-    /**
-     * Extracts the client IP from the request.
-     * 
-     * Security Notice: This method relies on 'server.forward-headers-strategy=FRAMEWORK' 
-     * in application.properties. This configuration ensures that Spring correctly 
-     * processes X-Forwarded-For headers from trusted proxies (like Cloudflare or Render)
-     * and returns the true client IP in request.getRemoteAddr().
-     * 
-     * Without this strategy, an attacker could spoof their IP by providing a 
-     * fake X-Forwarded-For header.
-     */
     private String extractRealIp(HttpServletRequest request) {
+        String ip = request.getHeader("CF-Connecting-IP");
+        if (ip != null && !ip.isEmpty()) return ip;
+        
+        ip = request.getHeader("X-Real-IP");
+        if (ip != null && !ip.isEmpty()) return ip;
+        
+        ip = request.getHeader("X-Forwarded-For");
+        if (ip != null && !ip.isEmpty()) return ip.split(",")[0].trim();
+        
         return request.getRemoteAddr();
     }
 
-    /**
-     * Utility to generate a safe device/session fingerprint hash.
-     */
+    private String extractDeviceFingerprint(HttpServletRequest request) {
+        StringBuilder fp = new StringBuilder();
+        fp.append(request.getHeader("User-Agent")).append("|");
+        fp.append(request.getHeader("Accept-Language")).append("|");
+        fp.append(request.getHeader("Accept-Encoding")).append("|");
+        fp.append(request.getHeader("Sec-CH-UA")).append("|");
+        fp.append(request.getHeader("Sec-CH-UA-Platform"));
+        return hashString(fp.toString());
+    }
+
     private String hashString(String input) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");

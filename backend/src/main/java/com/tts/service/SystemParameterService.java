@@ -29,8 +29,9 @@ public class SystemParameterService {
         log.debug("Cache-enabled fetch for: {}", name);
         return repository.findById(name)
                 .map(SystemParameter::getParameterValue)
+                .filter(val -> val != null && !val.trim().isEmpty())
                 .orElseGet(() -> {
-                    log.warn("Cached parameter {} missing, using default: {}", name, defaultValue);
+                    log.warn("Cached parameter {} missing or empty, using default: {}", name, defaultValue);
                     return defaultValue;
                 });
     }
@@ -45,8 +46,9 @@ public class SystemParameterService {
         log.debug("Live DB fetch for: {}", name);
         return repository.findById(name)
                 .map(SystemParameter::getParameterValue)
+                .filter(val -> val != null && !val.trim().isEmpty())
                 .orElseGet(() -> {
-                    log.warn("Live parameter {} missing, using default: {}", name, defaultValue);
+                    log.warn("Live parameter {} missing or empty, using default: {}", name, defaultValue);
                     return defaultValue;
                 });
     }

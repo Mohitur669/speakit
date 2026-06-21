@@ -1,11 +1,12 @@
 package com.tts.service;
 
 import com.tts.config.WebSocketConfig;
-import com.tts.dto.AuthRequest;
-import com.tts.dto.AuthResponse;
+import com.tts.dto.*;
 import com.tts.entity.PlanType;
 import com.tts.entity.User;
+import com.tts.entity.OtpVerification;
 import com.tts.repository.UserRepository;
+import com.tts.repository.OtpVerificationRepository;
 import com.tts.security.JwtService;
 import com.tts.util.Sanitizer;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -38,12 +40,17 @@ public class AuthService {
     private final WebSocketConfig webSocketConfig;
     private final WSTicketService wsTicketService;
     private final SystemParameterService systemParameterService;
+    private final OtpVerificationRepository otpVerificationRepository;
+    private final EmailService emailService;
 
     @Value("${auth.session-duration-ms:7200000}")
     private long sessionDurationMs;
 
     @Value("${auth.idle-timeout-ms:60000}")
     private long idleTimeoutMs;
+
+    @Value("${app.otp.expiry-minutes:10}")
+    private int otpExpiryMinutes;
 
     @Transactional
     public AuthResponse register(AuthRequest request) {
@@ -58,11 +65,38 @@ public class AuthService {
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role("ROLE_USER")
                 .planType(PlanType.FREE)
+                .emailVerified(false)
+                .accountStatus("PENDING_VERIFICATION")
                 .build();
         user = userRepository.save(user);
 
-        log.info("New user registered: {}", sanitizedUsername);
-        return authenticate(user, user.getSessionVersion());
+        log.info("New user registered in pending verification status: {}", sanitizedUsername);
+
+        // Generate and send OTP
+        String rawOtp = generateSecureOtp();
+        String otpHash = hashOtp(rawOtp);
+        
+        OtpVerification verification = OtpVerification.builder()
+                .user(user)
+                .email(sanitizedEmail)
+                .otpHash(otpHash)
+                .purpose("SIGNUP_VERIFICATION")
+                .expiresAt(LocalDateTime.now().plusMinutes(otpExpiryMinutes))
+                .attemptsRemaining(5)
+                .consumed(false)
+                .build();
+        otpVerificationRepository.save(verification);
+
+        emailService.sendOtpEmail(sanitizedEmail, sanitizedUsername, rawOtp, otpExpiryMinutes);
+
+        return AuthResponse.builder()
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .phoneNumber(user.getPhoneNumber())
+                .role(user.getRole())
+                .planType(user.getPlanType().name())
+                .sessionVersion(user.getSessionVersion())
+                .build();
     }
 
     @Transactional
@@ -83,6 +117,11 @@ public class AuthService {
 
         if (!user.isActive()) {
             throw new RuntimeException("Account is deactivated. Please contact support.");
+        }
+
+        // OTP Gating: Block login for unverified accounts
+        if (!"ACTIVE".equals(user.getAccountStatus()) || !user.isEmailVerified()) {
+            throw new RuntimeException("EMAIL_NOT_VERIFIED");
         }
 
         authenticationManager.authenticate(
@@ -141,6 +180,7 @@ public class AuthService {
                 .sessionVersion(user.getSessionVersion())
                 .sessionDurationMs(sessionDurationMs)
                 .idleTimeoutMs(idleTimeoutMs)
+                .pendingEmail(user.getPendingEmail())
                 .build();
     }
 
@@ -163,12 +203,41 @@ public class AuthService {
             user.setUsername(sanitizedUsername);
         }
 
+        if (request.getEmail() != null && request.getEmail().equalsIgnoreCase(user.getEmail())) {
+            if (user.getPendingEmail() != null) {
+                otpVerificationRepository.invalidateExistingOtps(user.getPendingEmail(), "EMAIL_CHANGE");
+                user.setPendingEmail(null);
+            }
+        }
+
         if (request.getEmail() != null && !request.getEmail().equalsIgnoreCase(user.getEmail())) {
             String sanitizedEmail = Sanitizer.sanitize(request.getEmail()).toLowerCase();
             if (userRepository.findByEmail(sanitizedEmail).isPresent()) {
                 throw new RuntimeException("Email already taken");
             }
-            user.setEmail(sanitizedEmail);
+            // Set pending email instead of immediate update
+            user.setPendingEmail(sanitizedEmail);
+
+            // Invalidate prior EMAIL_CHANGE OTPs for this pending email
+            otpVerificationRepository.invalidateExistingOtps(sanitizedEmail, "EMAIL_CHANGE");
+
+            // Generate and send OTP to the NEW email
+            String rawOtp = generateSecureOtp();
+            String otpHash = hashOtp(rawOtp);
+
+            OtpVerification verification = OtpVerification.builder()
+                    .user(user)
+                    .email(sanitizedEmail)
+                    .otpHash(otpHash)
+                    .purpose("EMAIL_CHANGE")
+                    .expiresAt(LocalDateTime.now().plusMinutes(otpExpiryMinutes))
+                    .attemptsRemaining(5)
+                    .consumed(false)
+                    .build();
+            otpVerificationRepository.save(verification);
+
+            emailService.sendOtpEmail(sanitizedEmail, user.getUsername(), rawOtp, otpExpiryMinutes);
+            log.info("Email update OTP generated and sent to pending email: {}", maskEmail(sanitizedEmail));
         }
 
         if (request.getPhoneNumber() != null && !request.getPhoneNumber().equals(user.getPhoneNumber())) {
@@ -224,6 +293,230 @@ public class AuthService {
                 .sessionVersion(sessionVersion)
                 .sessionDurationMs(sessionDurationMs)
                 .idleTimeoutMs(idleTimeoutMs)
+                .pendingEmail(user.getPendingEmail())
                 .build();
+    }
+
+    @Transactional
+    public AuthResponse verifyEmail(VerifyEmailRequest request) {
+        String sanitizedEmail = Sanitizer.sanitize(request.getEmail()).toLowerCase().trim();
+        
+        OtpVerification verification = otpVerificationRepository
+                .findFirstByEmailAndPurposeAndConsumedFalseOrderByCreatedAtDesc(sanitizedEmail, "SIGNUP_VERIFICATION")
+                .orElseThrow(() -> {
+                    log.warn("No active signup verification OTP found for email: {}", maskEmail(sanitizedEmail));
+                    return new RuntimeException("Invalid or expired verification code.");
+                });
+
+        if (verification.getExpiresAt().isBefore(LocalDateTime.now())) {
+            log.warn("Signup verification OTP expired for email: {}", maskEmail(sanitizedEmail));
+            throw new RuntimeException("Invalid or expired verification code.");
+        }
+
+        String checkHash = hashOtp(request.getOtp());
+        if (!verification.getOtpHash().equals(checkHash)) {
+            int attempts = verification.getAttemptsRemaining() - 1;
+            verification.setAttemptsRemaining(attempts);
+            if (attempts <= 0) {
+                verification.setConsumed(true);
+                log.warn("Signup verification OTP attempts exhausted for email: {}", maskEmail(sanitizedEmail));
+            }
+            otpVerificationRepository.save(verification);
+            log.warn("Incorrect signup verification OTP attempt for email: {}", maskEmail(sanitizedEmail));
+            throw new RuntimeException("Invalid or expired verification code.");
+        }
+
+        verification.setConsumed(true);
+        otpVerificationRepository.save(verification);
+
+        User user = userRepository.findByEmail(sanitizedEmail)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setEmailVerified(true);
+        user.setAccountStatus("ACTIVE");
+        userRepository.save(user);
+
+        log.info("User {} email verified successfully", user.getUsername());
+        return authenticate(user, user.getSessionVersion());
+    }
+
+    @Transactional
+    public void resendOtp(ResendOtpRequest request) {
+        String sanitizedEmail = Sanitizer.sanitize(request.getEmail()).toLowerCase().trim();
+        User user = userRepository.findByEmail(sanitizedEmail)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (user.isEmailVerified()) {
+            throw new RuntimeException("Email is already verified.");
+        }
+
+        // Invalidate prior OTPs
+        otpVerificationRepository.invalidateExistingOtps(sanitizedEmail, "SIGNUP_VERIFICATION");
+
+        // Generate new OTP
+        String rawOtp = generateSecureOtp();
+        String otpHash = hashOtp(rawOtp);
+
+        OtpVerification verification = OtpVerification.builder()
+                .user(user)
+                .email(sanitizedEmail)
+                .otpHash(otpHash)
+                .purpose("SIGNUP_VERIFICATION")
+                .expiresAt(LocalDateTime.now().plusMinutes(otpExpiryMinutes))
+                .attemptsRemaining(5)
+                .consumed(false)
+                .build();
+        otpVerificationRepository.save(verification);
+
+        emailService.sendOtpEmail(sanitizedEmail, user.getUsername(), rawOtp, otpExpiryMinutes);
+        log.info("Verification OTP resent to user: {}", user.getUsername());
+    }
+
+    @Transactional
+    public void forgotPassword(ForgotPasswordRequest request) {
+        String sanitizedEmail = Sanitizer.sanitize(request.getEmail()).toLowerCase().trim();
+        Optional<User> userOpt = userRepository.findByEmail(sanitizedEmail);
+
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            // Invalidate prior
+            otpVerificationRepository.invalidateExistingOtps(sanitizedEmail, "PASSWORD_RESET");
+
+            String rawOtp = generateSecureOtp();
+            String otpHash = hashOtp(rawOtp);
+
+            OtpVerification verification = OtpVerification.builder()
+                    .user(user)
+                    .email(sanitizedEmail)
+                    .otpHash(otpHash)
+                    .purpose("PASSWORD_RESET")
+                    .expiresAt(LocalDateTime.now().plusMinutes(otpExpiryMinutes))
+                    .attemptsRemaining(5)
+                    .consumed(false)
+                    .build();
+                    
+            otpVerificationRepository.save(verification);
+
+            emailService.sendOtpEmail(sanitizedEmail, user.getUsername(), rawOtp, otpExpiryMinutes);
+            log.info("Password reset OTP generated and sent to email for user: {}", user.getUsername());
+        } else {
+            // Enforce account enumeration protection by logging only server-side
+            log.info("Forgot password requested for non-existing email: {}", maskEmail(sanitizedEmail));
+        }
+    }
+
+    @Transactional
+    public void resetPassword(ResetPasswordRequest request) {
+        String sanitizedEmail = Sanitizer.sanitize(request.getEmail()).toLowerCase().trim();
+        
+        OtpVerification verification = otpVerificationRepository
+                .findFirstByEmailAndPurposeAndConsumedFalseOrderByCreatedAtDesc(sanitizedEmail, "PASSWORD_RESET")
+                .orElseThrow(() -> {
+                    log.warn("No active OTP found for password reset request on email: {}", maskEmail(sanitizedEmail));
+                    return new RuntimeException("Invalid or expired verification code.");
+                });
+
+        if (verification.getExpiresAt().isBefore(LocalDateTime.now())) {
+            log.warn("Password reset OTP expired for email: {}", maskEmail(sanitizedEmail));
+            throw new RuntimeException("Invalid or expired verification code.");
+        }
+
+        String checkHash = hashOtp(request.getOtp());
+        if (!verification.getOtpHash().equals(checkHash)) {
+            int attempts = verification.getAttemptsRemaining() - 1;
+            verification.setAttemptsRemaining(attempts);
+            if (attempts <= 0) {
+                verification.setConsumed(true);
+                log.warn("Password reset OTP attempts exhausted for email: {}", maskEmail(sanitizedEmail));
+            }
+            otpVerificationRepository.save(verification);
+            log.warn("Incorrect password reset OTP attempt for email: {}", maskEmail(sanitizedEmail));
+            throw new RuntimeException("Invalid or expired verification code.");
+        }
+
+        verification.setConsumed(true);
+        otpVerificationRepository.save(verification);
+
+        User user = userRepository.findByEmail(sanitizedEmail)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        user.setSessionVersion(user.getSessionVersion() + 1);
+        userRepository.save(user);
+
+        // Notify session logout for WebSocket connections
+        webSocketConfig.notifyLogout(user.getUsername());
+        log.info("Password reset successful and sessions invalidated for user: {}", user.getUsername());
+    }
+
+    @Transactional
+    public void verifyEmailChange(String username, VerifyEmailChangeRequest request) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        String pendingEmail = user.getPendingEmail();
+        if (pendingEmail == null || pendingEmail.isEmpty()) {
+            throw new RuntimeException("No pending email change request found.");
+        }
+
+        OtpVerification verification = otpVerificationRepository
+                .findFirstByEmailAndPurposeAndConsumedFalseOrderByCreatedAtDesc(pendingEmail, "EMAIL_CHANGE")
+                .orElseThrow(() -> {
+                    log.warn("No active OTP found for email change verification for user: {}", username);
+                    return new RuntimeException("Invalid or expired verification code.");
+                });
+
+        if (verification.getExpiresAt().isBefore(LocalDateTime.now())) {
+            log.warn("Email change OTP expired for user: {}", username);
+            throw new RuntimeException("Invalid or expired verification code.");
+        }
+
+        String checkHash = hashOtp(request.getOtp());
+        if (!verification.getOtpHash().equals(checkHash)) {
+            int attempts = verification.getAttemptsRemaining() - 1;
+            verification.setAttemptsRemaining(attempts);
+            if (attempts <= 0) {
+                verification.setConsumed(true);
+                log.warn("Email change OTP attempts exhausted for user: {}", username);
+            }
+            otpVerificationRepository.save(verification);
+            log.warn("Incorrect email change OTP verification attempt for user: {}", username);
+            throw new RuntimeException("Invalid or expired verification code.");
+        }
+
+        verification.setConsumed(true);
+        otpVerificationRepository.save(verification);
+
+        user.setEmail(pendingEmail);
+        user.setPendingEmail(null);
+        userRepository.save(user);
+
+        log.info("User {} successfully updated email to: {}", username, maskEmail(pendingEmail));
+    }
+
+    private String generateSecureOtp() {
+        java.security.SecureRandom random = new java.security.SecureRandom();
+        int code = 100000 + random.nextInt(900000);
+        return String.valueOf(code);
+    }
+
+    private String hashOtp(String otp) {
+        try {
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(otp.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(hash);
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new RuntimeException("Error hashing OTP", e);
+        }
+    }
+
+    private String maskEmail(String email) {
+        if (email == null || !email.contains("@")) return "";
+        int index = email.indexOf("@");
+        String local = email.substring(0, index);
+        String domain = email.substring(index);
+        if (local.length() <= 2) {
+            return local.substring(0, 1) + "**" + domain;
+        }
+        return local.substring(0, 2) + "****" + domain;
     }
 }

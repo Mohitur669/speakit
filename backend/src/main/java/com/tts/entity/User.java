@@ -69,4 +69,16 @@ public class User extends BaseEntity {
     @Column(name = "session_version", nullable = false, columnDefinition = "bigint default 1")
     @Builder.Default
     private Long sessionVersion = 1L;
+
+    @Column(name = "email_verified", nullable = false, columnDefinition = "boolean default false")
+    @Builder.Default
+    private boolean emailVerified = false;
+
+    @Column(name = "account_status", nullable = false, length = 30)
+    @ColumnDefault("'PENDING_VERIFICATION'")
+    @Builder.Default
+    private String accountStatus = "PENDING_VERIFICATION";
+
+    @Column(name = "pending_email", length = 100)
+    private String pendingEmail;
 }

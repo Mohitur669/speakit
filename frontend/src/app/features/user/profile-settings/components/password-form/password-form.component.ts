@@ -1,12 +1,12 @@
 import { Component, Input, Output, EventEmitter, signal } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
-import { resetFormFields } from '../../../../../shared';
+import { PasswordRequirementsComponent } from '../../../../../shared';
 
 @Component({
   selector: 'app-password-form',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, PasswordRequirementsComponent],
   template: `
     <section class="space-y-6">
       <div
@@ -178,71 +178,10 @@ import { resetFormFields } from '../../../../../shared';
               </div>
             </div>
           </div>
-          <!-- Password Feedback (Matches Signup Style) -->
-          @if (newPassword) {
-            <div class="mt-2 space-y-1">
-              @for (req of getRequirements(newPassword); track req) {
-                @if (!req.met) {
-                  <div class="flex items-center gap-1.5 text-red-500 animate-fade-in">
-                    <svg
-                      class="w-3 h-3 shrink-0"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M6 18L18 6M6 6l12 12"
-                      ></path>
-                    </svg>
-                    <span class="text-[10px] font-medium leading-none"
-                      >{{ req.label }} required</span
-                    >
-                  </div>
-                }
-              }
-              @if (confirmPassword && newPassword !== confirmPassword) {
-                <div class="flex items-center gap-1.5 text-red-500 animate-fade-in">
-                  <svg
-                    class="w-3 h-3 shrink-0"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M6 18L18 6M6 6l12 12"
-                    ></path>
-                  </svg>
-                  <span class="text-[10px] font-medium leading-none">Passwords must match</span>
-                </div>
-              }
-              @if (confirmPassword && newPassword === confirmPassword && newPassword) {
-                <div
-                  class="flex items-center gap-1.5 text-green-600 dark:text-green-400 animate-fade-in"
-                >
-                  <svg
-                    class="w-3 h-3 shrink-0"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="3"
-                      d="M5 13l4 4L19 7"
-                    ></path>
-                  </svg>
-                  <span class="text-[10px] font-medium leading-none">Passwords match</span>
-                </div>
-              }
-            </div>
-          }
+          <app-password-requirements
+            [password]="newPassword"
+            [confirmPassword]="confirmPassword"
+          ></app-password-requirements>
         </div>
       }
     </section>
@@ -273,7 +212,5 @@ export class PasswordFormComponent {
     }
   }
 
-  getRequirements(pass: string) {
-    return resetFormFields(pass);
-  }
+
 }

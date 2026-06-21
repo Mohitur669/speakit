@@ -27,15 +27,19 @@ export const COUNTRIES = [
 /**
  * Returns the list of password requirements and their met status.
  */
-export function resetFormFields(pass: string) {
+export function getPasswordRequirements(pass: string | null | undefined) {
+  const value = pass || '';
   return [
-    { label: '8+ Characters', met: pass.length >= 8 },
-    { label: 'Lowercase (a-z)', met: /[a-z]/.test(pass) },
-    { label: 'Uppercase (A-Z)', met: /[A-Z]/.test(pass) },
-    { label: 'Numbers (0-9)', met: /[0-9]/.test(pass) },
-    { label: 'Special Char (!@#)', met: /[!@#$%^&*(),.?":{}|<>]/.test(pass) }
+    { label: '8+ Characters', met: value.length >= 8 },
+    { label: 'Lowercase (a-z)', met: /[a-z]/.test(value) },
+    { label: 'Uppercase (A-Z)', met: /[A-Z]/.test(value) },
+    { label: 'Numbers (0-9)', met: /[0-9]/.test(value) },
+    { label: 'Special Char (!@#)', met: /[!@#$%^&*(),.?":{}|<>]/.test(value) }
   ];
 }
+
+/** @deprecated Use getPasswordRequirements instead */
+export const resetFormFields = getPasswordRequirements;
 
 /**
  * Encapsulates the availability check subscription logic.
