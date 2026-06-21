@@ -13,21 +13,21 @@ import { FormsModule } from '@angular/forms';
       <div
         class="px-4 sm:px-6 py-3 sm:py-4 border-b border-primary-200 dark:border-primary-800 flex items-center justify-between"
       >
-        <div class="flex items-center gap-4">
+        <div class="flex flex-wrap items-center gap-2 sm:gap-4">
           <h2 class="text-lg sm:text-sm font-semibold text-primary-900 dark:text-white">Script</h2>
           @if (usage?.dailyLimit > 0) {
             <span
-              class="text-xs font-semibold px-2 py-1 rounded-md bg-accent-500/10 text-accent-600 dark:text-accent-400"
+              class="text-xs font-semibold px-2 py-1 rounded-md bg-accent-500/10 text-accent-600 dark:text-accent-400 whitespace-nowrap"
             >
               {{ usage?.dailyCount }}/{{ usage?.dailyLimit }} credits used
             </span>
           }
           <!-- Mobile-Only Quick Stats -->
           <div
-            class="md:hidden flex items-center gap-3 bg-primary-50 dark:bg-primary-800 px-3 py-1 rounded-full border border-primary-200 dark:border-transparent"
+            class="md:hidden flex items-center gap-2 bg-primary-50 dark:bg-primary-800 px-2.5 py-1 rounded-full border border-primary-200 dark:border-transparent"
           >
-            <span class="text-[10px] font-bold text-primary-500 tracking-wider">Usage</span>
-            <span class="text-[11px] font-medium text-primary-700 dark:text-primary-300"
+            <span class="text-[10px] font-bold text-primary-500 tracking-wider whitespace-nowrap">Usage</span>
+            <span class="text-[11px] font-medium text-primary-700 dark:text-primary-300 whitespace-nowrap"
               >{{ text.length }} / {{ maxChars | number }}</span
             >
             <div class="w-12 h-1.5 bg-primary-200 dark:bg-primary-700 rounded-full overflow-hidden">
