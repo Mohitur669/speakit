@@ -29,7 +29,7 @@ public class KeepAliveService {
             return;
         }
 
-        String targetUrl = systemParameterService.getLiveParameter("SELF_PING_URL", externalUrl);
+        String targetUrl = systemParameterService.getCachedParameter("SELF_PING_URL", externalUrl);
         if (targetUrl == null || targetUrl.isEmpty()) {
             log.info("Keep-alive skipped: SELF_PING_URL and RENDER_EXTERNAL_URL are not set.");
             return;
