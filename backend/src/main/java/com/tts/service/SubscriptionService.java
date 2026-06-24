@@ -99,6 +99,19 @@ public class SubscriptionService {
     }
 
     /**
+     * Checks if the user's plan permits access to the Live Voice Recording feature.
+     * Restricted to PRO_PLUS and ENTERPRISE.
+     */
+    public boolean hasLiveRecording(PlanType planType, SubscriptionStatus status, LocalDateTime expiry) {
+        if (!hasSpeechToText(planType, status, expiry)) return false;
+        
+        boolean liveRecordingEnabled = Boolean.parseBoolean(systemParameterService.getLiveParameter("LIVE_RECORDING_ENABLED", "true"));
+        if (!liveRecordingEnabled) return false;
+
+        return planType == PlanType.PRO_PLUS || planType == PlanType.ENTERPRISE;
+    }
+
+    /**
      * Returns the maximum allowed audio file size for STT in bytes.
      */
     public long getSttUploadLimitBytes(PlanType planType) {

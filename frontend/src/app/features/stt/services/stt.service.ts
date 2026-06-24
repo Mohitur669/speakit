@@ -28,4 +28,34 @@ export class SttService {
     }
     return this.http.post<SttResult>(`${this.apiUrl}/transcribe`, formData);
   }
+
+  /**
+   * Transcribes a recorded live voice audio blob.
+   * @param blob The recorded audio blob.
+   * @param language Optional language code.
+   * @param provider Optional preferred provider.
+   */
+  transcribeLive(blob: Blob, language?: string, provider?: string): Observable<SttResult> {
+    const formData = new FormData();
+    const filename = blob.type.includes('mp4') ? 'audio.m4a' : 'audio.webm';
+    formData.append('file', blob, filename);
+    if (language) {
+      formData.append('language', language);
+    }
+    if (provider) {
+      formData.append('provider', provider);
+    }
+    return this.http.post<SttResult>(`${this.apiUrl}/transcribe-live`, formData);
+  }
+
+  /**
+   * Translates text to a target language.
+   */
+  translate(text: string, sourceLanguage: string, targetLanguage: string): Observable<{ translatedText: string; sourceLanguage: string }> {
+    return this.http.post<{ translatedText: string; sourceLanguage: string }>(`${this.apiUrl}/translate`, {
+      text,
+      sourceLanguage,
+      targetLanguage
+    });
+  }
 }

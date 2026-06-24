@@ -44,7 +44,8 @@ public class SarvamSpeechToTextProvider implements SpeechToTextProvider {
         body.add("file", new FileSystemResource(audioFile));
         body.add("model", "saarika:v2.5"); // Updated from deprecated v1
         if (language != null) {
-            body.add("language_code", language);
+            String mappedLang = "auto".equalsIgnoreCase(language) ? "unknown" : language;
+            body.add("language_code", mappedLang);
         }
 
         try {
@@ -57,9 +58,13 @@ public class SarvamSpeechToTextProvider implements SpeechToTextProvider {
                     .body(new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {});
 
             if (response != null && response.containsKey("transcript")) {
+                String detectedLang = (String) response.get("language_code");
+                if (detectedLang == null) {
+                    detectedLang = language;
+                }
                 return SpeechToTextResult.builder()
                         .transcript((String) response.get("transcript"))
-                        .language(language)
+                        .language(detectedLang)
                         .provider(getName())
                         .duration(parseDuration(response.get("duration")))
                         .build();
