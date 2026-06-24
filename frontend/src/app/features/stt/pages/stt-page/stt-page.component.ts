@@ -447,6 +447,7 @@ import { getSpeakersForLanguage, DEFAULT_SPEAKERS } from '../../models/sarvam-vo
                       (valueChange)="onProviderChange($event)"
                       [disabled]="isProviderLocked() || isRecording()"
                       placeholder="Sarvam (Default)"
+                      direction="down"
                     >
                     </app-custom-dropdown>
                     @if (isProviderLocked()) {
@@ -464,6 +465,7 @@ import { getSpeakersForLanguage, DEFAULT_SPEAKERS } from '../../models/sarvam-vo
                       (valueChange)="onLanguageChange($event)"
                       [disabled]="isRecording()"
                       placeholder="English (IN)"
+                      direction="down"
                     >
                     </app-custom-dropdown>
                   </div>
@@ -477,6 +479,7 @@ import { getSpeakersForLanguage, DEFAULT_SPEAKERS } from '../../models/sarvam-vo
                         (valueChange)="selectedNarrator.set($event)"
                         [disabled]="isRecording()"
                         placeholder="Select Speaker..."
+                        direction="down"
                       >
                       </app-custom-dropdown>
                     </div>
