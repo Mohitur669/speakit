@@ -96,9 +96,9 @@ import { getSpeakersForLanguage, DEFAULT_SPEAKERS } from '../../models/sarvam-vo
           @if (!hasAccess()) {
             <app-locked-feature-card></app-locked-feature-card>
           } @else {
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <!-- Sidebar: Configuration (Desktop Only) -->
-              <div class="hidden lg:block lg:col-span-1 space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <!-- Sidebar: Configuration -->
+              <div class="hidden md:block md:col-span-1 space-y-6">
                 <div
                   class="bg-white dark:bg-primary-900 rounded-2xl border border-primary-300 dark:border-primary-700 p-6 shadow-lg"
                 >
@@ -183,7 +183,7 @@ import { getSpeakersForLanguage, DEFAULT_SPEAKERS } from '../../models/sarvam-vo
                 </div>
               </div>
               <!-- Main: Upload & Results -->
-              <div class="lg:col-span-2 flex flex-col gap-6">
+              <div class="md:col-span-2 flex flex-col gap-6">
                 <!-- Navigation Tabs & Settings Gear (Mobile Only) -->
                 <div class="flex items-center justify-between border-b border-primary-200 dark:border-primary-800 pb-2">
                   <div class="flex items-center gap-4">
@@ -220,12 +220,12 @@ import { getSpeakersForLanguage, DEFAULT_SPEAKERS } from '../../models/sarvam-vo
                     </button>
                   </div>
 
-                  <!-- Gear Icon (Visible only on mobile/tablet, hidden on desktop lg:) -->
+                  <!-- Gear Icon (Visible only on mobile, hidden on tablet/desktop md:) -->
                   <button
                     type="button"
                     (click)="showSettings.set(true)"
-                    class="lg:hidden p-2 text-primary-500 hover:text-brand-blue dark:text-primary-400 dark:hover:text-white rounded-xl bg-primary-100 hover:bg-primary-200 dark:bg-primary-800 dark:hover:bg-primary-700/80 transition-all border border-primary-300 dark:border-primary-700/50 shadow-inner"
-                    title="STT Settings"
+                    class="md:hidden p-2 text-primary-500 hover:text-brand-blue dark:text-primary-400 dark:hover:text-white rounded-xl bg-primary-100 hover:bg-primary-200 dark:bg-primary-800 dark:hover:bg-primary-700/80 transition-all border border-primary-300 dark:border-primary-700/50 shadow-inner"
+                    title="Speech to Text Settings"
                   >
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
@@ -424,7 +424,7 @@ import { getSpeakersForLanguage, DEFAULT_SPEAKERS } from '../../models/sarvam-vo
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                     </svg>
-                    <h3 class="text-base font-bold text-primary-900 dark:text-white">STT Settings</h3>
+                    <h3 class="text-base font-bold text-primary-900 dark:text-white">Speech to Text Settings</h3>
                   </div>
                   <button
                     type="button"
