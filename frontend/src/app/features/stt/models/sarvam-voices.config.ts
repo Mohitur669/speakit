@@ -13,6 +13,7 @@ export const SARVAM_VOICES: SarvamVoiceConfig = {
     "mohit", "kavitha", "rehan", "soham", "rupali", "niharika"
   ],
   languages: [
+    { code: "en-IN", name: "English" },
     { code: "hi-IN", name: "Hindi" },
     { code: "bn-IN", name: "Bengali" },
     { code: "mr-IN", name: "Marathi" },
@@ -31,6 +32,7 @@ export const SARVAM_VOICES: SarvamVoiceConfig = {
 };
 
 export const DEFAULT_SPEAKERS: Record<string, string> = {
+  'en-IN': 'aditya',
   'hi-IN': 'aditya',
   'bn-IN': 'ritu',
   'mr-IN': 'ashutosh',

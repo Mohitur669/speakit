@@ -323,6 +323,8 @@ export class TranscriptCardComponent implements OnInit, OnDestroy {
 
   onTranslationNarratorChange(speaker: string) {
     this.selectedTranslationNarrator.set(speaker);
+    this.translatedText.set(''); // Clear translation to show the translate button again
+    this.translationError.set(''); // Clear previous validation error
   }
 
   updateTranslationNarrator(lang: string) {
@@ -354,7 +356,9 @@ export class TranscriptCardComponent implements OnInit, OnDestroy {
     // Automatically switch translation narrator voice options and select default speaker
     this.updateTranslationNarrator(targetLang);
 
-    this.translateText();
+    // Reset translated text and errors so that the user must click the Translate button to perform the translation
+    this.translatedText.set('');
+    this.translationError.set('');
   }
 
   translateText() {
@@ -365,14 +369,14 @@ export class TranscriptCardComponent implements OnInit, OnDestroy {
     this.translationError.set('');
     this.translatedText.set('');
 
-    const sourceLang = this.result.language || 'auto';
+    const sourceLang = normalizeLanguageCode(this.result.language || this.defaultNarratorLanguage || 'auto');
+    const targetLangNormalized = normalizeLanguageCode(targetLang);
 
-    // If source and target match, bypass backend call and show original text as translation
-    if (sourceLang !== 'auto' && sourceLang.toLowerCase().substring(0, 2) === targetLang.toLowerCase().substring(0, 2)) {
-      setTimeout(() => {
-        this.translating.set(false);
-        this.translatedText.set(this.result.transcript);
-      }, 100);
+    // If source and target match, show validation and bypass backend call
+    if (sourceLang !== 'auto' && sourceLang.toLowerCase().substring(0, 2) === targetLangNormalized.toLowerCase().substring(0, 2)) {
+      this.translationError.set('Source and target languages are the same. No translation needed.');
+      this.translatedText.set('');
+      this.translating.set(false);
       return;
     }
 
