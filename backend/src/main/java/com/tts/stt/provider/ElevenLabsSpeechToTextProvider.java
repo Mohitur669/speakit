@@ -47,8 +47,10 @@ public class ElevenLabsSpeechToTextProvider implements SpeechToTextProvider {
         // Language is optional for Scribe as it auto-detects, but can be forced
         if (language != null) {
             String mappedLang = mapToElevenLabsLanguage(language);
-            log.debug("Mapping input language {} to ElevenLabs compatible {}", language, mappedLang);
-            body.add("language_code", mappedLang);
+            if (mappedLang != null) {
+                log.debug("Mapping input language {} to ElevenLabs compatible {}", language, mappedLang);
+                body.add("language_code", mappedLang);
+            }
         }
 
         try {
@@ -61,9 +63,13 @@ public class ElevenLabsSpeechToTextProvider implements SpeechToTextProvider {
                     .body(new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {});
 
             if (response != null && response.containsKey("text")) {
+                String detectedLang = (String) response.get("language_code");
+                if (detectedLang == null) {
+                    detectedLang = language;
+                }
                 return SpeechToTextResult.builder()
                         .transcript((String) response.get("text"))
-                        .language(language)
+                        .language(detectedLang)
                         .provider(getName())
                         .duration(0.0) // ElevenLabs might not return duration in the same way
                         .build();
@@ -76,7 +82,7 @@ public class ElevenLabsSpeechToTextProvider implements SpeechToTextProvider {
     }
 
     private String mapToElevenLabsLanguage(String lang) {
-        if (lang == null) return null;
+        if (lang == null || "auto".equalsIgnoreCase(lang)) return null;
         return switch (lang.toLowerCase()) {
             case "en-in" -> "eng";
             case "hi-in" -> "hin";

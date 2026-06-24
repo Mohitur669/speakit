@@ -12,9 +12,9 @@ import java.util.List;
 @Slf4j
 public class AudioFileValidator {
 
-    private static final List<String> ALLOWED_EXTENSIONS = Arrays.asList("mp3", "wav", "m4a", "ogg");
+    private static final List<String> ALLOWED_EXTENSIONS = Arrays.asList("mp3", "wav", "m4a", "ogg", "webm");
     private static final List<String> ALLOWED_MIME_TYPES = Arrays.asList(
-        "audio/mpeg", "audio/wav", "audio/x-wav", "audio/mp4", "audio/ogg", "application/ogg"
+        "audio/mpeg", "audio/wav", "audio/x-wav", "audio/mp4", "audio/ogg", "application/ogg", "audio/webm", "video/webm"
     );
 
     public void validate(MultipartFile file) {
@@ -35,8 +35,14 @@ public class AudioFileValidator {
 
         // 2. MIME Type Check
         String contentType = file.getContentType();
+        if (contentType != null) {
+            int semicolonIndex = contentType.indexOf(";");
+            if (semicolonIndex != -1) {
+                contentType = contentType.substring(0, semicolonIndex).trim();
+            }
+        }
         if (contentType == null || !ALLOWED_MIME_TYPES.contains(contentType.toLowerCase())) {
-            log.warn("Potential MIME spoofing detected: {} for file {}", contentType, filename);
+            log.warn("Potential MIME spoofing detected: {} for file {}", file.getContentType(), filename);
             throw new SttException("Invalid audio format detected.");
         }
 
