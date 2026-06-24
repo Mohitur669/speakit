@@ -293,7 +293,7 @@ import { getVoiceTypeLabel, getVoiceTypeClass } from '../../../../shared';
         @if (isVoiceDropdownOpen) {
           <div
             (click)="$event.stopPropagation()"
-            class="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-primary-900 border border-primary-300 dark:border-primary-700 rounded-xl shadow-2xl z-[60] overflow-hidden animate-fade-in"
+            class="absolute bottom-full mb-2 sm:bottom-auto sm:top-full sm:mt-2 left-0 right-0 bg-white dark:bg-primary-900 border border-primary-300 dark:border-primary-700 rounded-xl shadow-2xl z-[60] overflow-hidden animate-fade-in"
           >
             <div class="max-h-72 overflow-y-auto custom-scrollbar">
               @for (voice of getFilteredVoices(); track voice) {
