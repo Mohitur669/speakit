@@ -51,7 +51,7 @@ import { CommonModule } from '@angular/common';
                 (click)="seekAudio($event)"
               >
                 <div
-                  class="h-full bg-brand-blue rounded-full transition-all group-hover:shadow-lg group-hover:shadow-brand-blue/30"
+                  class="h-full bg-brand-blue rounded-full group-hover:shadow-lg group-hover:shadow-brand-blue/30"
                   [style.width.%]="progressPercent"
                 ></div>
               </div>

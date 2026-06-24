@@ -169,7 +169,8 @@ INSERT INTO system_parameters (parameter_name, parameter_value, description) VAL
 ('STT_DAILY_QUOTA_ENTERPRISE', '5000', 'Daily STT transcription limit for Enterprise tier'),
 ('STT_DEDUPE_WINDOW_MS', '60000', 'Time window to block duplicate STT requests'),
 ('SELF_PING_URL', '', 'Dynamic external URL for system self-ping to prevent spin-down'),
-('KEEP_ALIVE_ENABLED', 'true', 'Toggle to enable or disable the system self-ping dynamically')
+('KEEP_ALIVE_ENABLED', 'true', 'Toggle to enable or disable the system self-ping dynamically'),
+('LIVE_RECORDING_ENABLED', 'true', 'Global toggle for Speech-to-Text Live Recording feature')
 ON CONFLICT (parameter_name) DO NOTHING;
 
 -- Accepted values for SYSTEM_STATUS
