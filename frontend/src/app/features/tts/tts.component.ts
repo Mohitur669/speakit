@@ -54,6 +54,7 @@ export class TtsComponent implements OnInit {
   voices: Voice[] = [];
   audioUrl = signal<string | null>(null);
   loading = signal(false);
+  showSettings = signal(false);
   error = signal('');
 
   constructor() {

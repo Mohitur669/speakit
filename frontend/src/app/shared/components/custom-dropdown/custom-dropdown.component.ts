@@ -24,10 +24,10 @@ export interface DropdownOption {
         type="button"
         (click)="toggle()"
         [disabled]="disabled"
-        class="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:grayscale-[0.5]"
+        class="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:grayscale-[0.5] min-w-0"
         [class.border-brand-blue]="isOpen()"
       >
-        <span class="text-sm font-medium">{{ selectedOption?.label || placeholder }}</span>
+        <span class="text-sm font-medium truncate flex-1 text-left pr-2 select-none">{{ selectedOption?.label || placeholder }}</span>
         <svg
           class="w-4 h-4 text-primary-400 transition-transform duration-200"
           [class.rotate-180]="isOpen()"
@@ -46,7 +46,13 @@ export interface DropdownOption {
 
       @if (isOpen()) {
         <div
-          class="absolute z-50 w-full mt-2 bg-white dark:bg-primary-900 border border-primary-200 dark:border-primary-700 rounded-xl shadow-2xl overflow-hidden animate-fade-in"
+          class="absolute z-50 w-full bg-white dark:bg-primary-900 border border-primary-200 dark:border-primary-700 rounded-xl shadow-2xl overflow-hidden animate-fade-in"
+          [class.left-0]="align === 'left'"
+          [class.right-0]="align === 'right'"
+          [class.bottom-full]="openUpward()"
+          [class.mb-2]="openUpward()"
+          [class.top-full]="!openUpward()"
+          [class.mt-2]="!openUpward()"
         >
           <div class="max-h-60 overflow-y-auto custom-scrollbar">
             @for (option of options; track option) {
@@ -99,10 +105,14 @@ export class CustomDropdownComponent {
   @Input() value: string = '';
   @Input() placeholder: string = 'Select an option';
   @Input() disabled: boolean = false;
+  @Input() align: 'left' | 'right' = 'left';
+
+  @Input() direction: 'up' | 'down' | 'auto' = 'auto';
 
   @Output() valueChange = new EventEmitter<string>();
 
   isOpen = signal(false);
+  openUpward = signal(false);
 
   get selectedOption() {
     return this.options.find((o) => o.value === this.value);
@@ -110,7 +120,41 @@ export class CustomDropdownComponent {
 
   toggle() {
     if (this.disabled) return;
-    this.isOpen.update((v) => !v);
+    
+    const opening = !this.isOpen();
+    if (opening) {
+      this.checkDirection();
+    }
+    
+    this.isOpen.set(opening);
+  }
+
+  private checkDirection() {
+    if (this.direction === 'up') {
+      this.openUpward.set(true);
+      return;
+    }
+    if (this.direction === 'down') {
+      this.openUpward.set(false);
+      return;
+    }
+
+    try {
+      const rect = this.elementRef.nativeElement.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const spaceBelow = viewportHeight - rect.bottom;
+      
+      // Estimated height of the dropdown dropdown element (max-h-60 is 240px + border/padding)
+      const dropdownHeight = 260;
+      
+      if (spaceBelow < dropdownHeight && rect.top > spaceBelow) {
+        this.openUpward.set(true);
+      } else {
+        this.openUpward.set(false);
+      }
+    } catch (e) {
+      this.openUpward.set(false);
+    }
   }
 
   select(option: DropdownOption) {
