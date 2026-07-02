@@ -220,8 +220,9 @@ import { environment } from '../../../core/config/environment';
                           name="message"
                           [(ngModel)]="formData.message"
                           required
+                          minlength="10"
                           rows="4"
-                          placeholder="Tell us how we can help..."
+                          placeholder="Tell us how we can help... (min. 10 characters)"
                           class="w-full px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all resize-none"
                         ></textarea>
                       </div>
