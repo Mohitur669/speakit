@@ -1,8 +1,8 @@
 {
 	"info": {
-		"_postman_id": "speakit-api-collection-v1.2",
-		"name": "SpeakIT API v1.2",
-		"description": "Enterprise API collection for SpeakIT v1.2 - Modernized with Supabase-aligned JWT verification and secure Contact Us system.",
+		"_postman_id": "speakit-api-collection-v1.3",
+		"name": "SpeakIT API v1.3",
+		"description": "Enterprise API collection for SpeakIT v1.3 - Modernized with Supabase-aligned JWT verification, Speech-to-Text (STT) capabilities, User Profile Management, secure Contact Us system, and Webhook integrations.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
@@ -78,6 +78,114 @@
 					}
 				},
 				{
+					"name": "Verify Email",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"test@mohitur.com\",\n    \"otp\": \"123456\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/verify-email",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"verify-email"
+							]
+						}
+					}
+				},
+				{
+					"name": "Resend OTP",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"test@mohitur.com\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/resend-otp",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"resend-otp"
+							]
+						}
+					}
+				},
+				{
+					"name": "Forgot Password",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"test@mohitur.com\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/forgot-password",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"forgot-password"
+							]
+						}
+					}
+				},
+				{
+					"name": "Reset Password",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"test@mohitur.com\",\n    \"otp\": \"123456\",\n    \"newPassword\": \"NewSecurePassword123!\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/reset-password",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"reset-password"
+							]
+						}
+					}
+				},
+				{
 					"name": "Get Current Profile (Me)",
 					"request": {
 						"auth": {
@@ -100,6 +208,23 @@
 								"api",
 								"auth",
 								"me"
+							]
+						}
+					}
+				},
+				{
+					"name": "Ping (Health Check)",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/ping",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"ping"
 							]
 						}
 					}
@@ -159,6 +284,29 @@
 					}
 				},
 				{
+					"name": "Availability Check (Username)",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/check-username?username=test",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"check-username"
+							],
+							"query": [
+								{
+									"key": "username",
+									"value": "test"
+								}
+							]
+						}
+					}
+				},
+				{
 					"name": "Availability Check (Email)",
 					"request": {
 						"method": "GET",
@@ -177,6 +325,197 @@
 									"key": "email",
 									"value": "test@mohitur.com"
 								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Availability Check (Phone)",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/check-phone?phone=%2B919876543210",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"check-phone"
+							],
+							"query": [
+								{
+									"key": "phone",
+									"value": "+919876543210"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "User Profile Management",
+			"item": [
+				{
+					"name": "Get Profile",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/users/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"users",
+								"me"
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Profile",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"updatedtest\",\n    \"email\": \"updated@mohitur.com\",\n    \"phoneNumber\": \"+919876543211\",\n    \"currentPassword\": \"Mohitur669\",\n    \"newPassword\": \"NewSecurePassword123!\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/users/profile",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"users",
+								"profile"
+							]
+						}
+					}
+				},
+				{
+					"name": "Verify Email Change",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"otp\": \"123456\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/users/me/verify-email-change",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"users",
+								"me",
+								"verify-email-change"
+							]
+						}
+					}
+				},
+				{
+					"name": "Resend Profile OTP",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/users/me/resend-profile-otp",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"users",
+								"me",
+								"resend-profile-otp"
+							]
+						}
+					}
+				},
+				{
+					"name": "Cancel Profile Changes",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/users/me/cancel-profile-changes",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"users",
+								"me",
+								"cancel-profile-changes"
 							]
 						}
 					}
@@ -262,7 +601,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"text\": \"Welcome to SpeakIT v1.2\",\n    \"voiceId\": \"Joanna\",\n    \"outputFormat\": \"mp3\"\n}"
+							"raw": "{\n    \"text\": \"Welcome to SpeakIT v1.3\",\n    \"voiceId\": \"Joanna\",\n    \"voiceName\": \"Joanna\",\n    \"voiceType\": \"NEURAL\",\n    \"outputFormat\": \"mp3\",\n    \"isElevenLabs\": false,\n    \"isSarvam\": false,\n    \"languageCode\": \"en-US\",\n    \"pace\": 1.0,\n    \"samplingRate\": 22050\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/tts/synthesize",
@@ -299,7 +638,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"text\": \"Streaming high-quality audio bytes directly from AWS Polly.\",\n    \"voiceId\": \"Matthew\",\n    \"outputFormat\": \"mp3\"\n}"
+							"raw": "{\n    \"text\": \"Streaming high-quality audio bytes directly from AWS Polly.\",\n    \"voiceId\": \"Matthew\",\n    \"voiceName\": \"Matthew\",\n    \"voiceType\": \"NEURAL\",\n    \"outputFormat\": \"mp3\",\n    \"isElevenLabs\": false,\n    \"isSarvam\": false,\n    \"languageCode\": \"en-US\",\n    \"pace\": 1.0,\n    \"samplingRate\": 22050\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/tts/synthesize-stream",
@@ -310,6 +649,146 @@
 								"api",
 								"tts",
 								"synthesize-stream"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Speech-to-Text & Translation",
+			"item": [
+				{
+					"name": "Transcribe Audio",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "language",
+									"value": "en",
+									"type": "text",
+									"description": "Optional source language"
+								},
+								{
+									"key": "provider",
+									"value": "SARVAM",
+									"type": "text",
+									"description": "Optional STT provider (SARVAM or ELEVEN_LABS)"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/stt/transcribe",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"stt",
+								"transcribe"
+							]
+						}
+					}
+				},
+				{
+					"name": "Transcribe Live Recording",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "language",
+									"value": "en",
+									"type": "text",
+									"description": "Optional source language"
+								},
+								{
+									"key": "provider",
+									"value": "SARVAM",
+									"type": "text",
+									"description": "Optional STT provider (SARVAM or ELEVEN_LABS)"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/stt/transcribe-live",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"stt",
+								"transcribe-live"
+							]
+						}
+					}
+				},
+				{
+					"name": "Translate Text",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"text\": \"Hello world\",\n    \"sourceLanguage\": \"en\",\n    \"targetLanguage\": \"hi\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/stt/translate",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"stt",
+								"translate"
 							]
 						}
 					}
@@ -335,7 +814,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"firstName\": \"Mohitur\",\n    \"lastName\": \"Test\",\n    \"email\": \"test@mohitur.com\",\n    \"topic\": \"enterprise\",\n    \"message\": \"I am interested in the high-volume API access for enterprise synthesis.\",\n    \"website\": \"\" \n}"
+							"raw": "{\n    \"firstName\": \"Mohitur\",\n    \"lastName\": \"Test\",\n    \"email\": \"test@mohitur.com\",\n    \"topic\": \"enterprise\",\n    \"message\": \"I am interested in the high-volume API access for enterprise synthesis.\",\n    \"website\": \"\"\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/contact",
@@ -413,7 +892,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "[1, 2, 3]"
+							"raw": "[\n    1,\n    2,\n    3\n]"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/history/delete",
@@ -424,6 +903,33 @@
 								"api",
 								"history",
 								"delete"
+							]
+						}
+					}
+				},
+				{
+					"name": "Clear All History",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"url": {
+							"raw": "{{baseUrl}}/api/history/clear-all",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"history",
+								"clear-all"
 							]
 						}
 					}
@@ -472,6 +978,44 @@
 					}
 				},
 				{
+					"name": "Verify Payment Signature",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"razorpayOrderId\": \"order_HpH789xYz\",\n    \"razorpayPaymentId\": \"pay_HpJ123abc\",\n    \"razorpaySignature\": \"abcdef0123456789...\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/payments/verify",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"payments",
+								"verify"
+							]
+						}
+					}
+				},
+				{
 					"name": "Get Transaction History",
 					"request": {
 						"auth": {
@@ -495,6 +1039,43 @@
 								"v1",
 								"payments",
 								"history"
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Webhook Integrations",
+			"item": [
+				{
+					"name": "Razorpay Webhook",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "X-Razorpay-Signature",
+								"value": "<razorpay_webhook_secret_signature>"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"entity\": \"event\",\n    \"account_id\": \"acc_BFQ7uISujFjQIK\",\n    \"event\": \"payment.captured\",\n    \"contains\": [\n        \"payment\"\n    ],\n    \"payload\": {\n        \"payment\": {\n            \"entity\": {\n                \"id\": \"pay_DESLFZ4ox4asD5\",\n                \"entity\": \"payment\",\n                \"amount\": 49900,\n                \"currency\": \"INR\",\n                \"status\": \"captured\",\n                \"order_id\": \"order_DESLeaves456\",\n                \"invoice_id\": null,\n                \"international\": false,\n                \"method\": \"card\",\n                \"amount_refunded\": 0,\n                \"refund_status\": null,\n                \"captured\": true,\n                \"description\": \"Subscription Plan Upgrade\",\n                \"card_id\": \"card_DESLFZ5G2zbhgr\",\n                \"bank\": null,\n                \"wallet\": null,\n                \"vpa\": null,\n                \"email\": \"test@mohitur.com\",\n                \"contact\": \"+919876543210\",\n                \"notes\": [],\n                \"fee\": 1178,\n                \"tax\": 180,\n                \"error_code\": null,\n                \"error_description\": null,\n                \"created_at\": 1568212100\n            }\n        }\n    },\n    \"created_at\": 1568212100\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/webhooks/razorpay",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"webhooks",
+								"razorpay"
 							]
 						}
 					}
@@ -532,7 +1113,7 @@
 					"request": {
 						"method": "GET",
 						"url": {
-							"raw": "{{baseUrl}}/api/system-parameters/live/PRO_PLAN_PRICE_INR",
+							"raw": "{{baseUrl}}/api/system-parameters/live/:name",
 							"host": [
 								"{{baseUrl}}"
 							],
@@ -540,7 +1121,43 @@
 								"api",
 								"system-parameters",
 								"live",
-								"PRO_PLAN_PRICE_INR"
+								":name"
+							],
+							"variable": [
+								{
+									"key": "name",
+									"value": "PRO_PLAN_PRICE_INR"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Cached Parameter (Whitelist Protected)",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{baseUrl}}/api/system-parameters/cached/:name?defaultValue=",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"system-parameters",
+								"cached",
+								":name"
+							],
+							"query": [
+								{
+									"key": "defaultValue",
+									"value": ""
+								}
+							],
+							"variable": [
+								{
+									"key": "name",
+									"value": "SYSTEM_STATUS"
+								}
 							]
 						}
 					}
