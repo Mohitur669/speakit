@@ -26,6 +26,42 @@ SpeakIT is a production-grade SaaS for AI voice generation. It is designed for h
 5. **Entities:** Must extend `BaseEntity` for auditing. Use `FetchType.LAZY` for all relationships.
 6. **OSIV:** `spring.jpa.open-in-view=false` in production to prevent unintended database queries during view rendering.
 
+## Package & Directory Structure
+The backend is structured into modular subpackages under the root `com.speakit` package namespace:
+
+```text
+src/main/java/
+ ├── com/
+ │    ├── speakit/
+ │    │    ├── SpeakItApplication.java   (Application Root)
+ │    │    ├── shared/                   (Common/shared modules)
+ │    │    │    ├── aspect/              (Common aspect-based shields)
+ │    │    │    ├── dto/                 (Common response payloads)
+ │    │    │    ├── entity/              (Common JPA entity foundations)
+ │    │    │    ├── exception/           (Common exceptions & global handler)
+ │    │    │    └── util/                (Common utilities/sanitizers)
+ │    │    ├── tts/                      (Text-to-Speech domain logic)
+ │    │    │    ├── aspect/
+ │    │    │    ├── config/
+ │    │    │    ├── controller/
+ │    │    │    ├── dto/
+ │    │    │    ├── entity/
+ │    │    │    ├── exception/
+ │    │    │    ├── repository/
+ │    │    │    ├── security/
+ │    │    │    └── service/
+ │    │    └── stt/                      (Speech-to-Text domain logic)
+ │    │         ├── controller/
+ │    │         ├── dto/
+ │    │         ├── entity/
+ │    │         ├── exception/
+ │    │         ├── provider/
+ │    │         ├── repository/
+ │    │         └── service/
+```
+
+- **Rule:** Never duplicate cross-cutting infrastructure (like rate limit shields, global exception handlers, sanitizers, or base auditing entities). Move them to `com.speakit.shared` for global reuse across domain modules.
+
 ## High-Performance Data Access (Mandatory)
 - **Eliminate Over-fetching:** Use projections to pull only required fields.
 - **N+1 Prevention:** Never query the User entity inside a loop or repeatedly across a filter-controller chain.

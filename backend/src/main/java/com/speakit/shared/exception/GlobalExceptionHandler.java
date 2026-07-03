@@ -1,6 +1,7 @@
-package com.speakit.tts.exception;
+package com.speakit.shared.exception;
+import com.speakit.tts.exception.SpeechConversionException;
 
-import com.speakit.tts.dto.ApiErrorResponse;
+import com.speakit.shared.dto.ApiErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;

@@ -8,7 +8,7 @@ import com.speakit.tts.entity.OtpVerification;
 import com.speakit.tts.repository.UserRepository;
 import com.speakit.tts.repository.OtpVerificationRepository;
 import com.speakit.tts.security.JwtService;
-import com.speakit.tts.util.Sanitizer;
+import com.speakit.shared.util.Sanitizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
