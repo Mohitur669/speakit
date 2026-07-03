@@ -100,6 +100,8 @@ The database is engineered for **PostgreSQL 16+** using enterprise-grade JPA pat
 - `/src/main/java/com/tts/dto`: Strict validation-based Data Transfer Objects.
 - `/src/main/java/com/tts/repository`: Optimized repositories with interface projections.
 - `/src/main/java/com/tts/service`: Core business logic, AWS, ElevenLabs, and Razorpay integrations.
+- `/src/main/java/com/stt`: Speech-to-Text (STT) controller, services, repositories, entities, and providers.
+
 
 ### Frontend
 - `/src/app/core`: Singletons (Auth, Interceptors, Guards, Centralized Logger).

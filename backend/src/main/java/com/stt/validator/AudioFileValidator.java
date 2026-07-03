@@ -1,6 +1,6 @@
-package com.tts.stt.validator;
+package com.stt.validator;
 
-import com.tts.stt.exception.SttException;
+import com.stt.exception.SttException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;

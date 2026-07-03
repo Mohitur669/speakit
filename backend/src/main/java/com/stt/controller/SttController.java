@@ -1,4 +1,4 @@
-package com.tts.stt.controller;
+package com.stt.controller;
 
 import com.tts.aspect.RateLimitAction;
 import com.tts.aspect.RateLimited;
@@ -6,12 +6,12 @@ import com.tts.entity.PlanType;
 import com.tts.entity.SubscriptionStatus;
 import com.tts.service.SubscriptionService;
 import com.tts.service.SystemParameterService;
-import com.tts.stt.dto.SpeechToTextResult;
-import com.tts.stt.service.SttService;
-import com.tts.stt.validator.AudioFileValidator;
-import com.tts.stt.dto.TranslationRequest;
-import com.tts.stt.dto.TranslationResponse;
-import com.tts.stt.service.TranslationService;
+import com.stt.dto.SpeechToTextResult;
+import com.stt.service.SttService;
+import com.stt.validator.AudioFileValidator;
+import com.stt.dto.TranslationRequest;
+import com.stt.dto.TranslationResponse;
+import com.stt.service.TranslationService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

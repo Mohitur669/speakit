@@ -1,14 +1,14 @@
-package com.tts.stt.service;
+package com.stt.service;
 
 import com.tts.entity.User;
 import com.tts.repository.UserRepository;
 import com.tts.service.SystemParameterService;
-import com.tts.stt.dto.SpeechToTextResult;
-import com.tts.stt.entity.SpeechToTextRequest;
-import com.tts.stt.exception.SttException;
-import com.tts.stt.provider.ElevenLabsSpeechToTextProvider;
-import com.tts.stt.provider.SarvamSpeechToTextProvider;
-import com.tts.stt.repository.SpeechToTextRequestRepository;
+import com.stt.dto.SpeechToTextResult;
+import com.stt.entity.SpeechToTextRequest;
+import com.stt.exception.SttException;
+import com.stt.provider.ElevenLabsSpeechToTextProvider;
+import com.stt.provider.SarvamSpeechToTextProvider;
+import com.stt.repository.SpeechToTextRequestRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

@@ -1,4 +1,4 @@
-package com.tts.stt.dto;
+package com.stt.dto;
 
 import lombok.Data;
 

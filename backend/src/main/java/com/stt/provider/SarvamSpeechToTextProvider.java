@@ -1,7 +1,7 @@
-package com.tts.stt.provider;
+package com.stt.provider;
 
-import com.tts.stt.dto.SpeechToTextResult;
-import com.tts.stt.exception.SttException;
+import com.stt.dto.SpeechToTextResult;
+import com.stt.exception.SttException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
@@ -18,18 +18,18 @@ import java.util.Map;
 
 @Component
 @Slf4j
-public class ElevenLabsSpeechToTextProvider implements SpeechToTextProvider {
+public class SarvamSpeechToTextProvider implements SpeechToTextProvider {
 
-    @Value("${elevenlabs.apiKey:}")
+    @Value("${sarvam.apiKey:}")
     private String apiKey;
 
     private final RestClient restClient;
 
-    public ElevenLabsSpeechToTextProvider() {
+    public SarvamSpeechToTextProvider() {
         JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory();
         requestFactory.setReadTimeout(Duration.ofSeconds(60));
         this.restClient = RestClient.builder()
-                .baseUrl("https://api.elevenlabs.io/v1")
+                .baseUrl("https://api.sarvam.ai")
                 .requestFactory(requestFactory)
                 .build();
     }
@@ -37,67 +37,54 @@ public class ElevenLabsSpeechToTextProvider implements SpeechToTextProvider {
     @Override
     public SpeechToTextResult transcribe(File audioFile, String language) {
         if (apiKey == null || apiKey.isEmpty()) {
-            throw new SttException("ElevenLabs API Key is missing.");
+            throw new SttException("Sarvam API Key is missing.");
         }
 
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
         body.add("file", new FileSystemResource(audioFile));
-        body.add("model_id", "scribe_v1"); // Based on ElevenLabs Scribe docs
-        
-        // Language is optional for Scribe as it auto-detects, but can be forced
+        body.add("model", "saarika:v2.5"); // Updated from deprecated v1
         if (language != null) {
-            String mappedLang = mapToElevenLabsLanguage(language);
-            if (mappedLang != null) {
-                log.debug("Mapping input language {} to ElevenLabs compatible {}", language, mappedLang);
-                body.add("language_code", mappedLang);
-            }
+            String mappedLang = "auto".equalsIgnoreCase(language) ? "unknown" : language;
+            body.add("language_code", mappedLang);
         }
 
         try {
             Map<String, Object> response = restClient.post()
                     .uri("/speech-to-text")
-                    .header("xi-api-key", apiKey)
+                    .header("api-subscription-key", apiKey)
                     .contentType(MediaType.MULTIPART_FORM_DATA)
                     .body(body)
                     .retrieve()
                     .body(new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {});
 
-            if (response != null && response.containsKey("text")) {
+            if (response != null && response.containsKey("transcript")) {
                 String detectedLang = (String) response.get("language_code");
                 if (detectedLang == null) {
                     detectedLang = language;
                 }
                 return SpeechToTextResult.builder()
-                        .transcript((String) response.get("text"))
+                        .transcript((String) response.get("transcript"))
                         .language(detectedLang)
                         .provider(getName())
-                        .duration(0.0) // ElevenLabs might not return duration in the same way
+                        .duration(parseDuration(response.get("duration")))
                         .build();
             }
-            throw new SttException("Unexpected response from ElevenLabs Scribe");
+            throw new SttException("Unexpected response from Sarvam AI");
         } catch (Exception e) {
-            log.error("ElevenLabs STT failed: {}", e.getMessage());
-            throw new SttException("ElevenLabs STT failed: " + e.getMessage());
+            log.error("Sarvam STT failed: {}", e.getMessage());
+            throw new SttException("Sarvam STT failed: " + e.getMessage());
         }
     }
 
-    private String mapToElevenLabsLanguage(String lang) {
-        if (lang == null || "auto".equalsIgnoreCase(lang)) return null;
-        return switch (lang.toLowerCase()) {
-            case "en-in" -> "eng";
-            case "hi-in" -> "hin";
-            case "bn-in" -> "ben";
-            case "ta-in" -> "tam";
-            case "te-in" -> "tel";
-            case "mr-in" -> "mar";
-            case "kn-in" -> "kan";
-            case "gu-in" -> "guj";
-            default -> lang.length() > 3 ? lang.substring(0, 3) : lang;
-        };
+    private Double parseDuration(Object duration) {
+        if (duration instanceof Number) {
+            return ((Number) duration).doubleValue();
+        }
+        return 0.0;
     }
 
     @Override
     public String getName() {
-        return "ELEVEN_LABS";
+        return "SARVAM";
     }
 }

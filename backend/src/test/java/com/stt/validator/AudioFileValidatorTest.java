@@ -1,6 +1,6 @@
-package com.tts.stt.validator;
+package com.stt.validator;
 
-import com.tts.stt.exception.SttException;
+import com.stt.exception.SttException;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
 

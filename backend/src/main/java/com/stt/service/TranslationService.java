@@ -1,8 +1,8 @@
-package com.tts.stt.service;
+package com.stt.service;
 
-import com.tts.stt.dto.TranslationRequest;
-import com.tts.stt.dto.TranslationResponse;
-import com.tts.stt.exception.SttException;
+import com.stt.dto.TranslationRequest;
+import com.stt.dto.TranslationResponse;
+import com.stt.exception.SttException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
