@@ -1,7 +1,7 @@
 package com.speakit.tts.controller;
 
-import com.speakit.tts.aspect.RateLimitAction;
-import com.speakit.tts.aspect.RateLimited;
+import com.speakit.shared.aspect.RateLimitAction;
+import com.speakit.shared.aspect.RateLimited;
 import com.speakit.tts.dto.TtsRequest;
 import com.speakit.tts.entity.PlanType;
 import com.speakit.tts.entity.SubscriptionStatus;
@@ -12,7 +12,7 @@ import com.speakit.tts.service.ElevenLabsService;
 import com.speakit.tts.service.PollyService;
 import com.speakit.tts.service.SarvamService;
 import com.speakit.tts.service.SubscriptionService;
-import com.speakit.tts.util.Sanitizer;
+import com.speakit.shared.util.Sanitizer;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;

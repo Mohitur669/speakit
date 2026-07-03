@@ -1,7 +1,7 @@
 package com.speakit.stt.controller;
 
-import com.speakit.tts.aspect.RateLimitAction;
-import com.speakit.tts.aspect.RateLimited;
+import com.speakit.shared.aspect.RateLimitAction;
+import com.speakit.shared.aspect.RateLimited;
 import com.speakit.tts.entity.PlanType;
 import com.speakit.tts.entity.SubscriptionStatus;
 import com.speakit.tts.service.SubscriptionService;
