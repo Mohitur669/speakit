@@ -17,10 +17,10 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @org.springframework.scheduling.annotation.EnableAsync
 @EnableJpaAuditing
 @EnableCaching
-public class TextToSpeechApplication {
+public class SpeakItApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(TextToSpeechApplication.class, args);
+        SpringApplication.run(SpeakItApplication.class, args);
     }
 
 }

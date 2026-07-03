@@ -49,7 +49,7 @@ COPY failed: no source files were specified</code></pre>
 
       <h2>What I Tried: Version Drift and Mismatched JDKs</h2>
       <p>I tried to change the base image to something with Maven and run the build there. But I hit a second problem: <strong>The JDK version mismatch.</strong> SpeakIT uses Java 21, but my initial base image was Java 17. I got the dreaded:</p>
-      <pre><code>java.lang.UnsupportedClassVersionError: com/tts/TextToSpeechApplication has been compiled by a more recent version of the Java Runtime...</code></pre>
+      <pre><code>java.lang.UnsupportedClassVersionError: com/tts/SpeakItApplication has been compiled by a more recent version of the Java Runtime...</code></pre>
 
       <h2>The Fix: Multi-Stage Builds</h2>
       <p>The solution was to stop treating the Dockerfile as a "runner" and start treating it as a <strong>complete build factory.</strong> I moved to a Multi-Stage Build using Eclipse Temurin.</p>
