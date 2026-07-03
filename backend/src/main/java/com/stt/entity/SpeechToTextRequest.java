@@ -1,4 +1,4 @@
-package com.tts.stt.entity;
+package com.stt.entity;
 
 import com.tts.entity.BaseEntity;
 import com.tts.entity.User;

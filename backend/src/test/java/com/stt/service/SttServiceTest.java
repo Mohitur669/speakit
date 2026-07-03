@@ -1,11 +1,11 @@
-package com.tts.stt.service;
+package com.stt.service;
 
 import com.tts.entity.User;
 import com.tts.repository.UserRepository;
-import com.tts.stt.dto.SpeechToTextResult;
-import com.tts.stt.provider.ElevenLabsSpeechToTextProvider;
-import com.tts.stt.provider.SarvamSpeechToTextProvider;
-import com.tts.stt.repository.SpeechToTextRequestRepository;
+import com.stt.dto.SpeechToTextResult;
+import com.stt.provider.ElevenLabsSpeechToTextProvider;
+import com.stt.provider.SarvamSpeechToTextProvider;
+import com.stt.repository.SpeechToTextRequestRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;

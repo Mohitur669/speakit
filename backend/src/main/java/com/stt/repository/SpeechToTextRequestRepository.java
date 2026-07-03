@@ -1,6 +1,6 @@
-package com.tts.stt.repository;
+package com.stt.repository;
 
-import com.tts.stt.entity.SpeechToTextRequest;
+import com.stt.entity.SpeechToTextRequest;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

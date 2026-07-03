@@ -1,6 +1,6 @@
-package com.tts.stt.provider;
+package com.stt.provider;
 
-import com.tts.stt.dto.SpeechToTextResult;
+import com.stt.dto.SpeechToTextResult;
 import java.io.File;
 
 public interface SpeechToTextProvider {

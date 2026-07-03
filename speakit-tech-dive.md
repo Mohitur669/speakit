@@ -1956,4 +1956,4 @@ Based on a comprehensive repository scan, the following details the current stat
 * **Load Tester:** `speakit-api-load-tester.py` is a specialized Python utility for stress-testing rate limits, IP-binding, and JWT flows.
 * **WebSockets:** Infrastructure present (`WebSocketConfig`, `WSTicketService`) for real-time updates.
 
-_Document version: 2.1 | Last updated: June 2026 | Project: github.com/Mohitur669/speakit_
+_Document version: 2.1 | Last updated: July 2026 | Project: github.com/Mohitur669/speakit_
