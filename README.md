@@ -96,8 +96,9 @@ The database is engineered for **PostgreSQL 16+** using enterprise-grade JPA pat
 
 ### Backend
 - `/src/main/java/com/speakit/SpeakItApplication.java`: Main Spring Boot application entry point.
-- `/src/main/java/com/speakit/tts`: Text-to-Speech (TTS) configuration, controllers, DTOs, entities, repositories, and services.
-- `/src/main/java/com/speakit/stt`: Speech-to-Text (STT) controllers, DTOs, entities, repositories, services, and providers.
+- `/src/main/java/com/speakit/shared`: Shared infrastructure (aspects, DTOs, entities, exceptions, utilities).
+- `/src/main/java/com/speakit/tts`: Text-to-Speech (TTS) domain modules (controllers, entities, repositories, services).
+- `/src/main/java/com/speakit/stt`: Speech-to-Text (STT) domain modules (controllers, entities, repositories, services, providers).
 
 
 ### Frontend

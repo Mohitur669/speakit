@@ -1,4 +1,4 @@
-package com.shared.entity;
+package com.speakit.shared.entity;
 
 import jakarta.persistence.*;
 import lombok.*;

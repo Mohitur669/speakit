@@ -1,7 +1,7 @@
 package com.speakit.tts.controller;
 
-import com.shared.aspect.RateLimitAction;
-import com.shared.aspect.RateLimited;
+import com.speakit.shared.aspect.RateLimitAction;
+import com.speakit.shared.aspect.RateLimited;
 import com.speakit.tts.dto.*;
 import com.speakit.tts.service.AuthService;
 import org.springframework.http.ResponseEntity;
