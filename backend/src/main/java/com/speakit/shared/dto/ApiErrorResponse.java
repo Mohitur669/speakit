@@ -1,4 +1,4 @@
-package com.shared.dto;
+package com.speakit.shared.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

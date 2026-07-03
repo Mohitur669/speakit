@@ -3,7 +3,7 @@ package com.speakit.tts.service;
 import com.speakit.tts.dto.ContactRequest;
 import com.speakit.tts.entity.ContactSubmission;
 import com.speakit.tts.repository.ContactSubmissionRepository;
-import com.shared.util.Sanitizer;
+import com.speakit.shared.util.Sanitizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

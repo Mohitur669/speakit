@@ -1,4 +1,4 @@
-package com.shared.exception;
+package com.speakit.shared.exception;
 
 import lombok.Getter;
 

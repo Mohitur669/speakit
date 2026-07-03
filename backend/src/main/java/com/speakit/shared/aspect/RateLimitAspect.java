@@ -1,7 +1,7 @@
-package com.shared.aspect;
+package com.speakit.shared.aspect;
 
 import com.speakit.tts.config.RateLimitConfig;
-import com.shared.exception.RateLimitExceededException;
+import com.speakit.shared.exception.RateLimitExceededException;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.ConsumptionProbe;
 import jakarta.servlet.http.HttpServletRequest;
@@ -39,7 +39,7 @@ public class RateLimitAspect {
     @Autowired
     private RateLimitConfig rateLimitConfig;
 
-    @Around("@annotation(com.shared.aspect.RateLimited)")
+    @Around("@annotation(com.speakit.shared.aspect.RateLimited)")
     public Object enforceRateLimit(ProceedingJoinPoint joinPoint) throws Throwable {
         HttpServletRequest req = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
         
