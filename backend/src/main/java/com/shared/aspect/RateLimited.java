@@ -1,4 +1,4 @@
-package com.speakit.tts.aspect;
+package com.shared.aspect;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

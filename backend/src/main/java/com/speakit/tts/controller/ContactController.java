@@ -1,7 +1,7 @@
 package com.speakit.tts.controller;
 
-import com.speakit.tts.aspect.RateLimitAction;
-import com.speakit.tts.aspect.RateLimited;
+import com.shared.aspect.RateLimitAction;
+import com.shared.aspect.RateLimited;
 import com.speakit.tts.dto.ContactRequest;
 import com.speakit.tts.service.ContactService;
 import jakarta.servlet.http.HttpServletRequest;

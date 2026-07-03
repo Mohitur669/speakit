@@ -1,4 +1,5 @@
 package com.speakit.tts.entity;
+import com.shared.entity.BaseEntity;
 
 import jakarta.persistence.*;
 import lombok.*;

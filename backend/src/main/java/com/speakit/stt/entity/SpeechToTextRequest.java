@@ -1,6 +1,6 @@
 package com.speakit.stt.entity;
 
-import com.speakit.tts.entity.BaseEntity;
+import com.shared.entity.BaseEntity;
 import com.speakit.tts.entity.User;
 import jakarta.persistence.*;
 import lombok.*;

@@ -1,4 +1,4 @@
-package com.speakit.tts.exception;
+package com.shared.exception;
 
 import lombok.Getter;
 

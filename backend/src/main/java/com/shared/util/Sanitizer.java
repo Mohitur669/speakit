@@ -1,4 +1,4 @@
-package com.speakit.tts.util;
+package com.shared.util;
 
 import com.speakit.tts.exception.SpeechConversionException;
 import org.jsoup.Jsoup;
