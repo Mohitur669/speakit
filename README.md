@@ -95,11 +95,10 @@ The database is engineered for **PostgreSQL 16+** using enterprise-grade JPA pat
 ## 📂 Project Structure
 
 ### Backend
-- `/src/main/java/com/tts/config`: Infrastructure, Security, and Logging configuration.
-- `/src/main/java/com/tts/entity`: JPA entities with standard column ordering.
-- `/src/main/java/com/tts/dto`: Strict validation-based Data Transfer Objects.
-- `/src/main/java/com/tts/repository`: Optimized repositories with interface projections.
-- `/src/main/java/com/tts/service`: Core business logic, AWS, ElevenLabs, and Razorpay integrations.
+- `/src/main/java/com/speakit/SpeakItApplication.java`: Main Spring Boot application entry point.
+- `/src/main/java/com/speakit/tts`: Text-to-Speech (TTS) configuration, controllers, DTOs, entities, repositories, and services.
+- `/src/main/java/com/speakit/stt`: Speech-to-Text (STT) controllers, DTOs, entities, repositories, services, and providers.
+
 
 ### Frontend
 - `/src/app/core`: Singletons (Auth, Interceptors, Guards, Centralized Logger).
