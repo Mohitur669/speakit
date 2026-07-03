@@ -8,7 +8,7 @@
         <version>3.5.11</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
-    <groupId>com.tts</groupId>
+    <groupId>com.speakit</groupId>
     <artifactId>SpeakItApplication</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>backend</name>
