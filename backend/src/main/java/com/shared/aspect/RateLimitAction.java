@@ -1,4 +1,4 @@
-package com.speakit.tts.aspect;
+package com.shared.aspect;
 
 public enum RateLimitAction {
     AUTH,       // Strict protection for login/register (Brute-force)

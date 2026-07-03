@@ -26,6 +26,42 @@ SpeakIT is a production-grade SaaS for AI voice generation. It is designed for h
 5. **Entities:** Must extend `BaseEntity` for auditing. Use `FetchType.LAZY` for all relationships.
 6. **OSIV:** `spring.jpa.open-in-view=false` in production to prevent unintended database queries during view rendering.
 
+## Package & Directory Structure
+The backend is structured into two main namespaces: `com.speakit` for module-specific business logic, and `com.shared` for common utility/infrastructure components.
+
+```text
+src/main/java/
+ ├── com/
+ │    ├── speakit/
+ │    │    ├── SpeakItApplication.java   (Application Root)
+ │    │    ├── tts/                      (Text-to-Speech domain)
+ │    │    │    ├── aspect/
+ │    │    │    ├── config/
+ │    │    │    ├── controller/
+ │    │    │    ├── dto/
+ │    │    │    ├── entity/
+ │    │    │    ├── exception/
+ │    │    │    ├── repository/
+ │    │    │    ├── security/
+ │    │    │    └── service/
+ │    │    └── stt/                      (Speech-to-Text domain)
+ │    │         ├── controller/
+ │    │         ├── dto/
+ │    │         ├── entity/
+ │    │         ├── exception/
+ │    │         ├── provider/
+ │    │         ├── repository/
+ │    │         └── service/
+ │    └── shared/                        (Common modules)
+ │         ├── aspect/                   (Common aspect-based shields)
+ │         ├── dto/                      (Common responses)
+ │         ├── entity/                   (Common JPA entity bases)
+ │         ├── exception/                (Common exception handler & exceptions)
+ │         └── util/                     (Common utilities/sanitizers)
+```
+
+- **Rule:** Never duplicate cross-cutting infrastructure (like rate limit shields, global exception handlers, sanitizers, or base auditing entities) under `com.speakit`. Move them to `com.shared` for global reuse.
+
 ## High-Performance Data Access (Mandatory)
 - **Eliminate Over-fetching:** Use projections to pull only required fields.
 - **N+1 Prevention:** Never query the User entity inside a loop or repeatedly across a filter-controller chain.
