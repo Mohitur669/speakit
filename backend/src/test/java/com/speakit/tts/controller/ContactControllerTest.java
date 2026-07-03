@@ -1,7 +1,9 @@
 package com.speakit.tts.controller;
+import com.speakit.contact.repository.ContactSubmissionRepository;
+import com.speakit.contact.entity.ContactSubmission;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.speakit.tts.dto.ContactRequest;
+import com.speakit.contact.dto.ContactRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -23,7 +25,7 @@ public class ContactControllerTest {
     private ObjectMapper objectMapper;
 
     @Autowired
-    private com.speakit.tts.repository.ContactSubmissionRepository contactSubmissionRepository;
+    private com.speakit.contact.repository.ContactSubmissionRepository contactSubmissionRepository;
 
     @org.junit.jupiter.api.BeforeEach
     public void setup() {
@@ -44,7 +46,7 @@ public class ContactControllerTest {
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk());
 
-        java.util.List<com.speakit.tts.entity.ContactSubmission> submissions = contactSubmissionRepository.findAll();
+        java.util.List<com.speakit.contact.entity.ContactSubmission> submissions = contactSubmissionRepository.findAll();
         org.junit.jupiter.api.Assertions.assertEquals(1, submissions.size());
         org.junit.jupiter.api.Assertions.assertEquals("Technical Support", submissions.get(0).getTopic());
     }
@@ -63,7 +65,7 @@ public class ContactControllerTest {
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk());
 
-        java.util.List<com.speakit.tts.entity.ContactSubmission> submissions = contactSubmissionRepository.findAll();
+        java.util.List<com.speakit.contact.entity.ContactSubmission> submissions = contactSubmissionRepository.findAll();
         org.junit.jupiter.api.Assertions.assertEquals(1, submissions.size());
         org.junit.jupiter.api.Assertions.assertEquals("Billing", submissions.get(0).getTopic());
     }
@@ -82,7 +84,7 @@ public class ContactControllerTest {
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk());
 
-        java.util.List<com.speakit.tts.entity.ContactSubmission> submissions = contactSubmissionRepository.findAll();
+        java.util.List<com.speakit.contact.entity.ContactSubmission> submissions = contactSubmissionRepository.findAll();
         org.junit.jupiter.api.Assertions.assertEquals(1, submissions.size());
         org.junit.jupiter.api.Assertions.assertEquals("Enterprise Sales", submissions.get(0).getTopic());
     }

@@ -1,6 +1,14 @@
 package com.speakit.shared.aspect;
+import com.speakit.contact.dto.ContactRequest;
+import com.speakit.auth.dto.VerifyEmailChangeRequest;
+import com.speakit.auth.dto.VerifyEmailRequest;
+import com.speakit.auth.dto.ResetPasswordRequest;
+import com.speakit.auth.dto.ResendOtpRequest;
+import com.speakit.auth.dto.ForgotPasswordRequest;
+import com.speakit.auth.dto.AuthRequest;
+import com.speakit.user.entity.User;
 
-import com.speakit.tts.config.RateLimitConfig;
+import com.speakit.config.RateLimitConfig;
 import com.speakit.shared.exception.RateLimitExceededException;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.ConsumptionProbe;
@@ -60,8 +68,8 @@ public class RateLimitAspect {
 
                 // Layer 2: Identity-based limiting (Email)
                 for (Object arg : joinPoint.getArgs()) {
-                    if (arg instanceof com.speakit.tts.dto.ContactRequest) {
-                        String email = ((com.speakit.tts.dto.ContactRequest) arg).getEmail();
+                    if (arg instanceof com.speakit.contact.dto.ContactRequest) {
+                        String email = ((com.speakit.contact.dto.ContactRequest) arg).getEmail();
                         if (email != null && !email.isEmpty()) {
                             String emailHash = hashString(email.toLowerCase().trim());
                             checkBucket("PUB_EMAIL_" + emailHash, RateLimitAction.PUBLIC);
@@ -78,8 +86,8 @@ public class RateLimitAspect {
 
                 // Layer 2: User-based limiting (prevent credential stuffing / brute forcing rotating IPs on a single user)
                 for (Object arg : joinPoint.getArgs()) {
-                    if (arg instanceof com.speakit.tts.dto.AuthRequest) {
-                        com.speakit.tts.dto.AuthRequest authReq = (com.speakit.tts.dto.AuthRequest) arg;
+                    if (arg instanceof com.speakit.auth.dto.AuthRequest) {
+                        com.speakit.auth.dto.AuthRequest authReq = (com.speakit.auth.dto.AuthRequest) arg;
                         String identifier = null;
                         if (authReq.getEmail() != null && !authReq.getEmail().isEmpty()) {
                             identifier = authReq.getEmail().toLowerCase().trim();
@@ -104,13 +112,13 @@ public class RateLimitAspect {
 
                 // Layer 2: Identity-based limiting (prevent rotating IPs from brute-forcing a single user's OTP)
                 for (Object arg : joinPoint.getArgs()) {
-                    if (arg instanceof com.speakit.tts.dto.VerifyEmailRequest) {
-                        String email = ((com.speakit.tts.dto.VerifyEmailRequest) arg).getEmail();
+                    if (arg instanceof com.speakit.auth.dto.VerifyEmailRequest) {
+                        String email = ((com.speakit.auth.dto.VerifyEmailRequest) arg).getEmail();
                         if (email != null && !email.isEmpty()) {
                             String emailHash = hashString(email.toLowerCase().trim());
                             checkBucket("OTP_VERIFY_EMAIL_" + emailHash, RateLimitAction.OTP_VERIFY);
                         }
-                    } else if (arg instanceof com.speakit.tts.dto.VerifyEmailChangeRequest) {
+                    } else if (arg instanceof com.speakit.auth.dto.VerifyEmailChangeRequest) {
                         java.security.Principal principal = req.getUserPrincipal();
                         if (principal != null) {
                             String userHash = hashString(principal.getName().toLowerCase().trim());
@@ -133,8 +141,8 @@ public class RateLimitAspect {
                     checkBucket("OTP_RESEND_USER_" + userHash, RateLimitAction.OTP_RESEND);
                 } else {
                     for (Object arg : joinPoint.getArgs()) {
-                        if (arg instanceof com.speakit.tts.dto.ResendOtpRequest) {
-                            String email = ((com.speakit.tts.dto.ResendOtpRequest) arg).getEmail();
+                        if (arg instanceof com.speakit.auth.dto.ResendOtpRequest) {
+                            String email = ((com.speakit.auth.dto.ResendOtpRequest) arg).getEmail();
                             if (email != null && !email.isEmpty()) {
                                 String emailHash = hashString(email.toLowerCase().trim());
                                 checkBucket("OTP_RESEND_EMAIL_" + emailHash, RateLimitAction.OTP_RESEND);
@@ -152,14 +160,14 @@ public class RateLimitAspect {
 
                 // Layer 2: Identity-based limiting (prevent IP-rotation from mail-bombing password reset requests to one user)
                 for (Object arg : joinPoint.getArgs()) {
-                    if (arg instanceof com.speakit.tts.dto.ForgotPasswordRequest) {
-                        String email = ((com.speakit.tts.dto.ForgotPasswordRequest) arg).getEmail();
+                    if (arg instanceof com.speakit.auth.dto.ForgotPasswordRequest) {
+                        String email = ((com.speakit.auth.dto.ForgotPasswordRequest) arg).getEmail();
                         if (email != null && !email.isEmpty()) {
                             String emailHash = hashString(email.toLowerCase().trim());
                             checkBucket("PASSWORD_RESET_EMAIL_" + emailHash, RateLimitAction.PASSWORD_RESET);
                         }
-                    } else if (arg instanceof com.speakit.tts.dto.ResetPasswordRequest) {
-                        String email = ((com.speakit.tts.dto.ResetPasswordRequest) arg).getEmail();
+                    } else if (arg instanceof com.speakit.auth.dto.ResetPasswordRequest) {
+                        String email = ((com.speakit.auth.dto.ResetPasswordRequest) arg).getEmail();
                         if (email != null && !email.isEmpty()) {
                             String emailHash = hashString(email.toLowerCase().trim());
                             checkBucket("PASSWORD_RESET_EMAIL_" + emailHash, RateLimitAction.PASSWORD_RESET);

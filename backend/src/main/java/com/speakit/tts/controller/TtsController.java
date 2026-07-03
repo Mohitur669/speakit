@@ -1,17 +1,18 @@
 package com.speakit.tts.controller;
+import com.speakit.user.entity.User;
 
 import com.speakit.shared.aspect.RateLimitAction;
 import com.speakit.shared.aspect.RateLimited;
 import com.speakit.tts.dto.TtsRequest;
-import com.speakit.tts.entity.PlanType;
-import com.speakit.tts.entity.SubscriptionStatus;
+import com.speakit.billing.entity.PlanType;
+import com.speakit.billing.entity.SubscriptionStatus;
 import com.speakit.tts.entity.TtsHistory;
 import com.speakit.tts.repository.TtsHistoryRepository;
-import com.speakit.tts.repository.UserRepository;
+import com.speakit.user.repository.UserRepository;
 import com.speakit.tts.service.ElevenLabsService;
 import com.speakit.tts.service.PollyService;
 import com.speakit.tts.service.SarvamService;
-import com.speakit.tts.service.SubscriptionService;
+import com.speakit.billing.service.SubscriptionService;
 import com.speakit.shared.util.Sanitizer;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;

@@ -1,11 +1,12 @@
 package com.speakit.stt.controller;
+import com.speakit.user.entity.User;
 
 import com.speakit.shared.aspect.RateLimitAction;
 import com.speakit.shared.aspect.RateLimited;
-import com.speakit.tts.entity.PlanType;
-import com.speakit.tts.entity.SubscriptionStatus;
-import com.speakit.tts.service.SubscriptionService;
-import com.speakit.tts.service.SystemParameterService;
+import com.speakit.billing.entity.PlanType;
+import com.speakit.billing.entity.SubscriptionStatus;
+import com.speakit.billing.service.SubscriptionService;
+import com.speakit.parameter.service.SystemParameterService;
 import com.speakit.stt.dto.SpeechToTextResult;
 import com.speakit.stt.service.SttService;
 import com.speakit.stt.validator.AudioFileValidator;
