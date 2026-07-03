@@ -1,6 +1,6 @@
 package com.speakit.tts.service;
 
-import com.speakit.tts.entity.PlanType;
+import com.speakit.billing.entity.PlanType;
 import com.speakit.tts.exception.SpeechConversionException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

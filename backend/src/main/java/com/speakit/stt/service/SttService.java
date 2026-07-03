@@ -1,8 +1,8 @@
 package com.speakit.stt.service;
 
-import com.speakit.tts.entity.User;
-import com.speakit.tts.repository.UserRepository;
-import com.speakit.tts.service.SystemParameterService;
+import com.speakit.user.entity.User;
+import com.speakit.user.repository.UserRepository;
+import com.speakit.parameter.service.SystemParameterService;
 import com.speakit.stt.dto.SpeechToTextResult;
 import com.speakit.stt.entity.SpeechToTextRequest;
 import com.speakit.stt.exception.SttException;
@@ -40,7 +40,6 @@ public class SttService {
     /**
      * Orchestrates the STT process with plan-aware provider selection and failover.
      */
-    @Transactional
     public SpeechToTextResult transcribe(MultipartFile multipartFile, String language, Long userId, String preferredProvider) {
         Path tempFilePath = null;
         LocalDateTime startTime = LocalDateTime.now();

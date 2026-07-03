@@ -1,11 +1,12 @@
 package com.speakit.tts.service;
+import com.speakit.billing.service.SubscriptionService;
 
 import com.speakit.tts.dto.TtsRequest;
-import com.speakit.tts.entity.PlanType;
-import com.speakit.tts.entity.SubscriptionStatus;
+import com.speakit.billing.entity.PlanType;
+import com.speakit.billing.entity.SubscriptionStatus;
 import com.speakit.tts.entity.TtsHistory;
 import com.speakit.tts.repository.TtsHistoryRepository;
-import com.speakit.tts.repository.UserRepository;
+import com.speakit.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
