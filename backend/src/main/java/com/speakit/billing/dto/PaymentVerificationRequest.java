@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class PaymentVerificationRequest {
     private String razorpayOrderId;
+    private String razorpaySubscriptionId;
     private String razorpayPaymentId;
     private String razorpaySignature;
 }
