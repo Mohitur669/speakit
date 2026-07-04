@@ -122,6 +122,13 @@ class AuthServiceOtpTest {
         assertNull(response.getToken()); // Token should NOT be issued yet
         assertEquals("newuser", response.getUsername());
 
+        // Verify user properties (Consent fields)
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository, times(1)).save(userCaptor.capture());
+        User savedUser = userCaptor.getValue();
+        assertTrue(savedUser.isConsentAccepted());
+        assertNotNull(savedUser.getConsentTimestamp());
+
         // Verify OTP is generated and saved
         verify(otpVerificationRepository, times(1)).save(any(OtpVerification.class));
         // Verify email is sent

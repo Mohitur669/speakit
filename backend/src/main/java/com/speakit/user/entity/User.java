@@ -93,4 +93,12 @@ public class User extends BaseEntity {
 
     @Column(name = "pending_password", length = 255)
     private String pendingPassword;
+
+    @Column(name = "consent_accepted", nullable = false)
+    @ColumnDefault("false")
+    @Builder.Default
+    private boolean consentAccepted = false;
+
+    @Column(name = "consent_timestamp")
+    private java.time.LocalDateTime consentTimestamp;
 }

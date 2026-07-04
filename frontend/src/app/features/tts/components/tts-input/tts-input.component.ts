@@ -65,11 +65,8 @@ export class TtsInputComponent {
   @Input() text: string = '';
   @Input() maxChars: number = 3000;
   @Input() usage: any = null;
-  @Input() loading = false;
-  @Input() voiceId = '';
 
   @Output() textChange = new EventEmitter<string>();
-  @Output() convert = new EventEmitter<void>();
 
   onTextChange(val: string): void {
     this.textChange.emit(val);
