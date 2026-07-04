@@ -78,6 +78,8 @@ public class AuthService {
                 .planType(PlanType.FREE)
                 .emailVerified(false)
                 .accountStatus("PENDING_VERIFICATION")
+                .consentAccepted(true)
+                .consentTimestamp(LocalDateTime.now())
                 .build();
         user = userRepository.save(user);
 

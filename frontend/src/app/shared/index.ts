@@ -5,4 +5,4 @@ export * from './utils/voice.utils';
 export * from './models/country.model';
 export * from './components/otp-input/otp-input.component';
 export * from './components/password-requirements/password-requirements.component';
-
+export * from './utils/timer.utils';

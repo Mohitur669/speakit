@@ -5,7 +5,7 @@ import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../../../core/auth/auth.service';
 import { NavbarComponent } from '../../../../../shared/components/navbar/navbar.component';
 import { ToastService } from '../../../../../core/services/toast.service';
-import { OtpInputComponent } from '../../../../../shared';
+import { OtpInputComponent, runResendCooldown } from '../../../../../shared';
 import { ConfirmModalComponent } from '../../../../../shared/components/confirm-modal/confirm-modal.component';
 
 @Component({
@@ -220,12 +220,10 @@ export class VerifyProfileComponent implements OnInit, OnDestroy {
   }
 
   private startCooldown(): void {
-    this.resendCooldown.set(60);
-    if (this.timerId) clearInterval(this.timerId);
-    this.timerId = setInterval(() => {
-      const val = this.resendCooldown() - 1;
-      this.resendCooldown.set(val);
-      if (val <= 0) clearInterval(this.timerId);
-    }, 1000);
+    runResendCooldown(
+      this.resendCooldown,
+      () => this.timerId,
+      (id) => this.timerId = id
+    );
   }
 }

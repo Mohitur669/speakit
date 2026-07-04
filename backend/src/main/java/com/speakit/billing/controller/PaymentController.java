@@ -7,7 +7,7 @@ import com.speakit.billing.dto.PaymentOrderResponse;
 import com.speakit.billing.dto.PaymentVerificationRequest;
 import com.speakit.billing.dto.PaymentHistoryDto;
 import com.speakit.user.entity.User;
-import com.speakit.user.repository.UserRepository;
+import com.speakit.user.service.UserService;
 import com.speakit.billing.repository.PaymentRepository;
 import com.speakit.billing.service.RazorpayService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.*;
 public class PaymentController {
 
     private final RazorpayService razorpayService;
-    private final UserRepository userRepository;
+    private final UserService userService;
     private final PaymentRepository paymentRepository;
 
     @PostMapping("/create-order")
@@ -36,8 +36,7 @@ public class PaymentController {
             HttpServletRequest httpRequest) throws RazorpayException {
         
         Long userId = (Long) httpRequest.getAttribute("userId");
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = userService.getUserById(userId);
 
         PaymentOrderResponse response = razorpayService.createOrder(request, user);
         return ResponseEntity.ok(response);
@@ -49,8 +48,7 @@ public class PaymentController {
             HttpServletRequest httpRequest) {
 
         Long userId = (Long) httpRequest.getAttribute("userId");
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = userService.getUserById(userId);
 
         boolean isValid = razorpayService.verifyPayment(request, user);
         if (isValid) {
