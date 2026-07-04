@@ -82,12 +82,13 @@
         </app-usage-stats>
 
         <!--
-        <app-upgrade-card
-          class="hidden md:block"
-          *ngIf="authService.currentPlanType() !== 'ENTERPRISE'"
-          [currentPlan]="authService.currentPlanType()"
-          (upgrade)="invokeUpgrade($event)">
-        </app-upgrade-card>
+        @if (authService.currentPlanType() !== 'ENTERPRISE') {
+          <app-upgrade-card
+            class="hidden md:block"
+            [currentPlan]="authService.currentPlanType()"
+            (upgrade)="invokeUpgrade($event)">
+          </app-upgrade-card>
+        }
         -->
       </div>
 
