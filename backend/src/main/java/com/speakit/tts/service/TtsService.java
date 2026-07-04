@@ -54,4 +54,8 @@ public class TtsService {
 
         subscriptionService.validateSynthesisLimit(userId, planType, status, expiry);
     }
+
+    public long countRecentHistory(Long userId, LocalDateTime since) {
+        return ttsHistoryRepository.countRecentByUserId(userId, since);
+    }
 }
