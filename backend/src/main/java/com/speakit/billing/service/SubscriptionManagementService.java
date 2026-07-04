@@ -71,7 +71,7 @@ public class SubscriptionManagementService {
         }
         
         if (subscription == null) {
-            subscription = subscriptionRepository.findByUserAndStatus(user, SubscriptionStatus.ACTIVE)
+            subscription = subscriptionRepository.findFirstByUserAndStatusOrderByIdDesc(user, SubscriptionStatus.ACTIVE)
                     .orElse(Subscription.builder()
                             .user(user)
                             .build());
@@ -96,7 +96,7 @@ public class SubscriptionManagementService {
     public void scheduleDowngrade(User user, PlanType lowerPlan) {
         log.info("Scheduling downgrade for user: {} to plan: {}", user.getUsername(), lowerPlan);
 
-        Subscription activeSub = subscriptionRepository.findByUserAndStatus(user, SubscriptionStatus.ACTIVE)
+        Subscription activeSub = subscriptionRepository.findFirstByUserAndStatusOrderByIdDesc(user, SubscriptionStatus.ACTIVE)
                 .orElseThrow(() -> new RuntimeException("No active subscription found to downgrade"));
 
         // We don't change the user's plan_type yet!
@@ -115,7 +115,7 @@ public class SubscriptionManagementService {
     public void cancelSubscription(User user) {
         log.info("Cancelling subscription for user: {}", user.getUsername());
 
-        Subscription activeSub = subscriptionRepository.findByUserAndStatus(user, SubscriptionStatus.ACTIVE)
+        Subscription activeSub = subscriptionRepository.findFirstByUserAndStatusOrderByIdDesc(user, SubscriptionStatus.ACTIVE)
                 .orElseThrow(() -> new RuntimeException("No active subscription found to cancel"));
 
         activeSub.setCancelAtPeriodEnd(true);
@@ -131,7 +131,7 @@ public class SubscriptionManagementService {
     public void reactivateSubscription(User user) {
         log.info("Reactivating subscription for user: {}", user.getUsername());
 
-        Subscription sub = subscriptionRepository.findByUserAndStatus(user, SubscriptionStatus.ACTIVE)
+        Subscription sub = subscriptionRepository.findFirstByUserAndStatusOrderByIdDesc(user, SubscriptionStatus.ACTIVE)
                 .orElseThrow(() -> new RuntimeException("No active (but cancelled) subscription found"));
 
         if (sub.getCancelAtPeriodEnd() == null || !sub.getCancelAtPeriodEnd()) {
