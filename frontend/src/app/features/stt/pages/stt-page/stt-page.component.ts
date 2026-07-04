@@ -1,4 +1,5 @@
-import { Component, inject, signal, OnInit, OnDestroy } from '@angular/core';
+import { Component, inject, signal, OnInit, OnDestroy, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { NavbarComponent } from '../../../../shared/components/navbar/navbar.component';
 import { AuthService } from '../../../../core/auth/auth.service';
@@ -518,6 +519,7 @@ import { getSpeakersForLanguage, DEFAULT_SPEAKERS } from '../../models/sarvam-vo
 })
 export class SttPageComponent implements OnInit, OnDestroy {
   private authService = inject(AuthService);
+  private destroyRef = inject(DestroyRef);
   private sttService = inject(SttService);
   private toast = inject(ToastService);
   private route = inject(ActivatedRoute);
@@ -641,7 +643,7 @@ export class SttPageComponent implements OnInit, OnDestroy {
     }
 
     // Process autostart query parameter for upgrades
-    this.route.queryParams.subscribe(async (params) => {
+    this.route.queryParams.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(async (params) => {
       const autostart = params['autostart'];
       if (autostart) {
         await this.invokeUpgrade(autostart);
