@@ -228,15 +228,6 @@ public class RateLimitAspect {
     }
 
     private String extractRealIp(HttpServletRequest request) {
-        String ip = request.getHeader("CF-Connecting-IP");
-        if (ip != null && !ip.isEmpty()) return ip;
-        
-        ip = request.getHeader("X-Real-IP");
-        if (ip != null && !ip.isEmpty()) return ip;
-        
-        ip = request.getHeader("X-Forwarded-For");
-        if (ip != null && !ip.isEmpty()) return ip.split(",")[0].trim();
-        
         return request.getRemoteAddr();
     }
 

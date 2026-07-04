@@ -1,6 +1,5 @@
 import { Voice } from '../../core/services/tts.service';
 
-export type VoiceFilter = 'Standard' | 'Indian' | 'Natural' | 'All';
 
 export function getVoiceTypeLabel(voice: Voice | undefined, activeFilter: string): string {
   if (!voice) return '';
