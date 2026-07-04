@@ -1,7 +1,8 @@
 package com.speakit.stt.service;
+import com.speakit.parameter.service.SystemParameterService;
 
-import com.speakit.tts.entity.User;
-import com.speakit.tts.repository.UserRepository;
+import com.speakit.user.entity.User;
+import com.speakit.user.repository.UserRepository;
 import com.speakit.stt.dto.SpeechToTextResult;
 import com.speakit.stt.provider.ElevenLabsSpeechToTextProvider;
 import com.speakit.stt.provider.SarvamSpeechToTextProvider;
@@ -33,7 +34,7 @@ class SttServiceTest {
     @Mock
     private UserRepository userRepository;
     @Mock
-    private com.speakit.tts.service.SystemParameterService systemParameterService;
+    private com.speakit.parameter.service.SystemParameterService systemParameterService;
 
     @InjectMocks
     private SttService sttService;

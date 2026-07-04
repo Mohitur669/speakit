@@ -1,4 +1,5 @@
 package com.speakit.tts.entity;
+import com.speakit.user.entity.User;
 import com.speakit.shared.entity.BaseEntity;
 
 import jakarta.persistence.*;

@@ -1,7 +1,7 @@
 package com.speakit.stt.entity;
 
 import com.speakit.shared.entity.BaseEntity;
-import com.speakit.tts.entity.User;
+import com.speakit.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
