@@ -7,18 +7,14 @@ import com.speakit.billing.entity.Payment;
 import com.speakit.billing.entity.Subscription;
 import com.speakit.user.entity.User;
 
-import com.razorpay.Order;
 import com.razorpay.RazorpayClient;
 import com.razorpay.RazorpayException;
-import com.razorpay.Utils;
 import com.speakit.billing.config.RazorpayConfig;
 import com.speakit.billing.dto.PaymentOrderRequest;
 import com.speakit.billing.dto.PaymentOrderResponse;
 import com.speakit.billing.dto.PaymentVerificationRequest;
-import com.speakit.tts.entity.*;
 import com.speakit.billing.repository.PaymentRepository;
 import com.speakit.billing.repository.SubscriptionRepository;
-import com.speakit.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
@@ -26,7 +22,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.UUID;
 
 /**
  * Service handling Razorpay payment orchestration.
@@ -41,7 +36,6 @@ public class RazorpayService {
     private final RazorpayConfig razorpayConfig;
     private final PaymentRepository paymentRepository;
     private final SubscriptionRepository subscriptionRepository;
-    private final UserRepository userRepository;
     private final SystemParameterService systemParameterService;
     private final SubscriptionManagementService subscriptionManagementService;
 

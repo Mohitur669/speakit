@@ -4,8 +4,6 @@ import com.speakit.billing.entity.SubscriptionStatus;
 import com.speakit.billing.entity.Subscription;
 import com.speakit.user.entity.User;
 
-import com.speakit.tts.entity.*;
-import com.speakit.billing.repository.PaymentRepository;
 import com.speakit.billing.repository.SubscriptionRepository;
 import com.speakit.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +24,6 @@ public class SubscriptionManagementService {
 
     private final UserRepository userRepository;
     private final SubscriptionRepository subscriptionRepository;
-    private final PaymentRepository paymentRepository;
 
     /**
      * Changes a user's plan.

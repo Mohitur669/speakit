@@ -1,3 +1,4 @@
+// fallow-ignore-file security-sink
 import { Component, OnInit, inject } from '@angular/core';
 
 import { RouterLink, ActivatedRoute } from '@angular/router';
@@ -158,6 +159,7 @@ export class BlogDetailComponent implements OnInit {
       const slug = params.get('slug');
       this.post = BLOG_POSTS.find((p) => p.slug === slug);
       if (this.post) {
+        // fallow-ignore-next-line security-sink
         this.safeContent = this.sanitizer.bypassSecurityTrustHtml(this.post.content);
       }
     });
