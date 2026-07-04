@@ -10,5 +10,5 @@ import java.util.Optional;
 @Repository
 public interface SubscriptionRepository extends JpaRepository<Subscription, Long> {
     Optional<Subscription> findByRazorpaySubscriptionId(String razorpaySubscriptionId);
-    Optional<Subscription> findByUserAndStatus(User user, SubscriptionStatus status);
+    Optional<Subscription> findFirstByUserAndStatusOrderByIdDesc(User user, SubscriptionStatus status);
 }

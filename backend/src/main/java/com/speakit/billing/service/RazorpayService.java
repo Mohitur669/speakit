@@ -88,8 +88,7 @@ public class RazorpayService {
         com.razorpay.Subscription razorpaySubscription = razorpayClient.subscriptions.create(subscriptionRequest);
         String subscriptionId = razorpaySubscription.get("id");
 
-        // Create subscription record immediately to track plan intent
-        Subscription subscription = subscriptionRepository.findByUserAndStatus(user, SubscriptionStatus.PAYMENT_PENDING)
+        Subscription subscription = subscriptionRepository.findFirstByUserAndStatusOrderByIdDesc(user, SubscriptionStatus.PAYMENT_PENDING)
                 .orElse(Subscription.builder()
                         .user(user)
                         .status(SubscriptionStatus.PAYMENT_PENDING)
