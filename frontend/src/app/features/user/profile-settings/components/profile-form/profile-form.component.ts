@@ -75,7 +75,8 @@ import { CountrySelectorComponent } from '../../../../../shared/components/count
           >
           <div class="flex items-stretch gap-2">
             <app-country-selector
-              [(selectedCountry)]="selectedCountry"
+              [selectedCountry]="selectedCountry"
+              (selectedCountryChange)="onCountryChange($event)"
               [phoneSubject]="phoneSubject"
               [phoneNumber]="phoneNumber"
             >
@@ -134,5 +135,10 @@ export class ProfileFormComponent {
   onPhoneInput() {
     this.phoneNumber = handlePhoneInput(this.phoneNumber, this.phoneSubject);
     this.phoneNumberChange.emit(this.phoneNumber);
+  }
+
+  onCountryChange(country: Country) {
+    this.selectedCountry = country;
+    this.selectedCountryChange.emit(country);
   }
 }
