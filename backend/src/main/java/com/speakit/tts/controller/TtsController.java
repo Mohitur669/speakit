@@ -7,8 +7,7 @@ import com.speakit.tts.dto.TtsRequest;
 import com.speakit.billing.entity.PlanType;
 import com.speakit.billing.entity.SubscriptionStatus;
 import com.speakit.tts.entity.TtsHistory;
-import com.speakit.tts.repository.TtsHistoryRepository;
-import com.speakit.user.repository.UserRepository;
+import com.speakit.tts.service.TtsService;
 import com.speakit.tts.service.ElevenLabsService;
 import com.speakit.tts.service.PollyService;
 import com.speakit.tts.service.SarvamService;
@@ -39,50 +38,15 @@ public class TtsController {
     private final PollyService pollyService;
     private final ElevenLabsService elevenLabsService;
     private final SarvamService sarvamService;
-    private final UserRepository userRepository;
-    private final TtsHistoryRepository ttsHistoryRepository;
+    private final TtsService ttsService;
     private final SubscriptionService subscriptionService;
 
-    public TtsController(PollyService pollyService, ElevenLabsService elevenLabsService, SarvamService sarvamService, UserRepository userRepository, TtsHistoryRepository ttsHistoryRepository, SubscriptionService subscriptionService) {
+    public TtsController(PollyService pollyService, ElevenLabsService elevenLabsService, SarvamService sarvamService, TtsService ttsService, SubscriptionService subscriptionService) {
         this.pollyService = pollyService;
         this.elevenLabsService = elevenLabsService;
         this.sarvamService = sarvamService;
-        this.userRepository = userRepository;
-        this.ttsHistoryRepository = ttsHistoryRepository;
+        this.ttsService = ttsService;
         this.subscriptionService = subscriptionService;
-    }
-
-    private void recordHistory(HttpServletRequest httpRequest, String voiceId, String voiceName, String voiceType, String format, int charCount, String text) {
-        try {
-            Long userId = (Long) httpRequest.getAttribute("userId");
-            if (userId != null) {
-                TtsHistory history = TtsHistory.builder()
-                        .user(userRepository.getReferenceById(userId))
-                        .voiceId(voiceId)
-                        .voiceName(voiceName)
-                        .voiceType(voiceType)
-                        .outputFormat(format)
-                        .characterCount(charCount)
-                        .textSnippet(text.length() > 100 ? text.substring(0, 100) : text)
-                        .build();
-                ttsHistoryRepository.save(history);
-            }
-        } catch (Exception e) {
-            log.warn("Failed to record TTS history, proceeding anyway", e);
-        }
-    }
-
-    private void validatePlanAccess(PlanType planType, SubscriptionStatus status, LocalDateTime expiry, TtsRequest request, HttpServletRequest httpRequest) {
-        if (request.isElevenLabs() && !subscriptionService.canUseElevenLabs(planType, status, expiry)) {
-            throw new RuntimeException("ElevenLabs AI voices require a Pro Plus subscription.");
-        }
-
-        if (request.isSarvam() && !subscriptionService.canUseSarvam(planType, status, expiry)) {
-            throw new RuntimeException("Sarvam AI Indian voices require a PRO subscription.");
-        }
-
-        Long userId = (Long) httpRequest.getAttribute("userId");
-        subscriptionService.validateSynthesisLimit(userId, planType, status, expiry);
     }
 
     @RateLimited(action = RateLimitAction.TTS)
@@ -95,7 +59,7 @@ public class TtsController {
         Long userId = (Long) httpRequest.getAttribute("userId");
 
         try {
-            validatePlanAccess(planType, status, expiry, request, httpRequest);
+            ttsService.validatePlanAccess(planType, status, expiry, request, userId);
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage().getBytes());
         }
@@ -164,7 +128,7 @@ public class TtsController {
                 cleanBytes[i] = audioBytes[i];
             }
             
-            recordHistory(httpRequest, sanitizedVoiceId, request.getVoiceName(), effectiveVoiceType, sanitizedOutputFormat, sanitizedText.length(), sanitizedText);
+            ttsService.recordHistory(userId, sanitizedVoiceId, request.getVoiceName(), effectiveVoiceType, sanitizedOutputFormat, sanitizedText.length(), sanitizedText);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(getMediaType(sanitizedOutputFormat));
@@ -190,7 +154,7 @@ public class TtsController {
         Long userId = (Long) httpRequest.getAttribute("userId");
 
         try {
-            validatePlanAccess(planType, status, expiry, request, httpRequest);
+            ttsService.validatePlanAccess(planType, status, expiry, request, userId);
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
         }
@@ -229,7 +193,7 @@ public class TtsController {
             // Use centralized logic to determine engine for accurate history/cost tracking
             String effectiveVoiceType = engine.toString();
 
-            recordHistory(httpRequest, sanitizedVoiceId, request.getVoiceName(), effectiveVoiceType, sanitizedOutputFormat, sanitizedText.length(), sanitizedText);
+            ttsService.recordHistory(userId, sanitizedVoiceId, request.getVoiceName(), effectiveVoiceType, sanitizedOutputFormat, sanitizedText.length(), sanitizedText);
 
             return ResponseEntity.ok()
                     .contentType(getMediaType(sanitizedOutputFormat))
@@ -254,7 +218,7 @@ public class TtsController {
 
         if (userId != null) {
             LocalDateTime todayStart = LocalDateTime.now().truncatedTo(ChronoUnit.DAYS);
-            long count = ttsHistoryRepository.countRecentByUserId(userId, todayStart);
+            long count = ttsService.countRecentHistory(userId, todayStart);
             usage.put("dailyCount", count);
             
             usage.put("dailyLimit", subscriptionService.getDailySynthesisLimit(planType, status, expiry));

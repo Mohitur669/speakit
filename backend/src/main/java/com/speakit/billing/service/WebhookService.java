@@ -63,6 +63,9 @@ public class WebhookService {
         // 2. Verify Authenticity
         if (webhookSecret == null || webhookSecret.isBlank()) {
             log.error("CRITICAL: Razorpay Webhook Secret is not configured!");
+            event.setStatus(WebhookEventStatus.FAILED);
+            webhookEventRepository.save(event);
+            throw new IllegalStateException("Razorpay Webhook Secret is not configured. Webhook processing aborted.");
         }
 
         boolean isValid = false;

@@ -3,7 +3,8 @@
  * text input, audio generation, playback controls,
  * and download functionality.
  */
-import { Component, inject, signal, HostListener, effect, OnInit } from '@angular/core';
+import { Component, inject, signal, HostListener, effect, OnInit, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { FormsModule } from '@angular/forms';
 import { TtsService, Voice } from '../../core/services/tts.service';
@@ -39,6 +40,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 })
 export class TtsComponent implements OnInit {
   ttsService = inject(TtsService);
+  private destroyRef = inject(DestroyRef);
   authService = inject(AuthService);
   featureFlags = inject(FeatureFlagService);
   private razorpayService = inject(RazorpayService);
@@ -83,7 +85,7 @@ export class TtsComponent implements OnInit {
 
   async ngOnInit() {
     this.checkAutostart();
-    this.route.queryParams.subscribe(async (params) => {
+    this.route.queryParams.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(async (params) => {
       const autostart = params['autostart'];
       if (autostart) {
         const redirected = await this.invokeUpgrade(autostart);
