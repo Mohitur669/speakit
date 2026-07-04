@@ -65,13 +65,20 @@ public class SubscriptionManagementService {
         userRepository.save(user);
 
         // 2. Manage Subscription Record
-        Subscription subscription = subscriptionRepository.findByUserAndStatus(user, SubscriptionStatus.ACTIVE)
-                .orElse(Subscription.builder()
-                        .user(user)
-                        .status(SubscriptionStatus.ACTIVE)
-                        .build());
+        Subscription subscription = null;
+        if (gatewaySubscriptionId != null && !gatewaySubscriptionId.trim().isEmpty()) {
+            subscription = subscriptionRepository.findByRazorpaySubscriptionId(gatewaySubscriptionId).orElse(null);
+        }
+        
+        if (subscription == null) {
+            subscription = subscriptionRepository.findByUserAndStatus(user, SubscriptionStatus.ACTIVE)
+                    .orElse(Subscription.builder()
+                            .user(user)
+                            .build());
+        }
 
         subscription.setPlanType(newPlan);
+        subscription.setStatus(SubscriptionStatus.ACTIVE);
         subscription.setRazorpaySubscriptionId(gatewaySubscriptionId);
         subscription.setCurrentPeriodStart(LocalDateTime.now());
         subscription.setCurrentPeriodEnd(user.getPlanExpiry());
