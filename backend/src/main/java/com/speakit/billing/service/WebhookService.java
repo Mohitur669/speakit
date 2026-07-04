@@ -9,10 +9,8 @@ import com.speakit.billing.entity.Subscription;
 import com.speakit.user.entity.User;
 
 import com.razorpay.Utils;
-import com.speakit.tts.entity.*;
 import com.speakit.billing.repository.PaymentRepository;
 import com.speakit.billing.repository.SubscriptionRepository;
-import com.speakit.user.repository.UserRepository;
 import com.speakit.billing.repository.WebhookEventRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,7 +32,6 @@ public class WebhookService {
     private final WebhookEventRepository webhookEventRepository;
     private final PaymentRepository paymentRepository;
     private final SubscriptionRepository subscriptionRepository;
-    private final UserRepository userRepository;
     private final SubscriptionManagementService subscriptionManagementService;
     
     @Value("${razorpay.webhook.secret:}")
