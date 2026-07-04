@@ -46,8 +46,8 @@ public class RazorpayService {
     private final SubscriptionManagementService subscriptionManagementService;
 
     /**
-     * Creates a Razorpay order and an internal PENDING subscription.
-     * Idempotency is handled by order creation tracking.
+     * Creates a Razorpay subscription and an internal PENDING subscription.
+     * Idempotency is handled by subscription creation tracking.
      */
     @Transactional
     public PaymentOrderResponse createOrder(PaymentOrderRequest request, User user) throws RazorpayException {
@@ -59,26 +59,52 @@ public class RazorpayService {
 
         int amountInPaise = planPrice.multiply(new BigDecimal("100")).intValue();
 
-        JSONObject orderRequest = new JSONObject();
-        orderRequest.put("amount", amountInPaise);
-        orderRequest.put("currency", request.getCurrency());
-        orderRequest.put("receipt", "txn_" + UUID.randomUUID().toString().substring(0, 8));
+        // Retrieve subscription Plan ID from system parameters
+        String planId = systemParameterService.getLiveParameter(
+                request.getPlanType().toUpperCase() + "_PLAN_ID_RAZORPAY", 
+                ""
+        );
+        if (planId == null || planId.trim().isEmpty()) {
+            throw new RuntimeException("Razorpay Plan ID not configured for plan: " + request.getPlanType() + 
+                ". Please configure " + request.getPlanType().toUpperCase() + "_PLAN_ID_RAZORPAY in system parameters.");
+        }
 
-        Order order = razorpayClient.orders.create(orderRequest);
-        String orderId = order.get("id");
+        JSONObject subscriptionRequest = new JSONObject();
+        subscriptionRequest.put("plan_id", planId);
+        
+        // Default to a high cycle count (e.g. 60 cycles = 5 years of monthly billing)
+        int billingCycles = Integer.parseInt(systemParameterService.getLiveParameter("RAZORPAY_SUBSCRIPTION_BILLING_CYCLES", "60"));
+        subscriptionRequest.put("total_count", billingCycles);
+        subscriptionRequest.put("quantity", 1);
+        subscriptionRequest.put("customer_notify", 1);
+
+        // Attach custom notes for auditing/tracing
+        JSONObject notes = new JSONObject();
+        notes.put("user_id", user.getId().toString());
+        notes.put("plan_type", request.getPlanType().toUpperCase());
+        subscriptionRequest.put("notes", notes);
+
+        // Create subscription in Razorpay
+        com.razorpay.Subscription razorpaySubscription = razorpayClient.subscriptions.create(subscriptionRequest);
+        String subscriptionId = razorpaySubscription.get("id");
 
         // Create subscription record immediately to track plan intent
-        Subscription subscription = Subscription.builder()
-                .user(user)
-                .planType(PlanType.valueOf(request.getPlanType().toUpperCase()))
-                .status(SubscriptionStatus.PAYMENT_PENDING)
-                .build();
+        Subscription subscription = subscriptionRepository.findByUserAndStatus(user, SubscriptionStatus.PAYMENT_PENDING)
+                .orElse(Subscription.builder()
+                        .user(user)
+                        .status(SubscriptionStatus.PAYMENT_PENDING)
+                        .build());
+        
+        subscription.setPlanType(PlanType.valueOf(request.getPlanType().toUpperCase()));
+        subscription.setRazorpaySubscriptionId(subscriptionId);
         subscriptionRepository.save(subscription);
 
+        // Save a Payment record to track this billing attempt
+        // We store the subscriptionId in razorpayOrderId to satisfy the UNIQUE NOT NULL DB constraint
         Payment payment = Payment.builder()
                 .user(user)
                 .subscription(subscription)
-                .razorpayOrderId(orderId)
+                .razorpayOrderId(subscriptionId)
                 .amount(planPrice)
                 .currency(request.getCurrency())
                 .status(PaymentStatus.PENDING)
@@ -87,7 +113,8 @@ public class RazorpayService {
         paymentRepository.save(payment);
 
         return PaymentOrderResponse.builder()
-                .orderId(orderId)
+                .orderId(subscriptionId) // Kept for backward compatibility
+                .subscriptionId(subscriptionId)
                 .currency(request.getCurrency())
                 .amount(amountInPaise)
                 .keyId(razorpayConfig.getKeyId())
@@ -95,33 +122,41 @@ public class RazorpayService {
     }
 
     /**
-     * Verifies the Razorpay signature and activates the subscription.
+     * Verifies the Razorpay subscription signature and activates the subscription.
      * Ensures idempotency to prevent double-upgrades.
      */
     @Transactional
     public boolean verifyPayment(PaymentVerificationRequest request, User user) {
         try {
-            JSONObject attributes = new JSONObject();
-            attributes.put("razorpay_order_id", request.getRazorpayOrderId());
-            attributes.put("razorpay_payment_id", request.getRazorpayPaymentId());
-            attributes.put("razorpay_signature", request.getRazorpaySignature());
-
-            boolean isValid = Utils.verifyPaymentSignature(attributes, razorpayConfig.getKeySecret());
+            boolean isValid = verifySubscriptionSignature(
+                    request.getRazorpaySubscriptionId(),
+                    request.getRazorpayPaymentId(),
+                    request.getRazorpaySignature(),
+                    razorpayConfig.getKeySecret()
+            );
 
             if (isValid) {
-                Payment payment = paymentRepository.findByRazorpayOrderId(request.getRazorpayOrderId())
-                        .orElseThrow(() -> new RuntimeException("Payment record not found"));
+                Payment payment = paymentRepository.findByRazorpayOrderId(request.getRazorpaySubscriptionId())
+                        .orElseGet(() -> {
+                            Subscription sub = subscriptionRepository.findByRazorpaySubscriptionId(request.getRazorpaySubscriptionId())
+                                    .orElseThrow(() -> new RuntimeException("Subscription record not found"));
+                            return paymentRepository.findByUserIdOrderByCreatedAtDesc(user.getId(), org.springframework.data.domain.PageRequest.of(0, 1))
+                                    .getContent().stream()
+                                    .filter(p -> p.getSubscription() != null && p.getSubscription().getId().equals(sub.getId()))
+                                    .findFirst()
+                                    .orElseThrow(() -> new RuntimeException("Payment record not found"));
+                        });
 
                 // Security Fix: IDOR Check
                 // Ensure that the payment record fetched actually belongs to the authenticated user
                 if (!payment.getUser().getId().equals(user.getId())) {
-                    log.error("SECURITY ALERT: User {} attempted to verify payment for OrderId {} belonging to User {}", 
-                            user.getId(), request.getRazorpayOrderId(), payment.getUser().getId());
+                    log.error("SECURITY ALERT: User {} attempted to verify payment for SubscriptionId {} belonging to User {}", 
+                            user.getId(), request.getRazorpaySubscriptionId(), payment.getUser().getId());
                     return false;
                 }
 
                 if (payment.getStatus() == PaymentStatus.SUCCESS) {
-                    log.warn("Idempotency Triggered: Payment already processed for order {}", request.getRazorpayOrderId());
+                    log.warn("Idempotency Triggered: Payment already processed for subscription {}", request.getRazorpaySubscriptionId());
                     return true; 
                 }
 
@@ -135,7 +170,7 @@ public class RazorpayService {
                 PlanType targetPlan = payment.getSubscription() != null ? 
                     payment.getSubscription().getPlanType() : PlanType.PRO_PLUS;
                 
-                subscriptionManagementService.changePlan(user, targetPlan, null);
+                subscriptionManagementService.changePlan(user, targetPlan, request.getRazorpaySubscriptionId());
                 
                 return true;
             }
@@ -143,5 +178,28 @@ public class RazorpayService {
             log.error("Payment verification failed", e);
         }
         return false;
+    }
+
+    private boolean verifySubscriptionSignature(String subscriptionId, String paymentId, String signature, String secret) {
+        try {
+            String data = paymentId + "|" + subscriptionId;
+            javax.crypto.Mac sha256HMAC = javax.crypto.Mac.getInstance("HmacSHA256");
+            javax.crypto.spec.SecretKeySpec secretKey = new javax.crypto.spec.SecretKeySpec(secret.getBytes("UTF-8"), "HmacSHA256");
+            sha256HMAC.init(secretKey);
+            byte[] hash = sha256HMAC.doFinal(data.getBytes("UTF-8"));
+            
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hash) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) {
+                    hexString.append('0');
+                }
+                hexString.append(hex);
+            }
+            return hexString.toString().equals(signature);
+        } catch (Exception e) {
+            log.error("Subscription signature verification failed manually", e);
+            return false;
+        }
     }
 }

@@ -20,6 +20,7 @@ import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.math.BigDecimal;
 
 /**
  * Service for handling incoming webhooks from Razorpay.
@@ -87,6 +88,15 @@ public class WebhookService {
 
         try {
             switch (eventType) {
+                case "subscription.charged":
+                    handleSubscriptionCharged(json);
+                    break;
+                case "subscription.activated":
+                    handleSubscriptionActivated(json);
+                    break;
+                case "subscription.cancelled":
+                    handleSubscriptionCancelled(json);
+                    break;
                 case "order.paid":
                     handleOrderPaid(json);
                     break;
@@ -95,9 +105,6 @@ public class WebhookService {
                     break;
                 case "payment.failed":
                     handlePaymentFailed(json);
-                    break;
-                case "subscription.cancelled":
-                    handleSubscriptionCancelled(json);
                     break;
                 default:
                     log.info("Webhook event type ignored: {}", eventType);
@@ -170,6 +177,60 @@ public class WebhookService {
         subscriptionRepository.findByRazorpaySubscriptionId(subId).ifPresent(sub -> {
             subscriptionManagementService.cancelSubscription(sub.getUser());
             log.info("Webhook: Subscription {} cancelled remotely", subId);
+        });
+    }
+
+    private void handleSubscriptionCharged(JSONObject json) {
+        JSONObject payload = json.getJSONObject("payload");
+        JSONObject subEntity = payload.getJSONObject("subscription").getJSONObject("entity");
+        JSONObject paymentEntity = payload.getJSONObject("payment").getJSONObject("entity");
+        
+        String subscriptionId = subEntity.getString("id");
+        String paymentId = paymentEntity.getString("id");
+        String orderId = paymentEntity.getString("order_id");
+        double amountInPaise = paymentEntity.getDouble("amount");
+        BigDecimal amount = BigDecimal.valueOf(amountInPaise / 100.0);
+        String currency = paymentEntity.getString("currency");
+        
+        subscriptionRepository.findByRazorpaySubscriptionId(subscriptionId).ifPresent(sub -> {
+            Payment payment = paymentRepository.findByRazorpayOrderId(orderId)
+                    .orElseGet(() -> {
+                        return paymentRepository.findByRazorpayOrderId(subscriptionId)
+                                .orElseGet(() -> Payment.builder()
+                                        .user(sub.getUser())
+                                        .subscription(sub)
+                                        .razorpayOrderId(orderId)
+                                        .amount(amount)
+                                        .currency(currency)
+                                        .status(PaymentStatus.PENDING)
+                                        .build());
+                    });
+            
+            if (payment.getStatus() != PaymentStatus.SUCCESS) {
+                payment.setRazorpayOrderId(orderId);
+                payment.setRazorpayPaymentId(paymentId);
+                payment.setStatus(PaymentStatus.SUCCESS);
+                paymentRepository.save(payment);
+                
+                User user = sub.getUser();
+                PlanType plan = sub.getPlanType();
+                subscriptionManagementService.changePlan(user, plan, subscriptionId);
+                log.info("Webhook subscription.charged: Activated/Renewed plan ({}) for user {}", plan, user.getUsername());
+            }
+        });
+    }
+
+    private void handleSubscriptionActivated(JSONObject json) {
+        JSONObject subEntity = json.getJSONObject("payload").getJSONObject("subscription").getJSONObject("entity");
+        String subscriptionId = subEntity.getString("id");
+        
+        subscriptionRepository.findByRazorpaySubscriptionId(subscriptionId).ifPresent(sub -> {
+            sub.setStatus(SubscriptionStatus.ACTIVE);
+            subscriptionRepository.save(sub);
+            
+            User user = sub.getUser();
+            subscriptionManagementService.changePlan(user, sub.getPlanType(), subscriptionId);
+            log.info("Webhook subscription.activated: Subscription {} active for user {}", subscriptionId, user.getUsername());
         });
     }
 }

@@ -118,11 +118,9 @@ export class RazorpayService {
 
     return {
       key: orderRes.keyId,
-      amount: orderRes.amount,
-      currency: orderRes.currency,
+      subscription_id: orderRes.subscriptionId,
       name: 'SpeakIT',
       description: `${planType} Plan Subscription`,
-      order_id: orderRes.orderId,
       handler: async (response: any) => {
         await this.handlePaymentSuccess(response);
       },
@@ -156,6 +154,7 @@ export class RazorpayService {
       await firstValueFrom(
         this.http.post(`${environment.apiUrl}/api/v1/payments/verify`, {
           razorpayOrderId: razorpayResponse.razorpay_order_id,
+          razorpaySubscriptionId: razorpayResponse.razorpay_subscription_id,
           razorpayPaymentId: razorpayResponse.razorpay_payment_id,
           razorpaySignature: razorpayResponse.razorpay_signature
         }, { responseType: 'text' })

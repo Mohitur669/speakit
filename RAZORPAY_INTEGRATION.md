@@ -1,114 +1,105 @@
-# SpeakIT: Razorpay Payment Integration & Operational Guide
+# SpeakIT: Razorpay Recurring Subscription & Payment Integration Guide
 
-This document provides a comprehensive guide to the Razorpay payment integration implemented in the SpeakIT SaaS application.
-
----
-
-## 1. Razorpay Account Setup
-
-### Step-by-step Dashboard Setup
-1.  **Account Creation**: Sign up at [Razorpay](https://razorpay.com/).
-2.  **KYC Activation**: Complete the KYC process to accept live payments. For development, use **Test Mode**.
-3.  **API Keys**:
-    -   Go to **Settings** > **API Keys**.
-    -   Generate **Key ID** and **Key Secret**. Save them securely.
-4.  **Webhook Configuration**:
-    -   Go to **Settings** > **Webhooks**.
-    -   Add a new webhook URL (e.g., `https://api.yourdomain.com/api/v1/webhooks/razorpay`).
-    -   Select events: `payment.captured`, `payment.failed`, `subscription.activated`.
-    -   Set a **Webhook Secret**.
+This document provides a comprehensive operational guide to the Razorpay Subscription integration in the SpeakIT SaaS application. The system has been upgraded from one-time orders to recurring monthly subscription plans.
 
 ---
 
-## 2. Backend Implementation (Spring Boot)
+## 1. Razorpay Account Setup for Subscriptions
 
-### Dependencies
-Added `com.razorpay:razorpay-java:1.4.8` to `pom.xml`.
+To accept recurring payments, you must create **Subscription Plans** in your Razorpay Dashboard and register their corresponding Plan IDs in the SpeakIT system parameters.
 
-### Architecture
--   **`RazorpayConfig`**: Injects environment variables and provides a `RazorpayClient` bean.
--   **`RazorpayService`**: 
-    -   `createOrder()`: Communicates with Razorpay API to create a unique Order ID.
-    -   `verifyPayment()`: Uses Razorpay SDK's `Utils.verifyPaymentSignature` to prevent spoofing.
-    -   `activateSubscription()`: Upgrades the user's `plan_type` and creates a `Subscription` record.
--   **`WebhookService`**: 
-    -   Verifies the webhook signature using the configured secret.
-    -   Implements idempotency by tracking `event_id` in the `webhook_events` table.
--   **`PaymentController`**: Exposed endpoints for order creation and verification.
--   **`WebhookController`**: Secure endpoint for Razorpay callbacks.
+### Step 1: Create Subscription Plans in Razorpay Dashboard
+1.  Log in to your [Razorpay Dashboard](https://dashboard.razorpay.com/).
+2.  Switch to **Test Mode** (for development/testing) or **Live Mode** (for production) in the top-right corner.
+3.  Navigate to **Subscriptions** > **Plans** in the left sidebar.
+4.  Click **+ Create Plan**.
+5.  Configure the **Pro Plan**:
+    -   **Plan Name**: `SpeakIT Pro Plan`
+    -   **Billing Frequency**: `Monthly`
+    -   **Billing Interval**: `1` (every 1 month)
+    -   **Amount**: Enter your monthly price (e.g., `499` INR)
+    -   **Description**: `SpeakIT Pro Plan Monthly Recurring Subscription`
+    -   Click **Create Plan**.
+6.  Once created, copy the generated **Plan ID** (starts with `plan_`, e.g., `plan_Nabc12345XYZ`).
+7.  Configure the **Pro Plus Plan**:
+    -   **Plan Name**: `SpeakIT Pro Plus Plan`
+    -   **Billing Frequency**: `Monthly`
+    -   **Billing Interval**: `1`
+    -   **Amount**: Enter your monthly price (e.g., `1999` INR)
+    -   **Description**: `SpeakIT Pro Plus Plan Monthly Recurring Subscription`
+    -   Click **Create Plan**.
+8.  Copy the generated Plan ID (starts with `plan_`, e.g., `plan_Ndef67890ABC`).
 
-### Configuration
-Set the following environment variables:
--   `RAZORPAY_KEY_ID`
--   `RAZORPAY_KEY_SECRET`
--   `RAZORPAY_WEBHOOK_SECRET`
+### Step 2: Configure System Parameters in Database
+Insert or update the generated Razorpay Plan IDs in the SpeakIT `system_parameters` database table. Run the following SQL queries in your database shell or query console:
 
----
+```sql
+-- Update Pro Plan Razorpay ID
+UPDATE system_parameters 
+SET parameter_value = 'plan_YOUR_PRO_PLAN_ID_FROM_RAZORPAY' 
+WHERE parameter_name = 'PRO_PLAN_ID_RAZORPAY';
 
-## 3. Frontend Implementation (Angular)
+-- Update Pro Plus Plan Razorpay ID
+UPDATE system_parameters 
+SET parameter_value = 'plan_YOUR_PRO_PLUS_PLAN_ID_FROM_RAZORPAY' 
+WHERE parameter_name = 'PRO_PLUS_PLAN_ID_RAZORPAY';
 
-### Razorpay Service (`razorpay.service.ts`)
--   Dynamically loads the Razorpay script from `https://checkout.razorpay.com/v1/checkout.js`.
--   `initiatePayment()`: Orchestrates the flow from backend order creation to opening the Razorpay Checkout modal.
--   `verifyPayment()`: Calls the backend verification API after the user completes the payment in the modal.
+-- (Optional) Update Default Subscription Cycles (e.g. 60 cycles = 5 years)
+UPDATE system_parameters 
+SET parameter_value = '60' 
+WHERE parameter_name = 'RAZORPAY_SUBSCRIPTION_BILLING_CYCLES';
+```
 
-### UI Components
--   **`PricingComponent`**: A responsive pricing page with Plan Cards (Basic, Pro, Enterprise).
--   **Navbar**: Updated to include a "Pricing" link and dynamic user badges showing the "Pro" status.
-
----
-
-## 4. Database Schema
-
-The implementation uses a standalone table approach for high auditability:
--   **`subscriptions`**: Tracks the user's current plan, status, and period.
--   **`payments`**: Records every transaction attempt, linking them to users and subscriptions.
--   **`webhook_events`**: An audit log for all received webhooks, ensuring idempotent processing.
-
----
-
-## 5. Security Best Practices
-
-1.  **Server-Side Verification**: Never trust the frontend's payment success callback. Always verify the signature on the backend using the `razorpay_signature`.
-2.  **Webhook Verification**: Every webhook request is verified against the `RAZORPAY_WEBHOOK_SECRET`.
-3.  **Secret Management**: Secrets are never hardcoded and are managed via system environment variables.
-4.  **Idempotency**: We store `razorpay_order_id` and `event_id` to prevent double-billing or multiple activations for the same event.
-5.  **Audit Logs**: All payment attempts (INITIATED, SUCCESS, FAILED) are logged in the `payments` table.
-
----
-
-## 6. Local Development Guide
-
-### Sandbox Testing
--   Use your **Test Key ID** and **Test Key Secret**.
--   Razorpay provides test card numbers (e.g., `4111 1111 1111 1111`).
-
-### Webhook Debugging
-Since webhooks need a public URL, use **ngrok**:
-1.  Install ngrok: `npm install -g ngrok`.
-2.  Expose your local backend: `ngrok http 8080`.
-3.  Update the Webhook URL in Razorpay Dashboard to the ngrok URL (e.g., `https://xyz.ngrok.io/api/v1/webhooks/razorpay`).
+### Step 3: Configure Webhooks
+Webhooks are critical to handle renewal charges, subscription activations, and remote cancellations.
+1.  Navigate to **Settings** > **Webhooks** in the Razorpay Dashboard.
+2.  Click **+ Add New Webhook**.
+3.  Enter the Webhook URL:
+    -   Local Dev (using ngrok): `https://YOUR_SUBDOMAIN.ngrok.io/api/v1/webhooks/razorpay`
+    -   Production: `https://api.yourdomain.com/api/v1/webhooks/razorpay`
+4.  Enter a secure **Webhook Secret** and save it as `RAZORPAY_WEBHOOK_SECRET` in your environment variables.
+5.  Select the following **Active Events**:
+    -   `subscription.activated` — Triggered when a subscription moves to an active state.
+    -   `subscription.charged` — Triggered when a recurring billing charge is successfully processed (essential for first-time activation and subsequent renewals).
+    -   `subscription.cancelled` — Triggered when a subscription is cancelled remotely or naturally expires.
+6.  Click **Create Webhook**.
 
 ---
 
-## 7. Production Deployment Guide
+## 2. Integration Architecture
 
-1.  **Switch to Live Mode**: In the Razorpay dashboard, switch to Live Mode and generate new keys.
-2.  **Update Environment Variables**: Set the Live Key ID, Secret, and Webhook Secret in your production environment (e.g., Render, AWS, Heroku).
-3.  **HTTPS**: Ensure your backend uses HTTPS. Razorpay will not send webhooks to non-secure endpoints in Live Mode.
-4.  **Monitoring**: Monitor the `webhook_events` table for any `FAILED` statuses to debug integration issues.
+### Frontend Checkout Flow (Angular)
+1.  **Initiate Checkout**: When the user clicks "Upgrade" on the UI, `razorpay.service.ts` sends a POST request to `/api/v1/payments/create-order` with the selected plan type.
+2.  **Create Subscription**: The backend calls Razorpay to create a subscription with the matching `plan_id` and returns the `subscriptionId`.
+3.  **Checkout Modal**: The frontend calls Razorpay Checkout by passing `subscription_id` instead of `order_id` in the configuration options.
+4.  **Verification**: After successful card authorization, Razorpay returns a `razorpay_payment_id`, `razorpay_subscription_id`, and `razorpay_signature`. The frontend sends these parameters to `/api/v1/payments/verify` for instant activation.
+
+### Backend Execution & Verification (Spring Boot)
+-   **Plan Configuration**: Plan IDs are fetched dynamically from System Parameters (`PRO_PLAN_ID_RAZORPAY` and `PRO_PLUS_PLAN_ID_RAZORPAY`).
+-   **Manual Signature Check**: Because subscription signature verification matches `payment_id + "|" + subscription_id`, signature validation uses a secure local HMAC-SHA256 generation function verifying against the `razorpay_signature` to guarantee authentication.
+-   **Security/IDOR check**: The user verifying the subscription must own the corresponding payment record.
+-   **Idempotency**: All webhook requests are processed transactionally and tracked in `webhook_events` to ensure exactly-once execution.
+
+---
+
+## 3. Environment Variables Configuration
+
+Ensure the following variables are present in your backend's `.env` or application config:
+```properties
+# Razorpay Credentials
+razorpay.key.id=rzp_test_YOUR_KEY_ID
+razorpay.key.secret=YOUR_KEY_SECRET
+razorpay.webhook.secret=YOUR_WEBHOOK_SECRET
+```
 
 ---
 
-## 8. Go-Live Checklist
+## 4. Local Development & Testing Guide
 
-- [ ] Razorpay account activated and in Live Mode.
-- [ ] Live API keys configured in environment variables.
-- [ ] Webhook URL configured with Live Webhook Secret.
-- [ ] HTTPS enabled on all endpoints.
-- [ ] Log levels set appropriately (e.g., `INFO`).
-- [ ] Test transaction performed in Live Mode using a real card (small amount).
-- [ ] Webhook receipt verified in production logs.
+1.  **Use Sandbox Details**: Always test with Sandbox credentials first.
+2.  **Use Test Cards**: In Test Mode, complete checkouts using the official [Razorpay Test Cards](https://razorpay.com/docs/payments/payments/test-card-details/).
+3.  **Use ngrok**: Run `ngrok http 8080` to route webhook callbacks to your local machine.
 
 ---
-*Created by SpeakIT Engineering Team - 2026*
+
+*SpeakIT Payment & Operations Engineering — 2026*
