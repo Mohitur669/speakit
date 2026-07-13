@@ -21,7 +21,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
+
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 
 @Service
 @RequiredArgsConstructor
@@ -34,8 +36,12 @@ public class SttService {
     private final UserRepository userRepository;
     private final SystemParameterService systemParameterService;
 
-    // Memory-efficient deduplication cache (Hashed Content -> Timestamp)
-    private final ConcurrentHashMap<String, Long> messageFingerprints = new ConcurrentHashMap<>();
+    // Bounded, auto-expiring deduplication cache (SEC-03 / CWE-770).
+    // Fingerprints expire after the dedupe window so the map stays small at steady state.
+    private final Cache<String, Long> messageFingerprints = Caffeine.newBuilder()
+            .expireAfterWrite(java.time.Duration.ofMinutes(5))
+            .maximumSize(50_000)
+            .build();
 
     /**
      * Orchestrates the STT process with plan-aware provider selection and failover.
@@ -50,17 +56,21 @@ public class SttService {
             multipartFile.transferTo(tempFilePath.toFile());
             File audioFile = tempFilePath.toFile();
 
-            // 2. Message Fingerprinting (Anti-Spam - Atomic)
+            // 2. Message Fingerprinting (Anti-Spam)
+            // Caffeine Cache does not expose putIfAbsent; we use getIfPresent + put.
+            // The cache auto-expires entries after the configured window (5 min),
+            // so the map stays bounded even under sustained traffic (SEC-03).
             String fingerprint = generateFileFingerprint(audioFile, userId);
             long now = System.currentTimeMillis();
             
             long dedupeWindow = Long.parseLong(systemParameterService.getLiveParameter("STT_DEDUPE_WINDOW_MS", "60000"));
-            Long previousTime = messageFingerprints.putIfAbsent(fingerprint, now);
+            Long previousTime = messageFingerprints.getIfPresent(fingerprint);
             
             if (previousTime != null && (now - previousTime < dedupeWindow)) {
                 log.warn("Duplicate STT request detected from user {}. Blocking.", userId);
                 throw new SttException("Duplicate request. Please wait before transcribing the same file again.");
             }
+            messageFingerprints.put(fingerprint, now);
 
             // 3. Determine Attempt Order
             // Default to Sarvam (Indian dialects), fallback to ElevenLabs

@@ -132,6 +132,13 @@
             <artifactId>razorpay-java</artifactId>
             <version>1.4.8</version>
         </dependency>
+
+        <!-- Caffeine: bounded, auto-expiring in-memory cache (SEC-02, SEC-03) -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+            <!-- version managed by spring-boot-starter-parent -->
+        </dependency>
     </dependencies>
 
     <build>

@@ -1,5 +1,7 @@
 package com.speakit.config;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import org.springframework.beans.factory.annotation.Value;
@@ -7,7 +9,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.time.Duration;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Enterprise Rate Limiting Configuration.
@@ -37,9 +38,20 @@ public class RateLimitConfig {
     @Value("${rate-limit.live-param.capacity:10}")
     private long liveParamCapacity;
 
+    /**
+     * Bounded, auto-expiring cache for rate-limit Buckets.
+     * 
+     * Using Caffeine instead of a raw ConcurrentHashMap prevents the
+     * unbounded memory-leak DoS vector (SEC-02 / CWE-770): entries are
+     * evicted after 30 minutes of inactivity and the map is capped at
+     * 100 000 entries so JVM heap cannot be exhausted by IP rotation.
+     */
     @Bean
-    public ConcurrentHashMap<String, Bucket> rateLimitBuckets() {
-        return new ConcurrentHashMap<>();
+    public Cache<String, Bucket> rateLimitBuckets() {
+        return Caffeine.newBuilder()
+                .expireAfterAccess(Duration.ofMinutes(30))
+                .maximumSize(100_000)
+                .build();
     }
 
     /**

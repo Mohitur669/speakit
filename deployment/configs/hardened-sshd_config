@@ -1,0 +1,111 @@
+# SSH Daemon Hardened Configuration
+# Location: /etc/ssh/sshd_config
+# This configuration follows security best practices
+
+# ============================================
+# CONNECTION SETTINGS
+# ============================================
+
+# Use only SSH Protocol 2 (more secure)
+Protocol 2
+
+# Listen on all interfaces (firewall controls access)
+ListenAddress 0.0.0.0
+ListenAddress ::
+
+# Port 22 (consider changing to custom port >1024 for obscurity)
+Port 22
+
+# ============================================
+# AUTHENTICATION SECURITY
+# ============================================
+
+# Disable root login completely
+PermitRootLogin no
+
+# Disable password authentication - KEY-ONLY
+PasswordAuthentication no
+PermitEmptyPasswords no
+
+# Disable challenge-response authentication
+ChallengeResponseAuthentication no
+
+# Disable PAM (if not needed for auth)
+UsePAM yes
+
+# ============================================
+# SESSION SECURITY
+# ============================================
+
+# Auto-disconnect idle sessions
+ClientAliveInterval 300        # 5 minutes
+ClientAliveCountMax 2          # 2 missed = 10 min total disconnect
+
+# Maximum authentication attempts
+MaxAuthTries 3
+MaxSessions 2
+
+# ============================================
+# ENCRYPTION HARDENING
+# ============================================
+
+# Strong key exchange algorithms
+KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org
+
+# Strong ciphers
+Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com
+
+# Strong MAC algorithms
+MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com
+
+# ============================================
+# FEATURE DISABLING
+# ============================================
+
+# Disable tunneling (prevents VPN-like usage)
+AllowTcpForwarding no
+X11Forwarding no
+AllowAgentForwarding no
+
+# Disable connection multiplexing (security)
+ControlMaster no
+ControlPath none
+ControlPersist 0
+
+# Disable .rhosts and related authentication
+IgnoreRhosts yes
+HostbasedAuthentication no
+
+# Disable empty passwords
+PermitEmptyPasswords no
+
+# ============================================
+# USER RESTRICTIONS
+# ============================================
+
+# Only allow specific users (recommended)
+AllowUsers deploy
+
+# ============================================
+# LOGGING & WARNINGS
+# ============================================
+
+# Enable logging
+SyslogFacility AUTH
+LogLevel VERBOSE
+
+# Display legal banner
+Banner /etc/ssh/banner
+
+# ============================================
+# PRIVILEGE SEPARATION
+# ============================================
+
+# Use privilege separation sandbox
+UsePrivilegeSeparation sandbox
+
+# ============================================
+# SUBSYSTEM
+# ============================================
+
+Subsystem sftp /usr/lib/openssh/sftp-server -f AUTHPRIV -l INFO

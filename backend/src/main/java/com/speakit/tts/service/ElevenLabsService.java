@@ -34,6 +34,11 @@ public class ElevenLabsService {
     private static final long CACHE_DURATION = 24 * 60 * 60 * 1000;
 
     public InputStream synthesizeSpeech(String text, String voiceId) {
+        // SEC-04: Validate voiceId is a safe alphanumeric token before concatenating
+        // it into the URL to prevent outbound path traversal (CWE-22 / SSRF-lite).
+        if (voiceId == null || !voiceId.matches("^[a-zA-Z0-9_-]+$")) {
+            throw new IllegalArgumentException("Invalid voiceId: must be alphanumeric (a-z, A-Z, 0-9, _, -)");
+        }
         String url = "https://api.elevenlabs.io/v1/text-to-speech/" + voiceId;
 
         HttpHeaders headers = new HttpHeaders();

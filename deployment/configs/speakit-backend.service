@@ -1,0 +1,63 @@
+[Unit]
+Description=SpeakIt Spring Boot Backend
+Documentation=https://github.com/mohitur/speakit
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=deploy
+Group=deploy
+
+# Environment file location
+EnvironmentFile=/opt/speakit/config/.env.backend
+
+# Working directory
+WorkingDirectory=/opt/speakit/backend
+
+# Java options
+# -Xms: Initial heap size
+# -Xmx: Maximum heap size (512MB is good for 1GB RAM)
+# -XX:+UseG1GC: G1 garbage collector (good for low memory)
+# -Dserver.port=127.0.0.1: Bind to localhost only (CRITICAL for security)
+ExecStart=/usr/bin/java \
+    -Xms256m \
+    -Xmx512m \
+    -XX:+UseG1GC \
+    -XX:+ExitOnOutOfMemoryError \
+    -Dspring.profiles.active=prod \
+    -Dserver.address=127.0.0.1 \
+    -Dserver.port=8080 \
+    -Djava.security.egd=file:/dev/./urandom \
+    -jar /opt/speakit/backend/TextToSpeechApplication-0.0.1-SNAPSHOT.jar
+
+# Restart policy
+Restart=on-failure
+RestartSec=10
+StartLimitBurst=3
+StartLimitIntervalSec=60
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=speakit-backend
+
+# Hardening: Prevent execution from /tmp
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectClock=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectHostname=true
+ProtectEnvironment=true
+
+# Capability restrictions
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+[Install]
+WantedBy=multi-user.target
