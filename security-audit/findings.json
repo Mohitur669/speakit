@@ -1,0 +1,350 @@
+[
+  {
+    "verdict": "rejected",
+    "reason": "The 'backend/.env' file containing development credentials is not tracked by Git (verified using 'git ls-files') and is already excluded in the repository's '.gitignore'. It only exists locally for working purposes."
+  },
+  {
+    "verdict": "confirmed",
+    "title": "Local Privilege Escalation to Root via Cron Path and Folder Permissions",
+    "description": "The deployment setup script configures a root-owned cron job executing '/opt/speakit/monitor.sh' every minute. However, the script recursively changes the ownership of the entire '/opt/speakit' folder to the low-privileged 'deploy:deploy' user. Since the deploy user has write permissions on the parent folder '/opt/speakit/', they can delete and replace the 'monitor.sh' script with a malicious payload (despite the file being owned by root). When the root cron executes it, the payload is executed as root.",
+    "root_cause": "server-initial-setup.sh in deployment/scripts/ recursively chowns /opt/speakit to deploy:deploy, allowing write permissions on the folder containing a root-executed cron script.",
+    "intended_behavior": "Root-executed cron scripts and their parent folders should only have write permissions restricted to root (0755 or 0700).",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "deployment/scripts/server-initial-setup.sh",
+        "line": 32,
+        "scope": "setup",
+        "description": "Deploy user is created with standard privileges."
+      },
+      {
+        "kind": "propagation",
+        "file": "deployment/scripts/server-initial-setup.sh",
+        "line": 64,
+        "scope": "setup",
+        "description": "The script recursively changes ownership of /opt/speakit to deploy:deploy."
+      },
+      {
+        "kind": "sink",
+        "file": "deployment/scripts/server-initial-setup.sh",
+        "line": 175,
+        "scope": "setup",
+        "description": "A root crontab task is scheduled to execute /opt/speakit/monitor.sh every minute."
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "authentication_level",
+        "description": "Attacker must have local shell access to the deploy user on the server hosting the application."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "Local authenticated attacker as the 'deploy' user on the server.",
+      "payloads": [
+        "rm -f /opt/speakit/monitor.sh && echo 'echo \"deploy ALL=(ALL) NOPASSWD: ALL\" >> /etc/sudoers' > /opt/speakit/monitor.sh && chmod +x /opt/speakit/monitor.sh"
+      ],
+      "instructions": [
+        "1. Login to the server as the 'deploy' user.",
+        "2. Run the payload command to remove and replace 'monitor.sh'.",
+        "3. Wait 1 minute for the cron job to run as root.",
+        "4. Run 'sudo su' to escalate privileges to root without a password prompt."
+      ],
+      "expected_result": "Deploy user obtains root privileges on the server."
+    },
+    "remediation": {
+      "strategy": "Create a dedicated subdirectory /opt/speakit/backend owned by deploy:deploy for deployments, but keep root-executed scripts in a separate directory (e.g. /usr/local/bin) or under a root-owned /opt/speakit directory where write permissions on the directory are restricted to root.",
+      "code_changes": [
+        {
+          "file_name": "deployment/scripts/server-initial-setup.sh",
+          "fixed_code": "chown -R root:root /opt/speakit\nchmod 755 /opt/speakit\nmkdir -p /opt/speakit/backend\nchown -R deploy:deploy /opt/speakit/backend\n"
+        }
+      ]
+    },
+    "severity": {
+      "likelihood": {
+        "score": "high",
+        "reason": "Exploitation is trivial once local shell access is established, requiring a simple file replacement."
+      },
+      "impact": {
+        "score": "critical",
+        "reason": "Allows total administrative takeover of the hosting server."
+      },
+      "overall_severity": "high"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Standard Linux directory permission behavior allows replacing files when folder write permission is possessed."
+    }
+  },
+  {
+    "verdict": "confirmed",
+    "title": "Indefinite In-Memory Storage / Memory Leak in Rate-Limiting Cache",
+    "description": "The rate-limiting aspect utilizes a static in-memory ConcurrentHashMap to store rate limiting Buckets. Since the map key contains client IP addresses, user-agent device fingerprints, and email addresses, the map grows indefinitely with every unique client or request signature. Because there is no eviction policy, TTL, or periodic cleanup task, the map will leak memory over time, eventually causing an Out of Memory (OOM) error and application crash.",
+    "root_cause": "RateLimitAspect.java in com.speakit.shared.aspect uses computeIfAbsent on rateLimitBuckets without an eviction policy, leading to unbounded memory consumption.",
+    "intended_behavior": "The rate-limiting buckets map should utilize a cache with access/write-expiration (such as Caffeine) or be delegated to an external store (like Redis) to prevent OOM.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "backend/src/main/java/com/speakit/shared/aspect/RateLimitAspect.java",
+        "line": 51,
+        "scope": "enforceRateLimit",
+        "description": "Aspect intercepts a rate-limited endpoint call."
+      },
+      {
+        "kind": "sink",
+        "file": "backend/src/main/java/com/speakit/shared/aspect/RateLimitAspect.java",
+        "line": 206,
+        "scope": "checkBucket",
+        "description": "Key is inserted into the ConcurrentHashMap map without size limitations or eviction parameters."
+      }
+    ],
+    "conditions": [],
+    "execution": {
+      "attacker_perspective": "Remote unauthenticated attacker.",
+      "payloads": [
+        "for i in {1..1000000}; do curl -H \"X-Forwarded-For: 1.2.$((i/65536)).$((i%256))\" http://localhost:8080/api/auth/ping; done"
+      ],
+      "instructions": [
+        "1. Send a high volume of requests with randomized client IPs or User-Agents.",
+        "2. Observe JVM heap memory consumption growing linearly without garbage collection reclaiming it.",
+        "3. Trigger an OutOfMemoryError, causing the backend service to crash."
+      ],
+      "expected_result": "JVM exhausts heap memory and the application crashes (Denial of Service)."
+    },
+    "remediation": {
+      "strategy": "Refactor the rateLimitBuckets bean declaration to use Caffeine cache with an expiration policy (expireAfterAccess) rather than a raw ConcurrentHashMap.",
+      "code_changes": [
+        {
+          "file_name": "backend/src/main/java/com/speakit/config/RateLimitConfig.java",
+          "fixed_code": "// Replace ConcurrentHashMap with Caffeine cache\n"
+        }
+      ]
+    },
+    "severity": {
+      "likelihood": {
+        "score": "medium",
+        "reason": "Requires high volume or sustained connections to trigger an OOM in production, but is easily automated."
+      },
+      "impact": {
+        "score": "high",
+        "reason": "Causes a complete denial of service (DoS) of the voice generation backend."
+      },
+      "overall_severity": "medium"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Verified that there is no cleanup or eviction mechanism whatsoever on the rateLimitBuckets Map."
+    }
+  },
+  {
+    "verdict": "confirmed",
+    "title": "Memory Leak in Speech-to-Text Deduplication Cache",
+    "description": "The Speech-to-Text service uses an in-memory ConcurrentHashMap to keep track of audio file fingerprints and prevent double-submissions. However, this map is never purged, evicted, or cleaned up. Over time, every unique file transcription request allocates memory that remains resident in the JVM permanently, causing a memory leak that eventually triggers an OutOfMemoryError and crashes the backend service.",
+    "root_cause": "SttService.java in com.speakit.stt.service puts transcription file fingerprints into messageFingerprints without ever removing or expiring them.",
+    "intended_behavior": "Fingerprints should be stored in a self-expiring cache matching the deduplication window (e.g. 60 seconds).",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "backend/src/main/java/com/speakit/stt/controller/SttController.java",
+        "line": 45,
+        "scope": "transcribe",
+        "description": "A transcription request is initiated."
+      },
+      {
+        "kind": "propagation",
+        "file": "backend/src/main/java/com/speakit/stt/service/SttService.java",
+        "line": 43,
+        "scope": "transcribe",
+        "description": "The STT service computes the unique hash fingerprint for the user's audio."
+      },
+      {
+        "kind": "sink",
+        "file": "backend/src/main/java/com/speakit/stt/service/SttService.java",
+        "line": 58,
+        "scope": "transcribe",
+        "description": "The fingerprint is registered in the map and remains resident permanently."
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "authentication_level",
+        "description": "Must be authenticated with at least a PRO or higher level account to access STT transcribe endpoints."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "Authenticated PRO tier user.",
+      "payloads": [
+        "Script sending consecutive, slightly modified audio files to the /api/stt/transcribe endpoint."
+      ],
+      "instructions": [
+        "1. Write a script that dynamically alters a tiny portion of an audio file.",
+        "2. Submit consecutive transcription requests to /api/stt/transcribe.",
+        "3. Monitor JVM memory growth until the service crashes."
+      ],
+      "expected_result": "Heap memory exhausts, causing denial of service."
+    },
+    "remediation": {
+      "strategy": "Use a self-expiring cache like Caffeine or Guava cache with an expireAfterWrite threshold matching the deduplication window.",
+      "code_changes": [
+        {
+          "file_name": "backend/src/main/java/com/speakit/stt/service/SttService.java",
+          "fixed_code": "// Replace ConcurrentHashMap with expiring cache.\n"
+        }
+      ]
+    },
+    "severity": {
+      "likelihood": {
+        "score": "low",
+        "reason": "Requires authentication at a paid tier level (PRO) to access this endpoint, limiting public exploitability."
+      },
+      "impact": {
+        "score": "high",
+        "reason": "Forces application failure via OutOfMemoryError."
+      },
+      "overall_severity": "medium"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Verified that messageFingerprints contains no removal calls."
+    }
+  },
+  {
+    "verdict": "confirmed",
+    "title": "Outbound Path Traversal and API Abuse in ElevenLabs Voice Synthesis",
+    "description": "The ElevenLabs integration constructs the target API endpoint dynamically using string concatenation: 'String url = \"https://api.elevenlabs.io/v1/text-to-speech/\" + voiceId;'. Since 'voiceId' is sanitized using Jsoup which doesn't check for URL sequences (like '/..'), an attacker can provide a manipulated voiceId to execute path traversal. This allows the attacker to call other POST/GET endpoints of ElevenLabs using the server's API key.",
+    "root_cause": "ElevenLabsService.java in com.speakit.tts.service concatenates the user-supplied voiceId directly into the API endpoint URL without verifying it is a alphanumeric token.",
+    "intended_behavior": "Validate that the voiceId conforms to a strict pattern (e.g. alphanumeric) before concatenating it into URLs.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "backend/src/main/java/com/speakit/tts/controller/TtsController.java",
+        "line": 53,
+        "scope": "synthesize",
+        "description": "The user submits a synthesis request."
+      },
+      {
+        "kind": "propagation",
+        "file": "backend/src/main/java/com/speakit/tts/service/ElevenLabsService.java",
+        "line": 36,
+        "scope": "synthesizeSpeech",
+        "description": "The voiceId is appended to the outbound HTTP request string."
+      },
+      {
+        "kind": "sink",
+        "file": "backend/src/main/java/com/speakit/tts/service/ElevenLabsService.java",
+        "line": 55,
+        "scope": "synthesizeSpeech",
+        "description": "The RestTemplate executes the request with the constructed URL path."
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "authentication_level",
+        "description": "Requires authentication at a plan tier level (PRO_PLUS or above) that allows ElevenLabs integration."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "Authenticated PRO_PLUS user.",
+      "payloads": [
+        "{\"text\":\"hello\",\"voiceId\":\"../../voices\",\"outputFormat\":\"mp3\",\"isElevenLabs\":true}"
+      ],
+      "instructions": [
+        "1. Login as a PRO_PLUS user.",
+        "2. Send the payload to /api/tts/synthesize.",
+        "3. Observe ElevenLabs response or logs indicating a request was dispatched to /v1/voices."
+      ],
+      "expected_result": "Attacker successfully traverses outbound API paths."
+    },
+    "remediation": {
+      "strategy": "Validate the voiceId using a regular expression regex like '^[a-zA-Z0-9_-]+$' before concatenation.",
+      "code_changes": [
+        {
+          "file_name": "backend/src/main/java/com/speakit/tts/service/ElevenLabsService.java",
+          "fixed_code": "if (!voiceId.matches(\"^[a-zA-Z0-9_-]+$\")) { throw new IllegalArgumentException(\"Invalid Voice ID\"); }\n"
+        }
+      ]
+    },
+    "severity": {
+      "likelihood": {
+        "score": "low",
+        "reason": "Requires premium subscription (PRO_PLUS) to access ElevenLabs routes."
+      },
+      "impact": {
+        "score": "medium",
+        "reason": "Allows potential abuse or leakage of administrative ElevenLabs API functions."
+      },
+      "overall_severity": "medium"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "The concatenation is transparently vulnerable to standard URL path traversal."
+    }
+  },
+  {
+    "verdict": "confirmed",
+    "title": "Payment Signature Verification Timing Attack",
+    "description": "The payment signature verification method calculates the HmacSHA256 signature for verification and compares it using standard string equals (non-constant-time). An attacker can run statistical analysis of API response times to guess the signature byte-by-byte, bypassing payment verification and getting unauthorized subscriptions.",
+    "root_cause": "RazorpayService.java in com.speakit.billing.service uses hexString.toString().equals(signature) to check the signature validity.",
+    "intended_behavior": "Use MessageDigest.isEqual() to compare the signatures in constant time.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "backend/src/main/java/com/speakit/billing/controller/PaymentController.java",
+        "line": 45,
+        "scope": "verifyPayment",
+        "description": "The user submits a payment verification signature."
+      },
+      {
+        "kind": "propagation",
+        "file": "backend/src/main/java/com/speakit/billing/service/RazorpayService.java",
+        "line": 122,
+        "scope": "verifyPayment",
+        "description": "The service calls verifySubscriptionSignature."
+      },
+      {
+        "kind": "sink",
+        "file": "backend/src/main/java/com/speakit/billing/service/RazorpayService.java",
+        "line": 192,
+        "scope": "verifySubscriptionSignature",
+        "description": "String equals() is called, executing variable-time character comparisons."
+      }
+    ],
+    "conditions": [],
+    "execution": {
+      "attacker_perspective": "Remote authenticated user.",
+      "payloads": [
+        "Repeated requests to /api/v1/payments/verify with slightly modified signatures, measuring execution latency."
+      ],
+      "instructions": [
+        "1. Capture a valid subscription ID.",
+        "2. Launch a tool to measure timing differences on verification requests.",
+        "3. Extract the correct signature character-by-character based on latency spikes."
+      ],
+      "expected_result": "Signature bypass allowing unauthorized plan upgrades."
+    },
+    "remediation": {
+      "strategy": "Replace equals() with MessageDigest.isEqual() for constant-time comparison.",
+      "code_changes": [
+        {
+          "file_name": "backend/src/main/java/com/speakit/billing/service/RazorpayService.java",
+          "fixed_code": "return java.security.MessageDigest.isEqual(hexString.toString().getBytes(\"UTF-8\"), signature.getBytes(\"UTF-8\"));\n"
+        }
+      ]
+    },
+    "severity": {
+      "likelihood": {
+        "score": "low",
+        "reason": "Timing attacks over WAN require high sampling rates and low noise to succeed, making them difficult in standard cloud hosting."
+      },
+      "impact": {
+        "score": "high",
+        "reason": "Allows bypassing payments to obtain free PRO/PRO_PLUS memberships."
+      },
+      "overall_severity": "low"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "The equals() call is definitely non-constant time in Java JVM."
+    }
+  }
+]

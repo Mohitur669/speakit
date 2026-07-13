@@ -27,7 +27,8 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
-import java.util.concurrent.ConcurrentHashMap;
+
+import com.github.benmanes.caffeine.cache.Cache;
 
 /**
  * Advanced Multi-Layered Rate Limiting Aspect.
@@ -42,7 +43,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class RateLimitAspect {
 
     @Autowired
-    private ConcurrentHashMap<String, Bucket> rateLimitBuckets;
+    private Cache<String, Bucket> rateLimitBuckets;
 
     @Autowired
     private RateLimitConfig rateLimitConfig;
@@ -203,7 +204,9 @@ public class RateLimitAspect {
     }
 
     private void checkBucket(String key, RateLimitAction action) {
-        Bucket bucket = rateLimitBuckets.computeIfAbsent(key, k -> createBucketForAction(action));
+        // Cache.get() is Caffeine's equivalend of computeIfAbsent — it creates
+        // the bucket on first access, then reuses it until eviction.
+        Bucket bucket = rateLimitBuckets.get(key, k -> createBucketForAction(action));
         ConsumptionProbe probe = bucket.tryConsumeAndReturnRemaining(1);
 
         if (!probe.isConsumed()) {

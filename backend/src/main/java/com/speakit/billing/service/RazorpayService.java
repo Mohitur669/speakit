@@ -189,7 +189,11 @@ public class RazorpayService {
                 }
                 hexString.append(hex);
             }
-            return hexString.toString().equals(signature);
+            // SEC-05: Use constant-time comparison to prevent timing-side-channel
+            // attacks on HMAC signature verification (CWE-208).
+            return java.security.MessageDigest.isEqual(
+                    hexString.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                    signature.getBytes(java.nio.charset.StandardCharsets.UTF_8));
         } catch (Exception e) {
             log.error("Subscription signature verification failed manually", e);
             return false;
