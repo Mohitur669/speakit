@@ -1,41 +1,33 @@
 <div class="min-h-screen bg-primary-50 dark:bg-primary-950">
   <app-navbar></app-navbar>
 
-  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 md:py-12">
-    <!-- Studio Module Toggle -->
-    <div class="flex justify-center mb-8 sm:mb-12">
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-6 md:py-8">
+    <div class="flex justify-center mb-4 sm:mb-6">
       <div
-        class="inline-flex p-1.5 bg-primary-100 dark:bg-primary-800/40 rounded-2xl border border-primary-300 dark:border-primary-700/50 shadow-inner backdrop-blur-sm"
+        class="inline-flex p-1 bg-primary-100/60 dark:bg-primary-900/40 rounded-2xl border border-primary-200/80 dark:border-primary-800/50 shadow-inner backdrop-blur-md relative select-none"
       >
+        <!-- Sliding Highlight (Active Pill) -->
+        <div
+          class="absolute top-1 bottom-1 left-1 w-[160px] sm:w-[180px] rounded-xl bg-white dark:bg-primary-800 shadow-md shadow-primary-950/10 dark:shadow-[0_4px_12px_rgba(0,0,0,0.5)] border border-primary-200/30 dark:border-white/5 transition-all duration-300 ease-out"
+        ></div>
+
+        <!-- Text to Speech (Active) -->
         <button
-          class="flex items-center gap-2.5 px-6 py-2.5 rounded-xl text-sm font-bold transition-all bg-white dark:bg-primary-900 text-brand-blue shadow-xl dark:shadow-[0_10px_25px_-5px_rgba(0,0,0,0.5)] ring-1 ring-black/5 dark:ring-white/10"
+          class="relative z-10 flex items-center justify-center gap-2.5 w-[160px] sm:w-[180px] py-2.5 rounded-xl text-sm font-bold transition-colors text-brand-blue"
         >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"
-            ></path>
+          <svg class="w-4 h-4 text-brand-blue animate-pulse-slow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path>
           </svg>
           Text to Speech
         </button>
+
+        <!-- Speech to Text (Inactive) -->
         <a
           routerLink="/stt"
-          class="flex items-center gap-2.5 px-6 py-2.5 rounded-xl text-sm font-bold transition-all text-primary-500 hover:text-primary-900 dark:text-primary-400 dark:hover:text-white group"
+          class="relative z-10 flex items-center justify-center gap-2.5 w-[160px] sm:w-[180px] py-2.5 rounded-xl text-sm font-bold transition-all text-primary-500 hover:text-primary-900 dark:text-primary-400 dark:hover:text-white group"
         >
-          <svg
-            class="w-4 h-4 transition-transform group-hover:scale-110"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z M19 10v1a7 7 0 01-14 0v-1 M12 18v4 M8 22h8"
-            ></path>
+          <svg class="w-4 h-4 text-primary-400 dark:text-primary-500 group-hover:scale-110 group-hover:text-brand-purple transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z M19 10v1a7 7 0 01-14 0v-1 M12 18v4 M8 22h8"></path>
           </svg>
           Speech to Text
         </a>
@@ -43,7 +35,7 @@
     </div>
 
     <!-- Page Header -->
-    <div class="mb-8 sm:mb-12 animate-fade-in">
+    <div class="mb-4 sm:mb-6 animate-fade-in">
       <h1
         class="text-4xl md:text-5xl font-bold text-primary-900 dark:text-white tracking-tight mb-4"
       >
