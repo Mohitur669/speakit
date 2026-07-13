@@ -18,7 +18,7 @@ public class TtsRequest {
     private String voiceId = "Joanna";   // AWS Polly voice
 
     @Size(max = 100, message = "Voice name is too long")
-    @Pattern(regexp = "^[a-zA-Z0-9\\-_:\\s]+$", message = "Invalid Voice Name format")
+    @Pattern(regexp = "^[a-zA-Z0-9\\-_:\\s().,']+$", message = "Invalid Voice Name format")
     private String voiceName;            // Human readable name
 
     @Pattern(regexp = "^(STANDARD|NEURAL|NATURAL|INDIAN)?$", message = "Invalid Voice Type format")
