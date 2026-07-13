@@ -35,7 +35,7 @@ public class RateLimitConfig {
     @Value("${rate-limit.refill-duration-minutes:1}")
     private long defaultRefillDurationMinutes;
 
-    @Value("${rate-limit.live-param.capacity:10}")
+    @Value("${rate-limit.live-param.capacity:100}")
     private long liveParamCapacity;
 
     /**

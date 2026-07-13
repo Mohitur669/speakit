@@ -1,5 +1,42 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+@source "./app";
+
+@theme {
+  --color-primary-50: #FAFAFA;
+  --color-primary-100: #F4F4F5;
+  --color-primary-200: #E4E4E7;
+  --color-primary-300: #D4D4D8;
+  --color-primary-400: #A1A1AA;
+  --color-primary-500: #71717A;
+  --color-primary-600: #52525B;
+  --color-primary-700: #3F3F46;
+  --color-primary-800: #27272A;
+  --color-primary-900: #18181B;
+  --color-primary-950: #09090B;
+
+  --color-accent-50: #F0FDF4;
+  --color-accent-100: #DCFCE7;
+  --color-accent-500: #10B981;
+  --color-accent-600: #059669;
+
+  --color-brand-blue: #3B82F6;
+  --color-brand-purple: #8B5CF6;
+
+  --font-sans: 'Inter', 'system-ui', '-apple-system', 'sans-serif';
+
+  --shadow-subtle: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  --shadow-elevated: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --shadow-glow: 0 0 20px rgba(59, 130, 246, 0.15);
+
+  --animate-fade-in: fadeIn 0.5s ease-out;
+  --animate-slide-up: slideUp 0.5s ease-out;
+  --animate-scale-in: scaleIn 0.3s ease-out;
+}
+
 
 /* Design System Foundation */
 
@@ -49,6 +86,13 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  background-color: #FAFAFA;
+  color: #18181B;
+}
+
+.dark body {
+  background-color: #09090B;
+  color: #FAFAFA;
 }
 
 /* Selection */
@@ -57,11 +101,7 @@ body {
   color: white;
 }
 
-/* Focus states */
-:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px #fff, 0 0 0 4px #3B82F6;
-}
+
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
@@ -210,18 +250,26 @@ textarea::placeholder {
   color: #71717A;
 }
 
-/* Button reset */
-button {
-  cursor: pointer;
-  border: none;
-  background: none;
-  font-family: inherit;
-}
+@layer base {
+  /* Focus states */
+  :focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px #fff, 0 0 0 4px #3B82F6;
+  }
 
-/* Link reset */
-a {
-  color: inherit;
-  text-decoration: none;
+  /* Button reset */
+  button {
+    cursor: pointer;
+    border: none;
+    background: none;
+    font-family: inherit;
+  }
+
+  /* Link reset */
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
 }
 
 /* Custom Scrollbar for Dropdowns */
