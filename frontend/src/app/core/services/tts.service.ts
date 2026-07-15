@@ -110,6 +110,14 @@ export class TtsService {
    * @returns Observable resolving to an array of validated Voice objects.
    */
   getVoices(): Observable<Voice[]> {
+    const planType = localStorage.getItem('planType') || 'FREE';
+    const cacheKey = `${VOICES_CACHE_KEY}_${planType}`;
+
+    // If cache matches but in-memory is empty, try loading it first
+    if (!this.voicesCache) {
+      this.loadCachedVoices();
+    }
+
     if (this.voicesCache && this.voicesCache.length > 0) {
       return of(this.voicesCache);
     }
@@ -129,7 +137,7 @@ export class TtsService {
           voices: this.voicesCache,
           timestamp: Date.now(),
         };
-        localStorage.setItem(VOICES_CACHE_KEY, JSON.stringify(cached));
+        localStorage.setItem(cacheKey, JSON.stringify(cached));
       }),
       catchError(error => {
         this.logger.error('Error fetching voices', error);
@@ -142,7 +150,9 @@ export class TtsService {
    * Internal mechanism to hydrate the voice cache from localStorage on startup.
    */
   private loadCachedVoices(): void {
-    const cached = localStorage.getItem(VOICES_CACHE_KEY);
+    const planType = localStorage.getItem('planType') || 'FREE';
+    const cacheKey = `${VOICES_CACHE_KEY}_${planType}`;
+    const cached = localStorage.getItem(cacheKey);
     if (cached) {
       try {
         const data = JSON.parse(cached) as CachedVoices;
@@ -153,11 +163,12 @@ export class TtsService {
           }
         }
         // Purge if expired or malformed
-        localStorage.removeItem(VOICES_CACHE_KEY);
+        localStorage.removeItem(cacheKey);
       } catch {
-        localStorage.removeItem(VOICES_CACHE_KEY);
+        localStorage.removeItem(cacheKey);
       }
     }
+    this.voicesCache = null;
   }
 
   /**
@@ -191,6 +202,9 @@ export class TtsService {
    */
   clearCache(): void {
     this.voicesCache = null;
+    const planType = localStorage.getItem('planType') || 'FREE';
+    const cacheKey = `${VOICES_CACHE_KEY}_${planType}`;
+    localStorage.removeItem(cacheKey);
     localStorage.removeItem(VOICES_CACHE_KEY);
   }
 }
