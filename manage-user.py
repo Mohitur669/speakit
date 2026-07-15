@@ -194,12 +194,12 @@ def main():
                 sys.exit(1)
 
         print(f"\n[*] Updating user plan to {plan}...")
-        query = "UPDATE users SET plan_type = %s, subscription_status = 'ACTIVE', plan_expiry = NULL WHERE id = %s"
+        query = "UPDATE users SET plan_type = %s, subscription_status = 'ACTIVE', plan_expiry = NULL, session_version = session_version + 1 WHERE id = %s"
         _, err = execute_sql(env, query, (plan, user_data['id']))
         if err:
             print(f"[-] Failed to update plan: {err}")
         else:
-            print(f"[+] Plan updated to {plan} successfully!")
+            print(f"[+] Plan updated to {plan} successfully (forced session refresh)!")
 
 if __name__ == "__main__":
     main()
