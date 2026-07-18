@@ -174,10 +174,8 @@ public class WebhookService {
         JSONObject subEntity = json.getJSONObject("payload").getJSONObject("subscription").getJSONObject("entity");
         String subId = subEntity.getString("id");
 
-        subscriptionRepository.findByRazorpaySubscriptionId(subId).ifPresent(sub -> {
-            subscriptionManagementService.cancelSubscription(sub.getUser());
-            log.info("Webhook: Subscription {} cancelled remotely", subId);
-        });
+        subscriptionManagementService.handleSubscriptionCancelled(subId);
+        log.info("Webhook: Subscription {} cancelled remotely", subId);
     }
 
     private void handleSubscriptionCharged(JSONObject json) {

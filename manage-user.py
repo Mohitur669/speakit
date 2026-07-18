@@ -16,8 +16,18 @@ except ImportError:
 def load_env(env_path):
     env_vars = {}
     if not os.path.exists(env_path):
-        print(f"Error: Environment file not found at {env_path}")
-        sys.exit(1)
+        # Fall back to alternative paths if not found directly
+        paths_to_try = [env_path, "backend/.env", ".env"]
+        found = False
+        for p in paths_to_try:
+            if os.path.exists(p):
+                env_path = p
+                found = True
+                break
+        if not found:
+            print(f"Error: Environment file not found at {env_path}")
+            sys.exit(1)
+            
     with open(env_path, 'r') as f:
         for line in f:
             line = line.strip()
@@ -101,26 +111,126 @@ def find_user(env, identifier):
         'role': parts[5]
     }
 
+def delete_user(env, user_id):
+    # Order matters because of Foreign Key constraints
+    queries = [
+        ("DELETE FROM otp_verifications WHERE user_id = %s", (user_id,)),
+        ("DELETE FROM speech_to_text_requests WHERE user_id = %s", (user_id,)),
+        ("DELETE FROM tts_history WHERE user_id = %s", (user_id,)),
+        ("DELETE FROM payments WHERE user_id = %s", (user_id,)),
+        ("DELETE FROM subscriptions WHERE user_id = %s", (user_id,)),
+        ("DELETE FROM users WHERE id = %s", (user_id,))
+    ]
+    for q, p in queries:
+        _, err = execute_sql(env, q, p)
+        if err:
+            return err
+    return None
+
+def create_user(env, username, email, phone, raw_password, plan="FREE", role="USER"):
+    # Generate next ID from the sequence
+    seq_query = "SELECT nextval('users_seq')"
+    seq_output, err = execute_sql(env, seq_query)
+    if err or not seq_output:
+        return None, f"Failed to generate sequence ID: {err}"
+    
+    user_id = int(seq_output)
+    hashed = hash_password(raw_password)
+    
+    insert_query = (
+        "INSERT INTO users (id, username, email, phone_number, password, plan_type, "
+        "subscription_status, role, is_active, email_verified, account_status, "
+        "consent_accepted, session_version, version, created_at, updated_at) "
+        "VALUES (%s, %s, %s, %s, %s, %s, 'ACTIVE', %s, true, true, 'ACTIVE', true, 1, 0, "
+        "CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+    )
+    _, err = execute_sql(env, insert_query, (user_id, username, email, phone, hashed, plan, role))
+    if err:
+        return None, err
+    return user_id, None
+
+def run_create_flow(env, username=None, email=None, phone=None, password=None, plan=None, role=None):
+    print("\n=== Create New User ===")
+    if not username:
+        username = input("Enter Username: ").strip()
+    if not email:
+        email = input("Enter Email: ").strip()
+    if not phone:
+        phone = input("Enter Phone Number: ").strip()
+    if not password:
+        password = input("Enter Password: ").strip()
+        
+    if not plan:
+        print("\nSelect Plan:")
+        print("1) FREE (Default)")
+        print("2) PRO")
+        print("3) PRO_PLUS")
+        print("4) ENTERPRISE")
+        p_choice = input("Choice (1-4): ").strip()
+        plan = {'1': 'FREE', '2': 'PRO', '3': 'PRO_PLUS', '4': 'ENTERPRISE'}.get(p_choice, 'FREE')
+        
+    if not role:
+        print("\nSelect Role:")
+        print("1) USER (Default)")
+        print("2) ADMIN")
+        r_choice = input("Choice (1-2): ").strip()
+        role = {'1': 'USER', '2': 'ADMIN'}.get(r_choice, 'USER')
+
+    if not username or not email or not phone or not password:
+        print("[-] Error: Username, Email, Phone, and Password cannot be empty.")
+        return
+
+    # Check duplication
+    existing = find_user(env, username) or find_user(env, email)
+    if existing:
+        print(f"[-] Error: A user with username or email '{username}/{email}' already exists.")
+        return
+
+    print("\n[*] Creating user account...")
+    uid, err = create_user(env, username, email, phone, password, plan, role)
+    if err:
+        print(f"[-] Failed to create user: {err}")
+    else:
+        print(f"[+] User created successfully with ID: {uid}!")
+
 def main():
     parser = argparse.ArgumentParser(description="SpeakIT Dev User Management Script")
     parser.add_argument("--env", default="backend/.env", help="Path to backend .env file")
     parser.add_argument("--user", help="Email or Username of the target user")
+    parser.add_argument("--info", action="store_true", help="Print user details")
+    parser.add_argument("--create", action="store_true", help="Create a new user")
+    parser.add_argument("--delete", action="store_true", help="Delete a user")
     parser.add_argument("--reset-password", metavar="NEW_PASSWORD", help="Reset password for the user")
     parser.add_argument("--set-plan", choices=["FREE", "PRO", "PRO_PLUS", "ENTERPRISE"], help="Upgrade/Downgrade the user plan")
-    parser.add_argument("--info", action="store_true", help="Print user details")
     
     args = parser.parse_args()
 
     # Load environment configuration
     env = load_env(args.env)
 
-    # Interactive mode if no user is specified
-    if not args.user:
+    # CLI Explicit Create Flow
+    if args.create:
+        run_create_flow(env)
+        sys.exit(0)
+
+    # Interactive Main Menu if no CLI arguments are supplied
+    if not args.user and not args.delete:
         print("=== SpeakIT User Management Console ===")
-        args.user = input("Enter user Email or Username: ").strip()
-        if not args.user:
-            print("Username/Email cannot be empty.")
-            sys.exit(1)
+        print("1) Search & Manage Existing User")
+        print("2) Create New User")
+        print("3) Exit")
+        choice = input("Enter choice (1-3): ").strip()
+        if choice == '2':
+            run_create_flow(env)
+            sys.exit(0)
+        elif choice == '1':
+            args.user = input("\nEnter user Email or Username to search: ").strip()
+            if not args.user:
+                print("Username/Email cannot be empty.")
+                sys.exit(1)
+        else:
+            print("Exiting.")
+            sys.exit(0)
 
     # Lookup user
     user_data = find_user(env, args.user)
@@ -136,7 +246,21 @@ def main():
     print(f"    - Subscription Status: {user_data['subscription_status']}")
     print(f"    - Role:                {user_data['role']}")
 
-    if args.info and not args.reset_password and not args.set_plan:
+    if args.info and not args.reset_password and not args.set_plan and not args.delete:
+        sys.exit(0)
+
+    # CLI Explicit Delete Flow
+    if args.delete:
+        confirm = input(f"\n[!] WARNING: Are you sure you want to permanently delete user '{user_data['username']}' and all their subscriptions/payments? (y/N): ").strip().lower()
+        if confirm == 'y':
+            print("[*] Deleting user data...")
+            err = delete_user(env, user_data['id'])
+            if err:
+                print(f"[-] Deletion failed: {err}")
+            else:
+                print("[+] User deleted successfully!")
+        else:
+            print("Operation cancelled.")
         sys.exit(0)
 
     # If no action arguments are provided, ask interactively
@@ -145,12 +269,15 @@ def main():
         print("\nChoose an action:")
         print("1) Reset Password")
         print("2) Upgrade/Downgrade Plan")
-        print("3) Cancel")
-        choice = input("Enter choice (1-3): ").strip()
+        print("3) Delete User Account")
+        print("4) Cancel")
+        choice = input("Enter choice (1-4): ").strip()
         if choice == '1':
             action = 'reset-password'
         elif choice == '2':
             action = 'set-plan'
+        elif choice == '3':
+            action = 'delete'
         else:
             print("Operation cancelled.")
             sys.exit(0)
@@ -200,6 +327,18 @@ def main():
             print(f"[-] Failed to update plan: {err}")
         else:
             print(f"[+] Plan updated to {plan} successfully (forced session refresh)!")
+
+    elif action == 'delete':
+        confirm = input(f"\n[!] WARNING: Are you sure you want to permanently delete user '{user_data['username']}' and all their subscriptions/payments? (y/N): ").strip().lower()
+        if confirm == 'y':
+            print("[*] Deleting user data...")
+            err = delete_user(env, user_data['id'])
+            if err:
+                print(f"[-] Deletion failed: {err}")
+            else:
+                print("[+] User deleted successfully!")
+        else:
+            print("Operation cancelled.")
 
 if __name__ == "__main__":
     main()
