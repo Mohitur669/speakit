@@ -556,7 +556,7 @@ If your compute instance is behind Tailscale (meaning the local URL uses `100.x.
      * **If incoming requests match... (Expression Builder)**:
        * *Field*: `Hostname` ➔ *Operator*: `equals` ➔ *Value*: `coolify.mohitur.com`
        * Click **And** (to add a second condition).
-       * *Field*: `URI Path` ➔ *Operator*: `does not start with` ➔ *Value*: `/api/v1/webhooks`
+       * _Field_: `URI Path` ➔ _Operator_: `does not start with` ➔ _Value_: `/webhooks`
      * **Choose action**: **`Block`**
    * Click **Deploy**.
 
@@ -598,7 +598,7 @@ If you are using the GitHub App integration, you must update the Webhook URL in 
 5. Scroll down to the **Webhook** section:
    * **Webhook URL**: Enter your new public Coolify domain webhook endpoint:
      ```text
-     https://coolify.mohitur.com/api/v1/webhooks/github/events
+     https://coolify.mohitur.com/webhooks/source/github/events
      ```
    * **Secret**: Ensure the key matches the webhook secret defined in Coolify.
    * **Active**: Checked.
@@ -614,7 +614,7 @@ If you configured a plain repository integration without a GitHub App, you must 
    * Navigate to **Settings** > **Webhooks** (left sidebar).
    * Click **Add Webhook** (top right).
 4. Configure the Webhook parameters:
-   * **Payload URL**: Use the public domain URL (e.g. `https://coolify.mohitur.com/api/v1/webhooks/...` instead of the local Tailscale IP).
+   * **Payload URL**: Use the public domain URL (e.g. `https://coolify.mohitur.com/webhooks/...` instead of the local Tailscale IP).
    * **Content type**: Change to **`application/json`** (critical).
    * **Secret**: Paste the Webhook Secret from Coolify.
    * **Which events**: Select **`Just the push event.`**
