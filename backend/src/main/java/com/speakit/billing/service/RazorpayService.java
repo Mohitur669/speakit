@@ -1,4 +1,5 @@
 package com.speakit.billing.service;
+
 import com.speakit.parameter.service.SystemParameterService;
 import com.speakit.billing.entity.PlanType;
 import com.speakit.billing.entity.SubscriptionStatus;
@@ -47,27 +48,27 @@ public class RazorpayService {
     public PaymentOrderResponse createOrder(PaymentOrderRequest request, User user) throws RazorpayException {
         // Fetch LIVE price from system parameters to ensure accuracy
         BigDecimal planPrice = systemParameterService.getLivePrice(
-                request.getPlanType().toUpperCase() + "_PLAN_PRICE_INR", 
-                request.getAmount()
-        );
+                request.getPlanType().toUpperCase() + "_PLAN_PRICE_INR",
+                request.getAmount());
 
         int amountInPaise = planPrice.multiply(new BigDecimal("100")).intValue();
 
         // Retrieve subscription Plan ID from system parameters
         String planId = systemParameterService.getLiveParameter(
-                request.getPlanType().toUpperCase() + "_PLAN_ID_RAZORPAY", 
-                ""
-        );
+                request.getPlanType().toUpperCase() + "_PLAN_ID_RAZORPAY",
+                "");
         if (planId == null || planId.trim().isEmpty()) {
-            throw new RuntimeException("Razorpay Plan ID not configured for plan: " + request.getPlanType() + 
-                ". Please configure " + request.getPlanType().toUpperCase() + "_PLAN_ID_RAZORPAY in system parameters.");
+            throw new RuntimeException("Razorpay Plan ID not configured for plan: " + request.getPlanType() +
+                    ". Please configure " + request.getPlanType().toUpperCase()
+                    + "_PLAN_ID_RAZORPAY in system parameters.");
         }
 
         JSONObject subscriptionRequest = new JSONObject();
         subscriptionRequest.put("plan_id", planId);
-        
+
         // Default to a high cycle count (e.g. 60 cycles = 5 years of monthly billing)
-        int billingCycles = Integer.parseInt(systemParameterService.getLiveParameter("RAZORPAY_SUBSCRIPTION_BILLING_CYCLES", "60"));
+        int billingCycles = Integer
+                .parseInt(systemParameterService.getLiveParameter("RAZORPAY_SUBSCRIPTION_BILLING_CYCLES", "60"));
         subscriptionRequest.put("total_count", billingCycles);
         subscriptionRequest.put("quantity", 1);
         subscriptionRequest.put("customer_notify", 1);
@@ -82,18 +83,20 @@ public class RazorpayService {
         com.razorpay.Subscription razorpaySubscription = razorpayClient.subscriptions.create(subscriptionRequest);
         String subscriptionId = razorpaySubscription.get("id");
 
-        Subscription subscription = subscriptionRepository.findFirstByUserAndStatusOrderByIdDesc(user, SubscriptionStatus.PAYMENT_PENDING)
+        Subscription subscription = subscriptionRepository
+                .findFirstByUserAndStatusOrderByIdDesc(user, SubscriptionStatus.PAYMENT_PENDING)
                 .orElse(Subscription.builder()
                         .user(user)
                         .status(SubscriptionStatus.PAYMENT_PENDING)
                         .build());
-        
+
         subscription.setPlanType(PlanType.valueOf(request.getPlanType().toUpperCase()));
         subscription.setRazorpaySubscriptionId(subscriptionId);
         subscriptionRepository.save(subscription);
 
         // Save a Payment record to track this billing attempt
-        // We store the subscriptionId in razorpayOrderId to satisfy the UNIQUE NOT NULL DB constraint
+        // We store the subscriptionId in razorpayOrderId to satisfy the UNIQUE NOT NULL
+        // DB constraint
         Payment payment = Payment.builder()
                 .user(user)
                 .subscription(subscription)
@@ -102,7 +105,7 @@ public class RazorpayService {
                 .currency(request.getCurrency())
                 .status(PaymentStatus.PENDING)
                 .build();
-        
+
         paymentRepository.save(payment);
 
         return PaymentOrderResponse.builder()
@@ -125,32 +128,38 @@ public class RazorpayService {
                     request.getRazorpaySubscriptionId(),
                     request.getRazorpayPaymentId(),
                     request.getRazorpaySignature(),
-                    razorpayConfig.getKeySecret()
-            );
+                    razorpayConfig.getKeySecret());
 
             if (isValid) {
                 Payment payment = paymentRepository.findByRazorpayOrderId(request.getRazorpaySubscriptionId())
                         .orElseGet(() -> {
-                            Subscription sub = subscriptionRepository.findByRazorpaySubscriptionId(request.getRazorpaySubscriptionId())
+                            Subscription sub = subscriptionRepository
+                                    .findByRazorpaySubscriptionId(request.getRazorpaySubscriptionId())
                                     .orElseThrow(() -> new RuntimeException("Subscription record not found"));
-                            return paymentRepository.findByUserIdOrderByCreatedAtDesc(user.getId(), org.springframework.data.domain.PageRequest.of(0, 1))
+                            return paymentRepository
+                                    .findByUserIdOrderByCreatedAtDesc(user.getId(),
+                                            org.springframework.data.domain.PageRequest.of(0, 1))
                                     .getContent().stream()
-                                    .filter(p -> p.getSubscription() != null && p.getSubscription().getId().equals(sub.getId()))
+                                    .filter(p -> p.getSubscription() != null
+                                            && p.getSubscription().getId().equals(sub.getId()))
                                     .findFirst()
                                     .orElseThrow(() -> new RuntimeException("Payment record not found"));
                         });
 
                 // Security Fix: IDOR Check
-                // Ensure that the payment record fetched actually belongs to the authenticated user
+                // Ensure that the payment record fetched actually belongs to the authenticated
+                // user
                 if (!payment.getUser().getId().equals(user.getId())) {
-                    log.error("SECURITY ALERT: User {} attempted to verify payment for SubscriptionId {} belonging to User {}", 
+                    log.error(
+                            "SECURITY ALERT: User {} attempted to verify payment for SubscriptionId {} belonging to User {}",
                             user.getId(), request.getRazorpaySubscriptionId(), payment.getUser().getId());
                     return false;
                 }
 
                 if (payment.getStatus() == PaymentStatus.SUCCESS) {
-                    log.warn("Idempotency Triggered: Payment already processed for subscription {}", request.getRazorpaySubscriptionId());
-                    return true; 
+                    log.warn("Idempotency Triggered: Payment already processed for subscription {}",
+                            request.getRazorpaySubscriptionId());
+                    return true;
                 }
 
                 // 1. Update Payment Record
@@ -159,12 +168,15 @@ public class RazorpayService {
                 payment.setStatus(PaymentStatus.SUCCESS);
                 paymentRepository.save(payment);
 
-                // 2. Delegate Plan Change (Safe, Rank-Aware)
-                PlanType targetPlan = payment.getSubscription() != null ? 
-                    payment.getSubscription().getPlanType() : PlanType.PRO_PLUS;
-                
+                // 2. Cancel previous active subscription on the Razorpay gateway and DB
+                cancelPreviousActiveSubscription(user, request.getRazorpaySubscriptionId());
+
+                // 3. Delegate Plan Change (Safe, Rank-Aware)
+                PlanType targetPlan = payment.getSubscription() != null ? payment.getSubscription().getPlanType()
+                        : PlanType.PRO_PLUS;
+
                 subscriptionManagementService.changePlan(user, targetPlan, request.getRazorpaySubscriptionId());
-                
+
                 return true;
             }
         } catch (Exception e) {
@@ -173,14 +185,46 @@ public class RazorpayService {
         return false;
     }
 
-    private boolean verifySubscriptionSignature(String subscriptionId, String paymentId, String signature, String secret) {
+    private void cancelPreviousActiveSubscription(User user, String newSubscriptionId) {
+        try {
+            subscriptionRepository.findFirstByUserAndStatusOrderByIdDesc(user, SubscriptionStatus.ACTIVE)
+                    .ifPresent(oldSub -> {
+                        String oldSubId = oldSub.getRazorpaySubscriptionId();
+                        if (oldSubId != null && !oldSubId.equals(newSubscriptionId)) {
+                            log.info("Upgrading user {} from old subscription {} to new subscription {}",
+                                    user.getUsername(), oldSubId, newSubscriptionId);
+                            try {
+                                JSONObject cancelRequest = new JSONObject();
+                                cancelRequest.put("cancel_at_cycle_end", false); // Cancel immediately to prevent double
+                                                                                 // charges
+                                razorpayClient.subscriptions.cancel(oldSubId, cancelRequest);
+                                log.info("Successfully cancelled old Razorpay subscription {} for user {}", oldSubId,
+                                        user.getUsername());
+                            } catch (RazorpayException e) {
+                                log.error("Failed to cancel old Razorpay subscription {} for user {}: {}", oldSubId,
+                                        user.getUsername(), e.getMessage());
+                            }
+
+                            oldSub.setStatus(SubscriptionStatus.CANCELLED);
+                            oldSub.setCancelledAt(java.time.LocalDateTime.now());
+                            subscriptionRepository.save(oldSub);
+                        }
+                    });
+        } catch (Exception e) {
+            log.error("Error managing old subscription cleanup during upgrade for user {}", user.getUsername(), e);
+        }
+    }
+
+    private boolean verifySubscriptionSignature(String subscriptionId, String paymentId, String signature,
+            String secret) {
         try {
             String data = paymentId + "|" + subscriptionId;
             javax.crypto.Mac sha256HMAC = javax.crypto.Mac.getInstance("HmacSHA256");
-            javax.crypto.spec.SecretKeySpec secretKey = new javax.crypto.spec.SecretKeySpec(secret.getBytes("UTF-8"), "HmacSHA256");
+            javax.crypto.spec.SecretKeySpec secretKey = new javax.crypto.spec.SecretKeySpec(secret.getBytes("UTF-8"),
+                    "HmacSHA256");
             sha256HMAC.init(secretKey);
             byte[] hash = sha256HMAC.doFinal(data.getBytes("UTF-8"));
-            
+
             StringBuilder hexString = new StringBuilder();
             for (byte b : hash) {
                 String hex = Integer.toHexString(0xff & b);

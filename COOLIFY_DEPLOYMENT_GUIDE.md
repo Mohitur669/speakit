@@ -525,10 +525,11 @@ Since your database ports are blocked from public internet access for security, 
 
 ---
 
-## 7. GitHub Integration for Auto-Deployments
+## 7. GitHub Integration & Webhooks for Auto-Deployments
 
-To achieve complete automation (zero manual setup during code changes), connect Coolify to your GitHub account using a GitHub App. This automatically configures webhook listeners.
+To achieve complete automation (zero manual setup during code changes), you must connect Coolify to your GitHub repository via webhooks. This triggers automatic rebuilds on git pushes.
 
+### Step 1: Set up the GitHub App Connection (Automatic Webhook Setup)
 1. In the Coolify left sidebar, click **Sources** > click **"+ Add"** > select **GitHub App**.
 2. Configure the **New GitHub App** parameters exactly as follows:
    * **Name**: `speakit-github`
@@ -543,7 +544,52 @@ To achieve complete automation (zero manual setup during code changes), connect 
    * Select your personal account or organization.
    * Under repository access, choose **"Only select repositories"** and select your **`speakit`** repository.
    * Click **Install & Authorize**.
-6. GitHub will redirect you back to Coolify. Under the hood, GitHub automatically creates webhooks in your repository settings to trigger automatic build tasks on push events.
+6. GitHub will redirect you back to Coolify.
+
+---
+
+### Step 2: Set up Manual Webhooks (If Automatic Setup is Skipped/Fails)
+If automatic webhook registration did not occur, you must link it manually:
+1. In Coolify, go to your **GitHub Source** settings (left sidebar **Sources** > click `speakit-github`).
+2. Copy the **Webhook URL** and **Webhook Secret** displayed on the configuration page.
+3. Open your GitHub Repository in your browser:
+   * Navigate to **Settings** > **Webhooks** (left sidebar).
+   * Click **Add Webhook** (top right).
+4. Configure the Webhook parameters:
+   * **Payload URL**: Paste the Webhook URL from Coolify.
+   * **Content type**: Change to **`application/json`** (critical).
+   * **Secret**: Paste the Webhook Secret from Coolify.
+   * **Which events**: Select **`Just the push event.`**
+   * **Active**: Checked.
+5. Click **Add webhook**.
+6. Refresh the page after a few seconds and ensure the webhook shows a green checkmark next to the URL.
+
+---
+
+### Step 3: Configure "Watch Paths" (Avoid Unnecessary Backend Builds)
+Since both the backend and frontend exist in the same repository (monorepo), a change to frontend code would normally trigger an unnecessary, expensive Java Maven rebuild in Coolify. We prevent this using **Watch Paths**:
+1. Open your application configuration page in Coolify (do this for both `speakit-prod-backend` and `speakit-dev-backend`).
+2. Go to **Settings** > scroll down to the **Git Source** / **Watch Paths** section.
+3. In the **Watch Paths** field, enter:
+   ```text
+   backend/**
+   ```
+4. Click **Save**.
+5. **Why it matters**: Now, Coolify will inspect every incoming push webhook. It will only execute a rebuild and deploy if a file inside the `/backend` folder has changed. Frontend-only commits will be skipped entirely.
+
+---
+
+### Step 4: How to Verify if Webhooks are Active & Healthy
+If you are unsure if webhooks are already configured, check your GitHub repository settings:
+1. Open your repository on GitHub.
+2. Go to **Settings** (top tab navigation) > select **Webhooks** in the left-hand menu.
+3. Look at your active Webhooks list:
+   * **If no webhook exists**: Follow **Step 2** above to add it manually.
+   * **If a webhook URL matching your Coolify domain/IP is listed**: It is already configured!
+4. Check the **Status Indicator Icon** next to the webhook URL:
+   * **Green Checkmark**: The webhook is active and successfully delivering push events (status code `200 OK`).
+   * **Red Exclamation Mark**: The webhook is failing to reach your server. Click on the webhook, scroll to the **Recent Deliveries** tab at the bottom, select a failed delivery request, and inspect the response payload/error (e.g. `Connection Refused` due to firewall blocks, or `403 Forbidden` due to secret mismatches).
+   * **Grey Warning Icon**: The webhook is registered but no commits have been pushed yet to trigger a test delivery.
 
 ---
 
