@@ -529,6 +529,47 @@ Since your database ports are blocked from public internet access for security, 
 
 To achieve complete automation (zero manual setup during code changes), you must connect Coolify to your GitHub repository via webhooks. This triggers automatic rebuilds on git pushes.
 
+### Phase A: Resolve Private Network Webhook Restrictions (Cloudflare WAF Bypass)
+If your compute instance is behind Tailscale (meaning the local URL uses `100.x.x.x` or `localhost`), GitHub's public servers will fail to reach your server, blocking all auto-deployments. To bypass this securely, map a public domain to your Coolify instance so Traefik can proxy webhook payloads securely over port `443`:
+
+1. **Add Cloudflare DNS Record**:
+   * **Type**: `A`
+   * **Name**: `coolify` (resolves to `coolify.mohitur.com`)
+   * **IPv4 Address**: `YOUR_OCI_PUBLIC_IP` (e.g. `129.154.246.83`)
+   * **Proxy status**: **`Proxied` (Orange Cloud)**.
+
+2. **Configure Coolify Instance FQDN (Coolify v4 Menu Navigation)**:
+   * Open your Coolify Dashboard.
+   * Click **Settings** (located at the bottom of the left-hand navigation sidebar).
+   * Select the **Instance Settings** tab (under General settings).
+   * Find the field labeled **FQDN (Instance Domain)**.
+   * Enter: **`https://coolify.mohitur.com`** (must include the `https://` prefix to trigger Traefik's Let's Encrypt certificate auto-generation).
+   * Click **Save**.
+
+3. **Secure the Dashboard with Cloudflare WAF (Lockdown UI)**:
+   Because we mapped `coolify.mohitur.com` publicly, we must prevent anyone from accessing the Coolify login dashboard via the public web. We do this by setting a firewall block rule that only permits webhook paths:
+   * Log into your **Cloudflare Dashboard** > select your domain **`mohitur.com`**.
+   * Click **Security** > **WAF** (Web Application Firewall) in the left sidebar.
+   * Click the **Custom Rules** tab > click **Create rule**.
+   * Configure the rule parameters:
+     * **Rule name**: `Lockdown Coolify Dashboard`
+     * **If incoming requests match... (Expression Builder)**:
+       * *Field*: `Hostname` ➔ *Operator*: `equals` ➔ *Value*: `coolify.mohitur.com`
+       * Click **And** (to add a second condition).
+       * _Field_: `URI Path` ➔ _Operator_: `does not start with` ➔ _Value_: `/webhooks`
+     * **Choose action**: **`Block`**
+   * Click **Deploy**.
+
+4. **Verify Access Separation**:
+   * **Public Internet Access**: Try opening `https://coolify.mohitur.com` in a browser. Cloudflare must block it immediately with a `403 Forbidden` error screen, proving the login interface is invisible to the public.
+   * **Private Admin Access**: Keep accessing the dashboard locally over your VPN by navigating to:
+     ```text
+     http://100.66.182.36:8000
+     ```
+     This bypasses Cloudflare completely and connects directly to the container over Tailscale.
+
+---
+
 ### Step 1: Set up the GitHub App Connection (Automatic Webhook Setup)
 1. In the Coolify left sidebar, click **Sources** > click **"+ Add"** > select **GitHub App**.
 2. Configure the **New GitHub App** parameters exactly as follows:
@@ -548,15 +589,32 @@ To achieve complete automation (zero manual setup during code changes), you must
 
 ---
 
-### Step 2: Set up Manual Webhooks (If Automatic Setup is Skipped/Fails)
-If automatic webhook registration did not occur, you must link it manually:
-1. In Coolify, go to your **GitHub Source** settings (left sidebar **Sources** > click `speakit-github`).
+### Step 2: Update Webhook URL in GitHub App Settings (Bypass private IP)
+If you are using the GitHub App integration, you must update the Webhook URL in your GitHub settings to point to your new public Coolify domain:
+1. Open GitHub in your browser.
+2. Go to your account **Settings** (click your profile photo in top-right corner > select **Settings**).
+3. Scroll down the left sidebar menu and click **Developer Settings** > select **GitHub Apps**.
+4. Click **Edit** next to your app (usually named `speakit-github-coolify`).
+5. Scroll down to the **Webhook** section:
+   * **Webhook URL**: Enter your new public Coolify domain webhook endpoint:
+     ```text
+     https://coolify.mohitur.com/webhooks/source/github/events
+     ```
+   * **Secret**: Ensure the key matches the webhook secret defined in Coolify.
+   * **Active**: Checked.
+6. Click **Save Changes** at the bottom.
+
+---
+
+### Step 3: Set up Manual Webhooks (Alternative - If App Integration is not used)
+If you configured a plain repository integration without a GitHub App, you must link it manually:
+1. In Coolify, go to your **GitHub Source** settings (left sidebar **Sources** > click your source).
 2. Copy the **Webhook URL** and **Webhook Secret** displayed on the configuration page.
 3. Open your GitHub Repository in your browser:
    * Navigate to **Settings** > **Webhooks** (left sidebar).
    * Click **Add Webhook** (top right).
 4. Configure the Webhook parameters:
-   * **Payload URL**: Paste the Webhook URL from Coolify.
+   * **Payload URL**: Use the public domain URL (e.g. `https://coolify.mohitur.com/webhooks/...` instead of the local Tailscale IP).
    * **Content type**: Change to **`application/json`** (critical).
    * **Secret**: Paste the Webhook Secret from Coolify.
    * **Which events**: Select **`Just the push event.`**
@@ -579,17 +637,41 @@ Since both the backend and frontend exist in the same repository (monorepo), a c
 
 ---
 
-### Step 4: How to Verify if Webhooks are Active & Healthy
-If you are unsure if webhooks are already configured, check your GitHub repository settings:
-1. Open your repository on GitHub.
-2. Go to **Settings** (top tab navigation) > select **Webhooks** in the left-hand menu.
-3. Look at your active Webhooks list:
-   * **If no webhook exists**: Follow **Step 2** above to add it manually.
-   * **If a webhook URL matching your Coolify domain/IP is listed**: It is already configured!
-4. Check the **Status Indicator Icon** next to the webhook URL:
-   * **Green Checkmark**: The webhook is active and successfully delivering push events (status code `200 OK`).
-   * **Red Exclamation Mark**: The webhook is failing to reach your server. Click on the webhook, scroll to the **Recent Deliveries** tab at the bottom, select a failed delivery request, and inspect the response payload/error (e.g. `Connection Refused` due to firewall blocks, or `403 Forbidden` due to secret mismatches).
-   * **Grey Warning Icon**: The webhook is registered but no commits have been pushed yet to trigger a test delivery.
+### Step 4: How to Verify and Troubleshoot Webhook Health
+
+A healthy webhook connection is crucial for auto-deployments. To verify and debug deliveries, use the following step-by-step procedures:
+
+#### A. Checking Recent Deliveries on GitHub
+1. **For GitHub App Integration**:
+   * Go to your personal GitHub **Settings** ➔ **Developer Settings** ➔ **GitHub Apps** ➔ **Edit** your app.
+   * Click **Advanced** in the left sidebar menu to view **Recent Deliveries**.
+2. **For Repository-specific Webhooks**:
+   * Open your GitHub Repository ➔ **Settings** ➔ **Webhooks** ➔ Click **Edit** next to your webhook.
+   * Scroll down to the **Recent Deliveries** section.
+
+#### B. Debugging Webhook Delivery Errors
+
+##### 🔴 Error: 403 Forbidden (Cloudflare WAF Block)
+* **Symptoms**: The delivery logs show `Response 403`, completed very quickly (under `0.05 seconds`), and headers show `Server: cloudflare`.
+* **Diagnostic**:
+  1. Open your **Cloudflare Dashboard** ➔ Go to your domain **`mohitur.com`**.
+  2. Click **Security** ➔ **Events** in the left sidebar.
+  3. Look for a blocked request where the path is `/api/v1/webhooks/github` and user-agent is `GitHub-Hookshot`.
+  4. Expand the event and look at the **Description** (e.g., `Lockdown Coolify Dashboard`).
+* **Root Cause**: The request path does not match your Cloudflare WAF allow rule. If you changed your WAF rule to allow `/webhooks` but your GitHub settings are still configured with the old `/api/v1/webhooks` path, Cloudflare blocks it.
+* **Resolution**: Go to your GitHub App settings and update the **Webhook URL** to `https://coolify.mohitur.com/webhooks/source/github/events` so it starts with `/webhooks`.
+
+##### 🟡 Error: 404 Not Found (Invalid Endpoint Route)
+* **Symptoms**: The delivery logs show `Response 404`, completed in `1.3 - 1.5 seconds`, and headers contain `X-Ratelimit-Limit: 200` and `Access-Control-Allow-Origin: *`.
+* **Diagnostic**: The request successfully bypassed Cloudflare (meaning it reached your OCI server), but Coolify's Laravel router returned a `404 Not Found` because the route doesn't exist.
+* **Root Cause**: The URL on GitHub is pointing to the old API format `/api/v1/webhooks/...` or ends in an incorrect `/events` sub-path.
+* **Resolution**: Remove any `/api/v1` prefix. Ensure the path is exactly:
+  ```text
+  https://coolify.mohitur.com/webhooks/source/github/events
+  ```
+
+##### 🟢 Success: 200 OK (Deployment Triggered)
+* **Verify**: The delivery shows a green checkmark with `200 OK` in GitHub. Inside Coolify, go to your application deployments page to confirm a new build has started automatically.
 
 ---
 
