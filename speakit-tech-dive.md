@@ -7,6 +7,7 @@ _An exhaustive architectural handbook, system design review, and technical inter
 ## TABLE OF CONTENTS
 
 1. [Project Overview](#1-project-overview)
+   - 1.5. [System Cheat Sheet (TL;DR Overview)](#15-system-cheat-sheet-tldr-overview)
 2. [High-Level Architecture](#2-high-level-architecture)
 3. [Frontend Architecture](#3-frontend-architecture)
 4. [Backend Architecture](#4-backend-architecture)
@@ -32,9 +33,11 @@ SpeakIT is a production-grade, full-stack Text-to-Speech (TTS) SaaS platform. It
 
 **Live URLs:**
 
-- Frontend: `mohitur-speakit.vercel.app` (Angular SPA on Vercel)
-- Backend: `text-to-speech-java-backend.onrender.com` (Spring Boot on Render)
-- GitHub: `github.com/Mohitur669/speakit`
+- Production Frontend: `https://speakit.mohitur.com` (Angular SPA on Vercel)
+- Development Frontend: `https://speakit-dev.mohitur.com` (Angular SPA on Vercel)
+- Production API Backend: `https://speakit-prod-api.mohitur.com` (Spring Boot on OCI/Coolify)
+- Development API Backend: `https://speakit-dev-api.mohitur.com` (Spring Boot on OCI/Coolify)
+- GitHub Repository: `https://github.com/Mohitur669/speakit`
 
 ### Core Business Purpose
 
@@ -56,6 +59,35 @@ To become the definitive infrastructure layer for the next generation of auditor
 
 ---
 
+## 1.5. SYSTEM CHEAT SHEET (TL;DR OVERVIEW)
+
+If you need to briefly describe the entire application structure, security posture, and deployment pipeline, refer to this reference dashboard:
+
+### 1. Core Application Features
+* **Text-to-Speech (TTS) Studio**: Orchestrates requests to AWS Polly (Neural and Standard voice engines) and ElevenLabs. Supports voice custom properties, real-time character limit enforcement, and dynamic history tracking.
+* **Speech-to-Text (STT) Studio**: Supports audio file uploading, validation, user transcription logs, and audio translation tracking.
+* **Razorpay Subscription Engine**: Features automated, secure order creation, payment validation, and webhook idempotency. Handles dynamic updates, upgrading active plans (canceling previous autopays instantly to prevent double charges), and scheduled downgrades at the cycle's end.
+* **Dynamic Parameter Engine (`SystemParameter`)**: Allows developers to adjust plan pricing, character quotas, and toggles dynamically from the DB, updating the application behavior globally at runtime without server restarts.
+
+### 2. Comprehensive Security Controls
+* **Stateless JWT Session Management**: Decoupled access/refresh tokens mapped to user records. Decoded payloads are validated against a database-backed `sessionVersion` value, enabling instant global session invalidation.
+* **WAF Admin Panel Lockdown**: Hides the administration dashboard (`coolify.mohitur.com`) from the public internet using a Cloudflare WAF block rule. Webhook events bypass the firewall automatically, while admin UI access is restricted strictly to a private **Tailscale VPN overlay** on port `8000`.
+* **Jsoup Input Sanitization**: Processes all incoming client text through strict Jsoup parser configurations to strip out HTML/JS code before hitting AI synthesis engines, neutralizing XSS attacks and character-quota probing.
+* **Cascading Delete Database Integrity**: Prunes child data tables before parent user records (`otp_verifications` ➔ `tts_history` ➔ `payments` ➔ `subscriptions` ➔ `users`) via clean cascading Python scripts, avoiding DB constraint faults.
+* **AWS Cost Control Budget Shield**: Employs AWS Cloudwatch budgets linked to a Lambda function to immediately strip Polly permissions from the application IAM user if spending exceeds set limits, degrading the system gracefully (HTTP 503) to prevent runaway billing.
+
+### 3. Continuous Deployment (CI/CD) & Webhook Pipeline
+* **Multi-Branch Front-End Tracks (Vercel)**:
+  * Pushes to `master` trigger Vercel production deployments to `https://speakit.mohitur.com`.
+  * Pushes to `feature` trigger Vercel preview/dev deployments to `https://speakit-dev.mohitur.com`.
+* **Dynamic Client-Side Config Injection**: Injects the active environment API URL (`speakit-prod-api.mohitur.com` or `speakit-dev-api.mohitur.com`) into the browser's global scope (`window.__env.API_URL`) during Vercel's build via `prebuild` npm hooks and `runtime-env.js`.
+* **Automated Backend GitOps (Coolify & OCI)**: 
+  * Pushes to GitHub send signed webhook payloads to `https://coolify.mohitur.com/webhooks/source/github/events`.
+  * Webhook signatures are verified locally using HMAC-SHA256. Coolify checks target directories (`backend/**`) and executes multi-stage Docker builds on an OCI Ampere instance.
+  * Traefik v3 verifies the container health using `/api/auth/ping` and hot-swaps routing rules, executing a rolling zero-downtime deployment.
+
+---
+
 ## 2. HIGH-LEVEL ARCHITECTURE
 
 SpeakIT utilizes a decoupled, modern cloud architecture designed for high availability, security, and extremely low-latency audio delivery.
@@ -70,16 +102,16 @@ SpeakIT utilizes a decoupled, modern cloud architecture designed for high availa
                          │ HTTPS
 ┌────────────────────────▼───────────────────────────────┐
 │                      EDGE TIER                         │
-│         Cloudflare (DNS, DDoS, TLS, Caching)          │
+│         Cloudflare (DNS, DDoS, TLS, Caching)           │
 └────────────────────────┬───────────────────────────────┘
                          │ Trusted HTTP
 ┌────────────────────────▼───────────────────────────────┐
 │                  APPLICATION TIER                      │
-│        Spring Boot 3.5 REST API (Render)               │
+│      Spring Boot 3.5 REST API (OCI / Coolify)          │
 │  [Filter Chain → Controller → Service → Repository]    │
 └──────────────┬─────────────────────┬───────────────────┘
                │                     │
-┌──────────────▼───────┐   ┌─────────▼──────────────────┐
+┌──────────────▼───────┐   ┌─────────▼───────────────────┐
 │     DATA TIER        │   │       AI/COMPUTE TIER       │
 │ Supabase PostgreSQL  │   │  AWS Polly (Neural Engine)  │
 │   via PgBouncer      │   │   AWS SDK v2 Streaming      │
@@ -92,7 +124,7 @@ SpeakIT utilizes a decoupled, modern cloud architecture designed for high availa
 
 2. **Edge Tier:** Cloudflare manages DNS and edge routing, enforcing strict SSL/TLS policies, caching static assets, and providing initial DDoS protection before traffic ever reaches the origin servers.
 
-3. **Application Tier:** The Spring Boot 3.5 REST API (hosted on Render) receives the request. It processes CORS preflight checks, validates the JWT, enforces Bucket4j rate limits, and executes core business logic.
+3. **Application Tier:** The Spring Boot 3.5 REST API (hosted on OCI via Coolify v4) receives the request. It processes CORS preflight checks, validates the JWT, enforces Bucket4j rate limits, and executes core business logic.
 
 4. **Data Tier:** Supabase PostgreSQL acts as the source of truth for user identities, subscription states, and conversion history. All database traffic is routed through an IPv4 Session Pooler (PgBouncer) provided by Supabase to prevent connection exhaustion in containerized environments.
 
@@ -147,22 +179,20 @@ The tradeoff is CORS configuration, which we handle via `application.properties`
 
 **Q: What is TTFB and why does it matter for a TTS application?**
 
-**A:** TTFB (Time to First Byte) is the time between the browser sending an HTTP request and receiving the first byte of the response. For the Angular SPA, low TTFB means the user sees the UI shell faster. Vercel's edge network serves the compiled HTML from a CDN node closest to the user — typically under 30ms globally — vs. serving from a single Render server in a US region which could be 200-400ms for Indian users.
+**A:** ... For the Angular SPA, low TTFB means the user sees the UI shell faster. Vercel's edge network serves the compiled HTML from a CDN node closest to the user — typically under 30ms globally — vs. serving from our backend VPS (OCI Compute Instance) which would incur higher latency depending on the region.
 
 For the actual audio synthesis (`/synthesize`), TTFB represents how quickly the audio starts playing. We optimize this through streaming: we pipe the AWS Polly `InputStream` directly to the `HttpServletResponse` `OutputStream`, so the browser receives the first audio bytes while Polly is still generating the rest.
 
 ---
 
-**Q: Why Render for the backend instead of AWS EC2 or Railway?**
+**Q: Why did you migrate the backend to a self-hosted Coolify v4 instance on Oracle Cloud (OCI) instead of staying on Render/Railway?**
 
-**A:** At the startup/MVP stage, the primary concern is operational velocity. Render provides:
+**A:** While platforms like Render or Railway are excellent for initial MVPs, they have two major drawbacks at scale:
+1. **Cold starts / Spin-down behavior**: Render's free tier spins down after inactivity, creating a 30-second lag for the first user. To keep it awake, you need scheduled ping scripts (keep-alive loops). Self-hosting on an OCI compute instance provides **100% persistent uptime** with zero cold starts.
+2. **Financial Scaling & Resource Constraints**: Render limits resources on their basic tiers. OCI offers a generous Always-Free tier (Ampere A1 Compute with up to 4 CPUs and 24GB RAM).
+3. **Operational control with GitOps**: By installing **Coolify v4** (an open-source Heroku/Render alternative) on our OCI instance, we get the exact same GitOps developer experience (automatic container builds from GitHub push webhooks, rolling zero-downtime updates, database backup management) but with complete root control over our server and reverse proxy (Traefik).
 
-- Zero-config Docker container deployment from a GitHub push
-- Automatic HTTPS with managed TLS certificates
-- Environment variable management without an AWS IAM learning curve
-- Free tier for initial validation (with the keep-alive workaround for spin-down behavior)
-
-The tradeoff is vendor lock-in and less infrastructure control. When we need auto-scaling groups, VPC peering with our RDS instance, or custom networking, we migrate to ECS (Fargate) or EKS. The Spring Boot app is containerized (Docker Hub: `mohitur/speakit:backend`), so the migration is a configuration change, not a code change.
+The tradeoff is the overhead of initially setting up the server, UFW firewalls, custom DNS A records in Cloudflare, and securing the Coolify admin UI behind Cloudflare WAF block rules (blocking all public traffic to the dashboard except webhook payloads). Since our Spring Boot app is containerized, migrating from Render to Coolify was entirely a DevOps deployment configuration change, requiring zero Java code rewrites.
 
 ---
 
@@ -172,20 +202,25 @@ The frontend is built with **Angular 21**, strictly utilizing **Standalone Compo
 
 ### Feature Modularization & Folder Structure
 
+The client codebase is fully modularized around specific domain features, separating globally shared infrastructure (core) and presentational elements (shared) from actual business features:
+
 ```
 src/
 ├── app/
-│   ├── core/          → Singletons: AuthService, TtsService, Interceptors, Guards, LoggerService
-│   ├── shared/        → Reusable presentational components: Navbar, Footer, Toast
+│   ├── core/          → Singletons: AuthService, TtsService, SttService, Interceptors, Guards, LoggerService
+│   ├── shared/        → Reusable presentation layout: Navbar, Footer, Toast Notification alert
 │   ├── features/
-│   │   ├── auth/      → Login, Register, Forgot Password (lazy-loaded)
-│   │   ├── tts/       → TTS Studio (lazy-loaded)
-│   │   └── marketing/ → Landing page, Pricing (lazy-loaded)
-│   └── environments/  → Base config files (runtime values injected via window.__env)
+│   │   ├── auth/      → User authentication: Login, Register, Forgot Password, Otp verification (lazy-loaded)
+│   │   ├── home/      → Main hub portal dashboard (lazy-loaded)
+│   │   ├── tts/       → TTS studio: Voice config, character validation, streaming player (lazy-loaded)
+│   │   ├── stt/       → STT workspace: Audio uploader and transcription outputs (lazy-loaded)
+│   │   ├── user/      → Profile settings, active subscription status, upgrade/downgrade panels (lazy-loaded)
+│   │   └── marketing/ → Landing homepage, contact forms, interactive subscription pricing table (lazy-loaded)
+│   └── environments/  → Base config folder
 ├── public/
-│   └── runtime-env.js → Generated at build/start time; injects API URL into window.__env
+│   └── runtime-env.js → Generated dynamic file containing the active API_URL endpoint
 └── scripts/
-    └── set-env.js     → Node script run via prestart/prebuild npm hooks
+    └── set-env.js     → Node configuration injector run on prestart/prebuild hooks
 ```
 
 ### Core Design Decisions
@@ -339,6 +374,29 @@ HTTP Request
 │  @Modifying bulk operations              │
 └──────────────────────────────────────────┘
 ```
+
+### Domain-Driven Modularization
+
+To prevent architectural decay, circular dependencies, and monolithic coupling, the backend is partitioned into 11 distinct domain packages under `com.speakit`. Each package functions as a semi-isolated logical module with clear boundaries:
+
+1. **`auth`**: Manages registration, logins, stateless JWT token generation, OTP registration, password recovery, and secure sessions.
+2. **`billing`**: Governs transaction lifecycle (Razorpay subscriptions and orders), payment validation, and webhook processing. Integrates signature verification and automated autopay mandate cancellations during upgrades.
+3. **`tts`**: The core speech synthesis module. Manages AWS Polly integrations, character consumption checks, history recording, and output streaming.
+4. **`stt`**: Governs speech-to-text transcription tasks, file uploads, and history logging.
+5. **`user`**: Houses the user profile database state, user accounts settings, roles (Free, Pro, Pro Plus, Admin), and account deletion cascading operations.
+6. **`parameter`**: Houses the database-driven configuration layer (`SystemParameter`), allowing live hot-reloads of feature flags, pricing parameters, and tier limits without server restarts.
+7. **`security`**: Enforces Spring Security configurations, CORS origin controls, logging filters (MDC X-Request-ID generation), and JWT filter validation chains.
+8. **`shared`**: Common cross-cutting concerns (Global Exception Handler mappings, custom Runtime Exceptions, pagination parameters, generic DTO utilities).
+9. **`notification`**: Governs mail notification services (email OTP delivery, registration confirmations, warnings).
+10. **`contact`**: Manages contact support forms and user inquiries.
+11. **`config`**: Instantiates third-party API clients (AWS Polly client, Razorpay client, Task executors) as Spring Beans.
+
+#### Architectural Rules Enforced
+* **Unidirectional Dependency Flow**: Dependencies flow strictly downward (e.g., `billing` and `tts` depend on `user` and `parameter`; they never depend on each other). This guarantees that circular bean injection errors are impossible.
+* **Failure Isolation**: A crash in a non-core system (e.g., the mail server in `notification` or a webhook timeout in `billing`) will never block the text-to-speech synthesis engine in `tts`.
+* **Database Referential Cascading**: As defined in the cascade deletion script (`manage-user.py`), referential constraints are clean, deleting data in the strict sequence of child-to-parent relationships (`otp_verifications` ➔ `tts_history` ➔ `payments` ➔ `subscriptions` ➔ `users`).
+
+---
 
 ### Core Design Decisions
 
@@ -581,11 +639,11 @@ for (User user : users) {
 
 In a containerized environment:
 
-- Render might spin up 3 instances of our Spring Boot app
+- Our Coolify orchestrator might spin up 3 instances of our Spring Boot app
 - Each has HikariCP with max pool size 10
 - That's 30 physical connections to PostgreSQL
 
-But if Render scales to 10 instances under load: 100 connections — hitting PostgreSQL's limit.
+But if the orchestrator scales to 10 instances under load: 100 connections — hitting PostgreSQL's limit.
 
 **PgBouncer (Supabase Session Pooler) acts as a connection multiplexer:**
 
@@ -692,7 +750,7 @@ eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjQyLCJzZXNzaW9uVmVyc2lvbiI6N30.SflKxwRJSMeKKF2
 
 **Q: What is CORS and how did you configure it?**
 
-**A:** CORS (Cross-Origin Resource Sharing) is a browser security mechanism. When JavaScript on `mohitur-speakit.vercel.app` (origin A) makes an HTTP request to `text-to-speech-java-backend.onrender.com` (origin B), the browser first sends a "preflight" `OPTIONS` request. The server must respond with specific headers allowing the request, or the browser blocks it.
+**A:** CORS (Cross-Origin Resource Sharing) is a browser security mechanism. When JavaScript on `speakit.mohitur.com` (origin A) makes an HTTP request to `speakit-prod-api.mohitur.com` (origin B), the browser first sends a "preflight" `OPTIONS` request. The server must respond with specific headers allowing the request, or the browser blocks it.
 
 **Our Spring Boot configuration:**
 
@@ -705,7 +763,7 @@ cors.exposed-headers=X-Request-ID,Retry-After
 cors.max-age=3600
 ```
 
-`CORS_ALLOWED_ORIGINS` is an environment variable. On Render's prod environment it's set to `https://mohitur-speakit.vercel.app`. Locally it defaults to `http://localhost:4200`. This means a malicious third-party website cannot make authenticated calls to our API using a victim's browser session.
+`CORS_ALLOWED_ORIGINS` is an environment variable. On our production Coolify environment it's set to `https://speakit.mohitur.com` (and `https://speakit-dev.mohitur.com` for development/preview environments). Locally it defaults to `http://localhost:4200`. This means a malicious third-party website cannot make authenticated calls to our API using a victim's browser session.
 
 ---
 
@@ -916,19 +974,19 @@ public enum RateLimitAction {
 
 ```
 ┌──────────────────┬───────────────────┬──────────────────────┬────────────────────────────────┐
-│ Zone             │ Endpoints          │ Identity Key          │ Bucket Configuration           │
+│ Zone             │ Endpoints         │ Identity Key         │ Bucket Configuration           │
 ├──────────────────┼───────────────────┼──────────────────────┼────────────────────────────────┤
 │ AUTH_FLOW        │ /login            │ hash(IP + UserAgent) │ 5 tokens, refill 5/min         │
-│                  │ /register         │ (no JWT yet)         │ Extremely restrictive.          │
+│                  │ /register         │ (no JWT yet)         │ Extremely restrictive.         │
 │                  │ /forgot-password  │                      │ Stops brute force at ~5 tries. │
 ├──────────────────┼───────────────────┼──────────────────────┼────────────────────────────────┤
 │ TTS_SYNTHESIS    │ /synthesize       │ "user:" + userId     │ 30 burst, refill 10/min        │
-│                  │ /synthesize-stream│ (JWT-bound)          │ Allows natural bursting.        │
-│                  │                  │                      │ Caps sustained automated abuse. │
+│                  │ /synthesize-stream│ (JWT-bound)          │ Allows natural bursting.       │
+│                  │                   │                      │ Caps sustained automated abuse.│
 ├──────────────────┼───────────────────┼──────────────────────┼────────────────────────────────┤
 │ PUBLIC_API       │ /voices           │ hash(IP + UserAgent) │ 60 tokens, refill 60/min       │
-│                  │ /ping             │                      │ Lightweight. Allows crawlers    │
-│                  │ /contact          │                      │ but stops scrapers.             │
+│                  │ /ping             │                      │ Lightweight. Allows crawlers   │
+│                  │ /contact          │                      │ but stops scrapers.            │
 └──────────────────┴───────────────────┴──────────────────────┴────────────────────────────────┘
 ```
 
@@ -1349,14 +1407,94 @@ At `/synthesize`, we have a verified JWT with a stable user ID. Using the user I
 ### Infrastructure Overview
 
 ```
-Frontend: Vercel (Global Edge Network, static SPA, auto HTTPS)
-Backend:  Render (Docker container, auto-deploy from GitHub main)
+Frontend: Vercel (Global Edge Network, static SPA, auto HTTPS, branch previews)
+Backend:  Oracle Cloud Infrastructure (OCI Always-Free Ampere A1, 4 vCPUs, 24GB RAM)
+Orchestration: Coolify v4 (Docker-based GitOps engine, Svelte/PHP control plane)
+Reverse Proxy: Traefik v3 (Auto-routing, Let's Encrypt TLS certificates, SSL termination)
 Database: Supabase (PostgreSQL 16 + PgBouncer Session Pooler)
-DNS/CDN:  Cloudflare (DNS, DDoS, SSL termination, path routing)
-Registry: Docker Hub (mohitur/speakit:backend, mohitur/speakit:frontend)
+DNS/CDN:  Cloudflare (DNS, DDoS, SSL, WAF firewall lockdown rule for dashboard)
+Registry: Local Docker Registry (handled internally by Coolify on-server)
 Budget:   AWS Budgets + SNS + Lambda kill switch (PollyBudgetKillSwitch)
-CI:       GitHub Actions (keep-alive ping every 25 minutes)
 ```
+
+### Self-Hosted GitOps Pipeline: Setup Rationale & Execution
+
+#### Why: The Architecture Decision
+Legacy PaaS providers (e.g. Render, Railway) introduce architectural bottlenecks when scaling a boot-strapped SaaS application:
+1. **The Spin-Down Tax**: Free/Hobby tiers put containers to sleep after 15 minutes of inactivity. This leads to a 30-60 second "cold start" latency spike for the next user.
+2. **Resource Throttling**: Memory constraints (typically 512MB RAM on free tiers) restrict the Java Virtual Machine's garbage collection parameters, causing high CPU overhead during intensive tasks.
+3. **Black-box Proxy Configuration**: Standard platforms offer limited customization of reverse proxy routing (e.g., custom path redirects, compression, SSL termination tuning).
+
+By transitioning to **Oracle Cloud Infrastructure (OCI)** and **Coolify v4**:
+* We obtain **100% persistent runtime memory** (no container spin-downs, JRE remains hot in memory).
+* We leverage OCI's **Always-Free tier (Ampere A1 architecture with 2 vCPUs, 12GB RAM, and 200GB storage)**, which provides significant compute capabilities at no cost.
+* We retain a Svelte-smooth GitOps dashboard that automatically pulls commits from GitHub, builds Docker images, runs health checks, and performs zero-downtime rolling updates.
+
+---
+
+#### How: Step-by-Step Implementation Guide
+
+##### Step 1: OCI Compute Provisioning & Networking
+1. Spin up an **Ubuntu 22.04 LTS (Ampere A1)** compute instance on OCI.
+2. In the OCI Console, navigate to **Virtual Cloud Networks (VCN)** ➔ **Security Lists** ➔ **Ingress Rules**.
+3. Allow public incoming traffic on:
+   * **Port 80 (HTTP)**: Source `0.0.0.0/0`
+   * **Port 443 (HTTPS)**: Source `0.0.0.0/0`
+4. Keep **Port 8000 (Coolify Dashboard)** closed to the public (no ingress rules) to ensure the admin console is not exposed to web crawlers.
+
+##### Step 2: Tailscale Private Network Overlay
+To access the admin dashboard privately without exposing port 8000, build a secure VPN tunnel:
+1. Install Tailscale on the OCI VM:
+   ```bash
+   curl -fsSL https://tailscale.com/install.sh | sh
+   sudo tailscale up
+   ```
+2. Authenticate the node and add it to your private **Tailnet**.
+3. The server is assigned a private IP (e.g. `100.66.182.36`). You can now load the dashboard locally by opening `http://100.66.182.36:8000` while connected to the VPN.
+
+##### Step 3: Server Firewall (UFW) Hardening
+Configure the Ubuntu firewall (`ufw`) to restrict port access:
+```bash
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw allow 80/tcp                  # Allow public Traefik HTTP
+sudo ufw allow 443/tcp                 # Allow public Traefik HTTPS
+sudo ufw allow in on tailscale0        # Allow all private Tailscale traffic
+sudo ufw enable
+```
+This forces all database connections (`5432`), Coolify admin commands (`8000`, `9000`), and SSH access (`22`) to go exclusively over the encrypted Tailscale connection.
+
+##### Step 4: Coolify v4 Bootstrapping
+Execute the automated installation script to install Coolify, Docker, Svelte components, and Traefik:
+```bash
+curl -fsSL https://cdn.coollabs.io/coolify/install.sh | bash
+```
+
+##### Step 5: Cloudflare DNS Configuration
+In your Cloudflare dashboard, add target records pointing to your public OCI IP (`129.154.246.83`):
+* **`speakit-prod-api.mohitur.com`** ➔ `A` record, **Proxied (Orange Cloud)**.
+* **`speakit-dev-api.mohitur.com`** ➔ `A` record, **Proxied (Orange Cloud)**.
+* **`coolify.mohitur.com`** ➔ `A` record, **Proxied (Orange Cloud)**.
+
+##### Step 6: Security Lockdown via Cloudflare WAF (Webhook Bypass)
+To prevent the admin panel from being accessible publicly over `coolify.mohitur.com`, set up a custom Web Application Firewall (WAF) block rule in Cloudflare:
+1. Go to **Security** ➔ **WAF** ➔ **Custom Rules** ➔ **Create Rule**.
+2. **Expression Builder**:
+   * If Hostname equals `coolify.mohitur.com`
+   * **AND** URI Path does not start with `/webhooks`
+3. **Action**: **Block**
+4. **Result**: Anyone attempting to load the admin login page in their browser gets blocked immediately with a `403 Forbidden` screen. Meanwhile, GitHub's webhook payloads (which target the `/webhooks/...` path) pass through securely to trigger deployments.
+
+##### Step 7: GitHub App Webhook Integration
+1. In Coolify, go to **Sources** ➔ **Add GitHub App**.
+2. Create and configure the GitHub App (e.g. `speakit-github-coolify`) on your GitHub Developer settings page.
+3. Set the **Webhook URL** inside GitHub App Settings to the Cloudflare-bypassed path:
+   ```text
+   https://coolify.mohitur.com/webhooks/source/github/events
+   ```
+4. Generate a private key, download it, and link it back to Coolify. Auto-deployments are now fully configured and secure!
+
+---
 
 ### Multi-Stage Docker Build
 
@@ -1378,29 +1516,17 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 ```
 
 **Why multi-stage?**
-Single-stage builds include the Maven toolchain (~500MB) in the final image. Multi-stage builds copy only the compiled JAR into a minimal JRE image. Result: image size drops from ~600MB to ~150MB. Smaller images = faster Render deployments and less Docker Hub storage.
+Single-stage builds include the Maven toolchain (~500MB) in the final image. Multi-stage builds copy only the compiled JAR into a minimal JRE image. Result: image size drops from ~600MB to ~150MB. Smaller images = faster local compilation, faster deployment, and reduced memory consumption on the server.
 
 **Why `eclipse-temurin` instead of `openjdk`?**
-`openjdk:17-jdk-slim` is deprecated and no longer receives security patches. Eclipse Temurin (maintained by the Adoptium project, part of Eclipse Foundation) is the community-endorsed, actively patched OpenJDK distribution.
+`openjdk:17-jdk-slim` is deprecated and no longer receives security patches. Eclipse Temurin (maintained by the Adoptium project, part of the Eclipse Foundation) is the community-endorsed, actively patched OpenJDK distribution.
 
-### Keep-Alive Architecture
+### Persistent VM Architecture (No Keep-Alives Needed)
 
-Render's free/hobby instances spin down after 15 minutes of inactivity. A "cold start" takes 30-60 seconds, creating terrible UX for the first user after inactivity.
-
-```yaml
-# .github/workflows/keep-alive.yml
-name: Keep Backend Alive
-on:
-  schedule:
-    - cron: "*/25 * * * *" # Every 25 minutes
-jobs:
-  ping:
-    runs-on: ubuntu-latest
-    steps:
-      - run: curl -f ${{ secrets.BACKEND_URL }}/api/auth/ping
-```
-
-`/api/auth/ping` is a `@PermitAll` endpoint that returns `{ "status": "ok" }` — it requires no auth and no DB call. The GitHub Action runner is free for public repos. Zero cost keep-alive.
+In our previous Render-based setup, a GitHub Action was scheduled to ping `/api/auth/ping` every 25 minutes to prevent the container from sleeping.
+By migrating to a self-hosted OCI Compute instance managed by Coolify:
+* **No Cold Starts**: The Java backend is persistently running. The JVM process remains hot in-memory, serving requests with sub-millisecond initial latency at any time of day.
+* **Reduced Noise**: We deleted the Github Actions keep-alive workflows, removing fake traffic logs from our system and conserving network resources.
 
 ### AWS Budget Kill Switch Architecture
 
@@ -1419,41 +1545,111 @@ AWS Budgets (threshold: $X)
 
 ---
 
-### Interview Questions — DevOps
+### Vercel Multi-Branch Deployment & Dynamic API Routing
 
-**Q: Walk me through what happens when you push to the `main` branch.**
+To maintain strict environment separation while building identical frontend static packages, Vercel leverages branch-based deployment tracks and a runtime configuration hook to dynamically map the frontend to the correct backend server.
 
-**A:**
-
-1. GitHub receives the push. If branch protection rules are configured, the PR was already reviewed and CI passed.
-2. **Vercel (Frontend):** Vercel's GitHub integration detects the push. It runs `npm run build` (which triggers the `prebuild` hook → `set-env.js` → generates `runtime-env.js`). Vercel deploys the compiled `dist/` to its CDN. Takes ~2 minutes. Zero downtime — old version serves until new version is fully deployed, then traffic switches atomically.
-3. **Render (Backend):** Render's GitHub integration detects the push. It pulls the new code, runs the Docker build (multi-stage), pushes to internal registry, and starts a new container. During the health check period, the old container keeps serving. Once the new container passes health checks (`/api/auth/ping` returns 200), Render terminates the old container. Takes ~5 minutes.
-4. **Zero user impact:** Both deployments are blue-green — old version stays up until new version is healthy.
+#### 1. Branch Routing Architecture
+* **Production Track (`master` branch)**:
+  * Triggers automatically when commits are merged into `master`.
+  * Deploys directly to the production domain: `https://speakit.mohitur.com`.
+* **Preview/Development Track (`feature` branch)**:
+  * Triggers on any pushes to the `feature` branch.
+  * Deploys directly to the development subdomain: `https://speakit-dev.mohitur.com`.
 
 ---
 
-**Q: How do you manage secrets and environment variables across local dev, Docker Compose, and Render?**
+#### 2. Step-by-Step API Endpoint Injection Flow
 
-**A:** Three environments, three mechanisms — but the application code reads the same environment variable names everywhere:
+Because Angular compiles into static assets running in the client's browser, standard server-side configuration lookups (like `process.env.API_URL`) are not directly accessible. We solve this using a dynamic **build-time file generation pattern** that maps variables to the browser's global scope:
+
+##### Step A: Configure Environment-Scoped Variables in Vercel
+In the Vercel project dashboard, the environment variable `API_URL` is declared twice with strict environment scoping:
+* **Production Scope**: `API_URL` = `https://speakit-prod-api.mohitur.com` (assigned only to the Production environment).
+* **Preview Scope**: `API_URL` = `https://speakit-dev-api.mohitur.com` (assigned to the Preview/Development environment).
+
+##### Step B: The Build Pipeline Interceptor (`prebuild`)
+1. When Vercel starts a deployment, it executes `npm run build`.
+2. Our `package.json` defines a hook: `"prebuild": "node scripts/set-env.js"`.
+3. Before the Angular compiler runs, Node.js executes **`set-env.js`**. This script reads Vercel's injected system environment variable:
+   ```javascript
+   const apiUrl = process.env.API_URL || 'http://localhost:8080';
+   ```
+4. The script generates a static JavaScript file at **`public/runtime-env.js`** inside the distribution package:
+   ```javascript
+   window.__env = {
+     API_URL: "https://speakit-prod-api.mohitur.com" // (or speakit-dev-api)
+   };
+   ```
+
+##### Step C: Bootstrapping & Global Scope Binding
+1. When a user opens the application, the browser loads **`index.html`**.
+2. Near the top of the HTML header, we load the runtime script:
+   ```html
+   <script src="runtime-env.js"></script>
+   ```
+3. This binds the correct backend endpoint to the browser's global scope (`window.__env.API_URL`) before the Angular engine even downloads.
+
+##### Step D: Angular Service Consumption
+Inside the Angular application, we bypass compile-time environment files and retrieve the API target dynamically at runtime:
+```typescript
+@Injectable({ providedIn: 'root' })
+export class AuthService {
+  // Read endpoint directly from the global browser window scope
+  private apiUrl = (window as any).__env?.API_URL || 'http://localhost:8080';
+
+  constructor(private http: HttpClient) {}
+
+  login(credentials: LoginRequest) {
+    return this.http.post(`${this.apiUrl}/api/auth/login`, credentials);
+  }
+}
+```
+This guarantees that the development frontend always routes HTTP requests to the development database/backend container (`speakit-dev-api`), while the production frontend speaks strictly to the production backend (`speakit-prod-api`), with zero risk of database cross-contamination!
+
+---
+
+### Interview Questions — DevOps & GitOps
+
+**Q: Walk me through the exact mechanical flow of how webhooks trigger your deployment pipeline when a commit is pushed to the `feature` or `master` branch.**
+
+**A:**
+The deployment pipeline executes as a highly coordinated, event-driven workflow spanning GitHub, Cloudflare, Traefik, and Coolify:
+
+1. **Commit & Push Event**: A developer pushes code changes. GitHub generates a `push` webhook payload containing details like the Git ref (e.g. `refs/heads/feature`), the repository identifier, the commit SHA, and a list of modified files.
+2. **Security Signature Verification**: GitHub signs the payload using the Webhook Secret and sends a POST request to `https://coolify.mohitur.com/webhooks/source/github/events` with the signature in the `X-Hub-Signature-256` header.
+3. **Cloudflare WAF Check**: The request hits Cloudflare. Because the path starts with `/webhooks`, it bypasses the dashboard's lockdown rule and is forwarded securely to our OCI origin server on port `443` (encrypted TLS).
+4. **Coolify Payload Validation**: Coolify receives the request and calculates the HMAC-SHA256 signature of the payload using its locally stored secret. If it matches `X-Hub-Signature-256`, the payload is trusted; otherwise, it is instantly rejected with a `403/500` to prevent payload spoofing.
+5. **Watch Paths & Resource Conservation**: Coolify parses the commit metadata.
+   * It maps the branch to the correct environment (e.g., `feature` to `speakit-dev-backend`, `master` to `speakit-prod-backend`).
+   * It evaluates our configured **Watch Paths** (`backend/**`). If the modified files list does *not* contain changes inside the `/backend` folder, Coolify aborts the build process immediately, saving valuable server resources.
+6. **Container Rebuild via Docker BuildKit**: If the watch paths match, Coolify spins up a temporary build runner, downloads the code delta, and executes our multi-stage Dockerfile. Docker uses **BuildKit caching** to skip rebuilding layers that haven't changed (like Maven dependency downloads), compiling the Java jar and building the JRE container in under 30 seconds.
+7. **Rolling Zero-Downtime Swap**: Once the image is built, Traefik starts the new container on an internal, isolated port and runs a health probe (`GET /api/auth/ping`). The old container continues serving active traffic. As soon as the new container returns a `200 OK`, Traefik hot-swaps the reverse proxy routing rules to point to the new container. The old container is then gracefully stopped and removed, ensuring zero dropped requests.
+
+Meanwhile, Vercel listens independently to the same push event to deploy frontend changes to their global Edge network.
+
+---
+
+**Q: How do you manage secrets and environment variables securely in your self-hosted setup?**
+
+**A:**
+We adhere strictly to the **12-Factor App** methodology (Factor III: Config) — storing configuration in the environment, keeping code identical across all deployment stages:
 
 ```
 Local Dev:
-  .env file (gitignored) → loaded by Docker Compose or IDE
-  Example: AWS_ACCESS_KEY_ID=AKIA...
+  Managed locally in a gitignored `.env` file, loaded by Docker Compose or IntelliJ.
 
-Docker Compose:
-  env_file: .env (reads the same .env)
-  docker-compose.yml is committed (no secrets)
-  .env is gitignored
+Coolify (Production & Preview):
+  Environment variables are saved securely in Coolify's application dashboard.
+  When Coolify launches a deployment, it injects these parameters as OS-level environment variables
+  into the running Docker container.
 
-Render Production:
-  Environment Variables set in Render dashboard
-  Render injects them at container startup
-  Application reads: System.getenv("AWS_ACCESS_KEY_ID")
-  Spring reads:      ${AWS_ACCESS_KEY_ID}
+Application Consumption:
+  Spring Boot retrieves these parameters dynamically at startup using:
+  spring.datasource.url=${SPRING_DATASOURCE_URL}
 ```
 
-This is the **12-Factor App** methodology (Factor III: Config). The application binary is identical everywhere; only the environment differs.
+To secure our administration dashboard itself, we use a Cloudflare WAF custom rule that blocks all public requests to `coolify.mohitur.com` unless they target the `/webhooks/*` path. We access the admin panel privately over a secure **Tailscale VPN** on port `8000`, bypassing the public internet entirely.
 
 ---
 
@@ -1760,10 +1956,10 @@ The performance gain (98% fewer ID-generation DB calls during bulk inserts) make
 
 **A:** Absolutely not. Storing credentials in a Docker image would mean anyone who pulls the image from Docker Hub has your AWS credentials. This is a critical security failure.
 
-**Current approach (Render/Vercel environments):**
+**Current approach (Coolify/Vercel environments):**
 
-- Credentials are set as environment variables in Render's dashboard
-- Render injects them as OS-level env vars into the container at startup
+- Credentials are set as environment variables in Coolify's application dashboard
+- Coolify injects them as OS-level env vars into the container at startup
 - Spring Boot reads: `${AWS_ACCESS_KEY_ID}` and `${AWS_SECRET_ACCESS_KEY}`
 - The Docker image contains: zero secrets
 
@@ -1836,9 +2032,9 @@ Spring Boot: 429 or 503 to user
 
 #### 5. Single-Region Latency (Ongoing)
 
-Backend on Render US-East. Users in India/Europe experience 200-400ms additional latency for every API call.
+Backend on a single OCI region (e.g. Frankfurt/US-East). Users in other global locations experience 200-400ms additional latency for every API call.
 
-**Fix:** Migrate to multi-region deployment (Render supports multiple regions). Add Cloudflare Workers for edge-side request routing. For audio streaming, stream through a CDN origin rather than directly from the app server.
+**Fix:** Migrate to multi-region OCI VM deployments managed under a global load balancer (e.g. Cloudflare Load Balancing). Add Cloudflare Workers for edge-side request routing. For audio streaming, stream through a CDN origin rather than directly from the app server.
 
 ---
 
@@ -1847,26 +2043,26 @@ Backend on Render US-East. Users in India/Europe experience 200-400ms additional
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                   CLOUDFLARE EDGE                           │
-│         CDN caching, WAF, DDoS, geo-routing                │
+│         CDN caching, WAF, DDoS, geo-routing                 │
 └───────────────────────────┬─────────────────────────────────┘
                             │
 ┌───────────────────────────▼─────────────────────────────────┐
 │                  API GATEWAY LAYER                          │
 │          AWS API Gateway or Kong (rate limiting,            │
 │          auth offloading, request routing)                  │
-└──────┬─────────────────────┬──────────────────┬────────────┘
+└──────┬─────────────────────┬──────────────────┬─────────────┘
        │                     │                  │
-┌──────▼──────┐    ┌─────────▼────────┐  ┌──────▼──────┐
-│ Auth Service │    │  TTS Service     │  │ User Service │
-│ (Go/Node.js) │    │ (Spring Boot)    │  │ (Spring Boot)│
-│              │    │ Horizontal pods  │  │              │
-└──────┬───────┘    └─────────┬────────┘  └──────┬───────┘
+┌──────▼──────┐    ┌─────────▼────────┐  ┌──────▼───────┐
+│ Auth Service│    │  TTS Service     │  │ User Service │
+│ (Go/Node.js)│    │ (Spring Boot)    │  │ (Spring Boot)│
+│             │    │ Horizontal pods  │  │              │
+└──────┬──────┘    └──────────┬───────┘  └────────┬─────┘
        │                      │                   │
-┌──────▼──────────────────────▼───────────────────▼─────────┐
-│                      DATA LAYER                            │
+┌──────▼──────────────────────▼───────────────────▼───────────┐
+│                      DATA LAYER                             │
 │  PostgreSQL (RDS Multi-AZ) │ Redis Cluster │ S3 + CloudFront│
 │  Read replicas for queries │ Rate limits   │ Audio caching  │
-└───────────────────────────────────────────────────────────┘
+└─────────────────────────────────────────────────────────────┘
 ```
 
 Key changes at 1M DAU:
@@ -1923,7 +2119,7 @@ Based on a comprehensive repository scan, the following details the current stat
 * **Navigation:** Managed via Angular's `provideRouter` with scroll restoration and anchor scrolling enabled.
 
 ### API Architecture
-* **Auth Endpoints (`/api/auth`):** `POST /register`, `POST /login`, `GET /me`, `GET /ping` (Health/Keep-alive), `POST /logout` (Session Invalidation), `POST /ws-ticket` (WebSocket Handshake), and username/email/phone availability checks.
+* **Auth Endpoints (`/api/auth`):** `POST /register`, `POST /login`, `GET /me`, `GET /ping` (Health check), `POST /logout` (Session Invalidation), `POST /ws-ticket` (WebSocket Handshake), and username/email/phone availability checks.
 * **TTS Endpoints (`/api/tts`):**
   * `POST /synthesize`: Buffered audio generation.
   * `POST /synthesize-stream`: Chunked audio streaming (AWS Polly only).
@@ -1936,7 +2132,7 @@ Based on a comprehensive repository scan, the following details the current stat
 * **State:** Transitioned to **Angular Signals** for fine-grained reactivity in UI components.
 * **TTS Services:** `PollyService` (AWS SDK v2) and `ElevenLabsService` (Rest-based).
 * **Security Services:** `AuthService` handles JWT and session versioning; `WSTicketService` manages one-time tokens for WebSockets.
-* **Infrastructure Services:** `KeepAliveService` prevents Render spin-down via scheduled self-pings; `SystemParameterService` provides a DB-backed configuration layer.
+* **Infrastructure Services:** `SystemParameterService` provides a DB-backed configuration layer for feature flags, parameters, and prices.
 
 ### Database Schema (PostgreSQL)
 * **Entities:** `User` (Auth & Plan state), `TtsHistory` (Usage logs), `Subscription` (Razorpay link), `Payment` (Transaction logs), `WebhookEvent` (Idempotency), `SystemParameter` (Dynamic config).
@@ -1956,4 +2152,4 @@ Based on a comprehensive repository scan, the following details the current stat
 * **Load Tester:** `speakit-api-load-tester.py` is a specialized Python utility for stress-testing rate limits, IP-binding, and JWT flows.
 * **WebSockets:** Infrastructure present (`WebSocketConfig`, `WSTicketService`) for real-time updates.
 
-_Document version: 2.1 | Last updated: July 2026 | Project: github.com/Mohitur669/speakit_
+_Document version: 2.2 | Last updated: July 2026 | Project: github.com/Mohitur669/speakit_
