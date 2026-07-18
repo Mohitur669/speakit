@@ -19,6 +19,17 @@ CREATE TABLE IF NOT EXISTS users (
     -- Status/Flags
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     plan_type VARCHAR(20) NOT NULL DEFAULT 'FREE',
+    subscription_status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    plan_expiry TIMESTAMP WITH TIME ZONE,
+    role VARCHAR(20) NOT NULL DEFAULT 'USER',
+
+    -- Verification & Update Fields
+    email_verified BOOLEAN NOT NULL DEFAULT FALSE,
+    account_status VARCHAR(30) NOT NULL DEFAULT 'PENDING_VERIFICATION',
+    pending_email VARCHAR(100),
+    pending_username VARCHAR(50),
+    pending_phone_number VARCHAR(15),
+    pending_password VARCHAR(255),
 
     -- Audit Fields
     consent_accepted BOOLEAN NOT NULL DEFAULT FALSE,
@@ -286,6 +297,14 @@ BEGIN
 
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='role') THEN
         ALTER TABLE users ADD COLUMN role VARCHAR(20) DEFAULT 'USER' NOT NULL;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='subscription_status') THEN
+        ALTER TABLE users ADD COLUMN subscription_status VARCHAR(20) DEFAULT 'ACTIVE' NOT NULL;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='plan_expiry') THEN
+        ALTER TABLE users ADD COLUMN plan_expiry TIMESTAMP WITH TIME ZONE;
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='plan_type') THEN
