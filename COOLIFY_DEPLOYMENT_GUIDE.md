@@ -637,17 +637,41 @@ Since both the backend and frontend exist in the same repository (monorepo), a c
 
 ---
 
-### Step 4: How to Verify if Webhooks are Active & Healthy
-If you are unsure if webhooks are already configured, check your GitHub repository settings:
-1. Open your repository on GitHub.
-2. Go to **Settings** (top tab navigation) > select **Webhooks** in the left-hand menu.
-3. Look at your active Webhooks list:
-   * **If no webhook exists**: Follow **Step 2** above to add it manually.
-   * **If a webhook URL matching your Coolify domain/IP is listed**: It is already configured!
-4. Check the **Status Indicator Icon** next to the webhook URL:
-   * **Green Checkmark**: The webhook is active and successfully delivering push events (status code `200 OK`).
-   * **Red Exclamation Mark**: The webhook is failing to reach your server. Click on the webhook, scroll to the **Recent Deliveries** tab at the bottom, select a failed delivery request, and inspect the response payload/error (e.g. `Connection Refused` due to firewall blocks, or `403 Forbidden` due to secret mismatches).
-   * **Grey Warning Icon**: The webhook is registered but no commits have been pushed yet to trigger a test delivery.
+### Step 4: How to Verify and Troubleshoot Webhook Health
+
+A healthy webhook connection is crucial for auto-deployments. To verify and debug deliveries, use the following step-by-step procedures:
+
+#### A. Checking Recent Deliveries on GitHub
+1. **For GitHub App Integration**:
+   * Go to your personal GitHub **Settings** ➔ **Developer Settings** ➔ **GitHub Apps** ➔ **Edit** your app.
+   * Click **Advanced** in the left sidebar menu to view **Recent Deliveries**.
+2. **For Repository-specific Webhooks**:
+   * Open your GitHub Repository ➔ **Settings** ➔ **Webhooks** ➔ Click **Edit** next to your webhook.
+   * Scroll down to the **Recent Deliveries** section.
+
+#### B. Debugging Webhook Delivery Errors
+
+##### 🔴 Error: 403 Forbidden (Cloudflare WAF Block)
+* **Symptoms**: The delivery logs show `Response 403`, completed very quickly (under `0.05 seconds`), and headers show `Server: cloudflare`.
+* **Diagnostic**:
+  1. Open your **Cloudflare Dashboard** ➔ Go to your domain **`mohitur.com`**.
+  2. Click **Security** ➔ **Events** in the left sidebar.
+  3. Look for a blocked request where the path is `/api/v1/webhooks/github` and user-agent is `GitHub-Hookshot`.
+  4. Expand the event and look at the **Description** (e.g., `Lockdown Coolify Dashboard`).
+* **Root Cause**: The request path does not match your Cloudflare WAF allow rule. If you changed your WAF rule to allow `/webhooks` but your GitHub settings are still configured with the old `/api/v1/webhooks` path, Cloudflare blocks it.
+* **Resolution**: Go to your GitHub App settings and update the **Webhook URL** to `https://coolify.mohitur.com/webhooks/source/github/events` so it starts with `/webhooks`.
+
+##### 🟡 Error: 404 Not Found (Invalid Endpoint Route)
+* **Symptoms**: The delivery logs show `Response 404`, completed in `1.3 - 1.5 seconds`, and headers contain `X-Ratelimit-Limit: 200` and `Access-Control-Allow-Origin: *`.
+* **Diagnostic**: The request successfully bypassed Cloudflare (meaning it reached your OCI server), but Coolify's Laravel router returned a `404 Not Found` because the route doesn't exist.
+* **Root Cause**: The URL on GitHub is pointing to the old API format `/api/v1/webhooks/...` or ends in an incorrect `/events` sub-path.
+* **Resolution**: Remove any `/api/v1` prefix. Ensure the path is exactly:
+  ```text
+  https://coolify.mohitur.com/webhooks/source/github/events
+  ```
+
+##### 🟢 Success: 200 OK (Deployment Triggered)
+* **Verify**: The delivery shows a green checkmark with `200 OK` in GitHub. Inside Coolify, go to your application deployments page to confirm a new build has started automatically.
 
 ---
 
