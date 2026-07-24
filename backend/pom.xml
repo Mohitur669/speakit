@@ -139,6 +139,20 @@
             <artifactId>caffeine</artifactId>
             <!-- version managed by spring-boot-starter-parent -->
         </dependency>
+
+        <!-- Sentry Error & Performance Tracking -->
+        <dependency>
+            <groupId>io.sentry</groupId>
+            <artifactId>sentry-spring-boot-starter-jakarta</artifactId>
+            <version>7.8.0</version>
+        </dependency>
+
+        <!-- New Relic Logback Appender (Contextual Log Forwarder) -->
+        <dependency>
+            <groupId>com.newrelic.logging</groupId>
+            <artifactId>logback</artifactId>
+            <version>3.5.0</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -173,6 +187,25 @@
                 <configuration>
                     <argLine>-Djdk.attach.allowAttachSelf=true --add-opens java.base/java.lang=ALL-UNNAMED</argLine>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.11</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
