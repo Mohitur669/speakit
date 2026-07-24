@@ -80,9 +80,9 @@ Sentry provides client-side error tracing, performance tracing, session replays,
    sentry.traces-sample-rate=${SENTRY_TRACES_SAMPLE_RATE:0.1}
    sentry.release=${SENTRY_RELEASE:}
    sentry.exception-resolver-order=${SENTRY_EXCEPTION_RESOLVER_ORDER:-2147483648}
-   sentry.send-default-pii=false
+   sentry.send-default-pii=${SENTRY_SEND_DEFAULT_PII:false}
    ```
-   *Note: Setting `exception-resolver-order` to the lowest integer (`-2147483648`) ensures Sentry intercepts unhandled exceptions before standard Spring controller advisors wrap them in general HTTP responses. `send-default-pii=false` disables the default transmission of client IP addresses and usernames.*
+   *Note: Setting `exception-resolver-order` to the lowest integer (`-2147483648`) ensures Sentry intercepts unhandled exceptions before standard Spring controller advisors wrap them in general HTTP responses. `send-default-pii=${SENTRY_SEND_DEFAULT_PII:false}` disables the default transmission of client IP addresses and usernames.*
 
 3. We enforce data compliance (DPDP Act 2023 / IT Act 2000) using a custom `BeforeSendCallback` inside [SentryConfig.java](file:///home/cyberbully/Documents/Desktop/git-projects/speakit/backend/src/main/java/com/speakit/config/SentryConfig.java) that checks incoming events and scrubs standard emails, passwords, OTPs, JWT tokens, authorizations, and API keys before they leave the process memory:
    ```java
@@ -220,6 +220,7 @@ We configure a custom `LogMaskingAppender` in [logback-spring.xml](file:///home/
 | `SENTRY_DSN_BACKEND` | Backend Sentry Endpoint DSN | Runtime `.env` / OCI / Render | Empty (Disabled in Dev) |
 | `SENTRY_DSN_FRONTEND` | Frontend Sentry Endpoint DSN | Runtime `.env` / Vercel | Empty (Disabled in Dev) |
 | `SENTRY_ENVIRONMENT` | Active Sentry Environment | Runtime `.env` | `development` / `production` |
+| `SENTRY_SEND_DEFAULT_PII` | Dictates if default PII (IPs, users) is sent to Sentry | Runtime `.env` | `false` / `true` |
 | `NEW_RELIC_LICENSE_KEY` | New Relic Ingestion API Key | Runtime `.env` / OCI / Render | Empty (Disabled in Dev) |
 | `NEW_RELIC_APP_NAME` | Log Identifier Name in New Relic | Runtime `.env` | `speakit-prod-backend` |
 
