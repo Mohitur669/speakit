@@ -255,8 +255,6 @@ We configure a custom `LogMaskingAppender` in [logback-spring.xml](file:///home/
 2. **Secrets Decoupling**:
    * All secret credentials are removed from `docker-compose.yml` and `Dockerfile` files.
    * Local development configurations live strictly in git-ignored `.env` files.
-3. **Container Image Scan (Trivy)**:
-   * The CI pipeline builds images on each push and runs Trivy to scan for CVEs. The build fails on `HIGH` or `CRITICAL` issues.
 
 ---
 
