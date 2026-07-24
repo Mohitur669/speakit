@@ -1,6 +1,6 @@
 # SpeakIT Observability & Code Quality Setup Guide
 
-This document is the single source of truth for integrating, configuring, and maintaining Sentry, CodeScene, Codecov, New Relic, and container security controls on the SpeakIT platform.
+This document is the single source of truth for integrating, configuring, and maintaining Sentry, New Relic, and container security controls on the SpeakIT platform.
 
 ---
 
@@ -155,52 +155,7 @@ Sentry provides client-side error tracing, performance tracing, session replays,
 
 ---
 
-## 4. TEST COVERAGE REPORTING (LOCAL)
-
-You can generate local code coverage reports for both backend and frontend applications to monitor test coverage.
-
-### 4.1 Backend JaCoCo Integration
-The Jacoco plugin is configured inside [backend/pom.xml](file:///home/cyberbully/Documents/Desktop/git-projects/speakit/backend/pom.xml):
-```xml
-<plugin>
-    <groupId>org.jacoco</groupId>
-    <artifactId>jacoco-maven-plugin</artifactId>
-    <version>0.8.11</version>
-    <executions>
-        <execution>
-            <goals>
-                <goal>prepare-agent</goal>
-            </goals>
-        </execution>
-        <execution>
-            <id>report</id>
-            <phase>test</phase>
-            <goals>
-                <goal>report</goal>
-            </goals>
-        </execution>
-    </executions>
-</plugin>
-```
-To run tests and view the local HTML report:
-```bash
-cd backend
-mvn clean test
-# Open backend/target/site/jacoco/index.html in your browser.
-```
-
-### 4.2 Frontend Vitest Coverage Integration
-The Vitest coverage-v8 library is installed in [package.json](file:///home/cyberbully/Documents/Desktop/git-projects/speakit/frontend/package.json).
-To run tests and generate reports:
-```bash
-cd frontend
-npx vitest run --coverage
-# Open frontend/coverage/index.html in your browser.
-```
-
----
-
-## 5. CENTRALIZED LOG AGGREGATION (NEW RELIC)
+## 3. CENTRALIZED LOG AGGREGATION (NEW RELIC)
 
 New Relic logs are ingested asynchronously from the JVM, keeping execution lightweight on OCI/Coolify compute nodes.
 
@@ -247,7 +202,7 @@ We configure a custom `LogMaskingAppender` in [logback-spring.xml](file:///home/
 
 ---
 
-## 6. DOCKER & ENVIRONMENT SECURITY HARDENING
+## 4. DOCKER & ENVIRONMENT SECURITY HARDENING
 
 1. **Non-Root Execution**:
    * **Backend**: Container runs as `USER appuser`.
@@ -258,7 +213,7 @@ We configure a custom `LogMaskingAppender` in [logback-spring.xml](file:///home/
 
 ---
 
-## 7. ENVIRONMENT VARIABLE REFERENCE
+## 5. ENVIRONMENT VARIABLE REFERENCE
 
 | Variable Name | Purpose | Location | Default Value / Placeholder |
 |---|---|---|---|
@@ -270,7 +225,7 @@ We configure a custom `LogMaskingAppender` in [logback-spring.xml](file:///home/
 
 ---
 
-## 8. TRIAGE RUNBOOK
+## 6. TRIAGE RUNBOOK
 
 ### Scenario A: Sentry Exception Alert Triggered
 1. Log in to your Sentry Dashboard.
@@ -280,7 +235,7 @@ We configure a custom `LogMaskingAppender` in [logback-spring.xml](file:///home/
 
 ---
 
-## 9. ROLLBACK ACTIONS
+## 7. ROLLBACK ACTIONS
 
 To cleanly disable integrations without changing business logic:
 * **Disable Sentry**: Leave `SENTRY_DSN_BACKEND` and `SENTRY_DSN_FRONTEND` blank in your environment settings.
