@@ -155,44 +155,6 @@ Sentry provides client-side error tracing, performance tracing, session replays,
 
 ---
 
-## 3. CODESCENE (TECHNICAL DEBT & HOTSPOT ANALYSIS)
-
-CodeScene maps where developers edit code, revealing technical debt, hotspots, and circular coupling.
-
-### 3.1 CodeScene Set Up (Step-by-Step UI Guide)
-1. Go to [CodeScene.io](https://codescene.io) and log in using your **GitHub account** (choose the free student tier if active).
-2. On your CodeScene dashboard, click the **New Project** button in the top right corner.
-3. Select **GitHub** as the provider, authorize access, select the repository **`Mohitur669/speakit`**, and click **Create Project**.
-4. **Configure PR Integration**:
-   * From your CodeScene project dashboard, select **Configuration** in the left sidebar menu.
-   * Go to **Integrations** ➔ **Pull Request Integration**.
-   * Turn on the integration and complete the GitHub app permissions connection to allow CodeScene to post status checks.
-5. **Set Branch Tracking**:
-   * Go to **Configuration** ➔ **Branches** in the left sidebar.
-   * Confirm the **Default Branch** is set to `master`.
-   * Set the **Target Branch** to track `feature` branch pull requests.
-6. **Configure File Exclusions**:
-   * Go to **Configuration** ➔ **Exclusions & Filters** in the left sidebar.
-   * Under **Exclude File Extensions**, add standard binaries or build outputs (e.g. `*.pdf; *.png; *.jpg; *.class; *.jar; *.pdf; *.svg`).
-   * Under **Exclude Paths**, enter glob paths to ignore (e.g., `/node_modules/`, `/dist/`, `/target/`).
-7. **Generate Analysis Token**:
-   * Click on your user avatar in the top-right corner of the page ➔ **My Settings**.
-   * Go to **API Credentials** ➔ click **Generate Token**.
-   * Copy the token value and save it as a GitHub Repository Secret named **`CODESCENE_ANALYSIS_TOKEN`**.
-
-### 3.2 Automated PR Quality Gate (`.github/workflows/codescene.yml`)
-The workflow file [codescene.yml](file:///home/cyberbully/Documents/Desktop/git-projects/speakit/.github/workflows/codescene.yml) triggers on every pull request:
-```yaml
-      - name: CodeScene Delta Analysis
-        uses: codescene/codescene-action@v2.0.0
-        env:
-          CODESCENE_ANALYSIS_TOKEN: ${{ secrets.CODESCENE_ANALYSIS_TOKEN }}
-        with:
-          fail-on-regression: true # Block merge only if new commits decrease code health
-```
-
----
-
 ## 4. CODECOV (TEST COVERAGE REPORTING)
 
 Codecov processes test reports and visualizes code coverage metrics directly on pull request lines.
@@ -335,7 +297,6 @@ We configure a custom `LogMaskingAppender` in [logback-spring.xml](file:///home/
 | `SENTRY_ENVIRONMENT` | Active Sentry Environment | Runtime `.env` | `development` / `production` |
 | `NEW_RELIC_LICENSE_KEY` | New Relic Ingestion API Key | Runtime `.env` / OCI / Render | Empty (Disabled in Dev) |
 | `NEW_RELIC_APP_NAME` | Log Identifier Name in New Relic | Runtime `.env` | `speakit-prod-backend` |
-| `CODESCENE_ANALYSIS_TOKEN`| CodeScene PR Check Authorization | GitHub Actions Secret | CI-Only |
 | `CODECOV_TOKEN` | Codecov Coverage Uploader token | GitHub Actions Secret | CI-Only |
 
 ---
@@ -361,4 +322,3 @@ We configure a custom `LogMaskingAppender` in [logback-spring.xml](file:///home/
 To cleanly disable integrations without changing business logic:
 * **Disable Sentry**: Leave `SENTRY_DSN_BACKEND` and `SENTRY_DSN_FRONTEND` blank in your environment settings.
 * **Disable New Relic Log Forwarding**: Leave `NEW_RELIC_LICENSE_KEY` blank or run the backend container under a profile other than `prod`.
-* **Disable CodeScene**: Uninstall the App from the GitHub Repository Settings interface or remove `.github/workflows/codescene.yml`.
