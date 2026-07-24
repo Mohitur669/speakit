@@ -161,23 +161,24 @@ CodeScene maps where developers edit code, revealing technical debt, hotspots, a
 
 ### 3.1 CodeScene Set Up (Step-by-Step UI Guide)
 1. Go to [CodeScene.io](https://codescene.io) and log in using your **GitHub account** (choose the free student tier if active).
-2. On your CodeScene dashboard, click the **Create Project** button.
-3. Select **GitHub** as the integration provider. Authorize CodeScene access to your account/organization if prompted.
-4. Select the repository: **`Mohitur669/speakit`** and click **Import**.
-5. **Install the GitHub App**:
-   * Navigate to your CodeScene project page ➔ **Project Configuration** (left menu) ➔ **PR Integration**.
-   * Click **Install GitHub App** and select the repository to grant CodeScene permission to write check runs and PR comments.
-6. **Set Branch Tracking**:
-   * Go to **Project Configuration** ➔ **Branches**.
-   * Set the **Default Branch** to `master`.
-   * Set **Target Branches** to track `feature` branch pull requests.
-7. **Configure File Exclusions**:
-   * Go to **Project Configuration** ➔ **Files**.
-   * Under **Exclude File Extensions**, add standard binaries or build outputs (e.g. `*.pdf; *.png; *.jpg; *.class; *.jar`).
+2. On your CodeScene dashboard, click the **New Project** button in the top right corner.
+3. Select **GitHub** as the provider, authorize access, select the repository **`Mohitur669/speakit`**, and click **Create Project**.
+4. **Configure PR Integration**:
+   * From your CodeScene project dashboard, select **Configuration** in the left sidebar menu.
+   * Go to **Integrations** ➔ **Pull Request Integration**.
+   * Turn on the integration and complete the GitHub app permissions connection to allow CodeScene to post status checks.
+5. **Set Branch Tracking**:
+   * Go to **Configuration** ➔ **Branches** in the left sidebar.
+   * Confirm the **Default Branch** is set to `master`.
+   * Set the **Target Branch** to track `feature` branch pull requests.
+6. **Configure File Exclusions**:
+   * Go to **Configuration** ➔ **Exclusions & Filters** in the left sidebar.
+   * Under **Exclude File Extensions**, add standard binaries or build outputs (e.g. `*.pdf; *.png; *.jpg; *.class; *.jar; *.pdf; *.svg`).
    * Under **Exclude Paths**, enter glob paths to ignore (e.g., `/node_modules/`, `/dist/`, `/target/`).
-8. **Generate Analysis Token**:
-   * In your CodeScene account settings (top right avatar dropdown) ➔ **API Credentials**.
-   * Generate a new API token. Copy the token and save it as a GitHub Repository Secret named **`CODESCENE_ANALYSIS_TOKEN`**.
+7. **Generate Analysis Token**:
+   * Click on your user avatar in the top-right corner of the page ➔ **My Settings**.
+   * Go to **API Credentials** ➔ click **Generate Token**.
+   * Copy the token value and save it as a GitHub Repository Secret named **`CODESCENE_ANALYSIS_TOKEN`**.
 
 ### 3.2 Automated PR Quality Gate (`.github/workflows/codescene.yml`)
 The workflow file [codescene.yml](file:///home/cyberbully/Documents/Desktop/git-projects/speakit/.github/workflows/codescene.yml) triggers on every pull request:
