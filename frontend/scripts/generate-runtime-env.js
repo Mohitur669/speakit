@@ -7,7 +7,10 @@ const envConfig = {
     API_URL: process.env.API_URL || (isProd ? '' : 'http://localhost:8080'),
     SUPABASE_URL: process.env.SUPABASE_URL || '',
     SUPABASE_KEY: process.env.SUPABASE_KEY || '',
-    LOG_LEVEL: process.env.LOG_LEVEL || (isProd ? 'WARN' : 'DEBUG')
+    LOG_LEVEL: process.env.LOG_LEVEL || (isProd ? 'WARN' : 'DEBUG'),
+    SENTRY_DSN_FRONTEND: process.env.SENTRY_DSN_FRONTEND || '',
+    SENTRY_ENVIRONMENT: process.env.SENTRY_ENVIRONMENT || (isProd ? 'production' : 'development'),
+    SENTRY_RELEASE: process.env.SENTRY_RELEASE || ''
 };
 
 const content = `window.__env = ${JSON.stringify(envConfig, null, 2)};`;
