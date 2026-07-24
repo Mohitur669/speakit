@@ -1,7 +1,5 @@
 # SpeakIT: Enterprise AI Voice Generation Platform
 
-[![codecov](https://codecov.io/gh/Mohitur669/speakit/branch/master/graph/badge.svg)](https://codecov.io/gh/Mohitur669/speakit)
-
 > Transforming digital content with lifelike AI-powered speech synthesis.
 
 SpeakIT is a production-grade, full-stack SaaS platform powered by **AWS Polly** and **ElevenLabs**. It provides a high-performance, responsive interface for converting text into natural, human-quality speech using Standard, Neural, and cutting-edge Natural AI engines. Designed with enterprise scalability in mind, the platform features robust session management, dynamic plan-based rate limiting, integrated payment processing, and a comprehensive user dashboard.
