@@ -2,11 +2,12 @@
  * Root application configuration defining global providers,
  * route structure, and lazy-loaded feature modules.
  */
-import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core';
+import { ApplicationConfig, provideZoneChangeDetection, ErrorHandler } from '@angular/core';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideRouter, withInMemoryScrolling, withRouterConfig } from '@angular/router';
 import { authInterceptor } from './core/interceptors/auth.interceptor';
 import { authGuard } from './core/guards/auth.guard';
+import * as Sentry from "@sentry/angular";
 
 
 const routes = [
@@ -94,6 +95,37 @@ const routes = [
   }
 ];
 
+const env = (window as any).__env || {};
+const sentryDsn = env.SENTRY_DSN_FRONTEND;
+
+if (sentryDsn) {
+  Sentry.init({
+    dsn: sentryDsn,
+    environment: env.SENTRY_ENVIRONMENT || 'production',
+    release: env.SENTRY_RELEASE || undefined,
+    integrations: [
+      Sentry.browserTracingIntegration(),
+      Sentry.replayIntegration({
+        maskAllText: true,
+        maskAllInputs: true,
+        blockAllMedia: true
+      }),
+    ],
+    tracesSampleRate: 0.1,
+    replaysSessionSampleRate: 0.1,
+    replaysOnErrorSampleRate: 1.0,
+  });
+}
+
+const sentryProvider = sentryDsn ? [
+  {
+    provide: ErrorHandler,
+    useValue: Sentry.createErrorHandler({
+      showDialog: false,
+    }),
+  }
+] : [];
+
 export const appConfig: ApplicationConfig = {
   providers: [
     provideZoneChangeDetection({ eventCoalescing: true }),
@@ -107,6 +139,7 @@ export const appConfig: ApplicationConfig = {
       withRouterConfig({
         onSameUrlNavigation: 'reload'
       })
-    )
+    ),
+    ...sentryProvider
   ]
 };

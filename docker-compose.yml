@@ -36,6 +36,11 @@ services:
       - MAIL_PASSWORD=${MAIL_PASSWORD}
       - MAIL_FROM=${MAIL_FROM}
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/auth/ping || exit 1"]
       interval: 30s
@@ -49,7 +54,7 @@ services:
     image: mohitur/speakit:frontend
     container_name: speakit-frontend
     ports:
-      - "4200:80"
+      - "4200:8080"
     environment:
       # Runtime Configuration (Injected via public/runtime-env.js)
       - API_URL=${API_URL:-http://localhost:8080}
@@ -60,3 +65,8 @@ services:
       backend:
         condition: service_healthy
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
