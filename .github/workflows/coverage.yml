@@ -1,4 +1,4 @@
-name: Test Coverage Reporting
+name: Build, Test & Security Scan
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
 jobs:
   test-and-coverage:
     runs-on: ubuntu-latest
-    name: Build, Test & Coverage Upload
+    name: Build, Test & Scan
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -48,19 +48,6 @@ jobs:
           npx vitest run --coverage
         env:
           NODE_ENV: test
-
-      - name: Upload Coverage Reports to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: |
-            backend/target/site/jacoco/jacoco.xml
-            frontend/coverage/lcov.info
-          flags: |
-            backend
-            frontend
-          name: speakit-coverage-report
-          fail_ci_if_error: true
 
       - name: Build Docker Images (Backend & Frontend)
         run: |

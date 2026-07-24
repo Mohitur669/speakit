@@ -155,21 +155,12 @@ Sentry provides client-side error tracing, performance tracing, session replays,
 
 ---
 
-## 4. CODECOV (TEST COVERAGE REPORTING)
+## 4. TEST COVERAGE REPORTING (LOCAL)
 
-Codecov processes test reports and visualizes code coverage metrics directly on pull request lines.
+You can generate local code coverage reports for both backend and frontend applications to monitor test coverage.
 
-### 4.1 Codecov Set Up (Step-by-Step UI Guide)
-1. Navigate to [Codecov.io](https://codecov.io) and log in with your GitHub account.
-2. Under your organization/account dashboard, locate the list of repositories and click **Configure** next to **`Mohitur669/speakit`**.
-3. Under the configuration screen, Codecov will display a **Repository Upload Token** (looks like a UUID). Copy this token.
-4. Go to your GitHub repository webpage: **Settings** ➔ **Secrets and variables** ➔ **Actions** ➔ **New repository secret**.
-5. Save the secret with Name: **`CODECOV_TOKEN`** and paste the token as Value.
-
----
-
-### 4.2 Backend JaCoCo Integration
-Add the coverage reporter to your `<build><plugins>` section inside your [pom.xml](file:///home/cyberbully/Documents/Desktop/git-projects/speakit/backend/pom.xml):
+### 4.1 Backend JaCoCo Integration
+The Jacoco plugin is configured inside [backend/pom.xml](file:///home/cyberbully/Documents/Desktop/git-projects/speakit/backend/pom.xml):
 ```xml
 <plugin>
     <groupId>org.jacoco</groupId>
@@ -191,39 +182,20 @@ Add the coverage reporter to your `<build><plugins>` section inside your [pom.xm
     </executions>
 </plugin>
 ```
-
-### 4.3 Frontend Vitest Coverage Integration
-1. Install the Vitest coverage engine in your [package.json](file:///home/cyberbully/Documents/Desktop/git-projects/speakit/frontend/package.json):
-   ```bash
-   cd frontend
-   npm install --save-dev @vitest/coverage-v8
-   ```
-2. Running `npx vitest run --coverage` will automatically generate LCOV-compatible coverage reports under the `coverage/lcov.info` directory.
-
-### 4.4 CI/CD Coverage Pipeline (`.github/workflows/coverage.yml`)
-The workflow file [coverage.yml](file:///home/cyberbully/Documents/Desktop/git-projects/speakit/.github/workflows/coverage.yml) builds and tests both apps and uploads reports to Codecov:
-```yaml
-      - name: Upload Coverage Reports to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: |
-            backend/target/site/jacoco/jacoco.xml
-            frontend/coverage/lcov.info
-          flags: |
-            backend
-            frontend
+To run tests and view the local HTML report:
+```bash
+cd backend
+mvn clean test
+# Open backend/target/site/jacoco/index.html in your browser.
 ```
 
-### 4.5 Coverage Quality Rules (`.codecov.yml`)
-The project baseline coverage is gated to prevent regressions:
-```yaml
-coverage:
-  status:
-    project:
-      default:
-        target: auto      # Match target to parent commit
-        threshold: 1%     # Fail if code coverage drops by more than 1%
+### 4.2 Frontend Vitest Coverage Integration
+The Vitest coverage-v8 library is installed in [package.json](file:///home/cyberbully/Documents/Desktop/git-projects/speakit/frontend/package.json).
+To run tests and generate reports:
+```bash
+cd frontend
+npx vitest run --coverage
+# Open frontend/coverage/index.html in your browser.
 ```
 
 ---
@@ -297,7 +269,6 @@ We configure a custom `LogMaskingAppender` in [logback-spring.xml](file:///home/
 | `SENTRY_ENVIRONMENT` | Active Sentry Environment | Runtime `.env` | `development` / `production` |
 | `NEW_RELIC_LICENSE_KEY` | New Relic Ingestion API Key | Runtime `.env` / OCI / Render | Empty (Disabled in Dev) |
 | `NEW_RELIC_APP_NAME` | Log Identifier Name in New Relic | Runtime `.env` | `speakit-prod-backend` |
-| `CODECOV_TOKEN` | Codecov Coverage Uploader token | GitHub Actions Secret | CI-Only |
 
 ---
 
@@ -308,12 +279,6 @@ We configure a custom `LogMaskingAppender` in [logback-spring.xml](file:///home/
 2. Filter by Environment (`production`/`staging`).
 3. Locate the Exception. Check the **MDC Context parameters** to find the specific `requestId` that generated the error.
 4. Search New Relic Logs using query: `MDC.requestId:"<requestId>"` to view the full contextual log trail leading up to the crash.
-
-### Scenario B: CI Build Fails on Coverage Check
-1. Go to your GitHub Action run logs.
-2. Select the "Upload Coverage Reports to Codecov" job.
-3. Inspect the PR comment posted by Codecov showing which new code lines missed unit tests.
-4. Add corresponding Vitest/Surefire tests and push again to resolve the block.
 
 ---
 
