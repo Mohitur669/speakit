@@ -15,6 +15,7 @@ _An exhaustive architectural handbook, system design review, and technical inter
 6. [Security Architecture](#6-security-architecture)
 7. [Rate Limiting & Traffic Governance](#7-rate-limiting--traffic-governance) _(AOP implementation, Bucket4j, Token Bucket, identity model, sanitization, Retry-After, Redis migration)_
 8. [DevOps & Deployment](#8-devops--deployment)
+   - 8.5. [Recommended Observability & Code Quality Tool Suite](#85-recommended-observability--code-quality-tool-suite)
 9. [Performance Optimization](#9-performance-optimization)
 10. [Software Engineering Concepts Applied](#10-software-engineering-concepts-applied)
 11. [Design Decision Analysis (Tradeoffs)](#11-design-decision-analysis-tradeoffs)
@@ -85,6 +86,11 @@ If you need to briefly describe the entire application structure, security postu
   * Pushes to GitHub send signed webhook payloads to `https://coolify.mohitur.com/webhooks/source/github/events`.
   * Webhook signatures are verified locally using HMAC-SHA256. Coolify checks target directories (`backend/**`) and executes multi-stage Docker builds on an OCI Ampere instance.
   * Traefik v3 verifies the container health using `/api/auth/ping` and hot-swaps routing rules, executing a rolling zero-downtime deployment.
+
+### 4. Recommended Observability & Quality Suite
+* **Observability & Error Alerts**: **Sentry** for real-time client/server crash reporting and user session replays.
+* **Code Analysis & technical Debt**: **CodeScene** for mapping cognitive hotspots and complexity trends.
+* **Test Coverage Gating**: **Codecov** to automatically gate pull requests based on Jacoco test coverage reports.
 
 ---
 
@@ -1650,6 +1656,27 @@ Application Consumption:
 ```
 
 To secure our administration dashboard itself, we use a Cloudflare WAF custom rule that blocks all public requests to `coolify.mohitur.com` unless they target the `/webhooks/*` path. We access the admin panel privately over a secure **Tailscale VPN** on port `8000`, bypassing the public internet entirely.
+
+---
+
+## 8.5. RECOMMENDED OBSERVABILITY & CODE QUALITY TOOL SUITE
+
+To scale SpeakIT production systems reliably, monitor runtime performance, and ensure clean development flows, the following specialized tools from the GitHub Developer Suite are recommended for integration:
+
+### 1. Observability & Crash Reporting (Sentry)
+* **Sentry**:
+  * **Integration**: Configure backend using `sentry-spring-boot-starter` inside `pom.xml`, and initialize `@sentry/angular` on the frontend.
+  * **Objective**: Automatically captures all unhandled exceptions (e.g. AWS Polly throttling, Razorpay signature mismatch issues, database connectivity failures) and pairs them with full transaction traces, environment metrics, and frontend session replays to enable immediate remediation.
+
+### 2. Code Quality & Code Health (CodeScene)
+* **CodeScene**:
+  * **Integration**: Connect to our GitHub Repository; configure PR Quality Gates inside GitHub actions.
+  * **Objective**: Performs predictive analysis of the codebase. Identifies complex hotspot files, detects package circular dependencies, flags structural code smells, and monitors technical debt index trends over development cycles.
+
+### 3. Test Coverage Gating (Codecov)
+* **Codecov**:
+  * **Integration**: Configure Jacoco plugins inside the Spring project and pipe XML reports to Codecov on each push.
+  * **Objective**: Automates PR test coverage checks, verifying that newly introduced components (such as auth validation filters or payment lifecycle hooks) maintain code coverage guidelines (target: >90%).
 
 ---
 

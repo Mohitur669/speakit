@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- Import default Spring Boot configurations (for console colors, etc.) -->
+    <include resource="org/springframework/boot/logging/logback/defaults.xml" />
+
+    <springProperty scope="context" name="appName" source="spring.application.name" defaultValue="speakit-backend" />
+    <springProperty scope="context" name="logFile" source="logging.file.name" defaultValue="logs/speakit-backend.log" />
+    <springProperty scope="context" name="maxFileSize" source="logging.logback.rollingpolicy.max-file-size" defaultValue="10MB" />
+    <springProperty scope="context" name="maxHistory" source="logging.logback.rollingpolicy.max-history" defaultValue="30" />
+    <springProperty scope="context" name="totalSizeCap" source="logging.logback.rollingpolicy.total-size-cap" defaultValue="1GB" />
+
+    <!-- Retrieve New Relic settings from Environment -->
+    <springProperty scope="context" name="newRelicLicenseKey" source="newrelic.licensekey" defaultValue="" />
+    <springProperty scope="context" name="newRelicAppName" source="newrelic.appname" defaultValue="speakit-backend-prod" />
+
+    <property name="CONSOLE_LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} %highlight(%-5level) [%thread] [%X{requestId}] %cyan(%logger{36}) : %msg%n" />
+    <property name="FILE_LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [${appName}] [%thread] [%X{requestId}] %logger{36} : %msg%n" />
+
+    <!-- Raw Console Appender (unmasked, stdout) -->
+    <appender name="RAW_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Raw File Appender (unmasked, disk) -->
+    <appender name="RAW_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${logFile}</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${logFile}.%d{yyyy-MM-dd}.%i.gz</fileNamePattern>
+            <maxFileSize>${maxFileSize}</maxFileSize>
+            <maxHistory>${maxHistory}</maxHistory>
+            <totalSizeCap>${totalSizeCap}</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${FILE_LOG_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Secure Masking Appender Wrapper for Console & File -->
+    <appender name="SECURE_CONSOLE" class="com.speakit.shared.util.LogMaskingAppender">
+        <appender-ref ref="RAW_CONSOLE" />
+    </appender>
+
+    <appender name="SECURE_FILE" class="com.speakit.shared.util.LogMaskingAppender">
+        <appender-ref ref="RAW_FILE" />
+    </appender>
+
+    <!-- Production Profile Configurations (New Relic Integration) -->
+    <springProfile name="prod">
+        <!-- New Relic Appender -->
+        <appender name="NewRelicLogback" class="com.newrelic.logging.logback.NewRelicLogbackAppender">
+            <apiKey>${newRelicLicenseKey}</apiKey>
+            <appName>${newRelicAppName}</appName>
+        </appender>
+
+        <!-- Wrap in AsyncAppender for Non-Blocking execution -->
+        <appender name="ASYNC_NEW_RELIC" class="ch.qos.logback.classic.AsyncAppender">
+            <appender-ref ref="NewRelicLogback" />
+            <queueSize>1024</queueSize>
+            <discardingThreshold>0</discardingThreshold>
+            <neverBlock>true</neverBlock>
+        </appender>
+
+        <!-- Wrap in our secure LogMaskingAppender to ensure no PII reaches New Relic -->
+        <appender name="SECURE_NEW_RELIC" class="com.speakit.shared.util.LogMaskingAppender">
+            <appender-ref ref="ASYNC_NEW_RELIC" />
+        </appender>
+    </springProfile>
+
+    <!-- Root Logger Configuration -->
+    <root level="INFO">
+        <appender-ref ref="SECURE_CONSOLE" />
+        <appender-ref ref="SECURE_FILE" />
+        <springProfile name="prod">
+            <appender-ref ref="SECURE_NEW_RELIC" />
+        </springProfile>
+    </root>
+
+</configuration>
