@@ -156,7 +156,7 @@ Every contributor must adhere to the following software engineering guidelines:
 | **O**pen-Closed | `@RateLimited` aspect — protect new endpoints by annotation addition, not code modification. |
 | **L**iskov Substitution | Repository interfaces can swap implementations (JPA → JDBC) without breaking service layer. |
 | **I**nterface Segregation | `UserSessionProjection` exposes only 3 fields; controllers never see the full `User` entity's 12 fields. |
-| **D**ependency Inversion | Services depend on repository interfaces (`UserRepository`), not concrete Hibernate classes. Spring DI wires the implementations. |
+| **D**ependency Inversion | Services depend on repository interfaces (`UserRepository`), not concrete Hibernate classes. Spring DI wire the implementations. |
 
 ### 2.2 Design Patterns Applied in SpeakIT
 
@@ -174,10 +174,10 @@ Every contributor must adhere to the following software engineering guidelines:
 
 ```mermaid
 graph TD
-    UI[Client Browser UI] -->|HTTP Request| Controller[Controller Layer / Web]
-    Controller -->|DTO Records| Service[Service Layer / Domain Logic]
-    Service -->|Entities / Projections| Repository[Repository Layer / Data Access]
-    Repository -->|SQL Queries| DB[(Database / Postgres)]
+    UI["Client Browser UI"] -->|HTTP Request| Controller["Controller Layer / Web"]
+    Controller -->|DTO Records| Service["Service Layer / Domain Logic"]
+    Service -->|Entities / Projections| Repository["Repository Layer / Data Access"]
+    Repository -->|SQL Queries| DB[("Database / Postgres")]
 ```
 
 ---
@@ -211,13 +211,13 @@ graph TD
 
 ```mermaid
 graph TD
-    Root[/Workspace Root/] --> BE[backend/]
-    Root --> FE[frontend/]
-    Root --> Docs[docs/]
-    Root --> Dep[deployment/]
+    Root[/Workspace Root/] --> BE["backend/"]
+    Root --> FE["frontend/"]
+    Root --> Docs["docs/"]
+    Root --> Dep["deployment/"]
     
-    BE --> BESrc[src/main/java/com/speakit/]
-    FE --> FESrc[src/app/core/ & src/app/features/]
+    BE --> BESrc["src/main/java/com/speakit/"]
+    FE --> FESrc["src/app/core/ & src/app/features/"]
 ```
 
 ---
@@ -276,12 +276,12 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    Dashboard[Coolify Web UI] -->|1. Admin Inputs Secrets| DB[(Coolify Encrypted DB)]
-    DB -->|2. Reads on Deploy| Docker[Docker Daemon]
-    Docker -->|3. Injects directly into Process Memory| Java[Running Spring Boot App]
+    Dashboard["Coolify Web UI"] -->|1. Admin Inputs Secrets| DB[("Coolify Encrypted DB")]
+    DB -->|2. Reads on Deploy| Docker["Docker Daemon"]
+    Docker -->|3. Injects directly into Process Memory| Java["Running Spring Boot App"]
     
     subgraph OCI Host Disk [Filesystem - /opt/speakit]
-        File[.env file]
+        File[".env file"]
     end
     
     Java -.->|No Disk Read| File
@@ -365,12 +365,12 @@ To isolate administrative operations from public scans, the server runs a privat
 ```mermaid
 graph TD
     subgraph Public Internet
-        Attacker[Public Internet Scanner] -.->|Blocked: Connection Refused| Port22[SSH Port 22]
-        Attacker -.->|Blocked: Connection Refused| Port8000[Coolify UI Port 8000]
+        Attacker["Public Internet Scanner"] -.->|Blocked: Connection Refused| Port22["SSH Port 22"]
+        Attacker -.->|Blocked: Connection Refused| Port8000["Coolify UI Port 8000"]
     end
     
     subgraph Private VPN Tunnel
-        Admin[Admin / Mac] -->|Authenticated SSH| Tailnet[Tailscale Overlay Interface]
+        Admin["Admin / Mac"] -->|Authenticated SSH| Tailnet["Tailscale Overlay Interface"]
         Tailnet -->|Decrypt Access| Port22
         Tailnet -->|Decrypt Access| Port8000
     end
@@ -444,9 +444,9 @@ The frontend is built with **Angular 21**, strictly utilizing **Standalone Compo
 
 ```mermaid
 graph LR
-    Input[User Action / Input] -->|Sets value| UserSignal[User Signal / State]
-    UserSignal -->|Triggers compute| ComputedField[Computed Signal / Read-only]
-    UserSignal -->|Triggers side effect| DOMEffect[DOM Effect / Re-render]
+    Input["User Action / Input"] -->|Sets value| UserSignal["User Signal / State"]
+    UserSignal -->|Triggers compute| ComputedField["Computed Signal / Read-only"]
+    UserSignal -->|Triggers side effect| DOMEffect["DOM Effect / Re-render"]
     ComputedField --> DOMEffect
 ```
 
@@ -609,9 +609,9 @@ public class GlobalExceptionHandler {
 
 ```mermaid
 graph TD
-    Ex[Exception Occurs inside Controller/Service] -->|Bubble Up| Advice[GlobalExceptionHandler]
-    Advice -->|Log Stacktrace locally with MDC requestID| Log[Logback Output]
-    Advice -->|Create UserFriendly ErrorResponse JSON| Response[HTTP Client Response]
+    Ex["Exception Occurs inside Controller/Service"] -->|Bubble Up| Advice["GlobalExceptionHandler"]
+    Advice -->|Log Stacktrace locally with MDC requestID| Log["Logback Output"]
+    Advice -->|Create UserFriendly ErrorResponse JSON| Response["HTTP Client Response"]
 ```
 
 ---
@@ -692,15 +692,15 @@ public class RateLimitAspect {
 
 ```mermaid
 graph TD
-    Req[Incoming HTTP request] -->|Interrupted by| AOP[RateLimitAspect]
-    AOP -->|Check if JWT authentication header exists| CheckAuth{Is Authenticated?}
-    CheckAuth -->|Yes| KeyUser[Identity Key = user:userId]
-    CheckAuth -->|No| KeyAnon[Identity Key = anon:hash IP+UA]
-    KeyUser --> Bucket[Lookup Bucket4j token bucket]
+    Req["Incoming HTTP request"] -->|Interrupted by| AOP["RateLimitAspect"]
+    AOP -->|Check if JWT authentication header exists| CheckAuth{"Is Authenticated?"}
+    CheckAuth -->|Yes| KeyUser["Identity Key = user:userId"]
+    CheckAuth -->|No| KeyAnon["Identity Key = anon:hash IP+UA"]
+    KeyUser --> Bucket["Lookup Bucket4j token bucket"]
     KeyAnon --> Bucket
-    Bucket -->|Consume 1 Token| CheckToken{Tokens Available?}
-    CheckToken -->|Yes| Execute[Proceed to target controller method]
-    CheckToken -->|No| Reject[Throw HTTP 429 TooManyRequestsException]
+    Bucket -->|Consume 1 Token| CheckToken{"Tokens Available?"}
+    CheckToken -->|Yes| Execute["Proceed to target controller method"]
+    CheckToken -->|No| Reject["Throw HTTP 429 TooManyRequestsException"]
 ```
 
 ### 16.4 Dual-Signal Rate Limiting for Email Security
@@ -803,12 +803,12 @@ The Docker configurations are designed for secure, reproducible container execut
 ```mermaid
 graph TD
     subgraph Build Phase
-        JDK[Eclipse Temurin JDK 21 Image] -->|Run maven package| JAR[Built executable JAR file]
+        JDK["Eclipse Temurin JDK 21 Image"] -->|Run maven package| JAR["Built executable JAR file"]
     end
     
     subgraph Run Phase
-        JAR -->|Copy to| JRE[Eclipse Temurin JRE 21 Alpine Image]
-        JRE -->|Instantiate user appuser| Container[Running Container (Read-Only FS)]
+        JAR -->|Copy to| JRE["Eclipse Temurin JRE 21 Alpine Image"]
+        JRE -->|Instantiate user appuser| Container["Running Container (Read-Only FS)"]
     end
 ```
 
@@ -822,13 +822,13 @@ SpeakIT implements a mature error tracking and logging pipeline to track runtime
 
 ```mermaid
 graph TD
-    User[User Session / Browser] -->|Errors & Performance| Sentry[Sentry SDK / Replay]
-    User -->|Interactions| LogService[LoggerService / Client Logs]
-    LogService -->|HTTP POST| Server[Spring Boot Backend]
-    Server -->|Structured JSON logs| NR[New Relic Logback Appender]
-    Server -->|Exceptions| SentryBackend[Sentry Spring Boot Starter]
-    SentryBackend -->|Redacted Payloads| SentryCloud[Sentry.io]
-    NR -->|Asynchronous Logs Shipping| NewRelicCloud[NewRelic.com]
+    User["User Session / Browser"] -->|Errors & Performance| Sentry["Sentry SDK / Replay"]
+    User -->|Interactions| LogService["LoggerService / Client Logs"]
+    LogService -->|HTTP POST| Server["Spring Boot Backend"]
+    Server -->|Structured JSON logs| NR["New Relic Logback Appender"]
+    Server -->|Exceptions| SentryBackend["Sentry Spring Boot Starter"]
+    SentryBackend -->|Redacted Payloads| SentryCloud["Sentry.io"]
+    NR -->|Asynchronous Logs Shipping| NewRelicCloud["NewRelic.com"]
 ```
 
 ### 22.2 Sentry (Error Tracking & Session Replay)
@@ -891,13 +891,13 @@ SpeakIT manages transactional and inbound/outbound emails through a secure deliv
 ```mermaid
 graph TD
     subgraph Inbound Emails
-        Sender[Customer / Internet] -->|Send email to support@mohitur.com| CF[Cloudflare Email Routing]
-        CF -->|Auto-forward| Gmail[yourpersonalgmail@gmail.com]
+        Sender["Customer / Internet"] -->|Send email to support@mohitur.com| CF["Cloudflare Email Routing"]
+        CF -->|Auto-forward| Gmail["yourpersonalgmail@gmail.com"]
     end
 
     subgraph Outbound Emails
-        Backend[Spring Boot Backend] -->|SMTP TLS Port 587| SES[Amazon SES ap-south-1]
-        SES -->|DKIM Signed & SPF Aligned| Customer[Customer Inbox]
+        Backend["Spring Boot Backend"] -->|SMTP TLS Port 587| SES["Amazon SES ap-south-1"]
+        SES -->|DKIM Signed & SPF Aligned| Customer["Customer Inbox"]
     end
 ```
 
@@ -925,10 +925,10 @@ To prevent billing runaways from DDoS email spam, a global monitoring circuit br
 
 ```mermaid
 flowchart LR
-    Alert[Budget Threshold > 100%] -->|Trigger| SNS[Amazon SNS Topic in us-east-1]
-    SNS -->|Invoke| Lambda[AWS Lambda Circuit Breaker in us-east-1]
-    Lambda -->|ses:UpdateAccountSendingEnabled| SES[Amazon SES ap-south-1 Mumbai]
-    Lambda -->|Alert| Log[CloudWatch Logs / Admin Email]
+    Alert["Budget Threshold > 100%"] -->|Trigger| SNS["Amazon SNS Topic in us-east-1"]
+    SNS -->|Invoke| Lambda["AWS Lambda Circuit Breaker in us-east-1"]
+    Lambda -->|ses:UpdateAccountSendingEnabled| SES["Amazon SES ap-south-1 Mumbai"]
+    Lambda -->|Alert| Log["CloudWatch Logs / Admin Email"]
 ```
 
 ---
@@ -984,10 +984,10 @@ SpeakIT dynamically matches speech generation requests against three API vendors
 
 ```mermaid
 graph TD
-    Req[Synthesis Request / API] -->|Inspect requested voice parameters| Strategy{Strategy Router}
-    Strategy -->|Engine standard or neural| AWS_Polly[AWS Polly Client]
-    Strategy -->|Engine ElevenLabs| ElevenLabs[ElevenLabs Client]
-    Strategy -->|Engine Sarvam| Sarvam[Sarvam AI Client]
+    Req["Synthesis Request / API"] -->|Inspect requested voice parameters| Strategy{"Strategy Router"}
+    Strategy -->|Engine standard or neural| AWS_Polly["AWS Polly Client"]
+    Strategy -->|Engine ElevenLabs| ElevenLabs["ElevenLabs Client"]
+    Strategy -->|Engine Sarvam| Sarvam["Sarvam AI Client"]
 ```
 
 ---
@@ -1047,11 +1047,11 @@ Ensure the following are verified before approving pull requests:
 
 ```mermaid
 flowchart TD
-    CreateDTO[1. Create Request & Response DTO records] --> AddValidator[2. Add Jakarta Validation annotations]
-    AddValidator --> AddController[3. Define routes in Controller]
-    AddController --> AddAuth[4. Set endpoint permissions in controller]
-    AddAuth --> AddService[5. Write business logic in Service under Transactional]
-    AddService --> AddRepo[6. Query database via Repository interfaces]
+    CreateDTO["1. Create Request & Response DTO records"] --> AddValidator["2. Add Jakarta Validation annotations"]
+    AddValidator --> AddController["3. Define routes in Controller"]
+    AddController --> AddAuth["4. Set endpoint permissions in controller"]
+    AddAuth --> AddService["5. Write business logic in Service under Transactional"]
+    AddService --> AddRepo["6. Query database via Repository interfaces"]
 ```
 
 ---
@@ -1149,9 +1149,9 @@ If the user is hard-deleted in that window:
 
 ```mermaid
 graph TD
-    Req[Browser Speech Request] -->|Text + Voice settings hash lookup| Cache{Is Synthesized Audio Cached?}
-    Cache -->|Yes: Cost is $0| S3[Deliver S3 Audio URL instantly]
-    Cache -->|No| Engine[Acquire Rate Limit token ➔ Forward to Polly/ElevenLabs/Sarvam API]
+    Req["Browser Speech Request"] -->|Text + Voice settings hash lookup| Cache{"Is Synthesized Audio Cached?"}
+    Cache -->|Yes: Cost is $0| S3["Deliver S3 Audio URL instantly"]
+    Cache -->|No| Engine["Acquire Rate Limit token ➔ Forward to Polly/ElevenLabs/Sarvam API"]
 ```
 
 ---
