@@ -1,3 +1,15 @@
+<style>
+h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+}
+.diagram-container {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    display: block !important;
+}
+</style>
+
 # SpeakIT: Enterprise Engineering & Architecture Deep-Dive
 
 _An exhaustive architectural handbook, system design review, technical interview guide, and engineering standard manual._
@@ -76,6 +88,8 @@ _An exhaustive architectural handbook, system design review, technical interview
 
 ---
 
+<div style="page-break-before: always;"></div>
+
 ## 1. PROJECT OVERVIEW & SYSTEM CHEAT SHEET
 
 ### 1.1 Purpose
@@ -134,6 +148,8 @@ Refer to this reference dashboard for a quick description of the entire applicat
 
 ---
 
+<div style="page-break-before: always;"></div>
+
 ## 2. ENGINEERING PRINCIPLES & APPLIED SOFTWARE CONCEPTS
 
 Every contributor must adhere to the following software engineering guidelines:
@@ -170,6 +186,8 @@ Every contributor must adhere to the following software engineering guidelines:
 | **Decorator** | HTTP Interceptors in Angular | Augment HttpClient behavior without modifying it |
 | **Aspect (AOP)** | `@RateLimited` annotation | Non-functional concerns separated from business logic |
 
+<div class="diagram-container">
+
 ### 2.3 Clean Architecture Layer Boundaries Diagram
 
 ```mermaid
@@ -180,7 +198,11 @@ graph TD
     Repository -->|SQL Queries| DB[("Database / Postgres")]
 ```
 
+</div>
+
 ---
+
+<div style="page-break-before: always;"></div>
 
 ## 3. REPOSITORY STRUCTURE & CONVENTIONS
 
@@ -207,6 +229,8 @@ graph TD
 * **`docs/`**: Only documentation files. No source code.
 * **`shared/`**: Must contain only packages imported by both subfolders.
 
+<div class="diagram-container">
+
 ### 3.2 Repository Folder Hierarchy Diagram
 
 ```mermaid
@@ -220,11 +244,17 @@ graph TD
     FE --> FESrc["src/app/core/ & src/app/features/"]
 ```
 
+</div>
+
 ---
+
+<div style="page-break-before: always;"></div>
 
 ## 4. NETWORK & DEPLOYMENT ARCHITECTURE (TWO OF EVERYTHING)
 
 SpeakIT operates a mirrored dual-environment architecture, executing a complete development/sandbox stack and a production stack on a single compute node.
+
+<div class="diagram-container">
 
 ### 4.1 System Network Routing & Deployment Topology Diagram
 
@@ -272,6 +302,10 @@ flowchart TD
     Dev_BE -->|Internal JDBC Connection| Dev_DB
 ```
 
+</div>
+
+<div class="diagram-container">
+
 ### 4.2 Zero-Disk Secret Storage Process Diagram
 
 ```mermaid
@@ -287,6 +321,8 @@ flowchart TD
     Java -.->|No Disk Read| File
 ```
 
+</div>
+
 ### 4.3 Dual Environment Setup: speakit & speakit-dev
 The project hosts **two of everything** to isolate development validation from live business transactions:
 * **Two Frontends**:
@@ -301,9 +337,9 @@ The project hosts **two of everything** to isolate development validation from l
 
 ### 4.4 Internal Network Namespaces & Port Isolation
 To prevent port collisions, databases and Spring Boot backends execute inside separate Docker network containers:
-* **Databases**: Both `speakit-prod-db` and `speakit-dev-db` bind to PostgreSQL default port `5432` internally on their distinct container IP addresses. We do not publish these ports to the host's public network interface, completely isolating database sockets from external internet scans.
-* **Backends**: Both production and development backends bind to port `8080` internally within their container isolation zones.
-* **Host Mapping**: Traefik binds to the host's port `80` (HTTP) and `443` (HTTPS) to handle public requests and route traffic.
+* **Databases**: Both speakit-prod-db and speakit-dev-db bind to PostgreSQL default port 5432 internally on their distinct container IP addresses. We do not publish these ports to the host's public network interface, completely isolating database sockets from external internet scans.
+* **Backends**: Both production and development backends bind to port 8080 internally within their container isolation zones.
+* **Host Mapping**: Traefik binds to the host's port 80 (HTTP) and 443 (HTTPS) to handle public requests and route traffic.
 
 ### 4.5 Traefik Reverse Proxy Configuration
 Traefik v3 is utilized as Coolify's default reverse proxy engine rather than standard Nginx:
@@ -313,9 +349,13 @@ Traefik v3 is utilized as Coolify's default reverse proxy engine rather than sta
 
 ---
 
-## 5. CONTINUOUS DEPLOYMENT (CI/CD) & GITOPS PIPELINE
+<div style="page-break-before: always;"></div>
+
+## 5. CONTINUOUS DEPLOYMENT (CI/CD) & Webhook Pipeline
 
 Auto-deployments execute via signed webhooks and branch triggers, deploying updates dynamically to the correct target environment.
+
+<div class="diagram-container">
 
 ### 5.1 GitOps Continuous Integration & Deployment Flow Diagram
 
@@ -326,6 +366,8 @@ flowchart LR
     Coolify -->|Verify Watch Paths: backend/**| Docker_Build[Docker Multi-Stage Build]
     Docker_Build -->|Image Ready| Traefik_Engine[Traefik Hot-Swap Swap]
 ```
+
+</div>
 
 ### 5.2 Branch-Based Auto-Deployments
 * **`master` Branch**: Pushes to `master` trigger Production builds:
@@ -356,9 +398,13 @@ To build identical static packages once and run anywhere, a dynamic prebuild hoo
 
 ---
 
+<div style="page-break-before: always;"></div>
+
 ## 6. TAILSCALE PRIVATE VPN NETWORK OVERLAY
 
 To isolate administrative operations from public scans, the server runs a private overlay network using Tailscale.
+
+<div class="diagram-container">
 
 ### 6.1 VPN Overlay Network Isolation Diagram
 
@@ -376,12 +422,14 @@ graph TD
     end
 ```
 
+</div>
+
 ### 6.2 OCI Host Firewall (UFW) Hardening
 The OCI Virtual Cloud Network security list and the local OS firewall (UFW) are locked down:
-* **Allowed Publicly**: Ports `80` (HTTP) and `443` (HTTPS) to allow proxy routing.
+* **Allowed Publicly**: Ports 80 (HTTP) and 443 (HTTPS) to allow proxy routing.
 * **Allowed Privately (Tailscale Interfaces only)**:
-  * Port `22` (SSH) is blocked publicly and restricted strictly to Tailscale IP subnet ranges (`100.64.0.0/10`).
-  * Port `8000` (Coolify Admin dashboard) is blocked from public ingress. Access is resolved strictly over the secure Tailscale interface: `http://100.66.182.36:8000`.
+  * Port 22 (SSH) is blocked publicly and restricted strictly to Tailscale IP subnet ranges (`100.64.0.0/10`).
+  * Port 8000 (Coolify Admin dashboard) is blocked from public ingress. Access is resolved strictly over the secure Tailscale interface: `http://100.66.182.36:8000`.
 
 ### 6.3 SSH Tunneling for Database Connections (DBeaver)
 Database ports (`3000` for prod, `3001` for dev) bind locally to the OCI host loopback (`127.0.0.1`). To connect to the databases from your local Mac using DBeaver:
@@ -391,6 +439,8 @@ Database ports (`3000` for prod, `3001` for dev) bind locally to the OCI host lo
 4. DBeaver will securely tunnel SQL queries through SSH, bypassing public port exposure.
 
 ---
+
+<div style="page-break-before: always;"></div>
 
 ## 7. BACKEND ARCHITECTURE & LAYER RESPONSIBILITIES
 
@@ -412,6 +462,8 @@ The backend enforces a strict layered design pattern:
 * Repositories can interact with Database drivers.
 * **Violation**: Controllers must **never** import repositories directly. Services must **never** reference HTTP servlet response streams directly.
 
+<div class="diagram-container">
+
 ### 7.3 Spring Boot Layer Dependency Flow Diagram
 
 ```mermaid
@@ -429,7 +481,11 @@ sequenceDiagram
     Business-->>Web: ResponseDTO
 ```
 
+</div>
+
 ---
+
+<div style="page-break-before: always;"></div>
 
 ## 8. FRONTEND ARCHITECTURE & STANDALONE COMPONENTS
 
@@ -439,6 +495,8 @@ The frontend is built with **Angular 21**, strictly utilizing **Standalone Compo
 * Component state is managed via **Angular Signals** (`signal`, `computed`, `effect`) for fine-grained DOM change detection.
 * **RxJS** is strictly reserved for data streaming and HTTP requests via the `HttpClient` pipeline.
 * Broadcasters are synced across tabs using the browser's `BroadcastChannel` API to instantly end sessions across duplicate windows during logouts.
+
+<div class="diagram-container">
 
 ### 8.2 Angular Signals Reactive Data Propagation Flow Diagram
 
@@ -450,7 +508,11 @@ graph LR
     ComputedField --> DOMEffect
 ```
 
+</div>
+
 ---
+
+<div style="page-break-before: always;"></div>
 
 ## 9. API DESIGN STANDARDS & ENDPOINT MAPPING
 
@@ -478,6 +540,8 @@ All API endpoints must follow strict RESTful conventions:
 
 ---
 
+<div style="page-break-before: always;"></div>
+
 ## 10. DTO GUIDELINES & REQUEST VALIDATION
 
 Data Transfer Objects (DTOs) decouple serialization schemas from database states:
@@ -500,6 +564,8 @@ public record LoginRequest(
 ```
 
 ---
+
+<div style="page-break-before: always;"></div>
 
 ## 11. DATABASE STANDARDS & SCHEMA DESIGN
 
@@ -545,6 +611,8 @@ Database persistence is protected against disaster using **S3-Compatible Oracle 
 
 ---
 
+<div style="page-break-before: always;"></div>
+
 ## 12. NAMING CONVENTIONS
 
 All assets in the codebase must follow strict naming templates:
@@ -564,6 +632,8 @@ All assets in the codebase must follow strict naming templates:
 
 ---
 
+<div style="page-break-before: always;"></div>
+
 ## 13. CODING STANDARDS & FORMATTING
 
 All code must conform to the following syntax and structural patterns:
@@ -581,6 +651,8 @@ All code must conform to the following syntax and structural patterns:
 * Declare Angular selectors as `app-` kebab-case (e.g. `app-tts-studio`).
 
 ---
+
+<div style="page-break-before: always;"></div>
 
 ## 14. ERROR HANDLING STANDARDS
 
@@ -605,6 +677,8 @@ public class GlobalExceptionHandler {
 ```
 *Note: Never print stack traces or raw system error logs to client HTTP responses.*
 
+<div class="diagram-container">
+
 ### 14.2 Global Error Translator Architecture Diagram
 
 ```mermaid
@@ -614,7 +688,11 @@ graph TD
     Advice -->|Create UserFriendly ErrorResponse JSON| Response["HTTP Client Response"]
 ```
 
+</div>
+
 ---
+
+<div style="page-break-before: always;"></div>
 
 ## 15. SECURITY STANDARDS & SESSION VERSIONING
 
@@ -644,6 +722,8 @@ On "Logout from all devices":
 * **Password Storage**: Passwords must be hashed using **BCrypt** with a minimum work factor (rounds) of 10.
 
 ---
+
+<div style="page-break-before: always;"></div>
 
 ## 16. RATE LIMITING & TRAFFIC GOVERNANCE
 
@@ -688,6 +768,8 @@ public class RateLimitAspect {
 }
 ```
 
+<div class="diagram-container">
+
 ### 16.3 Composite Identity Limiter Processing Flow Diagram
 
 ```mermaid
@@ -703,12 +785,16 @@ graph TD
     CheckToken -->|No| Reject["Throw HTTP 429 TooManyRequestsException"]
 ```
 
+</div>
+
 ### 16.4 Dual-Signal Rate Limiting for Email Security
 To prevent abusers from spinning proxy networks to bypass IP rate limits and trigger massive SES billing expenses, email triggers (SignUp, Forgot Password, OTP request) enforce **Dual-Signal Rate Limiting**:
 * Outgoing actions evaluate **both** an IP-level bucket (`OTP_RESEND_IP_[clientIp]`) and an Identity-level bucket (`OTP_RESEND_EMAIL_[emailHash]`).
 * If the user rotates their IP, the Identity-level bucket locks them out of triggering duplicate email dispatches, mitigating mail loops and spam attacks.
 
 ---
+
+<div style="page-break-before: always;"></div>
 
 ## 17. LOGGING STANDARDS, MDC TRACING & MASKING APPENDERS
 
@@ -731,6 +817,8 @@ SpeakIT protects customer data (DPDP Act compliance) by routing JVM logs through
 * Uses a custom regex converter (`LogMaskingConverter`) that scans messages for credentials, SMTP passwords, JWTs, and email regexes before printing to console.
 * Sensitive patterns are replaced with `[REDACTED]` or obfuscated formats in memory.
 
+<div class="diagram-container">
+
 ### 17.3 MDC Correlation Request Trace Pipeline Diagram
 
 ```mermaid
@@ -750,7 +838,11 @@ sequenceDiagram
     Filter->>Client: Response + Header [X-Request-ID]
 ```
 
+</div>
+
 ---
+
+<div style="page-break-before: always;"></div>
 
 ## 18. CONFIGURATION MANAGEMENT
 
@@ -761,6 +853,8 @@ Environment parameters must be decoupled from the code payload:
 
 ---
 
+<div style="page-break-before: always;"></div>
+
 ## 19. TESTING STANDARDS
 
 Test code quality ensures platform stability:
@@ -769,6 +863,8 @@ Test code quality ensures platform stability:
 * **Coverage Targets**: High-risk business logic classes (like `RazorpayService` and `AuthService`) should target high coverage baselines.
 
 ---
+
+<div style="page-break-before: always;"></div>
 
 ## 20. PERFORMANCE GUIDELINES & OPTIMIZATION
 
@@ -790,6 +886,8 @@ try (InputStream pollyStream = pollyClient.synthesizeSpeech(...).audioStream()) 
 
 ---
 
+<div style="page-break-before: always;"></div>
+
 ## 21. DOCKER & CONTAINERIZATION STANDARDS
 
 The Docker configurations are designed for secure, reproducible container execution:
@@ -797,6 +895,8 @@ The Docker configurations are designed for secure, reproducible container execut
   * The backend runner uses the `eclipse-temurin` JRE alpine stage executing under `USER appuser`.
   * The frontend container uses Nginx configured to run as `USER nginx` on unprivileged port `8080`.
 * **Compose Governance**: Resources must be limited to prevent container runaways (e.g. backend limit set to 512MB RAM, frontend to 256MB RAM).
+
+<div class="diagram-container">
 
 ### 21.3 Multi-Stage Compilation & Unprivileged Container Diagram
 
@@ -812,11 +912,17 @@ graph TD
     end
 ```
 
+</div>
+
 ---
+
+<div style="page-break-before: always;"></div>
 
 ## 22. OBSERVABILITY & CODE QUALITY SETUP (SENTRY & NEW RELIC)
 
 SpeakIT implements a mature error tracking and logging pipeline to track runtime anomalies:
+
+<div class="diagram-container">
 
 ### 22.1 System Integration Snapshot Diagram
 
@@ -830,6 +936,8 @@ graph TD
     SentryBackend -->|Redacted Payloads| SentryCloud["Sentry.io"]
     NR -->|Asynchronous Logs Shipping| NewRelicCloud["NewRelic.com"]
 ```
+
+</div>
 
 ### 22.2 Sentry (Error Tracking & Session Replay)
 * **SDK Configurations**: Integrates Sentry Spring Boot starter on the API, and `@sentry/angular` on the frontend.
@@ -849,6 +957,8 @@ graph TD
 
 ---
 
+<div style="page-break-before: always;"></div>
+
 ## 23. RAZORPAY SUBSCRIPTION WEBHOOKS & PAYMENT LIFECYCLE
 
 Razorpay is integrated as the primary payment processor for user subscription upgrades and renewals.
@@ -856,6 +966,8 @@ Razorpay is integrated as the primary payment processor for user subscription up
 * **Handled Webhook Events (`/api/v1/webhooks/razorpay`)**:
   * `subscription.activated` & `subscription.charged`: Validates signatures, records transactions, and updates the user's plan.
   * `subscription.cancelled`: Schedules a downgrade at the cycle's end.
+
+<div class="diagram-container">
 
 ### 23.4 Double-Handshake Subscription Flow Diagram
 
@@ -878,13 +990,19 @@ sequenceDiagram
     Server-->>Client: Return HTTP 200 SUCCESS
 ```
 
+</div>
+
 * **Idempotency**: All webhook transactions are registered in the `webhook_events` table to enforce exactly-once execution.
 
 ---
 
+<div style="page-break-before: always;"></div>
+
 ## 24. EMAIL & AMAZON SES NOTIFICATION SETUP
 
 SpeakIT manages transactional and inbound/outbound emails through a secure deliverability infrastructure.
+
+<div class="diagram-container">
 
 ### 24.1 Email Deliverability Routing Diagram
 
@@ -900,6 +1018,8 @@ graph TD
         SES -->|DKIM Signed & SPF Aligned| Customer["Customer Inbox"]
     end
 ```
+
+</div>
 
 ### 24.2 Domain Keys & DMARC Alignment
 To maintain high email deliverability, DNS entries are configured in Cloudflare:
@@ -921,6 +1041,8 @@ To prevent billing runaways from DDoS email spam, a global monitoring circuit br
 3. **AWS Lambda Execution**: A Python Lambda function triggers, executing `ses.update_account_sending_enabled(Enabled=False)` targeting the production region (**Mumbai `ap-south-1`**).
 4. **Graceful Degradation**: SES sending is disabled globally, and the backend handles the resulting `AccessDeniedException` by degrading gracefully (returning HTTP 503).
 
+<div class="diagram-container">
+
 ### 24.4 Billing Budget Circuit Breaker Flow Diagram
 
 ```mermaid
@@ -931,7 +1053,11 @@ flowchart LR
     Lambda -->|Alert| Log["CloudWatch Logs / Admin Email"]
 ```
 
+</div>
+
 ---
+
+<div style="page-break-before: always;"></div>
 
 ## 25. TELEGRAM NOTIFICATION INTEGRATION
 
@@ -943,6 +1069,8 @@ The backend leverages `com.speakit.notification.service.TelegramService` to comm
 * **Strict Timeouts**: Instantiates a JdkClientHttpRequestFactory limiting read/connection timeouts to `5` seconds.
 * **Message Formatting & Escaping**: The alert body is encoded using `MarkdownV2`. The service runs a custom escaping utility (`escapeMarkdown`) to parse and escape characters (e.g. `_`, `*`, `[`, `]`, `.`, `!`), avoiding payload injection issues.
 * **Exponential Backoff**: If an HTTP request fails, the service executes a retry loop up to 3 times, doubling wait times between retry loops (1s ➔ 2s ➔ 4s) before logging final dispatch errors.
+
+<div class="diagram-container">
 
 ### 25.2 Async Telegram RestClient Webhook Flow Diagram
 
@@ -965,7 +1093,11 @@ sequenceDiagram
     end
 ```
 
+</div>
+
 ---
+
+<div style="page-break-before: always;"></div>
 
 ## 26. AI & SPEECH SYNTHESIS PROVIDERS (POLLY, ELEVENLABS, SARVAM)
 
@@ -980,6 +1112,8 @@ SpeakIT dynamically matches speech generation requests against three API vendors
 * `SarvamSpeechToTextProvider` processes Indian dialect transcriptions.
 * `TranslationService` integrates the translation engine (`sarvam-translate:v1`) to automatically translate transcriptions into multiple languages.
 
+<div class="diagram-container">
+
 ### 26.3 Dynamic AI Voice Engine Strategy Router Diagram
 
 ```mermaid
@@ -990,7 +1124,11 @@ graph TD
     Strategy -->|Engine Sarvam| Sarvam["Sarvam AI Client"]
 ```
 
+</div>
+
 ---
+
+<div style="page-break-before: always;"></div>
 
 ## 27. GIT WORKFLOW & COMMIT CONVENTIONS
 
@@ -1003,6 +1141,8 @@ graph TD
 
 ---
 
+<div style="page-break-before: always;"></div>
+
 ## 28. AI AGENT CODE MOD RULES
 
 These instructions apply to all AI coding agents modifying the SpeakIT repository:
@@ -1013,6 +1153,8 @@ These instructions apply to all AI coding agents modifying the SpeakIT repositor
 5. **No Code Duplication**: Do not create duplicate DTO classes or duplicate query repositories.
 
 ---
+
+<div style="page-break-before: always;"></div>
 
 ## 29. CODE REVIEW CHECKLIST
 
@@ -1025,6 +1167,8 @@ Ensure the following are verified before approving pull requests:
 
 ---
 
+<div style="page-break-before: always;"></div>
+
 ## 30. ARCHITECTURE DECISION RECORDS (ADR)
 
 * **ADR-001: Migration of Backend Container to OCI & Coolify**
@@ -1034,6 +1178,8 @@ Ensure the following are verified before approving pull requests:
 
 ---
 
+<div style="page-break-before: always;"></div>
+
 ## 31. FUTURE DEVELOPMENT GUIDELINES
 
 ### 31.1 Adding a New REST API Endpoint
@@ -1042,6 +1188,8 @@ Ensure the following are verified before approving pull requests:
 3. Create the endpoint in `com.speakit.[module].controller.[Module]Controller`.
 4. Validate permissions inside the controller using HttpServletRequest user attributes.
 5. Implement service layer logic in `[Module]Service` under `@Transactional` boundaries.
+
+<div class="diagram-container">
 
 ### 31.2 REST Endpoint Addition Implementation Workflow Diagram
 
@@ -1054,7 +1202,11 @@ flowchart TD
     AddService --> AddRepo["6. Query database via Repository interfaces"]
 ```
 
+</div>
+
 ---
+
+<div style="page-break-before: always;"></div>
 
 ## 32. REPOSITORY CONVENTIONS
 
@@ -1065,7 +1217,11 @@ flowchart TD
 
 ---
 
+<div style="page-break-before: always;"></div>
+
 ## 33. MERMAID DIAGRAMS
+
+<div class="diagram-container">
 
 ### 33.1 System Architecture
 ```mermaid
@@ -1083,6 +1239,10 @@ graph TD
     PgBouncer --> Database
     Server -->|AWS SDK| Polly
 ```
+
+</div>
+
+<div class="diagram-container">
 
 ### 33.2 Authentication Session Loop
 ```mermaid
@@ -1104,7 +1264,11 @@ sequenceDiagram
     end
 ```
 
+</div>
+
 ---
+
+<div style="page-break-before: always;"></div>
 
 ## 34. ADVANCED INTERVIEW EDGE CASES & QA
 
@@ -1135,6 +1299,8 @@ If the user is hard-deleted in that window:
 
 ---
 
+<div style="page-break-before: always;"></div>
+
 ## 35. SYSTEM SCALING & DESIGN DISCUSSION
 
 ### 35.1 "SpeakIT just went viral. Traffic spiked 10,000%. What breaks first?"
@@ -1145,6 +1311,8 @@ If the user is hard-deleted in that window:
 * **AWS Budget Burn**: Max text volumes will consume Polly dollar budgets.
   * *Fix*: Enable content-addressable S3 cache storage matching voice/text hashes to reuse outputs without charging Polly APIs.
 
+<div class="diagram-container">
+
 ### 35.2 Viral Cost-Cached Scaling System Design Diagram
 
 ```mermaid
@@ -1154,7 +1322,11 @@ graph TD
     Cache -->|No| Engine["Acquire Rate Limit token ➔ Forward to Polly/ElevenLabs/Sarvam API"]
 ```
 
+</div>
+
 ---
+
+<div style="page-break-before: always;"></div>
 
 ## 36. ENGINEERING STORYTELLING
 
@@ -1164,6 +1336,8 @@ _"We built SpeakIT because high-quality auditory experiences shouldn't require a
 _We solved all of them. Angular 21 with Signals gives us a reactive, low-latency frontend that serves globally in under 30ms. Spring Boot 3.5 with Java 21 gives us the multi-threaded, strongly-typed backbone needed to stream audio at scale. Our session versioning system invalidates compromised tokens globally with one SQL UPDATE — no Redis, no blacklist, no complexity."_
 
 ---
+
+<div style="page-break-before: always;"></div>
 
 ## 37. REPOSITORY HEALTH & LIVING DOCUMENTATION
 
