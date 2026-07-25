@@ -3,6 +3,8 @@ package com.speakit.config;
 import io.sentry.SentryEvent;
 import io.sentry.SentryOptions.BeforeSendCallback;
 import io.sentry.Hint;
+import io.sentry.SentryLevel;
+import io.sentry.protocol.Mechanism;
 import io.sentry.protocol.Message;
 import io.sentry.protocol.Request;
 import org.springframework.context.annotation.Bean;
@@ -54,6 +56,35 @@ public class SentryConfig {
             Message message = event.getMessage();
             if (message != null && message.getFormatted() != null) {
                 message.setFormatted(scrubString(message.getFormatted()));
+            }
+
+            // 3. Mark handled business exceptions correctly
+            if (event.getExceptions() != null) {
+                event.getExceptions().forEach(sentryException -> {
+                    String value = sentryException.getValue();
+                    if (value != null && (
+                            value.contains("User not found") || 
+                            value.contains("validation") || 
+                            value.contains("rate limit") || 
+                            value.contains("Invalid input") ||
+                            value.contains("deactivated") ||
+                            value.contains("EMAIL_NOT_VERIFIED")
+                       )) {
+                        
+                        // Force handled status to true
+                        if (sentryException.getMechanism() != null) {
+                            sentryException.getMechanism().setHandled(true);
+                        } else {
+                            Mechanism mechanism = new Mechanism();
+                            mechanism.setType("ExceptionHandler");
+                            mechanism.setHandled(true);
+                            sentryException.setMechanism(mechanism);
+                        }
+                        
+                        // Set the event level to WARNING instead of FATAL
+                        event.setLevel(SentryLevel.WARNING);
+                    }
+                });
             }
 
             return event;
