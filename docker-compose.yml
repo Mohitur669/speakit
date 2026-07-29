@@ -24,6 +24,8 @@ services:
       # Backend CORS
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
       
+      # Spring Profile (activates JSON structured logging for New Relic)
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-prod}
       # Rate Limiting
       - RATE_LIMIT_CAPACITY=${RATE_LIMIT_CAPACITY:-5}
       - RATE_LIMIT_REFILL_TOKENS=${RATE_LIMIT_REFILL_TOKENS:-5}
