@@ -147,12 +147,7 @@
             <version>7.8.0</version>
         </dependency>
 
-        <!-- New Relic Logback Appender (Contextual Log Forwarder) -->
-        <dependency>
-            <groupId>com.newrelic.logging</groupId>
-            <artifactId>logback</artifactId>
-            <version>3.5.0</version>
-        </dependency>
+
     </dependencies>
 
     <build>
