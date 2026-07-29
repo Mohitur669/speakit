@@ -17,14 +17,45 @@
     <property name="CONSOLE_LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} %highlight(%-5level) [%thread] [%X{requestId}] %cyan(%logger{36}) : %msg%n" />
     <property name="FILE_LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [${appName}] [%thread] [%X{requestId}] %logger{36} : %msg%n" />
 
-    <!-- Raw Console Appender (unmasked, stdout) -->
-    <appender name="RAW_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder>
-            <pattern>${CONSOLE_LOG_PATTERN}</pattern>
-        </encoder>
-    </appender>
+    <!-- ==================== CONSOLE APPENDERS ==================== -->
 
-    <!-- Raw File Appender (unmasked, disk) -->
+    <!-- LOCAL DEV: Pretty colored console (human-readable) -->
+    <springProfile name="!prod">
+        <appender name="RAW_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+            </encoder>
+        </appender>
+    </springProfile>
+
+    <!-- PRODUCTION: Structured JSON console (for Coolify Log Drain → New Relic) -->
+    <springProfile name="prod">
+        <appender name="RAW_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <!-- New Relic expects 'timestamp' at top level -->
+                <timestampPattern>yyyy-MM-dd'T'HH:mm:ss.SSSZ</timestampPattern>
+                <!-- SECURITY: Exclude Logback context properties (contains license keys, paths, etc.) -->
+                <includeContext>false</includeContext>
+                <!-- Add service metadata for New Relic grouping -->
+                <customFields>{"service.name":"${newRelicAppName}","entity.name":"${newRelicAppName}"}</customFields>
+                <!-- Include MDC fields (requestId, etc.) at top level -->
+                <includeMdcKeyName>requestId</includeMdcKeyName>
+                <!-- Include caller info for debugging -->
+                <includeCallerData>false</includeCallerData>
+                <!-- Full stack traces -->
+                <throwableConverter class="net.logstash.logback.stacktrace.ShortenedThrowableConverter">
+                    <maxDepthPerThrowable>30</maxDepthPerThrowable>
+                    <maxLength>4096</maxLength>
+                    <shortenedClassNameLength>36</shortenedClassNameLength>
+                    <rootCauseFirst>true</rootCauseFirst>
+                </throwableConverter>
+            </encoder>
+        </appender>
+    </springProfile>
+
+    <!-- ==================== FILE APPENDER ==================== -->
+
+    <!-- Raw File Appender (plain text, disk — same for all profiles) -->
     <appender name="RAW_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${logFile}</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
@@ -38,6 +69,8 @@
         </encoder>
     </appender>
 
+    <!-- ==================== SECURE MASKING WRAPPERS ==================== -->
+
     <!-- Secure Masking Appender Wrapper for Console & File -->
     <appender name="SECURE_CONSOLE" class="com.speakit.shared.util.LogMaskingAppender">
         <appender-ref ref="RAW_CONSOLE" />
@@ -47,7 +80,8 @@
         <appender-ref ref="RAW_FILE" />
     </appender>
 
-    <!-- Root Logger Configuration -->
+    <!-- ==================== ROOT LOGGER ==================== -->
+
     <root level="INFO">
         <appender-ref ref="SECURE_CONSOLE" />
         <appender-ref ref="SECURE_FILE" />
