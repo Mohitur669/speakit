@@ -185,9 +185,10 @@ Log drains in Coolify v4 must be configured first at the **Server** level and th
 4. **Configure the Destination**:
    * Select **New Relic** as your Log Drain destination.
    * Paste your copied New Relic license key (e.g. `NRAL-XXXX...XXXX`) into the **New Relic License Key** input field.
-   * Verify the **Endpoint URL**:
+   * Verify the **Endpoint URL** (matching your New Relic account region as specified in the official New Relic Log API specifications):
      * For US-based accounts (default): `https://log-api.newrelic.com/log/v1`
      * For EU-based accounts: `https://log-api.eu.newrelic.com/log/v1`
+     * For Japan-based accounts: `https://log-api.jp.nr-data.net/log/v1`
 5. Click **Save** / **Update** to apply the configuration.
 
 #### Step B: Enable Log Draining on the Application Resource
