@@ -47,35 +47,10 @@
         <appender-ref ref="RAW_FILE" />
     </appender>
 
-    <!-- Production Profile Configurations (New Relic Integration) -->
-    <springProfile name="prod">
-        <!-- New Relic Appender -->
-        <appender name="NewRelicLogback" class="com.newrelic.logging.logback.NewRelicLogbackAppender">
-            <apiKey>${newRelicLicenseKey}</apiKey>
-            <appName>${newRelicAppName}</appName>
-        </appender>
-
-        <!-- Wrap in AsyncAppender for Non-Blocking execution -->
-        <appender name="ASYNC_NEW_RELIC" class="ch.qos.logback.classic.AsyncAppender">
-            <appender-ref ref="NewRelicLogback" />
-            <queueSize>1024</queueSize>
-            <discardingThreshold>0</discardingThreshold>
-            <neverBlock>true</neverBlock>
-        </appender>
-
-        <!-- Wrap in our secure LogMaskingAppender to ensure no PII reaches New Relic -->
-        <appender name="SECURE_NEW_RELIC" class="com.speakit.shared.util.LogMaskingAppender">
-            <appender-ref ref="ASYNC_NEW_RELIC" />
-        </appender>
-    </springProfile>
-
     <!-- Root Logger Configuration -->
     <root level="INFO">
         <appender-ref ref="SECURE_CONSOLE" />
         <appender-ref ref="SECURE_FILE" />
-        <springProfile name="prod">
-            <appender-ref ref="SECURE_NEW_RELIC" />
-        </springProfile>
     </root>
 
 </configuration>

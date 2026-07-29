@@ -155,11 +155,11 @@ Sentry provides client-side error tracing, performance tracing, session replays,
 
 ---
 
-## 3. CENTRALIZED LOG AGGREGATION (NEW RELIC)
+## 3. CENTRALIZED LOG AGGREGATION (NEW RELIC via COOLIFY LOG DRAINS)
 
-New Relic logs are ingested asynchronously from the JVM, keeping execution lightweight on OCI/Coolify compute nodes.
+Log aggregation is handled externally by the Coolify host container engine. Instead of putting network shipping overhead on the Java VM, the host automatically intercepts the application's standard console output (`stdout`) and forwards it to New Relic using a lightweight log drain shipper (Vector/FluentBit).
 
-### 5.1 New Relic Set Up (Step-by-Step UI Guide)
+### 3.1 New Relic Set Up (Step-by-Step UI Guide)
 1. **Redeem via GitHub Student Developer Pack**:
    * Navigate to the [GitHub Student Developer Pack](https://education.github.com/pack) and log in.
    * Search for **New Relic** in the pack offers.
@@ -171,40 +171,39 @@ New Relic logs are ingested asynchronously from the JVM, keeping execution light
    * In the bottom-left corner of the sidebar, click on your **User Profile Name/Avatar** ➔ **API Keys**.
    * On the API Keys dashboard page, locate the key type labeled **INGEST - LICENSE** (often named `default` or `original` license key).
    * Copy the key string (e.g., `NRAL-XXXX...XXXX`). Write this down as `NEW_RELIC_LICENSE_KEY`.
-3. Set `NEW_RELIC_APP_NAME` to `speakit-prod-backend` in your environment parameters.
-4. To view incoming records, click **Logs** in the left sidebar of the New Relic console.
+3. To view incoming records, click **Logs** in the left sidebar of your New Relic console.
 
 ---
 
-### 5.2 Maven Dependency
-Add the New Relic logging appender to [pom.xml](file:///home/cyberbully/Documents/Desktop/git-projects/speakit/backend/pom.xml):
-```xml
-<dependency>
-    <groupId>com.newrelic.logging</groupId>
-    <artifactId>logback</artifactId>
-    <version>2.6.2</version>
-</dependency>
-```
+### 3.2 Coolify Log Drain Configuration (Step-by-Step UI Guide)
+Log drains in Coolify v4 must be configured first at the **Server** level and then activated on the individual **Resource** level:
 
-### 5.3 Secure Logging Pipeline (`logback-spring.xml`)
-We configure a custom `LogMaskingAppender` in [logback-spring.xml](file:///home/cyberbully/Documents/Desktop/git-projects/speakit/backend/src/main/resources/logback-spring.xml) which acts as a proxy for all console, file, and New Relic log forwarders. This ensures sensitive data is scrubbed before being printed or shipped:
-```xml
-    <!-- Secure Masking Appender Wrapper -->
-    <appender name="SECURE_CONSOLE" class="com.speakit.shared.util.LogMaskingAppender">
-        <appender-ref ref="RAW_CONSOLE" />
-    </appender>
+#### Step A: Configure Sinks at the Server Level
+1. Log in to your secure **Coolify Administration Dashboard** (e.g. `http://100.66.182.36:8000`).
+2. On the main dashboard or servers page, click on your **active server** (e.g., `localhost` or the name of your VM compute node).
+3. Inside the server dashboard configuration options, click on the **Log Drains** tab.
+4. **Configure the Destination**:
+   * Select **New Relic** as your Log Drain destination.
+   * Paste your copied New Relic license key (e.g. `NRAL-XXXX...XXXX`) into the **New Relic License Key** input field.
+   * Verify the **Endpoint URL**:
+     * For US-based accounts (default): `https://log-api.newrelic.com/log/v1`
+     * For EU-based accounts: `https://log-api.eu.newrelic.com/log/v1`
+5. Click **Save** / **Update** to apply the configuration.
 
-    <!-- Production Log Forwarder -->
-    <springProfile name="prod">
-        <appender name="NewRelicLogback" class="com.newrelic.logging.logback.NewRelicLogbackAppender">
-            <apiKey>${newRelicLicenseKey}</apiKey>
-            <appName>${newRelicAppName}</appName>
-        </appender>
-        <appender name="SECURE_NEW_RELIC" class="com.speakit.shared.util.LogMaskingAppender">
-            <appender-ref ref="ASYNC_NEW_RELIC" />
-        </appender>
-    </springProfile>
-```
+#### Step B: Enable Log Draining on the Application Resource
+1. Navigate back to your Coolify projects, and select your target application (e.g., `speakit-prod-backend` or `speakit-dev-backend`).
+2. Inside your application dashboard, click on the **Advanced** tab.
+3. Scroll down to find the **Drain Logs** configuration toggle.
+4. Toggle **Drain Logs** to `ON` (Enabled).
+5. Trigger a **Redeploy** or **Restart** of your application to spin up the container with the log drain routing active.
+6. Trigger some requests, and logs will populate in your New Relic console.
+
+---
+
+### 3.3 Security & PII compliance
+Because Logback writes application logs to the console using the custom `LogMaskingAppender` (`SECURE_CONSOLE`), all logs are processed and scrubbed of sensitive patterns (emails, tokens, passwords) *before* hitting the standard output stream.
+
+Coolify captures the pre-masked `stdout` stream, ensuring that **zero sensitive PII reaches your New Relic dashboard**.
 
 ---
 
