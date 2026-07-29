@@ -11,6 +11,9 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import io.sentry.Sentry;
+import io.sentry.SentryLevel;
+import io.sentry.protocol.Mechanism;
+import io.sentry.exception.ExceptionMechanismException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -30,6 +33,20 @@ public class GlobalExceptionHandler {
                 .build();
     }
 
+    private void captureHandledException(Throwable ex, SentryLevel level) {
+        Mechanism mechanism = new Mechanism();
+        mechanism.setType("GlobalExceptionHandler");
+        mechanism.setHandled(true);
+        
+        ExceptionMechanismException mechanismException = 
+                new ExceptionMechanismException(mechanism, ex, Thread.currentThread());
+        
+        Sentry.withScope(scope -> {
+            scope.setLevel(level);
+            Sentry.captureException(mechanismException);
+        });
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorResponse> handleValidationExceptions(MethodArgumentNotValidException ex, HttpServletRequest request) {
         log.warn("Validation failed: {} errors — fields: {}", 
@@ -38,8 +55,8 @@ public class GlobalExceptionHandler {
                         .map(fe -> fe.getField() + "=" + fe.getRejectedValue() + " (" + fe.getDefaultMessage() + ")")
                         .toList());
         
-        // Report handled exception to Sentry
-        Sentry.captureException(ex);
+        // Report handled exception to Sentry with handled: true and level: info
+        captureHandledException(ex, SentryLevel.INFO);
 
         Map<String, String> errors = new HashMap<>();
         ex.getBindingResult().getAllErrors().forEach((error) -> {
@@ -58,8 +75,8 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleRateLimitExceeded(RateLimitExceededException ex, HttpServletRequest request) {
         log.warn("Rate limit exceeded for request. Retry after: {}s", ex.getRetryAfterSeconds());
         
-        // Report handled exception to Sentry
-        Sentry.captureException(ex);
+        // Report handled exception to Sentry with handled: true and level: warning
+        captureHandledException(ex, SentryLevel.WARNING);
 
         ApiErrorResponse response = buildResponse(HttpStatus.TOO_MANY_REQUESTS, "Too Many Requests", "Rate limit exceeded. Please try again later.", request);
         
@@ -72,8 +89,8 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleSpeechConversion(SpeechConversionException ex, HttpServletRequest request) {
         log.error("TTS conversion failed: {}", ex.getMessage());
         
-        // Report handled exception to Sentry
-        Sentry.captureException(ex);
+        // Report handled exception to Sentry with handled: true and level: error
+        captureHandledException(ex, SentryLevel.ERROR);
 
         ApiErrorResponse response = buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "TTS_ERROR", "Speech synthesis failed. Please try a different voice or shorter text.", request);
         return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
@@ -83,8 +100,8 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleRuntimeException(RuntimeException ex, HttpServletRequest request) {
         log.warn("Business rule violation: {}", ex.getMessage());
         
-        // Report handled exception to Sentry
-        Sentry.captureException(ex);
+        // Report handled exception to Sentry with handled: true and level: warning
+        captureHandledException(ex, SentryLevel.WARNING);
 
         if (ex.getMessage() != null && ex.getMessage().startsWith("EMAIL_NOT_VERIFIED")) {
             String email = ex.getMessage().contains(":") ? ex.getMessage().split(":")[1] : "";
@@ -99,8 +116,8 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleGeneralException(Exception ex, HttpServletRequest request) {
         log.error("Unexpected system error", ex);
         
-        // Report handled exception to Sentry
-        Sentry.captureException(ex);
+        // Report handled exception to Sentry with handled: true and level: error
+        captureHandledException(ex, SentryLevel.ERROR);
 
         ApiErrorResponse response = buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Internal Server Error", "An unexpected error occurred.", request);
         return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
