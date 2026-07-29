@@ -160,13 +160,19 @@ Sentry provides client-side error tracing, performance tracing, session replays,
 New Relic logs are ingested asynchronously from the JVM, keeping execution lightweight on OCI/Coolify compute nodes.
 
 ### 5.1 New Relic Set Up (Step-by-Step UI Guide)
-1. Log in to [NewRelic.com](https://newrelic.com) (New Relic includes a generous free tier of 100 GB/month data ingestion).
-2. **Find Your License Key**:
+1. **Redeem via GitHub Student Developer Pack**:
+   * Navigate to the [GitHub Student Developer Pack](https://education.github.com/pack) and log in.
+   * Search for **New Relic** in the pack offers.
+   * Click **Redeem** to link your student status. This upgrades your account to the premium student plan, which provides:
+     * **300 GB/month of free data ingestion** (upgraded from the default 100 GB/month).
+     * **3 full platform users** (upgraded from 1).
+2. **Retrieve Your License Key**:
+   * Log in to your upgraded [NewRelic.com](https://newrelic.com) account.
    * In the bottom-left corner of the sidebar, click on your **User Profile Name/Avatar** ➔ **API Keys**.
-   * Under the API Keys dashboard page, locate the key labeled **Ingest - License**.
-   * Copy the key string (e.g. `XXXX...XXXX`). Write this down as `NEW_RELIC_LICENSE_KEY`.
-3. Set `NEW_RELIC_APP_NAME` to `speakit-prod-backend`.
-4. To view logs, go to **Logs** in the left sidebar of your New Relic console.
+   * On the API Keys dashboard page, locate the key type labeled **INGEST - LICENSE** (often named `default` or `original` license key).
+   * Copy the key string (e.g., `NRAL-XXXX...XXXX`). Write this down as `NEW_RELIC_LICENSE_KEY`.
+3. Set `NEW_RELIC_APP_NAME` to `speakit-prod-backend` in your environment parameters.
+4. To view incoming records, click **Logs** in the left sidebar of the New Relic console.
 
 ---
 
