@@ -39,7 +39,8 @@
     "pacote": "^21.5.1",
     "browserslist": "^4.28.7",
     "qs": "^6.16.0",
-    "@sigstore/core": "^3.2.1"
+    "@sigstore/core": "^3.2.1",
+    "@sigstore/verify": "^3.1.1"
   },
   "dependencies": {
     "@angular/common": "21.2.0",
