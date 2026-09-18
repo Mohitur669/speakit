@@ -7,8 +7,8 @@ import sys
 from collections import Counter
 
 REPO = "Mohitur669/speakit"
-OUTPUT_DIR = "reports"
-OUTPUT_FILE = os.path.join(OUTPUT_DIR, "dependabot-alerts.csv")
+OUTPUT_DIR = "reports/alerts"
+OUTPUT_FILE = os.path.join(OUTPUT_DIR, "dependabot-alerts-report.csv")
 
 def get_alerts():
     print(f"Fetching alerts from {REPO} via GitHub CLI...")
@@ -33,7 +33,7 @@ def main():
         os.makedirs(OUTPUT_DIR)
 
     alerts = get_alerts()
-    
+
     # Sort alerts by severity (descending)
     alerts.sort(
         key=lambda x: severity_weight(x.get("security_advisory", {}).get("severity", "")),
@@ -45,21 +45,21 @@ def main():
     # Process and write CSV
     with open(OUTPUT_FILE, mode='w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
-        
+
         # Write main alerts table
         writer.writerow(["Alert_ID", "Package", "Severity", "State", "Raised_Time", "Closed_Time"])
-        
+
         for alert in alerts:
             alert_id = alert.get("number")
             package = alert.get("security_vulnerability", {}).get("package", {}).get("name", "Unknown")
             severity = alert.get("security_advisory", {}).get("severity", "unknown")
             state = alert.get("state", "unknown")
             raised = alert.get("created_at", "")
-            
+
             closed = alert.get("fixed_at") or alert.get("dismissed_at") or "Still Open"
-            
+
             writer.writerow([alert_id, package, severity, state, raised, closed])
-            
+
             # Tally closed alerts by severity
             if state in ["fixed", "dismissed"]:
                 closed_counts[severity.lower()] += 1
@@ -69,11 +69,11 @@ def main():
         writer.writerow([])
         writer.writerow(["--- SUMMARY: CLOSED ALERTS BY SEVERITY ---", "", "", "", "", ""])
         writer.writerow(["Severity", "Total Closed", "", "", "", ""])
-        
+
         for sev in ["critical", "high", "medium", "low"]:
             writer.writerow([sev.capitalize(), closed_counts[sev], "", "", "", ""])
 
-    print(f"✅ Successfully exported alerts and summary to {OUTPUT_FILE}")
+    print(f"[OK] Successfully exported alerts and summary to {OUTPUT_FILE}")
 
 if __name__ == "__main__":
     main()
