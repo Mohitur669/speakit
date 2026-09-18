@@ -113,7 +113,7 @@ patch, and the branch names ready for PRs.
 ## Rules
 
 - Treat `agent-queue.json` and `alerts.json` as read-only inputs — never edit them.
-- **IMPORTANT**: Completely ignore `scripts/dependency-vapt-pipeline/fix-alerts.sh`. Do not run, modify, or interact with this script; you are expected to operate autonomously without it.
+- **IMPORTANT**: Completely ignore `scripts/dependency-vapt-pipeline/fix-alerts.py`. Do not run, modify, or interact with this script; you are expected to operate autonomously without it.
 - One branch per group, never batch unrelated groups onto the same branch.
 - Never downgrade a package to "fix" an alert — only upgrade to `target_version`
   or higher.

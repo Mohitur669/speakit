@@ -152,14 +152,14 @@ async def call(client, method, path, json=None, headers=None, label="", test_nam
         record(path, method, status, r.status_code, ms, note)
 
         color = "green" if status == "OK" else "yellow" if status == "RATELIMIT" else "red"
-        symbol = "✓" if status == "OK" else "⚡" if status == "RATELIMIT" else "✗"
+        symbol = "PASS" if status == "OK" else "WARN" if status == "RATELIMIT" else "FAIL"
         cprint(f"  [{color}]{symbol}[/{color}] {method} {path} → {r.status_code} [{ms:.0f}ms] [dim]ip:{rotated_ip} {label}[/dim]")
         return r
 
     except Exception as e:
         ms = (time.perf_counter() - t0) * 1000
         record(path, method, "FAIL", 0, ms, str(e))
-        cprint(f"  [red]✗[/red] {method} {path} → FAILED [{ms:.0f}ms] {str(e)}")
+        cprint(f"  [red]FAIL[/red] {method} {path} → FAILED [{ms:.0f}ms] {str(e)}")
         return None
 # ── Test Suites ──────────────────────────────────────────────────────────────
 
@@ -318,9 +318,9 @@ def print_summary():
     err = sum(1 for r in results if r["status"] == "ERROR")
 
     cpanel(
-        f"[green]✓ Passed:[/green]        {ok}\n"
-        f"[yellow]⚡ Rate limited:[/yellow] {rl}\n"
-        f"[red]✗ Failed:[/red]        {err}\n"
+        f"[green]PASS Passed:[/green]        {ok}\n"
+        f"[yellow]WARN Rate limited:[/yellow] {rl}\n"
+        f"[red]FAIL Failed:[/red]        {err}\n"
         f"[dim]Total Ops:[/dim]       {total}",
         title="Final Stability Score", border_style="cyan"
     )

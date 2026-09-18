@@ -71,7 +71,7 @@ flowchart TD
     ART --> DL["gh run download -D reports/dependabot"]
     DL --> LOCAL
 
-    subgraph LOCAL["scripts/dependency-vapt-pipeline/fix-alerts.sh — local machine"]
+    subgraph LOCAL["scripts/dependency-vapt-pipeline/fix-alerts.py — local machine"]
         direction TB
         L1["read agent-queue.json"]
         L2["branch fix/dependabot-N-pkg"]
@@ -108,7 +108,7 @@ flowchart LR
     DSS --> F3["requirements.txt"]
     DSC --> F4A["generate-vapt-reports.sh"]
     DSC --> F4B["auto-fix-npm.py"]
-    DSC --> F4C["fix-alerts.sh"]
+    DSC --> F4C["fix-alerts.py"]
     DDOC --> F5["dependabot-pipeline.md"]
 
     DRP --> DDB["dependabot/"]
@@ -139,7 +139,7 @@ sequenceDiagram
     participant Dev as You
     participant Gen as generate-vapt-reports.sh
     participant Npm as auto-fix-npm.py
-    participant Sh as fix-alerts.sh
+    participant Sh as fix-alerts.py
     participant Repo as Working tree
 
     Dev->>Gen: ./scripts/dependency-vapt-pipeline/generate-vapt-reports.sh
@@ -149,7 +149,7 @@ sequenceDiagram
     Npm-->>Gen: Returns
     Gen-->>Dev: Ready for AI handoff
     
-    Dev->>Sh: ./scripts/dependency-vapt-pipeline/fix-alerts.sh (or AI handoff)
+    Dev->>Sh: ./scripts/dependency-vapt-pipeline/fix-alerts.py (or AI handoff)
     Sh->>Repo: Skips already fixed npm packages
     loop for remaining complex alerts
         Sh->>Dev: ask run / skip / quit
