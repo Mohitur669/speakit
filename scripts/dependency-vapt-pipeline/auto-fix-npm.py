@@ -23,11 +23,16 @@ def update_package_json(pkg, target):
             data[section][pkg] = target
             replaced = True
             
-    # If not a direct dependency, add/update in overrides
+    # If not a direct dependency, add/update in overrides.
+    # Alternatively, if it IS a direct dependency but an override already exists,
+    # we must update the override as well to prevent NPM EOVERRIDE conflicts.
     if not replaced:
         if "overrides" not in data:
             data["overrides"] = {}
         data["overrides"][pkg] = f"^{target}"
+    else:
+        if "overrides" in data and pkg in data["overrides"]:
+            data["overrides"][pkg] = target
         
     with open(pkg_path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
