@@ -106,7 +106,9 @@ flowchart LR
     DWF --> F1["dependabot-report.yml"]
     DSS --> F2["dependabot_report.py"]
     DSS --> F3["requirements.txt"]
-    DSC --> F4["fix-alerts.sh"]
+    DSC --> F4A["generate-vapt-reports.sh"]
+    DSC --> F4B["auto-fix-npm.py"]
+    DSC --> F4C["fix-alerts.sh"]
     DDOC --> F5["dependabot-pipeline.md"]
 
     DRP --> DDB["dependabot/"]
@@ -123,42 +125,35 @@ flowchart LR
 
     classDef committed fill:#ddf4ff,stroke:#0969da,color:#0a3069
     classDef generated fill:#fff8c5,stroke:#9a6700,color:#4d2d00
-    class F1,F2,F3,F4,F5 committed
+    class F1,F2,F3,F4A,F4B,F4C,F5 committed
     class G1,G2,G3,G4,G5,G6,G7,G8,G9 generated
 ```
 
 Add `reports/` to `.gitignore` — every file under it is regenerated on each run.
 
-## 3. The local fix loop, one alert at a time
+## 3. The local fix workflow
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant Dev as You
+    participant Gen as generate-vapt-reports.sh
+    participant Npm as auto-fix-npm.py
     participant Sh as fix-alerts.sh
-    participant Q as agent-queue.json
-    participant Ag as Local agent
     participant Repo as Working tree
-    participant Git as Git
 
-    Dev->>Sh: ./scripts/dependency-vapt-pipeline/fix-alerts.sh
-    Sh->>Q: read queue, severity order
-    loop for each alert
-        Sh->>Dev: show alert, ask run / skip / quit
+    Dev->>Gen: ./scripts/dependency-vapt-pipeline/generate-vapt-reports.sh
+    Gen->>Repo: Checks CLI auth, dependencies, generates queue
+    
+    Dev->>Npm: ./scripts/dependency-vapt-pipeline/auto-fix-npm.py
+    Npm->>Repo: Loops through npm alerts, runs tests, commits automatically
+    
+    Dev->>Sh: ./scripts/dependency-vapt-pipeline/fix-alerts.sh (or AI handoff)
+    Sh->>Repo: Skips already fixed npm packages
+    loop for remaining complex alerts
+        Sh->>Dev: ask run / skip / quit
         Dev-->>Sh: y
-        Sh->>Git: switch -c fix/dependabot-N-pkg
-        Sh->>Ag: pipe agent/alert-N-pkg.md to stdin
-        Ag->>Repo: edit manifest and lockfile only
-        Ag-->>Sh: exit code
-        Sh->>Repo: run VERIFY_CMD
-        alt verification passes
-            Sh->>Dev: show diff, ask to commit
-            Dev-->>Sh: y
-            Sh->>Git: commit, switch back to base
-        else verification fails
-            Sh->>Dev: leave branch in place for review
-        end
-        Sh->>Repo: append verdict to fix-log.md
+        Sh->>Repo: Delegate to AI agent or manual fix, test, and commit
     end
 ```
 
