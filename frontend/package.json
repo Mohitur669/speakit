@@ -58,7 +58,7 @@
     "@tailwindcss/postcss": "4.3.0",
     "@vitest/coverage-v8": "^4.0.8",
     "jsdom": "28.0.0",
-    "postcss": "8.5.14",
+    "postcss": "8.5.23",
     "prettier": "3.8.1",
     "tailwindcss": "4.3.0",
     "typescript": "5.9.2",
