@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# Destination: scripts/fix-alerts.sh   (chmod +x)
+# Destination: scripts/dependency-vapt-pipeline/fix-alerts.sh   (chmod +x)
 #
 # Walks the Dependabot queue produced by .github/scripts/dependabot_report.py and
 # hands each alert, one at a time, to a local agent that has the whole codebase in
 # context. One branch per fix, verification after each, human approval before commit.
 #
-#   ./scripts/fix-alerts.sh                       # interactive, full queue
-#   ./scripts/fix-alerts.sh --dry-run             # print what would run
-#   ./scripts/fix-alerts.sh --only 24             # a single alert number
-#   ./scripts/fix-alerts.sh --from 3 --auto       # resume at #3, no prompts
-#   ./scripts/fix-alerts.sh --refresh             # regenerate the report first
+#   ./scripts/dependency-vapt-pipeline/fix-alerts.sh                       # interactive, full queue
+#   ./scripts/dependency-vapt-pipeline/fix-alerts.sh --dry-run             # print what would run
+#   ./scripts/dependency-vapt-pipeline/fix-alerts.sh --only 24             # a single alert number
+#   ./scripts/dependency-vapt-pipeline/fix-alerts.sh --from 3 --auto       # resume at #3, no prompts
+#   ./scripts/dependency-vapt-pipeline/fix-alerts.sh --refresh             # regenerate the report first
 #
 # Environment:
 #   AGENT_CMD   agent invocation, prompt arrives on stdin   (default: agy)
