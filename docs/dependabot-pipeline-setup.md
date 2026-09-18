@@ -33,7 +33,7 @@ Skip this if you only ever build PDFs in CI — pass `--no-pdf` locally.
 .github/scripts/dependabot_report.py
 .github/scripts/requirements.txt
 .github/workflows/dependabot-report.yml
-scripts/dependency-vapt-pipeline/fix-alerts.sh
+scripts/dependency-vapt-pipeline/fix-alerts.py
 scripts/dependency-vapt-pipeline/generate-vapt-reports.sh
 scripts/dependency-vapt-pipeline/auto-fix-npm.py
 docs/dependabot-pipeline.md          # the diagrams
@@ -149,13 +149,13 @@ This single command will:
 Always dry-run first, so you can see the branch names and commands before anything moves:
 
 ```bash
-./scripts/dependency-vapt-pipeline/fix-alerts.sh --dry-run
+./scripts/dependency-vapt-pipeline/fix-alerts.py --dry-run
 ```
 
 Then for real:
 
 ```bash
-./scripts/dependency-vapt-pipeline/fix-alerts.sh
+./scripts/dependency-vapt-pipeline/fix-alerts.py
 ```
 
 Per alert it will: cut `fix/dependabot-<n>-<pkg>` off your current branch, pipe the fix
@@ -164,11 +164,11 @@ committing. `s` skips, `q` stops.
 
 | Situation | Command |
 | --- | --- |
-| One specific alert | `./scripts/dependency-vapt-pipeline/fix-alerts.sh --only 24` |
-| Resume after quitting at 3 of 7 | `./scripts/dependency-vapt-pipeline/fix-alerts.sh --from 3` |
-| Unattended, no prompts | `./scripts/dependency-vapt-pipeline/fix-alerts.sh --auto` |
-| Different agent | `AGENT_CMD="claude -p" ./scripts/dependency-vapt-pipeline/fix-alerts.sh` |
-| Override verification | `VERIFY_CMD="npm --prefix frontend ci && npm --prefix frontend run build" ./scripts/dependency-vapt-pipeline/fix-alerts.sh` |
+| One specific alert | `./scripts/dependency-vapt-pipeline/fix-alerts.py --only 24` |
+| Resume after quitting at 3 of 7 | `./scripts/dependency-vapt-pipeline/fix-alerts.py --from 3` |
+| Unattended, no prompts | `./scripts/dependency-vapt-pipeline/fix-alerts.py --auto` |
+| Different agent | `AGENT_CMD="claude -p" ./scripts/dependency-vapt-pipeline/fix-alerts.py` |
+| Override verification | `VERIFY_CMD="npm --prefix frontend ci && npm --prefix frontend run build" ./scripts/dependency-vapt-pipeline/fix-alerts.py` |
 
 The auto-detected verify command for this repo is the frontend install + build + test,
 since `frontend/package.json` exists. If an alert lands on the Spring Boot side, set
@@ -248,7 +248,7 @@ the job just goes red.
 ./scripts/dependency-vapt-pipeline/generate-vapt-reports.sh
 
 # 2. fix complex alerts with the AI loop (skips already fixed npm ones)
-./scripts/dependency-vapt-pipeline/fix-alerts.sh
+./scripts/dependency-vapt-pipeline/fix-alerts.py
 
 # CI on demand
 gh workflow run dependabot-report.yml && gh run watch
