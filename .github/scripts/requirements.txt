@@ -1,0 +1,4 @@
+# Destination: .github/scripts/requirements.txt
+requests>=2.32.0
+markdown>=3.6
+weasyprint>=62.0
