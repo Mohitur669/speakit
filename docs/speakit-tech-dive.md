@@ -1405,5 +1405,5 @@ sequenceDiagram
 
 ### 38.5 Phase 3: Autonomous AI Remediation & Strict Governance
 * **Instruction Protocol**: Complex alerts (e.g., Maven vulnerabilities, breaking API changes) bypass the fast-track and are handed off to the AI agent using the `fix-vapt-alerts.md` protocol.
-* **Governance**: The pipeline is strictly governed by workspace rules (`.agents/AGENTS.md`) which explicitly block the AI from interacting with legacy interactive scripts (e.g., `fix-alerts.sh`).
+* **Governance**: The pipeline is strictly governed by workspace rules (`.agents/AGENTS.md`) which explicitly block the AI from interacting with legacy interactive scripts (e.g., `fix-alerts.py`).
 * **Execution**: The AI orchestrates itself—reading the queue, modifying `pom.xml`, executing JVM test suites (`mvn clean compile test`), and cleanly formatting `fix(deps)` commits without requiring interactive bash prompts.
