@@ -144,9 +144,10 @@ sequenceDiagram
 
     Dev->>Gen: ./scripts/dependency-vapt-pipeline/generate-vapt-reports.sh
     Gen->>Repo: Checks CLI auth, dependencies, generates queue
-    
-    Dev->>Npm: ./scripts/dependency-vapt-pipeline/auto-fix-npm.py
+    Gen->>Npm: (Auto-triggers) fast-track NPM fixes
     Npm->>Repo: Loops through npm alerts, runs tests, commits automatically
+    Npm-->>Gen: Returns
+    Gen-->>Dev: Ready for AI handoff
     
     Dev->>Sh: ./scripts/dependency-vapt-pipeline/fix-alerts.sh (or AI handoff)
     Sh->>Repo: Skips already fixed npm packages
