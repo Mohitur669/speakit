@@ -71,7 +71,7 @@ flowchart TD
     ART --> DL["gh run download -D reports/dependabot"]
     DL --> LOCAL
 
-    subgraph LOCAL["scripts/fix-alerts.sh — local machine"]
+    subgraph LOCAL["scripts/dependency-vapt-pipeline/fix-alerts.sh — local machine"]
         direction TB
         L1["read agent-queue.json"]
         L2["branch fix/dependabot-N-pkg"]
@@ -97,7 +97,7 @@ flowchart TD
 ```mermaid
 flowchart LR
     ROOT["repo root"] --> DGH[".github/"]
-    ROOT --> DSC["scripts/"]
+    ROOT --> DSC["scripts/dependency-vapt-pipeline/"]
     ROOT --> DRP["reports/"]
     ROOT --> DDOC["docs/"]
 
@@ -141,7 +141,7 @@ sequenceDiagram
     participant Repo as Working tree
     participant Git as Git
 
-    Dev->>Sh: ./scripts/fix-alerts.sh
+    Dev->>Sh: ./scripts/dependency-vapt-pipeline/fix-alerts.sh
     Sh->>Q: read queue, severity order
     loop for each alert
         Sh->>Dev: show alert, ask run / skip / quit
