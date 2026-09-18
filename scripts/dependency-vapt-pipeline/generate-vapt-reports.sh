@@ -69,5 +69,12 @@ export GITHUB_TOKEN=$(gh auth token)
 python .github/scripts/dependabot_report.py --repo "$REPO"
 
 echo ""
-echo "🎉 Reports successfully generated in reports/dependabot/"
-echo "You can now manually submit 'fix-vapt-alerts.md' to the AI agent to begin processing the queue!"
+echo "✅ Reports successfully generated in reports/dependabot/"
+
+# 6. Auto-Fix NPM Packages
+echo "Starting automated NPM fast-track fixes..."
+./scripts/dependency-vapt-pipeline/auto-fix-npm.py
+
+echo ""
+echo "🎉 Setup, Report Generation, and NPM Fast-Tracking Complete!"
+echo "You can now manually submit 'fix-vapt-alerts.md' to the AI agent to begin processing the remaining complex vulnerabilities."

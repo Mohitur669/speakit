@@ -137,21 +137,14 @@ Or skip CI entirely and regenerate in place using the setup script:
 ./scripts/dependency-vapt-pipeline/generate-vapt-reports.sh
 ```
 
----
-
-## Step 7 — Fast-track NPM Fixes
-
-For frontend repositories, NPM vulnerabilities often come in large batches that are tedious to process one-by-one. After generating the queue, run the automated bulk script to instantly handle all `npm` vulnerabilities:
-
-```bash
-./scripts/dependency-vapt-pipeline/auto-fix-npm.py
-```
-
-This loops through the `npm` alerts in `agent-queue.json`, updates `package.json`, tests the build, and creates commits on `vapt-fix` automatically.
+This single command will:
+1. Verify prerequisites and permissions.
+2. Generate the Dependabot alerts queue locally.
+3. Automatically execute the bulk fast-track script (`auto-fix-npm.py`) to handle simple frontend bumps instantly.
 
 ---
 
-## Step 8 — Work the remaining queue
+## Step 7 — Work the remaining queue
 
 Always dry-run first, so you can see the branch names and commands before anything moves:
 
@@ -251,13 +244,10 @@ the job just goes red.
 ## Day-to-day cheat sheet
 
 ```bash
-# 1. generate the queue
+# 1. generate the queue AND auto-fix simple NPM alerts
 ./scripts/dependency-vapt-pipeline/generate-vapt-reports.sh
 
-# 2. fast-track the simple npm fixes automatically
-./scripts/dependency-vapt-pipeline/auto-fix-npm.py
-
-# 3. fix complex alerts with the AI loop (skips already fixed npm ones)
+# 2. fix complex alerts with the AI loop (skips already fixed npm ones)
 ./scripts/dependency-vapt-pipeline/fix-alerts.sh
 
 # CI on demand
