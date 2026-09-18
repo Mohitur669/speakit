@@ -34,12 +34,15 @@ Skip this if you only ever build PDFs in CI — pass `--no-pdf` locally.
 .github/scripts/requirements.txt
 .github/workflows/dependabot-report.yml
 scripts/dependency-vapt-pipeline/fix-alerts.sh
+scripts/dependency-vapt-pipeline/generate-vapt-reports.sh
+scripts/dependency-vapt-pipeline/auto-fix-npm.py
 docs/dependabot-pipeline.md          # the diagrams
 docs/dependabot-pipeline-setup.md    # this file
 ```
 
 ```bash
-chmod +x scripts/dependency-vapt-pipeline/fix-alerts.sh
+chmod +x scripts/dependency-vapt-pipeline/*.sh
+chmod +x scripts/dependency-vapt-pipeline/*.py
 echo "reports/" >> .gitignore
 ```
 
@@ -68,14 +71,10 @@ The workflow already falls back to that secret: `${{ secrets.DEPENDABOT_TOKEN ||
 
 ## Step 4 — First run, locally
 
-Faster feedback than pushing and waiting on CI.
+Faster feedback than pushing and waiting on CI. Use the all-in-one setup script which automatically creates a virtual environment, installs dependencies, verifies GitHub authentication, and runs the report generator:
 
 ```bash
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r .github/scripts/requirements.txt
-
-export GITHUB_TOKEN=$(gh auth token)      # or your PAT
-python .github/scripts/dependabot_report.py --repo Mohitur669/speakit
+./scripts/dependency-vapt-pipeline/generate-vapt-reports.sh
 ```
 
 Expected console output:
@@ -132,15 +131,27 @@ Then open the run — the job summary page shows the alert table, and the
 gh run download -n dependabot-report-42 -D reports/dependabot
 ```
 
-Or skip CI entirely and regenerate in place:
+Or skip CI entirely and regenerate in place using the setup script:
 
 ```bash
-./scripts/dependency-vapt-pipeline/fix-alerts.sh --refresh
+./scripts/dependency-vapt-pipeline/generate-vapt-reports.sh
 ```
 
 ---
 
-## Step 7 — Work the queue
+## Step 7 — Fast-track NPM Fixes
+
+For frontend repositories, NPM vulnerabilities often come in large batches that are tedious to process one-by-one. After generating the queue, run the automated bulk script to instantly handle all `npm` vulnerabilities:
+
+```bash
+./scripts/dependency-vapt-pipeline/auto-fix-npm.py
+```
+
+This loops through the `npm` alerts in `agent-queue.json`, updates `package.json`, tests the build, and creates commits on `vapt-fix` automatically.
+
+---
+
+## Step 8 — Work the remaining queue
 
 Always dry-run first, so you can see the branch names and commands before anything moves:
 
@@ -240,13 +251,14 @@ the job just goes red.
 ## Day-to-day cheat sheet
 
 ```bash
-# refresh, review, fix
-./scripts/dependency-vapt-pipeline/fix-alerts.sh --refresh --dry-run
-./scripts/dependency-vapt-pipeline/fix-alerts.sh
+# 1. generate the queue
+./scripts/dependency-vapt-pipeline/generate-vapt-reports.sh
 
-# just look at what's open
-python .github/scripts/dependabot_report.py --repo Mohitur669/speakit --no-pdf --no-images
-cat reports/dependabot/summary.md
+# 2. fast-track the simple npm fixes automatically
+./scripts/dependency-vapt-pipeline/auto-fix-npm.py
+
+# 3. fix complex alerts with the AI loop (skips already fixed npm ones)
+./scripts/dependency-vapt-pipeline/fix-alerts.sh
 
 # CI on demand
 gh workflow run dependabot-report.yml && gh run watch
