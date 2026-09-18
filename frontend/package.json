@@ -26,7 +26,8 @@
     "@hono/node-server": "^1.19.15",
     "immutable": "^5.1.8",
     "express-rate-limit": "^8.2.2",
-    "undici": "^7.29.0"
+    "undici": "^7.29.0",
+    "picomatch": "^4.0.4"
   },
   "dependencies": {
     "@angular/common": "21.2.0",
