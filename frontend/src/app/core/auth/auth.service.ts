@@ -174,7 +174,7 @@ export class AuthService implements OnDestroy {
     this.currentUser.set(null);
     this.currentUserEmail.set(null);
     this.currentUserPhone.set(null);
-    this.currentUserPendingEmail.set(null);
+    
     this.planTypeSignal.set(null);
     this.currentSessionVersion.set(0);
 
@@ -210,12 +210,8 @@ export class AuthService implements OnDestroy {
     this.currentUser.set(res.username);
     this.currentUserEmail.set(res.email || '');
     this.currentUserPhone.set(res.phoneNumber || '');
-    this.currentUserPendingEmail.set(res.pendingEmail || null);
-    if (res.pendingEmail) {
-      localStorage.setItem('pendingEmail', res.pendingEmail);
-    } else {
-      localStorage.removeItem('pendingEmail');
-    }
+    
+    
     this.planTypeSignal.set(res.planType || 'FREE');
     this.currentSessionVersion.set(res.sessionVersion);
     this.sessionDuration = res.sessionDurationMs;
@@ -273,11 +269,19 @@ export class AuthService implements OnDestroy {
   updateProfile(data: any): Observable<AuthResponse> {
     return this.http.put<AuthResponse>(`${environment.apiUrl}/api/v1/users/profile`, data).pipe(
       tap(res => {
-        // If password was changed, the backend increments session version and notifies logout.
-        // If only profile was updated, we update the local session state.
         this.setSession(res);
         this.toastService.success('Profile updated successfully');
       })
+    );
+  }
+
+  requestProfileUpdate(): Observable<void> {
+    return this.http.post<void>(`${environment.apiUrl}/api/v1/users/profile/request-update`, {});
+  }
+
+  changePassword(data: any): Observable<void> {
+    return this.http.post<void>(`${environment.apiUrl}/api/v1/users/password`, data).pipe(
+      tap(() => this.toastService.success('Password changed successfully'))
     );
   }
 
@@ -287,16 +291,12 @@ export class AuthService implements OnDestroy {
         const oldPlan = this.planTypeSignal();
         this.currentUserEmail.set(res.email || '');
         this.currentUserPhone.set(res.phoneNumber || '');
-        this.currentUserPendingEmail.set(res.pendingEmail || null);
+        
         this.planTypeSignal.set(res.planType || 'FREE');
         localStorage.setItem('email', this.currentUserEmail() || '');
         localStorage.setItem('phoneNumber', this.currentUserPhone() || '');
         localStorage.setItem('planType', this.currentPlanType());
-        if (res.pendingEmail) {
-          localStorage.setItem('pendingEmail', res.pendingEmail);
-        } else {
-          localStorage.removeItem('pendingEmail');
-        }
+        
 
         // CRITICAL: If plan has changed (e.g. after upgrade), clear the voice cache
         // to ensure the next fetch retrieves the newly unlocked voices.
@@ -307,4 +307,6 @@ export class AuthService implements OnDestroy {
       })
     );
   }
+
+
 }
