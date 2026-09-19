@@ -13,27 +13,31 @@ import { Subject } from 'rxjs';
     <div class="relative w-20 shrink-0 h-full">
       <button
         type="button"
-        (click)="onToggleDropdown($event)"
-        class="w-full h-full flex items-center justify-between gap-1 px-2 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white transition-all text-xs sm:text-sm hover:border-brand-blue/50"
+        [disabled]="disabled"
+        (click)="!disabled && onToggleDropdown($event)"
+        class="w-full h-full flex items-center justify-between gap-1 px-2 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white transition-all text-xs sm:text-sm"
+        [ngClass]="disabled ? 'opacity-70 cursor-not-allowed' : 'hover:border-brand-blue/50'"
       >
         <span class="flex items-center gap-1">
           <span>{{ selectedCountry.flag }}</span>
           <span class="font-medium">{{ selectedCountry.code }}</span>
         </span>
-        <svg
-          [ngClass]="showDropdown() ? 'rotate-180' : ''"
-          class="w-3 h-3 text-primary-400 transition-transform"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M19 9l-7 7-7-7"
-          ></path>
-        </svg>
+        @if (!disabled) {
+          <svg
+            [ngClass]="showDropdown() ? 'rotate-180' : ''"
+            class="w-3 h-3 text-primary-400 transition-transform"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M19 9l-7 7-7-7"
+            ></path>
+          </svg>
+        }
       </button>
 
       <!-- Dropdown -->
@@ -80,6 +84,7 @@ import { Subject } from 'rxjs';
 })
 export class CountrySelectorComponent {
   @Input() selectedCountry!: Country;
+  @Input() disabled: boolean = true;
   @Output() selectedCountryChange = new EventEmitter<Country>();
 
   @Input() phoneSubject?: Subject<string>;

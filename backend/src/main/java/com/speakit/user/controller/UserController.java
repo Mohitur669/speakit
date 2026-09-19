@@ -46,11 +46,31 @@ public class UserController {
         return ResponseEntity.ok(response);
     }
 
+    @RateLimited(action = RateLimitAction.PUBLIC)
+    @PostMapping("/profile/request-update")
+    public ResponseEntity<Void> requestProfileUpdate(Principal principal) {
+        String username = principal.getName();
+        log.info("Requesting profile update OTP for user: {}", username);
+        authService.requestProfileUpdate(username);
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping("/me")
     public ResponseEntity<AuthResponse> getCurrentUser(Principal principal) {
         String username = principal.getName();
         AuthResponse response = authService.getUserProfile(username);
         return ResponseEntity.ok(response);
+    }
+
+    @RateLimited(action = RateLimitAction.PUBLIC)
+    @PostMapping("/password")
+    public ResponseEntity<Void> changePassword(
+            @RequestBody com.speakit.auth.dto.ChangePasswordRequest request,
+            Principal principal) {
+        String username = principal.getName();
+        log.info("Changing password for user: {}", username);
+        authService.changePassword(username, request);
+        return ResponseEntity.ok().build();
     }
 
     @RateLimited(action = RateLimitAction.PUBLIC)

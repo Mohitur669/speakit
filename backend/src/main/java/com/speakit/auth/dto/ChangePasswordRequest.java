@@ -1,4 +1,4 @@
-package com.speakit.user.dto;
+package com.speakit.auth.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,11 +9,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserProfileUpdateRequest {
-    private String username;
-    private String email;
-    private String phoneNumber;
+public class ChangePasswordRequest {
     private String currentPassword;
     private String newPassword;
-    private String otp;
 }

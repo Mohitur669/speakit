@@ -8,18 +8,13 @@ import { NavbarComponent } from '../../../shared/components/navbar/navbar.compon
 import { Country } from '../../../shared/models/country.model';
 import {
   OnlyNumbersDirective,
-  isPasswordValid,
-  resetFormFields,
   buildFormFields,
   mapValidationErrors,
-  COUNTRIES,
   handleUsernameInput,
   handleEmailInput,
   handlePhoneInput,
 } from '../../../shared';
 import { CountrySelectorComponent } from '../../../shared/components/country-selector/country-selector.component';
-import { PasswordFieldGroupComponent } from './components/password-field-group/password-field-group.component';
-import { PasswordPolicyModalComponent } from '../../../shared/components/password-policy-modal/password-policy-modal.component';
 
 @Component({
   selector: 'app-signup',
@@ -29,10 +24,8 @@ import { PasswordPolicyModalComponent } from '../../../shared/components/passwor
     FormsModule,
     RouterLink,
     NavbarComponent,
-    OnlyNumbersDirective,
-    CountrySelectorComponent,
-    PasswordFieldGroupComponent,
-    PasswordPolicyModalComponent,
+    // OnlyNumbersDirective,
+    // CountrySelectorComponent,
   ],
 
   template: `
@@ -78,7 +71,7 @@ import { PasswordPolicyModalComponent } from '../../../shared/components/passwor
                 <div>
                   <label
                     class="block text-sm font-medium text-primary-700 dark:text-primary-300 mb-2"
-                    >Email</label
+                    >Email Address</label
                   >
                   <input
                     [(ngModel)]="email"
@@ -95,6 +88,7 @@ import { PasswordPolicyModalComponent } from '../../../shared/components/passwor
                   }
                 </div>
 
+                <!-- Hiding phone number from UI
                 <div class="relative">
                   <label
                     class="block text-sm font-medium text-primary-700 dark:text-primary-300 mb-2"
@@ -108,33 +102,39 @@ import { PasswordPolicyModalComponent } from '../../../shared/components/passwor
                     >
                     </app-country-selector>
 
-                    <input
-                      [(ngModel)]="phoneNumber"
-                      (input)="onPhoneInput()"
-                      appOnlyNumbers
-                      name="phoneNumber"
-                      type="tel"
-                      required
-                      inputmode="numeric"
-                      pattern="[0-9]*"
-                      placeholder="9876543210"
-                      class="flex-1 min-w-0 px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white text-sm placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all"
-                      [ngClass]="{ 'border-red-500': phoneTaken() }"
-                    />
+                    <!- - 
+                  <input
+                    [(ngModel)]="phoneNumber"
+                    (input)="onPhoneInput()"
+                    appOnlyNumbers
+                    name="phoneNumber"
+                    type="tel"
+                    required
+                    inputmode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="9876543210"
+                    class="flex-1 min-w-0 px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white text-sm placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all"
+                    [ngClass]="{ 'border-red-500': phoneTaken() }"
+                  />
+                  - ->
+                  <input
+                    [(ngModel)]="phoneNumber"
+                    (input)="onPhoneInput()"
+                    appOnlyNumbers
+                    name="phoneNumber"
+                    type="tel"
+                    inputmode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="9876543210"
+                    class="flex-1 min-w-0 px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white text-sm placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all"
+                    [ngClass]="{ 'border-red-500': phoneTaken() }"
+                  />
                   </div>
                   @if (phoneTaken()) {
                     <p class="text-xs text-red-500 mt-1">Phone number is already taken</p>
                   }
                 </div>
-
-                <div>
-                  <app-password-field-group
-                    [(password)]="password"
-                    [(confirmPassword)]="confirmPassword"
-                    (showPolicyModal)="showPolicyModal.set($event)"
-                  >
-                  </app-password-field-group>
-                </div>
+                -->
 
                 @if (error()) {
                   <div
@@ -169,41 +169,39 @@ import { PasswordPolicyModalComponent } from '../../../shared/components/passwor
                   </label>
                 </div>
 
-                <button
-                  type="submit"
-                  [disabled]="
-                    loading() ||
-                    !username ||
-                    !email ||
-                    !phoneNumber ||
-                    usernameTaken() ||
-                    emailTaken() ||
-                    phoneTaken() ||
-                    !isPasswordValid(password) ||
-                    password !== confirmPassword ||
-                    !acceptedTerms
-                  "
-                  class="w-full mt-6 py-3 px-6 rounded-xl font-semibold text-white bg-brand-blue hover:bg-brand-blue/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center justify-center gap-2"
-                >
-                  @if (loading()) {
-                    <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle
-                        class="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        stroke-width="4"
-                      ></circle>
-                      <path
-                        class="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                      ></path>
-                    </svg>
-                  }
-                  {{ loading() ? 'Creating account...' : 'Create Account' }}
-                </button>
+                <!--
+              <button
+                type="submit"
+                [disabled]="
+                  loading() ||
+                  !username ||
+                  !email ||
+                  !phoneNumber ||
+                  usernameTaken() ||
+                  emailTaken() ||
+                  phoneTaken() ||
+                  !acceptedTerms
+                "
+                class="w-full mt-6 py-3 px-6 rounded-xl font-semibold text-white bg-brand-blue hover:bg-brand-blue/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center justify-center gap-2"
+              >
+                Next
+              </button>
+              -->
+              <button
+                type="submit"
+                [disabled]="
+                  loading() ||
+                  !username ||
+                  !email ||
+                  usernameTaken() ||
+                  emailTaken() ||
+                  phoneTaken() ||
+                  !acceptedTerms
+                "
+                class="w-full mt-6 py-3 px-6 rounded-xl font-semibold text-white bg-brand-blue hover:bg-brand-blue/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center justify-center gap-2"
+              >
+                Next
+              </button>
 
                 <p class="text-center text-sm text-primary-600 dark:text-primary-400 mt-6">
                   Already have an account?
@@ -221,20 +219,13 @@ import { PasswordPolicyModalComponent } from '../../../shared/components/passwor
       </div>
     </div>
 
-    @if (showPolicyModal()) {
-      <app-password-policy-modal [password]="password" (close)="showPolicyModal.set(false)">
-      </app-password-policy-modal>
-    }
   `,
 })
 export class SignupComponent implements OnInit, OnDestroy {
   username = '';
   email = '';
   phoneNumber = '';
-  password = '';
-  confirmPassword = '';
   acceptedTerms = false;
-  showPolicyModal = signal(false);
   loading = signal(false);
   error = signal('');
 
@@ -255,10 +246,6 @@ export class SignupComponent implements OnInit, OnDestroy {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
 
-  isPasswordValid(pass: string): boolean {
-    return isPasswordValid(pass);
-  }
-
   pendingPlan = '';
   pendingRedirect = '';
 
@@ -266,6 +253,25 @@ export class SignupComponent implements OnInit, OnDestroy {
     if (this.authService.isLoggedIn()) {
       this.router.navigate(['/tts']);
     }
+
+    // Restore state if navigating back from password step
+    const state = history.state;
+    if (state && state.username) {
+      this.username = state.username || '';
+      this.email = state.email || '';
+      this.acceptedTerms = state.acceptedTerms || false;
+
+      const countryCode = this.selectedCountry.code;
+      let phone = state.phoneNumber || '';
+      if (phone.startsWith(countryCode.replace('+', ''))) {
+        this.phoneNumber = phone.substring(countryCode.replace('+', '').length);
+      } else if (phone.startsWith(countryCode)) {
+        this.phoneNumber = phone.substring(countryCode.length);
+      } else {
+        this.phoneNumber = phone;
+      }
+    }
+
     this.pendingPlan = this.route.snapshot.queryParams['plan'] || '';
     this.pendingRedirect = this.route.snapshot.queryParams['redirect'] || '';
 
@@ -301,14 +307,8 @@ export class SignupComponent implements OnInit, OnDestroy {
 
   onSubmit(): void {
     if (this.usernameTaken() || this.emailTaken() || this.phoneTaken()) return;
-    if (
-      !this.username ||
-      !this.email ||
-      !this.phoneNumber ||
-      !this.password ||
-      this.password !== this.confirmPassword
-    )
-      return;
+    // if (!this.username || !this.email || !this.phoneNumber) return;
+    if (!this.username || !this.email) return;
 
     this.loading.set(true);
     this.error.set('');
@@ -319,25 +319,16 @@ export class SignupComponent implements OnInit, OnDestroy {
     if (cleanLocalNumber.startsWith(dialDigits)) {
       cleanLocalNumber = cleanLocalNumber.substring(dialDigits.length);
     }
-    const fullPhoneNumber = countryCode + cleanLocalNumber;
+    // const fullPhoneNumber = countryCode + cleanLocalNumber;
+    const fullPhoneNumber = this.phoneNumber ? countryCode + cleanLocalNumber : '';
 
-    this.authService
-      .register({
+    this.router.navigate(['/signup/password'], {
+      state: {
         username: this.username,
         email: this.email,
         phoneNumber: fullPhoneNumber,
-        password: this.password,
-      })
-      .subscribe({
-        next: () => {
-          this.router.navigate(['/verify-email'], { queryParams: { email: this.email, username: this.username } });
-        },
-        error: () => {
-          this.error.set(
-            'Unable to create account. Username, email, or phone may already be in use.',
-          );
-          this.loading.set(false);
-        },
-      });
+        acceptedTerms: this.acceptedTerms,
+      }
+    });
   }
 }
