@@ -1,6 +1,7 @@
 package com.speakit.auth.service;
 import com.speakit.tts.service.WSTicketService;
 import com.speakit.notification.service.EmailService;
+import com.speakit.notification.service.OtpEmailSender;
 import com.speakit.parameter.service.SystemParameterService;
 import com.speakit.auth.dto.VerifyEmailChangeRequest;
 import com.speakit.auth.dto.VerifyEmailRequest;
@@ -52,7 +53,7 @@ public class AuthService {
     private final WSTicketService wsTicketService;
     private final SystemParameterService systemParameterService;
     private final OtpVerificationRepository otpVerificationRepository;
-    private final EmailService emailService;
+    private final OtpEmailSender otpEmailSender;
 
     @Value("${auth.session-duration-ms:7200000}")
     private long sessionDurationMs;
@@ -100,7 +101,7 @@ public class AuthService {
                 .build();
         otpVerificationRepository.save(verification);
 
-        emailService.sendOtpEmail(sanitizedEmail, sanitizedUsername, rawOtp, otpExpiryMinutes);
+        otpEmailSender.sendOtpEmail(sanitizedEmail, sanitizedUsername, rawOtp, otpExpiryMinutes);
 
         return AuthResponse.builder()
                 .username(user.getUsername())
@@ -277,7 +278,7 @@ public class AuthService {
                     .build();
             otpVerificationRepository.save(verification);
 
-            emailService.sendOtpEmail(targetEmail, user.getUsername(), rawOtp, otpExpiryMinutes);
+            otpEmailSender.sendOtpEmail(targetEmail, user.getUsername(), rawOtp, otpExpiryMinutes);
             log.info("Profile update OTP generated and sent to email: {}", maskEmail(targetEmail));
             
             // Save the staged changes to user entity
@@ -414,7 +415,7 @@ public class AuthService {
                 .build();
         otpVerificationRepository.save(verification);
 
-        emailService.sendOtpEmail(sanitizedEmail, user.getUsername(), rawOtp, otpExpiryMinutes);
+        otpEmailSender.sendOtpEmail(sanitizedEmail, user.getUsername(), rawOtp, otpExpiryMinutes);
         log.info("Verification OTP resent to user: {}", user.getUsername());
     }
 
@@ -443,7 +444,7 @@ public class AuthService {
                     
             otpVerificationRepository.save(verification);
 
-            emailService.sendOtpEmail(sanitizedEmail, user.getUsername(), rawOtp, otpExpiryMinutes);
+            otpEmailSender.sendOtpEmail(sanitizedEmail, user.getUsername(), rawOtp, otpExpiryMinutes);
             log.info("Password reset OTP generated and sent to email for user: {}", user.getUsername());
         } else {
             // Enforce account enumeration protection by logging only server-side
@@ -651,7 +652,7 @@ public class AuthService {
                 .build();
         otpVerificationRepository.save(verification);
 
-        emailService.sendOtpEmail(targetEmail, user.getUsername(), rawOtp, otpExpiryMinutes);
+        otpEmailSender.sendOtpEmail(targetEmail, user.getUsername(), rawOtp, otpExpiryMinutes);
         log.info("Profile update OTP resent to email: {}", maskEmail(targetEmail));
     }
 
