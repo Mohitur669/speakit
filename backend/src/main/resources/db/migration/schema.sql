@@ -322,20 +322,45 @@ BEGIN
         ALTER TABLE users ALTER COLUMN account_status SET NOT NULL;
     END IF;
 
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='pending_email') THEN
-        ALTER TABLE users ADD COLUMN pending_email VARCHAR(100);
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='auth_provider') THEN
+        ALTER TABLE users DROP COLUMN auth_provider;
     END IF;
 
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='pending_username') THEN
-        ALTER TABLE users ADD COLUMN pending_username VARCHAR(50);
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='avatar_url') THEN
+        ALTER TABLE users DROP COLUMN avatar_url;
     END IF;
 
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='pending_phone_number') THEN
-        ALTER TABLE users ADD COLUMN pending_phone_number VARCHAR(15);
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='display_name') THEN
+        ALTER TABLE users DROP COLUMN display_name;
     END IF;
 
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='pending_password') THEN
-        ALTER TABLE users ADD COLUMN pending_password VARCHAR(255);
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='last_login_at') THEN
+        ALTER TABLE users DROP COLUMN last_login_at;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='supabase_user_id') THEN
+        ALTER TABLE users DROP CONSTRAINT IF EXISTS uktamcja6eov3opw7ij5pm3o3v7;
+        ALTER TABLE users DROP COLUMN supabase_user_id;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='pending_email') THEN
+        ALTER TABLE users DROP COLUMN pending_email;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='pending_username') THEN
+        ALTER TABLE users DROP COLUMN pending_username;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='pending_phone_number') THEN
+        ALTER TABLE users DROP COLUMN pending_phone_number;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='pending_password') THEN
+        ALTER TABLE users DROP COLUMN pending_password;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='pending_email_verified') THEN
+        ALTER TABLE users DROP COLUMN pending_email_verified;
     END IF;
 
     -- One-time backfill of existing users to verified and ACTIVE status

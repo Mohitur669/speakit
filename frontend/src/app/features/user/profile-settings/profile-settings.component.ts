@@ -19,14 +19,15 @@ import { ToastService } from '../../../core/services/toast.service';
     RouterLink,
     NavbarComponent,
     ProfileFormComponent,
-    PasswordFormComponent,
-    PasswordPolicyModalComponent,
+    // PasswordFormComponent,
+    // PasswordPolicyModalComponent,
   ],
   template: `
     <div class="min-h-screen bg-primary-50 dark:bg-primary-950">
       <app-navbar></app-navbar>
 
-      <div class="max-w-4xl mx-auto px-4 py-12">
+      <div class="max-w-lg mx-auto px-4 py-12">
+        <!-- Header -->
         <div class="mb-8 flex items-start justify-between">
           <div>
             <h1 class="text-3xl font-bold text-primary-900 dark:text-white mb-2">
@@ -38,7 +39,7 @@ import { ToastService } from '../../../core/services/toast.service';
           </div>
           <button
             routerLink="/tts"
-            class="p-2 rounded-xl text-primary-400 hover:text-primary-600 dark:hover:text-primary-200 hover:bg-white dark:hover:bg-primary-900 border border-transparent hover:border-primary-200 dark:hover:border-primary-700 transition-all group shadow-sm hover:shadow-md"
+            class="p-2 -mt-2 rounded-xl text-primary-400 hover:text-primary-600 dark:hover:text-primary-200 hover:bg-white dark:hover:bg-primary-900 border border-transparent hover:border-primary-200 dark:hover:border-primary-700 transition-all group shadow-sm hover:shadow-md"
             title="Back to Studio"
           >
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -73,6 +74,7 @@ import { ToastService } from '../../../core/services/toast.service';
                 </app-profile-form>
               </div>
 
+              <!--
               <div>
                 <app-password-form
                   [(currentPassword)]="currentPassword"
@@ -82,6 +84,9 @@ import { ToastService } from '../../../core/services/toast.service';
                 >
                 </app-password-form>
               </div>
+              -->
+              
+
 
               @if (error()) {
                 <div
@@ -101,6 +106,7 @@ import { ToastService } from '../../../core/services/toast.service';
                 >
                   Cancel
                 </button>
+                <!--
                 <button
                   type="submit"
                   [disabled]="
@@ -116,6 +122,39 @@ import { ToastService } from '../../../core/services/toast.service';
                 >
                   {{ loading() ? 'Saving Changes...' : 'Save Changes' }}
                 </button>
+                -->
+                <!--
+                <button
+                  type="submit"
+                  [disabled]="
+                    loading() ||
+                    !currentPassword ||
+                    usernameTaken() ||
+                    emailTaken() ||
+                    phoneTaken() ||
+                    (newPassword &&
+                      (!isPasswordValid(newPassword) || newPassword !== confirmPassword))
+                  "
+                  class="px-8 py-3 rounded-xl bg-brand-blue hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold shadow-lg shadow-brand-blue/20 transition-all active:scale-95"
+                >
+                  {{ loading() ? 'Saving Changes...' : 'Save Changes' }}
+                </button>
+                -->
+                <button
+                  type="submit"
+                  [disabled]="
+                    loading() ||
+                    !username ||
+                    !email ||
+                    usernameTaken() ||
+                    emailTaken() ||
+                    phoneTaken() ||
+                    !hasChanges()
+                  "
+                  class="px-8 py-3 rounded-xl bg-brand-blue hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold shadow-lg shadow-brand-blue/20 transition-all active:scale-95"
+                >
+                  Proceed
+                </button>
               </div>
             </form>
           </div>
@@ -123,10 +162,12 @@ import { ToastService } from '../../../core/services/toast.service';
       </div>
     </div>
 
+    <!--
     @if (showPolicyModal()) {
       <app-password-policy-modal [password]="newPassword" (close)="showPolicyModal.set(false)">
       </app-password-policy-modal>
     }
+    -->
   `,
 })
 export class ProfileSettingsComponent implements OnInit, OnDestroy {
@@ -162,6 +203,12 @@ export class ProfileSettingsComponent implements OnInit, OnDestroy {
     return isPasswordValid(pass);
   }
 
+  hasChanges(): boolean {
+    const originalUsername = this.authService.currentUser() || '';
+    const originalEmail = this.authService.currentUserEmail() || '';
+    return this.username !== originalUsername || this.email !== originalEmail;
+  }
+
   ngOnInit(): void {
     if (!this.authService.isLoggedIn()) {
       this.router.navigate(['/login']);
@@ -177,14 +224,10 @@ export class ProfileSettingsComponent implements OnInit, OnDestroy {
     this.email = this.authService.currentUserEmail() || '';
     const rawPhone = this.authService.currentUserPhone() || '';
 
-    // Attempt to extract country code from stored phone
-    const country = this.countries.find((c: Country) => rawPhone.startsWith(c.code));
-
-    if (country) {
-      this.selectedCountry = country;
-      this.phoneNumber = rawPhone.substring(country.code.length);
+    this.selectedCountry = this.countries[0]; // Force India
+    if (rawPhone.startsWith(this.selectedCountry.code)) {
+      this.phoneNumber = rawPhone.substring(this.selectedCountry.code.length);
     } else {
-      this.selectedCountry = this.countries[0];
       this.phoneNumber = rawPhone;
     }
 
@@ -213,39 +256,26 @@ export class ProfileSettingsComponent implements OnInit, OnDestroy {
     this.loading.set(true);
     this.error.set('');
 
-    const fullPhoneNumber = this.selectedCountry.code + this.phoneNumber.replace(/\D/g, '');
-
     const request = {
       username: this.username,
       email: this.email,
-      phoneNumber: fullPhoneNumber,
-      currentPassword: this.currentPassword,
-      newPassword: this.newPassword,
+      phoneNumber: this.phoneNumber ? '' : '', // Dummy since phone is disabled
     };
 
-    const isEmailChanging = this.email.toLowerCase() !== this.authService.currentUserEmail()?.toLowerCase();
-
-    this.authService.updateProfile(request).subscribe({
-      next: (res) => {
+    this.authService.requestProfileUpdate().subscribe({
+      next: () => {
         this.loading.set(false);
-        this.currentPassword = '';
-        this.newPassword = '';
-        this.confirmPassword = '';
-        
-        if (res.pendingEmail) {
-          this.router.navigate(['/settings/profile/verify']);
-          if (isEmailChanging) {
-            this.toastService.info('Verification code sent to your new email.');
-          } else {
-            this.toastService.info('Verification code sent to your email.');
+        this.toastService.info('Verification code sent to your current email.');
+        this.router.navigate(['/settings/profile/security-verify'], {
+          state: { 
+            action: 'confirm_profile',
+            profileData: request
           }
-        } else {
-          this.toastService.success('Profile updated successfully.');
-        }
+        });
       },
       error: (err) => {
         this.error.set(
-          err.error?.message || 'Failed to update profile. Please check your details.',
+          err.error?.message || 'Failed to initiate profile update. Please try again.',
         );
         this.loading.set(false);
       },

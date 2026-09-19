@@ -15,4 +15,5 @@ public class UserProfileUpdateRequest {
     private String phoneNumber;
     private String currentPassword;
     private String newPassword;
+    private String otp;
 }

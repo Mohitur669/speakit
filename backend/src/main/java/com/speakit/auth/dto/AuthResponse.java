@@ -19,5 +19,5 @@ public class AuthResponse {
     private Long sessionVersion;
     private Long sessionDurationMs;
     private Long idleTimeoutMs;
-    private String pendingEmail;
+    private boolean emailVerified;
 }

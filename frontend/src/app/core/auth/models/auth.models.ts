@@ -8,6 +8,7 @@ export interface AuthResponse {
   sessionDurationMs: number;
   idleTimeoutMs: number;
   pendingEmail?: string;
+  emailVerified: boolean;
 }
 
 export interface LoginCredentials {

@@ -48,6 +48,10 @@ const routes = [
     loadComponent: () => import('./features/auth/signup').then(m => m.SignupComponent)
   },
   {
+    path: 'signup/password',
+    loadComponent: () => import('./features/auth/signup/signup-password.component').then(m => m.SignupPasswordComponent)
+  },
+  {
     path: 'verify-email',
     loadComponent: () => import('./features/auth/verify-email/verify-email.component').then(m => m.VerifyEmailComponent)
   },
@@ -72,6 +76,16 @@ const routes = [
   {
     path: 'settings/profile',
     loadComponent: () => import('./features/user/profile-settings/profile-settings.component').then(m => m.ProfileSettingsComponent),
+    canActivate: [authGuard]
+  },
+  {
+    path: 'settings/profile/password',
+    loadComponent: () => import('./features/user/profile-settings/change-password.component').then(m => m.ChangePasswordPageComponent),
+    canActivate: [authGuard]
+  },
+  {
+    path: 'settings/profile/security-verify',
+    loadComponent: () => import('./features/user/profile-settings/security-verify.component').then(m => m.SecurityVerifyComponent),
     canActivate: [authGuard]
   },
   {
