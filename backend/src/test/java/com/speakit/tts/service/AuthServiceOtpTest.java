@@ -1,5 +1,6 @@
 package com.speakit.tts.service;
 import com.speakit.notification.service.EmailService;
+import com.speakit.notification.service.OtpEmailSender;
 import com.speakit.parameter.service.SystemParameterService;
 import com.speakit.auth.dto.VerifyEmailChangeRequest;
 import com.speakit.auth.dto.VerifyEmailRequest;
@@ -67,7 +68,7 @@ class AuthServiceOtpTest {
     private OtpVerificationRepository otpVerificationRepository;
 
     @Mock
-    private EmailService emailService;
+    private OtpEmailSender otpEmailSender;
 
     private User pendingUser;
     private User activeUser;
@@ -132,7 +133,7 @@ class AuthServiceOtpTest {
         // Verify OTP is generated and saved
         verify(otpVerificationRepository, times(1)).save(any(OtpVerification.class));
         // Verify email is sent
-        verify(emailService, times(1)).sendOtpEmail(eq("new@example.com"), eq("newuser"), anyString(), eq(10));
+        verify(otpEmailSender, times(1)).sendOtpEmail(eq("new@example.com"), eq("newuser"), anyString(), eq(10));
     }
 
     @Test
@@ -241,7 +242,7 @@ class AuthServiceOtpTest {
 
         // Should execute without throwing exception (silent success)
         assertDoesNotThrow(() -> authService.forgotPassword(req));
-        verify(emailService, never()).sendOtpEmail(anyString(), anyString(), anyString(), anyInt());
+        verify(otpEmailSender, never()).sendOtpEmail(anyString(), anyString(), anyString(), anyInt());
     }
 
     @Test
@@ -289,7 +290,7 @@ class AuthServiceOtpTest {
 
         // Verify EMAIL_CHANGE OTP generated and sent to the NEW email
         verify(otpVerificationRepository, times(1)).save(any(OtpVerification.class));
-        verify(emailService, times(1)).sendOtpEmail(eq("newemail@example.com"), eq("activeuser"), anyString(), eq(10));
+        verify(otpEmailSender, times(1)).sendOtpEmail(eq("newemail@example.com"), eq("activeuser"), anyString(), eq(10));
     }
 
     @Test
@@ -353,7 +354,7 @@ class AuthServiceOtpTest {
 
         verify(otpVerificationRepository, times(1)).invalidateExistingOtps("newemail@example.com", "EMAIL_CHANGE");
         verify(otpVerificationRepository, times(1)).save(any(OtpVerification.class));
-        verify(emailService, times(1)).sendOtpEmail(eq("newemail@example.com"), eq("activeuser"), anyString(), eq(10));
+        verify(otpEmailSender, times(1)).sendOtpEmail(eq("newemail@example.com"), eq("activeuser"), anyString(), eq(10));
     }
 
     private String hashOtp(String otp) {
