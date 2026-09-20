@@ -1,10 +1,19 @@
 #!/usr/bin/env bash
 set -e
 
-echo "=== Dependabot VAPT Pipeline Setup & Report Generation ==="
+echo "=== Dependabot & Code Scanning VAPT Pipeline Setup & Report Generation ==="
+
+SKIP_AUTOFIX=false
+for arg in "$@"; do
+    case "$arg" in
+        --reports-only|--no-autofix|--skip-autofix)
+            SKIP_AUTOFIX=true
+            ;;
+    esac
+done
 
 # 1. Check directories (ensure we are in the repo root)
-if [[ ! -f ".github/scripts/dependabot_report.py" ]]; then
+if [[ ! -f ".github/scripts/dependabot_report.py" || ! -f ".github/scripts/code_scanning_report.py" ]]; then
     echo "[ERROR] Error: Script must be run from the repository root."
     echo "   Please 'cd' to the root of the project and run:"
     echo "   ./scripts/dependency-vapt-pipeline/generate-vapt-reports.sh"
@@ -31,8 +40,7 @@ if ! gh auth status &> /dev/null; then
     echo "To configure GitHub CLI, please run:"
     echo "  gh auth login"
     echo ""
-    echo "Make sure to grant access to the repository. Note: Dependabot alerts"
-    echo "require specific permissions that the standard token might lack."
+    echo "Make sure to grant access to the repository."
     exit 1
 fi
 
@@ -49,6 +57,15 @@ if ! gh api "/repos/$REPO/dependabot/alerts" --silent 2>/dev/null; then
     echo "   OR authenticate the gh CLI with the new token: gh auth login --with-token"
     exit 1
 fi
+echo "[OK] Dependabot API access verified."
+
+echo "Verifying Code Scanning API access for $REPO..."
+if ! gh api "/repos/$REPO/code-scanning/alerts" --silent 2>/dev/null; then
+    echo "[WARNING] Your GitHub token cannot read Code Scanning alerts."
+    echo "          Ensure the token has 'security_events: read' or fine-grained 'Code scanning alerts: Read-only'."
+else
+    echo "[OK] Code Scanning API access verified."
+fi
 echo "[OK] GitHub authentication and permissions verified."
 
 # 4. Setup Python environment and install packages
@@ -63,18 +80,31 @@ pip install -r .github/scripts/requirements.txt --quiet
 echo "[OK] Python dependencies installed."
 
 # 5. Generate Reports
-echo "Generating Dependabot VAPT reports..."
-# Export the token from gh cli so the python script can pick it up natively
 export GITHUB_TOKEN=$(gh auth token)
-python .github/scripts/dependabot_report.py --repo "$REPO"
 
-echo ""
+echo "Generating Dependabot VAPT reports..."
+python .github/scripts/dependabot_report.py --repo "$REPO"
 echo "[OK] Reports successfully generated in reports/dependabot/"
 
+echo "Generating Code Scanning (CodeQL) VAPT reports..."
+if gh api "/repos/$REPO/code-scanning/alerts" --silent 2>/dev/null; then
+    python .github/scripts/code_scanning_report.py --repo "$REPO"
+    echo "[OK] Reports successfully generated in reports/code-scanning/"
+else
+    echo "[SKIP] Skipping Code Scanning reports due to API access limitations."
+fi
+
 # 6. Auto-Fix NPM Packages
-echo "Starting automated NPM fast-track fixes..."
-./scripts/dependency-vapt-pipeline/auto-fix-npm.py
+if [[ "$SKIP_AUTOFIX" == "true" ]]; then
+    echo "Skipping automated NPM fast-track fixes (--reports-only specified)."
+else
+    echo "Starting automated NPM fast-track fixes..."
+    ./scripts/dependency-vapt-pipeline/auto-fix-npm.py
+fi
 
 echo ""
 echo "[DONE] Setup, Report Generation, and NPM Fast-Tracking Complete!"
+echo "Reports available in:"
+echo "  - Dependabot:    reports/dependabot/ (and reports/alerts/dependabot-alerts-report.csv)"
+echo "  - Code Scanning: reports/code-scanning/ (and reports/alerts/code-scanning-alerts.csv)"
 echo "You can now manually submit 'fix-vapt-alerts.md' to the AI agent to begin processing the remaining complex vulnerabilities."
