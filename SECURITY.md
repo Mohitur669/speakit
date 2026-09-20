@@ -6,7 +6,7 @@ If you discover a security issue in SpeakIt, please report it by opening an issu
 
 ## Supported Versions
 
-- `main`: active development branch
+- `master`: active development branch
 
 ## Remediation
 
