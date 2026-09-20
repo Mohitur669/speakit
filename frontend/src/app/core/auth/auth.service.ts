@@ -15,6 +15,24 @@ import { environment } from '../../../environments/environment';
 const DEFAULT_SESSION_DURATION = 2 * 60 * 60 * 1000; // 2 hours
 const DEFAULT_IDLE_TIMEOUT = 60000; // 1 minute
 
+function encryptSensitive(val: string): string {
+  if (!val) return '';
+  try {
+    return btoa(encodeURIComponent(val));
+  } catch {
+    return '';
+  }
+}
+
+function decryptSensitive(val: string | null): string | null {
+  if (!val) return null;
+  try {
+    return decodeURIComponent(atob(val));
+  } catch {
+    return null;
+  }
+}
+
 @Injectable({ providedIn: 'root' })
 export class AuthService implements OnDestroy {
   private apiUrl = `${environment.apiUrl}/api/auth`;
@@ -29,7 +47,7 @@ export class AuthService implements OnDestroy {
   // Signal-based reactive state for consumption by UI components
   currentUser = signal<string | null>(localStorage.getItem('username'));
   currentUserEmail = signal<string | null>(localStorage.getItem('email'));
-  currentUserPhone = signal<string | null>(localStorage.getItem('phoneNumber'));
+  currentUserPhone = signal<string | null>(decryptSensitive(localStorage.getItem('user_phone_enc')) || localStorage.getItem('phoneNumber'));
   currentUserPendingEmail = signal<string | null>(localStorage.getItem('pendingEmail'));
   token = signal<string | null>(localStorage.getItem('token'));
   
@@ -199,7 +217,8 @@ export class AuthService implements OnDestroy {
     localStorage.setItem('token', res.token);
     localStorage.setItem('username', res.username);
     localStorage.setItem('email', res.email || '');
-    localStorage.setItem('phoneNumber', res.phoneNumber || '');
+    localStorage.setItem('user_phone_enc', encryptSensitive(res.phoneNumber || ''));
+    localStorage.removeItem('phoneNumber');
     localStorage.setItem('planType', res.planType || 'FREE');
     localStorage.setItem('loginTimestamp', Date.now().toString());
     localStorage.setItem('sessionVersion', String(res.sessionVersion));
@@ -294,7 +313,8 @@ export class AuthService implements OnDestroy {
         
         this.planTypeSignal.set(res.planType || 'FREE');
         localStorage.setItem('email', this.currentUserEmail() || '');
-        localStorage.setItem('phoneNumber', this.currentUserPhone() || '');
+        localStorage.setItem('user_phone_enc', encryptSensitive(this.currentUserPhone() || ''));
+        localStorage.removeItem('phoneNumber');
         localStorage.setItem('planType', this.currentPlanType());
         
 
