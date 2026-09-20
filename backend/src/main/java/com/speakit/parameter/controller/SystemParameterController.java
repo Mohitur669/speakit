@@ -4,8 +4,10 @@ import com.speakit.shared.aspect.RateLimitAction;
 import com.speakit.shared.aspect.RateLimited;
 import com.speakit.parameter.service.SystemParameterService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.util.HtmlUtils;
 
 import java.util.List;
 import java.util.Map;
@@ -37,21 +39,25 @@ public class SystemParameterController {
     );
 
     @RateLimited(action = RateLimitAction.LIVE_PARAM)
-    @GetMapping("/cached/{name}")
+    @GetMapping(value = "/cached/{name}", produces = MediaType.TEXT_PLAIN_VALUE)
     public ResponseEntity<String> getCachedParameter(@PathVariable String name, @RequestParam(defaultValue = "") String defaultValue) {
         if (!PUBLIC_WHITELIST.contains(name)) {
             return ResponseEntity.status(403).build();
         }
-        return ResponseEntity.ok(systemParameterService.getCachedParameter(name, defaultValue));
+        String safeDefault = defaultValue != null ? HtmlUtils.htmlEscape(defaultValue) : "";
+        String parameterValue = systemParameterService.getCachedParameter(name, safeDefault);
+        return ResponseEntity.ok(parameterValue);
     }
 
     @RateLimited(action = RateLimitAction.LIVE_PARAM)
-    @GetMapping("/live/{name}")
+    @GetMapping(value = "/live/{name}", produces = MediaType.TEXT_PLAIN_VALUE)
     public ResponseEntity<String> getLiveParameter(@PathVariable String name, @RequestParam(defaultValue = "") String defaultValue) {
         if (!PUBLIC_WHITELIST.contains(name)) {
             return ResponseEntity.status(403).build();
         }
-        return ResponseEntity.ok(systemParameterService.getLiveParameter(name, defaultValue));
+        String safeDefault = defaultValue != null ? HtmlUtils.htmlEscape(defaultValue) : "";
+        String parameterValue = systemParameterService.getLiveParameter(name, safeDefault);
+        return ResponseEntity.ok(parameterValue);
     }
 
     @RateLimited(action = RateLimitAction.LIVE_PARAM)

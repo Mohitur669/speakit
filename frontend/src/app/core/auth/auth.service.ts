@@ -29,7 +29,8 @@ export class AuthService implements OnDestroy {
   // Signal-based reactive state for consumption by UI components
   currentUser = signal<string | null>(localStorage.getItem('username'));
   currentUserEmail = signal<string | null>(localStorage.getItem('email'));
-  currentUserPhone = signal<string | null>(localStorage.getItem('phoneNumber'));
+  // Sensitive PII (phone number) is held strictly in-memory to prevent clear-text storage risks
+  currentUserPhone = signal<string | null>(null);
   currentUserPendingEmail = signal<string | null>(localStorage.getItem('pendingEmail'));
   token = signal<string | null>(localStorage.getItem('token'));
   
@@ -51,11 +52,20 @@ export class AuthService implements OnDestroy {
   private router = inject(Router);
 
   constructor(private http: HttpClient) {
+    // Purge legacy clear-text and temporary storage keys
+    localStorage.removeItem('phoneNumber');
+    localStorage.removeItem('user_phone_enc');
+
     this.checkSessionValidity();
     this.initializeActivityValidation();
     this.setupIdleTimer();
     this.setupBroadcastListener();
     this.setupWebSocket();
+
+    // Populate in-memory user details in the background if session is active
+    if (this.isLoggedIn()) {
+      this.refreshStatus().subscribe({ error: () => {} });
+    }
   }
 
   ngOnDestroy(): void {
@@ -199,7 +209,6 @@ export class AuthService implements OnDestroy {
     localStorage.setItem('token', res.token);
     localStorage.setItem('username', res.username);
     localStorage.setItem('email', res.email || '');
-    localStorage.setItem('phoneNumber', res.phoneNumber || '');
     localStorage.setItem('planType', res.planType || 'FREE');
     localStorage.setItem('loginTimestamp', Date.now().toString());
     localStorage.setItem('sessionVersion', String(res.sessionVersion));
@@ -294,7 +303,6 @@ export class AuthService implements OnDestroy {
         
         this.planTypeSignal.set(res.planType || 'FREE');
         localStorage.setItem('email', this.currentUserEmail() || '');
-        localStorage.setItem('phoneNumber', this.currentUserPhone() || '');
         localStorage.setItem('planType', this.currentPlanType());
         
 
