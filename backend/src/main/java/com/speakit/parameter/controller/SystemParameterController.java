@@ -6,6 +6,7 @@ import com.speakit.parameter.service.SystemParameterService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.util.HtmlUtils;
 
 import java.util.List;
 import java.util.Map;
@@ -51,7 +52,8 @@ public class SystemParameterController {
         if (!PUBLIC_WHITELIST.contains(name)) {
             return ResponseEntity.status(403).build();
         }
-        return ResponseEntity.ok(systemParameterService.getLiveParameter(name, defaultValue));
+        String parameterValue = systemParameterService.getLiveParameter(name, defaultValue);
+        return ResponseEntity.ok(HtmlUtils.htmlEscape(parameterValue));
     }
 
     @RateLimited(action = RateLimitAction.LIVE_PARAM)
