@@ -44,8 +44,9 @@ public class SystemParameterController {
         if (!PUBLIC_WHITELIST.contains(name)) {
             return ResponseEntity.status(403).build();
         }
-        String parameterValue = systemParameterService.getCachedParameter(name, defaultValue);
-        return ResponseEntity.ok(HtmlUtils.htmlEscape(parameterValue));
+        String safeDefault = defaultValue != null ? HtmlUtils.htmlEscape(defaultValue) : "";
+        String parameterValue = systemParameterService.getCachedParameter(name, safeDefault);
+        return ResponseEntity.ok(parameterValue);
     }
 
     @RateLimited(action = RateLimitAction.LIVE_PARAM)
@@ -54,8 +55,9 @@ public class SystemParameterController {
         if (!PUBLIC_WHITELIST.contains(name)) {
             return ResponseEntity.status(403).build();
         }
-        String parameterValue = systemParameterService.getLiveParameter(name, defaultValue);
-        return ResponseEntity.ok(HtmlUtils.htmlEscape(parameterValue));
+        String safeDefault = defaultValue != null ? HtmlUtils.htmlEscape(defaultValue) : "";
+        String parameterValue = systemParameterService.getLiveParameter(name, safeDefault);
+        return ResponseEntity.ok(parameterValue);
     }
 
     @RateLimited(action = RateLimitAction.LIVE_PARAM)
