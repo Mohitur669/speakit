@@ -7,3 +7,13 @@ reports/*
 !reports/audit/
 
 .venv
+
+# Xcode & macOS
+.DS_Store
+xcuserdata/
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+DerivedData/
+
+# IDE & Editor
+.idea/
