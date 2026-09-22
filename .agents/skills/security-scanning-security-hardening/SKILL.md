@@ -21,10 +21,11 @@ Implement comprehensive security hardening with defense-in-depth strategy throug
 
 ## Instructions
 
-1. Execute Phase 1 to establish a security baseline.
-2. Apply Phase 2 remediations for high-risk issues.
-3. Implement Phase 3 controls and validate defenses.
-4. Complete Phase 4 validation and compliance checks.
+1. Output directory: Ensure all assessment, scanning, penetration test, and compliance reports are saved to `./reports/audit` in the project root.
+2. Execute Phase 1 to establish a security baseline.
+3. Apply Phase 2 remediations for high-risk issues.
+4. Implement Phase 3 controls and validate defenses.
+5. Complete Phase 4 validation and compliance checks.
 
 ## Safety
 
@@ -138,6 +139,7 @@ Implement comprehensive security hardening with defense-in-depth strategy throug
 
 ## Coordination Notes
 - Each phase provides detailed findings that inform subsequent phases
+- All assessment, vulnerability, penetration test, and compliance reports must be saved to `./reports/audit` in the repository root.
 - Security-auditor agent coordinates with domain-specific agents for fixes
 - All code changes undergo security review before implementation
 - Continuous feedback loop between assessment and remediation
