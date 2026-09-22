@@ -76,7 +76,7 @@ flowchart TD
             direction TB
             A_CTRL["AuthController & UserController<br/><code>/api/auth/**</code> & <code>/api/v1/users/**</code>"]
             A_SVC["AuthService & UserService<br/>(BCrypt, Credentials & Profile)"]
-            A_TICK["WSTicketService & OTP<br/>(60s Ephemeral Handshake Tickets)"]
+            A_TICK["WSTicketService & OTP<br/>(30s Ephemeral Handshake Tickets)"]
             A_CTRL --> A_SVC --> A_TICK
         end
 
@@ -168,7 +168,7 @@ flowchart TD
 - **Header Format:** `Authorization: Bearer <jwt_token>`
 - **Stateless Invalidation (`session_version`):** Every user entity contains a `session_version` counter (numeric `BIGINT`). The JWT payload embeds this version (`sessionVersion`). On every authenticated request, `JwtAuthenticationFilter` resolves the user and asserts that the token's `sessionVersion` strictly matches the database. Modifying passwords or invoking logout atomically increments `session_version`, invalidating all previously issued tokens across all devices.
 - **Request Attribute Caching:** To eliminate redundant database queries, `JwtAuthenticationFilter` pre-caches `userId`, `username`, `planType`, `subscriptionStatus`, and `planExpiry` into `HttpServletRequest` attributes. Downstream controllers read these cached attributes directly.
-- **WebSocket Tickets:** To prevent exposing JWTs in URL query strings during browser WebSocket handshakes, clients call `POST /api/auth/ws-ticket` to receive an ephemeral 60-second single-use ticket. The WebSocket handshake (`/ws/logout?ticket=...`) verifies and consumes this ticket atomically.
+- **WebSocket Tickets:** To prevent exposing JWTs in URL query strings during browser WebSocket handshakes, clients call `POST /api/auth/ws-ticket` to receive an ephemeral 30-second single-use ticket. The WebSocket handshake (`/ws/logout?ticket=...`) verifies and consumes this ticket atomically.
 
 ### 3.2 Environments & Base URLs
 | Environment | Base HTTP URL | Base WebSocket URL | Purpose |
@@ -304,7 +304,6 @@ The Authentication domain manages registration, identity verification, multi-dev
 - **Success (`200 OK`)**:
 ```json
 {
-    "token": "eyJhbGciOiJIUzI1NiJ9...",
     "username": "johndoe",
     "email": "john.doe@example.com",
     "phoneNumber": "+14155552671",
@@ -331,7 +330,7 @@ The Authentication domain manages registration, identity verification, multi-dev
 5. Generates cryptographically secure 6-digit random numeric OTP via `SecureRandom`.
 6. Computes SHA-256 hash of OTP and persists `OtpVerification` entity with 10-minute expiry.
 7. Dispatches asynchronous email with raw OTP via `EmailService`.
-8. Generates initial stateless JWT containing `userId`, `username`, `role`, `planType`, and `sessionVersion`.
+8. Returns `AuthResponse` with user metadata (`emailVerified: false`). No JWT authentication token is issued at registration; the client must verify their email OTP via `POST /api/auth/verify-email` to receive their initial authentication token.
 
 **Data Flow Diagram (Mermaid)**
 ```mermaid
@@ -345,7 +344,6 @@ sequenceDiagram
     participant UR as UserRepository
     participant OR as OtpVerificationRepository
     participant ES as EmailService
-    participant JS as JwtService
 
     C->>RL: POST /api/auth/register
     RL->>RL: Consume AUTH bucket token (5/min)
@@ -360,9 +358,7 @@ sequenceDiagram
         AS->>UR: save(User: PENDING_VERIFICATION)
         AS->>OR: save(OtpVerification: SHA-256 hash)
         AS->>ES: sendRegistrationOtp(email, rawOtp) [Async]
-        AS->>JS: generateToken(User)
-        JS-->>AS: JWT Token
-        AS-->>AC: AuthResponse
+        AS-->>AC: AuthResponse (without JWT token)
         AC-->>C: 200 OK (AuthResponse)
     end
 ```
@@ -377,7 +373,6 @@ flowchart TD
     AuthService --> BCrypt["BCrypt PasswordEncoder"]
     AuthService --> Postgres[("PostgreSQL (Users & OTP Tables)")]
     AuthService --> EmailSES["EmailService (AWS SES / Resend)"]
-    AuthService --> JwtService["JwtService"]
 ```
 
 **Edge Cases & Error Handling**
@@ -756,7 +751,7 @@ sequenceDiagram
 
 ### 5.9 `POST /api/auth/ws-ticket` — Issue Ephemeral WebSocket Handshake Ticket
 
-**Summary:** Issues a short-lived (60s), single-use ticket string that allows the frontend to connect to WebSocket endpoints without passing JWT tokens in query parameters.
+**Summary:** Issues a short-lived (30s), single-use ticket string that allows the frontend to connect to WebSocket endpoints without passing JWT tokens in query parameters.
 
 **Auth:** Bearer JWT
 
@@ -770,7 +765,7 @@ sequenceDiagram
 
 **Business Logic / Working Spec**
 1. Resolves authenticated username from `SecurityContext`.
-2. `WSTicketService.issueTicket(username)` generates a UUIDv4 ticket and stores in cache with 60-second TTL.
+2. `WSTicketService.issueTicket(username)` generates a UUIDv4 ticket and stores in cache with 30-second TTL (`TICKET_TTL_MS = 30000`).
 3. Returns ticket in response map.
 
 **Data Flow Diagram (Mermaid)**
@@ -779,7 +774,7 @@ sequenceDiagram
 sequenceDiagram
     C->>AuthController: POST /api/auth/ws-ticket [Bearer Token]
     AuthController->>AuthService: issueWSTicket(username)
-    AuthService->>WSTicketService: createTicket(username, TTL=60s)
+    AuthService->>WSTicketService: createTicket(username, TTL=30s)
     WSTicketService-->>AuthController: ticket UUID
     AuthController-->>C: 200 OK {"ticket": "..."}
 ```
@@ -1380,13 +1375,15 @@ sequenceDiagram
 **Request**
 | Location | Field | Type | Required | Constraints | Description |
 |---|---|---|---|---|---|
-| `body` | `razorpayOrderId` | String | Yes | Non-blank | Razorpay Order ID |
-| `body` | `razorpayPaymentId` | String | Yes | Non-blank | Razorpay Payment ID |
-| `body` | `razorpaySignature` | String | Yes | Hex string | Cryptographic HMAC-SHA256 signature |
+| `body` | `razorpayOrderId` | String | No | Alphanumeric | Razorpay Order ID (or Subscription ID) |
+| `body` | `razorpaySubscriptionId` | String | Yes | Non-blank (`sub_...`) | Razorpay Subscription ID (required for recurring plan upgrades) |
+| `body` | `razorpayPaymentId` | String | Yes | Non-blank (`pay_...`) | Razorpay Payment ID |
+| `body` | `razorpaySignature` | String | Yes | Hex string | Cryptographic HMAC-SHA256 signature (`paymentId + '\|' + subscriptionId`) |
 
 ```json
 {
-    "razorpayOrderId": "order_HpH789xYz",
+    "razorpayOrderId": "sub_HpK456def",
+    "razorpaySubscriptionId": "sub_HpK456def",
     "razorpayPaymentId": "pay_HpJ123abc",
     "razorpaySignature": "abcdef0123456789abcdef0123456789abcdef0123456789"
 }
@@ -1405,7 +1402,7 @@ sequenceDiagram
 
     C->>PC: POST /api/v1/payments/verify [Bearer]
     PC->>RS: verifyPayment(request, user)
-    RS->>RS: Compute HMAC SHA-256(orderId + '|' + paymentId, secret)
+    RS->>RS: Compute HMAC-SHA256(paymentId + '|' + subscriptionId, secret)
     alt Signature Matches
         RS->>PR: updatePaymentStatus(SUCCESS, paymentId)
         RS->>SR: activateSubscription(userId, planType, expiry=+30days)
@@ -1580,12 +1577,12 @@ The Contact domain accepts public feedback, technical support requests, and ente
 3. **Honeypot Bot Detection:** `ContactService.handleSubmission()` checks `request.getWebsite()`. If populated, a bot submission warning is logged and the request is silently terminated with `200 OK`, preventing automated crawlers from adapting.
 4. **Input Sanitization:** Normalizes all inputs via `Sanitizer.sanitize()`; email is trimmed and forced to lowercase.
 5. **Anti-Spam Message Fingerprinting:** Computes a SHA-256 Base64 hash of `(cleanEmail:cleanMessage)`. Uses atomic `messageFingerprints.putIfAbsent(fingerprint, now)` with a 60-second deduplication window (`DEDUPLICATION_WINDOW_MS = 60,000ms`). Identical messages from the same sender within 60 seconds are blocked.
-6. **Persistence with Privacy IP Hashing:** Converts topic identifier to human-readable label (`support` &rarr; `Technical Support`, `billing` &rarr; `Billing`, `feature` &rarr; `Feature Request`, `general` &rarr; `General Inquiry`, `enterprise` &rarr; `Enterprise / Partnership`, `feedback` &rarr; `Feedback`). Hashes the client IP with SHA-256 (`hashIp`) to protect user privacy before persisting `ContactSubmission` entity into `contact_submissions`.
+6. **Persistence with Privacy IP Hashing:** Converts topic identifier to human-readable label (`support` &rarr; `Technical Support`, `billing` &rarr; `Billing`, `feature` &rarr; `Feature Request`, `general` &rarr; `General Inquiry`, `enterprise` &rarr; `Enterprise / Partnership`, `feedback` &rarr; `Feedback`). Hashes the client IP with unsalted SHA-256 truncated to 16 characters (`hashIp`) to protect user privacy before persisting `ContactSubmission` entity into `contact_submissions`.
 7. **Telegram Bot Alert (`TelegramService`):** Invokes `@Async` `telegramService.sendNotification(name, email, topic, message, requestId)`:
    - **Configuration:** Reads `app.telegram.bot-token` (`TELEGRAM_BOT_TOKEN`) and `app.telegram.chat-id` (`TELEGRAM_CHAT_ID`). If missing, logs a warning and gracefully skips alerting without breaking the user request.
    - **MarkdownV2 Injection Shielding:** Escapes all 18 MarkdownV2 reserved characters (`_`, `*`, `[`, `]`, `(`, `)`, `~`, `` ` ``, `>`, `#`, `+`, `-`, `=`, `|`, `{`, `}`, `.`, `!`) to strictly prevent Telegram syntax breaking or malicious command injection.
-   - **HTTP Client:** Uses Spring `RestClient` configured with a strict 5-second timeout (`JdkClientHttpRequestFactory.setReadTimeout(Duration.ofSeconds(5))`) against `https://api.telegram.org/bot<token>/sendMessage`.
-   - **Exponential Backoff Retries:** On network failure, retries up to 3 times with exponential backoff (1,000ms &rarr; 2,000ms &rarr; 4,000ms).
+   - **HTTP Client:** Uses Spring `RestClient` configured with a 5-second socket read timeout (`JdkClientHttpRequestFactory.setReadTimeout(Duration.ofSeconds(5))`) against `https://api.telegram.org/bot<token>/sendMessage`.
+   - **Exponential Backoff Retries:** On network failure, attempts up to 3 times total (1 initial execution + up to 2 retries) with exponential backoff delays (1,000ms &rarr; 2,000ms).
 
 **Data Flow Diagram (Mermaid)**
 ```mermaid
@@ -1616,7 +1613,7 @@ sequenceDiagram
             CS->>DB: save(ContactSubmission: hashed IP + details)
             CS->>TS: sendNotification(name, email, topic, msg, requestId) [Async]
             TS->>TS: Escape MarkdownV2 characters
-            TS->>TG: POST /sendMessage [chat_id, MarkdownV2, 5s timeout, 3 retries]
+            TS->>TG: POST /sendMessage [chat_id, MarkdownV2, 5s read timeout, up to 3 attempts]
             TG-->>TS: 200 OK
             CS-->>CC: Processing complete
             CC-->>C: 200 OK {"message":"Your message has been received."}
@@ -1636,16 +1633,16 @@ flowchart TD
     AntiSpam -->|Duplicate| DropSpam["Drop Spam (Log Warning)"]
     AntiSpam -->|Unique| DB[("PostgreSQL (contact_submissions - Hashed IP)")]
     AntiSpam -->|Async Dispatch| TelegramService["TelegramService (MarkdownV2 Escaping)"]
-    TelegramService --> Retry["Exponential Backoff Retry (3 Attempts, 5s Timeout)"]
+    TelegramService --> Retry["Exponential Backoff Retry (Up to 3 Attempts, 5s Read Timeout)"]
     Retry --> TelegramBot["Telegram Bot API (sendMessage to Admin Chat)"]
 ```
 
 **Edge Cases & Error Handling**
-- **Telegram Outage:** If Telegram is unreachable or credentials are invalid, `TelegramService` logs error after 3 retries. The client submission succeeds without error because the notification runs asynchronously (`@Async`).
+- **Telegram Outage:** If Telegram is unreachable or credentials are invalid, `TelegramService` logs error after all 3 attempts fail. The client submission succeeds without error because the notification runs asynchronously (`@Async`).
 - **Bot Crawlers:** Automated bots that populate every input field (including hidden `website`) are silently acknowledged with `200 OK`, conserving database space and preventing spam alerts.
-- **Privacy Enforcement:** Client IP addresses are never stored in plaintext; they are transformed via SHA-256 with salt before saving to `contact_submissions`.
+- **Privacy Enforcement:** Client IP addresses are never stored in plaintext; they are transformed via unsalted SHA-256 (truncated to the first 16 characters) before saving to `contact_submissions`.
 
-**Rate Limits / Timeouts:** Max 10 requests / minute per IP (`RateLimitAction.PUBLIC`). Telegram client enforces strict 5-second read timeout.
+**Rate Limits / Timeouts:** Max 10 requests / minute per IP (`RateLimitAction.PUBLIC`). Telegram client enforces a 5-second socket read timeout.
 
 **Example Request / Response**
 ```bash
@@ -1723,7 +1720,7 @@ Provides bidirectional real-time communication for instant session termination a
 1. Client requests ticket via `POST /api/auth/ws-ticket`.
 2. Client initiates WebSocket connection to `/ws/logout?ticket=<ticket>`.
 3. `LogoutWebSocketHandler.afterConnectionEstablished()` validates ticket via `WSTicketService.validateAndConsumeTicket()`.
-4. If ticket is invalid or expired (>60s), closes connection immediately with status `CloseStatus.POLICY_VIOLATION` (4003).
+4. If ticket is invalid or expired (>30s), closes connection immediately with status `CloseStatus.POLICY_VIOLATION` (4003).
 5. If ticket is valid: registers WebSocket session in `userSessions` concurrent map under the authenticated username.
 6. When user logs out or modifies password on any device, `WebSocketConfig.notifySessionInvalidated(username)` iterates all active sessions of that user and sends close frame `CloseStatus.NORMAL` (1000) or text message `FORCE_LOGOUT`.
 
@@ -1856,7 +1853,7 @@ erDiagram
 | **TelegramService** | High-security asynchronous alerting service that dispatches contact submissions to administrative Telegram channels using Telegram Bot API (`/sendMessage`) with exponential retry shields. |
 | **MarkdownV2 Escaping** | Security formatting and escaping mechanism preventing Markdown/command injection when submitting dynamic text to the Telegram Bot API. |
 | **Session Version** | Database-backed numeric sequence per user. Included in JWT claims and validated on every request. Incrementing this invalidates all active tokens globally. |
-| **WS Ticket** | Single-use UUID string valid for 60 seconds. Exchanged during WebSocket handshake to authenticate without passing JWT in query parameters. |
+| **WS Ticket** | Single-use UUID string valid for 30 seconds. Exchanged during WebSocket handshake to authenticate without passing JWT in query parameters. |
 | **Bucket4j** | Token bucket rate-limiting library implemented via Spring AOP `@RateLimited` to prevent DDoS, credential stuffing, and API resource abuse. |
 | **Idempotency** | Property of certain operations (such as webhook processing and contact form submissions) where repeating the request produces the exact same outcome without side-effects. |
 

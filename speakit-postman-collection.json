@@ -275,7 +275,7 @@
                                 "ws-ticket"
                             ]
                         },
-                        "description": "Generates a single-use, short-lived ticket to authenticate WebSocket connections without sending the JWT in URL query strings."
+                        "description": "Generates a single-use, short-lived (30s TTL) ticket to authenticate WebSocket connections without sending the JWT in URL query strings."
                     }
                 },
                 {
@@ -1096,7 +1096,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"razorpayOrderId\": \"order_HpH789xYz\",\n    \"razorpaySubscriptionId\": \"\",\n    \"razorpayPaymentId\": \"pay_HpJ123abc\",\n    \"razorpaySignature\": \"abcdef0123456789abcdef0123456789abcdef0123456789\"\n}"
+                            "raw": "{\n    \"razorpayOrderId\": \"sub_HpK456def\",\n    \"razorpaySubscriptionId\": \"sub_HpK456def\",\n    \"razorpayPaymentId\": \"pay_HpJ123abc\",\n    \"razorpaySignature\": \"abcdef0123456789abcdef0123456789abcdef0123456789\"\n}"
                         },
                         "url": {
                             "raw": "{{baseUrl}}/api/v1/payments/verify",
@@ -1226,7 +1226,7 @@
                                 "contact"
                             ]
                         },
-                        "description": "Public contact form submission endpoint with defense-in-depth security:\n1. Telegram Bot Integration: Dispatches real-time alerts to the administrative Telegram channel via TelegramService (MarkdownV2 escaping, 5s timeout, 3 exponential backoff retries).\n2. Bot Protection: Invisible honeypot field ('website') silently rejects automated bot submissions.\n3. Replay Protection: Validates 'X-Request-ID' header against a 5-minute atomic in-memory cache to guarantee idempotency.\n4. Anti-Spam Deduplication: SHA-256 message fingerprinting suppresses duplicate submissions from the same sender within 60 seconds.\n5. Privacy Compliance: Client IP is hashed using SHA-256 before persisting to PostgreSQL ('contact_submissions').\n6. Supported Topics: 'support' (Technical Support), 'billing' (Billing), 'feature' (Feature Request), 'general' (General Inquiry), 'enterprise' (Enterprise / Partnership), 'feedback' (Feedback)."
+                        "description": "Public contact form submission endpoint with defense-in-depth security:\n1. Telegram Bot Integration: Dispatches real-time alerts to the administrative Telegram channel via TelegramService (MarkdownV2 escaping, 5-second read timeout, up to 3 total attempts with 1s and 2s delays).\n2. Bot Protection: Invisible honeypot field ('website') silently rejects automated bot submissions.\n3. Replay Protection: Validates 'X-Request-ID' header against a 5-minute atomic in-memory cache to guarantee idempotency.\n4. Anti-Spam Deduplication: SHA-256 message fingerprinting suppresses duplicate submissions from the same sender within 60 seconds.\n5. Privacy Compliance: Client IP is hashed using SHA-256 before persisting to PostgreSQL ('contact_submissions').\n6. Supported Topics: 'support' (Technical Support), 'billing' (Billing), 'feature' (Feature Request), 'general' (General Inquiry), 'enterprise' (Enterprise / Partnership), 'feedback' (Feedback)."
                     }
                 }
             ]
