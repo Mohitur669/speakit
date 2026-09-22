@@ -1,1180 +1,1389 @@
 {
-	"info": {
-		"_postman_id": "speakit-api-collection-v1.3",
-		"name": "SpeakIT API v1.3",
-		"description": "Enterprise API collection for SpeakIT v1.3 - Modernized with Supabase-aligned JWT verification, Speech-to-Text (STT) capabilities, User Profile Management, secure Contact Us system, and Webhook integrations.",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-	},
-	"item": [
-		{
-			"name": "Authentication",
-			"item": [
-				{
-					"name": "Register User",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"username\": \"test\",\n    \"email\": \"test@mohitur.com\",\n    \"password\": \"Mohitur669\",\n    \"phoneNumber\": \"+919876543210\"\n}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/api/auth/register",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"auth",
-								"register"
-							]
-						}
-					}
-				},
-				{
-					"name": "Login",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"var jsonData = pm.response.json();",
-									"if (jsonData.token) {",
-									"    pm.environment.set(\"token\", jsonData.token);",
-									"}"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"username\": \"test\",\n    \"password\": \"Mohitur669\"\n}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/api/auth/login",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"auth",
-								"login"
-							]
-						}
-					}
-				},
-				{
-					"name": "Verify Email",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"email\": \"test@mohitur.com\",\n    \"otp\": \"123456\"\n}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/api/auth/verify-email",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"auth",
-								"verify-email"
-							]
-						}
-					}
-				},
-				{
-					"name": "Resend OTP",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"email\": \"test@mohitur.com\"\n}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/api/auth/resend-otp",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"auth",
-								"resend-otp"
-							]
-						}
-					}
-				},
-				{
-					"name": "Forgot Password",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"email\": \"test@mohitur.com\"\n}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/api/auth/forgot-password",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"auth",
-								"forgot-password"
-							]
-						}
-					}
-				},
-				{
-					"name": "Reset Password",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"email\": \"test@mohitur.com\",\n    \"otp\": \"123456\",\n    \"newPassword\": \"NewSecurePassword123!\"\n}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/api/auth/reset-password",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"auth",
-								"reset-password"
-							]
-						}
-					}
-				},
-				{
-					"name": "Get Current Profile (Me)",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"url": {
-							"raw": "{{baseUrl}}/api/auth/me",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"auth",
-								"me"
-							]
-						}
-					}
-				},
-				{
-					"name": "Ping (Health Check)",
-					"request": {
-						"method": "GET",
-						"url": {
-							"raw": "{{baseUrl}}/api/auth/ping",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"auth",
-								"ping"
-							]
-						}
-					}
-				},
-				{
-					"name": "Issue WS Ticket",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "POST",
-						"url": {
-							"raw": "{{baseUrl}}/api/auth/ws-ticket",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"auth",
-								"ws-ticket"
-							]
-						}
-					}
-				},
-				{
-					"name": "Logout",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "POST",
-						"url": {
-							"raw": "{{baseUrl}}/api/auth/logout",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"auth",
-								"logout"
-							]
-						}
-					}
-				},
-				{
-					"name": "Availability Check (Username)",
-					"request": {
-						"method": "GET",
-						"url": {
-							"raw": "{{baseUrl}}/api/auth/check-username?username=test",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"auth",
-								"check-username"
-							],
-							"query": [
-								{
-									"key": "username",
-									"value": "test"
-								}
-							]
-						}
-					}
-				},
-				{
-					"name": "Availability Check (Email)",
-					"request": {
-						"method": "GET",
-						"url": {
-							"raw": "{{baseUrl}}/api/auth/check-email?email=test@mohitur.com",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"auth",
-								"check-email"
-							],
-							"query": [
-								{
-									"key": "email",
-									"value": "test@mohitur.com"
-								}
-							]
-						}
-					}
-				},
-				{
-					"name": "Availability Check (Phone)",
-					"request": {
-						"method": "GET",
-						"url": {
-							"raw": "{{baseUrl}}/api/auth/check-phone?phone=%2B919876543210",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"auth",
-								"check-phone"
-							],
-							"query": [
-								{
-									"key": "phone",
-									"value": "+919876543210"
-								}
-							]
-						}
-					}
-				}
-			]
-		},
-		{
-			"name": "User Profile Management",
-			"item": [
-				{
-					"name": "Get Profile",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"url": {
-							"raw": "{{baseUrl}}/api/v1/users/me",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"users",
-								"me"
-							]
-						}
-					}
-				},
-				{
-					"name": "Update Profile",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "PUT",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"username\": \"updatedtest\",\n    \"email\": \"updated@mohitur.com\",\n    \"phoneNumber\": \"+919876543211\",\n    \"currentPassword\": \"Mohitur669\",\n    \"newPassword\": \"NewSecurePassword123!\"\n}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/api/v1/users/profile",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"users",
-								"profile"
-							]
-						}
-					}
-				},
-				{
-					"name": "Verify Email Change",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"otp\": \"123456\"\n}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/api/v1/users/me/verify-email-change",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"users",
-								"me",
-								"verify-email-change"
-							]
-						}
-					}
-				},
-				{
-					"name": "Resend Profile OTP",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "POST",
-						"url": {
-							"raw": "{{baseUrl}}/api/v1/users/me/resend-profile-otp",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"users",
-								"me",
-								"resend-profile-otp"
-							]
-						}
-					}
-				},
-				{
-					"name": "Cancel Profile Changes",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "POST",
-						"url": {
-							"raw": "{{baseUrl}}/api/v1/users/me/cancel-profile-changes",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"users",
-								"me",
-								"cancel-profile-changes"
-							]
-						}
-					}
-				}
-			]
-		},
-		{
-			"name": "Voice Studio",
-			"item": [
-				{
-					"name": "Get Voices",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"url": {
-							"raw": "{{baseUrl}}/api/tts/voices",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"tts",
-								"voices"
-							]
-						}
-					}
-				},
-				{
-					"name": "Get Usage Stats",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"url": {
-							"raw": "{{baseUrl}}/api/tts/usage",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"tts",
-								"usage"
-							]
-						}
-					}
-				},
-				{
-					"name": "Synthesize",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"text\": \"Welcome to SpeakIT v1.3\",\n    \"voiceId\": \"Joanna\",\n    \"voiceName\": \"Joanna\",\n    \"voiceType\": \"NEURAL\",\n    \"outputFormat\": \"mp3\",\n    \"isElevenLabs\": false,\n    \"isSarvam\": false,\n    \"languageCode\": \"en-US\",\n    \"pace\": 1.0,\n    \"samplingRate\": 22050\n}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/api/tts/synthesize",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"tts",
-								"synthesize"
-							]
-						}
-					}
-				},
-				{
-					"name": "Synthesize (Streaming)",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"text\": \"Streaming high-quality audio bytes directly from AWS Polly.\",\n    \"voiceId\": \"Matthew\",\n    \"voiceName\": \"Matthew\",\n    \"voiceType\": \"NEURAL\",\n    \"outputFormat\": \"mp3\",\n    \"isElevenLabs\": false,\n    \"isSarvam\": false,\n    \"languageCode\": \"en-US\",\n    \"pace\": 1.0,\n    \"samplingRate\": 22050\n}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/api/tts/synthesize-stream",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"tts",
-								"synthesize-stream"
-							]
-						}
-					}
-				}
-			]
-		},
-		{
-			"name": "Speech-to-Text & Translation",
-			"item": [
-				{
-					"name": "Transcribe Audio",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "POST",
-						"body": {
-							"mode": "formdata",
-							"formdata": [
-								{
-									"key": "file",
-									"type": "file",
-									"src": []
-								},
-								{
-									"key": "language",
-									"value": "en",
-									"type": "text",
-									"description": "Optional source language"
-								},
-								{
-									"key": "provider",
-									"value": "SARVAM",
-									"type": "text",
-									"description": "Optional STT provider (SARVAM or ELEVEN_LABS)"
-								}
-							]
-						},
-						"url": {
-							"raw": "{{baseUrl}}/api/stt/transcribe",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"stt",
-								"transcribe"
-							]
-						}
-					}
-				},
-				{
-					"name": "Transcribe Live Recording",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "POST",
-						"body": {
-							"mode": "formdata",
-							"formdata": [
-								{
-									"key": "file",
-									"type": "file",
-									"src": []
-								},
-								{
-									"key": "language",
-									"value": "en",
-									"type": "text",
-									"description": "Optional source language"
-								},
-								{
-									"key": "provider",
-									"value": "SARVAM",
-									"type": "text",
-									"description": "Optional STT provider (SARVAM or ELEVEN_LABS)"
-								}
-							]
-						},
-						"url": {
-							"raw": "{{baseUrl}}/api/stt/transcribe-live",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"stt",
-								"transcribe-live"
-							]
-						}
-					}
-				},
-				{
-					"name": "Translate Text",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"text\": \"Hello world\",\n    \"sourceLanguage\": \"en\",\n    \"targetLanguage\": \"hi\"\n}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/api/stt/translate",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"stt",
-								"translate"
-							]
-						}
-					}
-				}
-			]
-		},
-		{
-			"name": "Inquiry & Public",
-			"item": [
-				{
-					"name": "Submit Contact Us",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "X-Request-ID",
-								"value": "f47ac10b-58cc-4372-a567-0e02b2c3d479"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"firstName\": \"Mohitur\",\n    \"lastName\": \"Test\",\n    \"email\": \"test@mohitur.com\",\n    \"topic\": \"enterprise\",\n    \"message\": \"I am interested in the high-volume API access for enterprise synthesis.\",\n    \"website\": \"\"\n}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/api/contact",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"contact"
-							]
-						},
-						"description": "Secured via IP+Email Intersection Limiting, Honeypot, and Replay Protection."
-					}
-				}
-			]
-		},
-		{
-			"name": "Analytics & History",
-			"item": [
-				{
-					"name": "Get Paginated History",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"url": {
-							"raw": "{{baseUrl}}/api/history?page=0&size=10",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"history"
-							],
-							"query": [
-								{
-									"key": "page",
-									"value": "0"
-								},
-								{
-									"key": "size",
-									"value": "10"
-								}
-							]
-						}
-					}
-				},
-				{
-					"name": "Targeted History Deletion",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "DELETE",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "[\n    1,\n    2,\n    3\n]"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/api/history/delete",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"history",
-								"delete"
-							]
-						}
-					}
-				},
-				{
-					"name": "Clear All History",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "DELETE",
-						"url": {
-							"raw": "{{baseUrl}}/api/history/clear-all",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"history",
-								"clear-all"
-							]
-						}
-					}
-				}
-			]
-		},
-		{
-			"name": "Payments & Plans",
-			"item": [
-				{
-					"name": "Create Razorpay Order",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"planType\": \"PRO\",\n    \"amount\": 499,\n    \"currency\": \"INR\"\n}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/api/v1/payments/create-order",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"payments",
-								"create-order"
-							]
-						}
-					}
-				},
-				{
-					"name": "Verify Payment Signature",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"razorpayOrderId\": \"order_HpH789xYz\",\n    \"razorpayPaymentId\": \"pay_HpJ123abc\",\n    \"razorpaySignature\": \"abcdef0123456789...\"\n}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/api/v1/payments/verify",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"payments",
-								"verify"
-							]
-						}
-					}
-				},
-				{
-					"name": "Get Transaction History",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{token}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"url": {
-							"raw": "{{baseUrl}}/api/v1/payments/history",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"payments",
-								"history"
-							]
-						}
-					}
-				}
-			]
-		},
-		{
-			"name": "Webhook Integrations",
-			"item": [
-				{
-					"name": "Razorpay Webhook",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "X-Razorpay-Signature",
-								"value": "<razorpay_webhook_secret_signature>"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"entity\": \"event\",\n    \"account_id\": \"acc_BFQ7uISujFjQIK\",\n    \"event\": \"payment.captured\",\n    \"contains\": [\n        \"payment\"\n    ],\n    \"payload\": {\n        \"payment\": {\n            \"entity\": {\n                \"id\": \"pay_DESLFZ4ox4asD5\",\n                \"entity\": \"payment\",\n                \"amount\": 49900,\n                \"currency\": \"INR\",\n                \"status\": \"captured\",\n                \"order_id\": \"order_DESLeaves456\",\n                \"invoice_id\": null,\n                \"international\": false,\n                \"method\": \"card\",\n                \"amount_refunded\": 0,\n                \"refund_status\": null,\n                \"captured\": true,\n                \"description\": \"Subscription Plan Upgrade\",\n                \"card_id\": \"card_DESLFZ5G2zbhgr\",\n                \"bank\": null,\n                \"wallet\": null,\n                \"vpa\": null,\n                \"email\": \"test@mohitur.com\",\n                \"contact\": \"+919876543210\",\n                \"notes\": [],\n                \"fee\": 1178,\n                \"tax\": 180,\n                \"error_code\": null,\n                \"error_description\": null,\n                \"created_at\": 1568212100\n            }\n        }\n    },\n    \"created_at\": 1568212100\n}"
-						},
-						"url": {
-							"raw": "{{baseUrl}}/api/v1/webhooks/razorpay",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"webhooks",
-								"razorpay"
-							]
-						}
-					}
-				}
-			]
-		},
-		{
-			"name": "System Infrastructure",
-			"item": [
-				{
-					"name": "Get Bulk Parameters",
-					"request": {
-						"method": "GET",
-						"url": {
-							"raw": "{{baseUrl}}/api/system-parameters/bulk?names=SYSTEM_STATUS,FREE_PLAN_FEATURES",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"system-parameters",
-								"bulk"
-							],
-							"query": [
-								{
-									"key": "names",
-									"value": "SYSTEM_STATUS,FREE_PLAN_FEATURES"
-								}
-							]
-						}
-					}
-				},
-				{
-					"name": "Get Live Parameter (Whitelist Protected)",
-					"request": {
-						"method": "GET",
-						"url": {
-							"raw": "{{baseUrl}}/api/system-parameters/live/:name",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"system-parameters",
-								"live",
-								":name"
-							],
-							"variable": [
-								{
-									"key": "name",
-									"value": "PRO_PLAN_PRICE_INR"
-								}
-							]
-						}
-					}
-				},
-				{
-					"name": "Get Cached Parameter (Whitelist Protected)",
-					"request": {
-						"method": "GET",
-						"url": {
-							"raw": "{{baseUrl}}/api/system-parameters/cached/:name?defaultValue=",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"system-parameters",
-								"cached",
-								":name"
-							],
-							"query": [
-								{
-									"key": "defaultValue",
-									"value": ""
-								}
-							],
-							"variable": [
-								{
-									"key": "name",
-									"value": "SYSTEM_STATUS"
-								}
-							]
-						}
-					}
-				}
-			]
-		}
-	],
-	"variable": [
-		{
-			"key": "baseUrl",
-			"value": "http://localhost:8080",
-			"type": "string"
-		},
-		{
-			"key": "token",
-			"value": "",
-			"type": "string"
-		}
-	]
+    "info": {
+        "_postman_id": "b4e9b07a-c09f-4374-ad82-c9844df870e4",
+        "name": "SpeakIT API",
+        "description": "# SpeakIT Production API Collection\n\nOfficial Postman Collection for SpeakIT SaaS — AI Voice Generation (TTS) & Speech-to-Text (STT) Platform.\n\n## Authentication Flow\n1. **Register**: `POST /api/auth/register` initiates user registration with username, email, phone, and password.\n2. **Verify Email**: `POST /api/auth/verify-email` verifies the OTP sent to email and returns the initial JWT `token`.\n3. **Login**: `POST /api/auth/login` returns a JWT `token`. The test script automatically stores this in the `{{token}}` variable.\n4. **Authenticated Requests**: All protected endpoints use Bearer Token auth (`{{token}}`).\n5. **WebSocket Session**: `POST /api/auth/ws-ticket` issues a single-use ticket for secure WebSocket handshakes (`/ws/logout`).\n\n## Environment Variables\n- `baseUrl`: The root HTTP URL of the backend (Default: `http://localhost:8080`)\n- `wsUrl`: The root WebSocket URL of the backend (Default: `ws://localhost:8080`)\n- `token`: The active JWT Bearer token (populated automatically on Login/Verify Email)\n- `ticket`: Single-use ticket for WebSocket connections (populated automatically on Issue WS Ticket)\n\n## Included Domains\n- Authentication & Account Lifecycles\n- User Profile & Security Management\n- Text-to-Speech (TTS - AWS Polly, ElevenLabs, Sarvam AI)\n- Speech-to-Text & Translation (STT)\n- TTS History & Analytics\n- Billing & Razorpay Subscriptions\n- Webhooks (Razorpay event handler)\n- Contact & Enterprise Inquiries\n- System Parameters (Whitelist-protected dynamic feature flags)\n- WebSocket Real-Time Invalidation",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "1. Authentication & Security",
+            "item": [
+                {
+                    "name": "Register User",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"username\": \"testuser\",\n    \"email\": \"test@mohitur.com\",\n    \"password\": \"Password123!\",\n    \"phoneNumber\": \"+919876543210\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/register",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "register"
+                            ]
+                        },
+                        "description": "Registers a new user account in PENDING_VERIFICATION status and triggers an email OTP."
+                    }
+                },
+                {
+                    "name": "Verify Email",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "if (jsonData.token) {",
+                                    "    pm.collectionVariables.set(\"token\", jsonData.token);",
+                                    "    if (pm.environment) pm.environment.set(\"token\", jsonData.token);",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"test@mohitur.com\",\n    \"otp\": \"123456\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/verify-email",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "verify-email"
+                            ]
+                        },
+                        "description": "Verifies the 6-digit OTP sent to user's email upon registration and activates account."
+                    }
+                },
+                {
+                    "name": "Login",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "if (jsonData.token) {",
+                                    "    pm.collectionVariables.set(\"token\", jsonData.token);",
+                                    "    if (pm.environment) pm.environment.set(\"token\", jsonData.token);",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"username\": \"testuser\",\n    \"password\": \"Password123!\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/login",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "login"
+                            ]
+                        },
+                        "description": "Authenticates credentials and returns a signed JWT token. The test script auto-saves the token."
+                    }
+                },
+                {
+                    "name": "Resend Registration OTP",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"test@mohitur.com\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/resend-otp",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "resend-otp"
+                            ]
+                        },
+                        "description": "Resends registration verification OTP to the specified email address."
+                    }
+                },
+                {
+                    "name": "Forgot Password",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"test@mohitur.com\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/forgot-password",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "forgot-password"
+                            ]
+                        },
+                        "description": "Requests a password reset OTP sent to the registered email address."
+                    }
+                },
+                {
+                    "name": "Reset Password",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"test@mohitur.com\",\n    \"otp\": \"123456\",\n    \"newPassword\": \"NewSecurePassword123!\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/reset-password",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "reset-password"
+                            ]
+                        },
+                        "description": "Resets user password using the verification OTP received via email."
+                    }
+                },
+                {
+                    "name": "Get Current Profile (Me)",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/me",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "me"
+                            ]
+                        },
+                        "description": "Retrieves the authenticated user's profile, role, session version, and plan status."
+                    }
+                },
+                {
+                    "name": "Issue WebSocket Ticket",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "var jsonData = pm.response.json();",
+                                    "if (jsonData.ticket) {",
+                                    "    pm.collectionVariables.set(\"ticket\", jsonData.ticket);",
+                                    "    if (pm.environment) pm.environment.set(\"ticket\", jsonData.ticket);",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/ws-ticket",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "ws-ticket"
+                            ]
+                        },
+                        "description": "Generates a single-use, short-lived ticket to authenticate WebSocket connections without sending the JWT in URL query strings."
+                    }
+                },
+                {
+                    "name": "Logout",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/logout",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "logout"
+                            ]
+                        },
+                        "description": "Invalidates all active sessions globally by incrementing user's session_version in the database."
+                    }
+                },
+                {
+                    "name": "Ping (Health Check)",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/ping",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "ping"
+                            ]
+                        },
+                        "description": "Lightweight unauthenticated endpoint used for uptime monitoring and spin-down prevention."
+                    }
+                },
+                {
+                    "name": "Check Username Availability",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/check-username?username=testuser",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "check-username"
+                            ],
+                            "query": [
+                                {
+                                    "key": "username",
+                                    "value": "testuser"
+                                }
+                            ]
+                        },
+                        "description": "Returns boolean indicating whether a username is already taken."
+                    }
+                },
+                {
+                    "name": "Check Email Availability",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/check-email?email=test@mohitur.com",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "check-email"
+                            ],
+                            "query": [
+                                {
+                                    "key": "email",
+                                    "value": "test@mohitur.com"
+                                }
+                            ]
+                        },
+                        "description": "Returns boolean indicating whether an email is already registered."
+                    }
+                },
+                {
+                    "name": "Check Phone Availability",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/check-phone?phone=%2B919876543210",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "check-phone"
+                            ],
+                            "query": [
+                                {
+                                    "key": "phone",
+                                    "value": "+919876543210"
+                                }
+                            ]
+                        },
+                        "description": "Returns boolean indicating whether a phone number is already registered."
+                    }
+                }
+            ]
+        },
+        {
+            "name": "2. User Profile Management",
+            "item": [
+                {
+                    "name": "Get User Profile",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/users/me",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "users",
+                                "me"
+                            ]
+                        },
+                        "description": "Retrieves comprehensive profile information for the authenticated user."
+                    }
+                },
+                {
+                    "name": "Request Profile Update OTP",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/users/profile/request-update",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "users",
+                                "profile",
+                                "request-update"
+                            ]
+                        },
+                        "description": "Dispatches an OTP to user's registered email before sensitive profile modifications can be performed."
+                    }
+                },
+                {
+                    "name": "Update Profile",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"username\": \"updateduser\",\n    \"email\": \"updated@mohitur.com\",\n    \"phoneNumber\": \"+919876543211\",\n    \"currentPassword\": \"Password123!\",\n    \"newPassword\": \"NewSecurePassword123!\",\n    \"otp\": \"123456\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/users/profile",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "users",
+                                "profile"
+                            ]
+                        },
+                        "description": "Updates username, email, or phone number with mandatory OTP and current password validation."
+                    }
+                },
+                {
+                    "name": "Verify Email Change",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"otp\": \"123456\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/users/me/verify-email-change",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "users",
+                                "me",
+                                "verify-email-change"
+                            ]
+                        },
+                        "description": "Confirms new email address by verifying the OTP sent to the new email."
+                    }
+                },
+                {
+                    "name": "Resend Profile OTP",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/users/me/resend-profile-otp",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "users",
+                                "me",
+                                "resend-profile-otp"
+                            ]
+                        },
+                        "description": "Resends pending OTP for email or profile verification."
+                    }
+                },
+                {
+                    "name": "Change Password",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"currentPassword\": \"Password123!\",\n    \"newPassword\": \"NewSecurePassword123!\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/users/password",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "users",
+                                "password"
+                            ]
+                        },
+                        "description": "Changes the password for the authenticated user and resets session version."
+                    }
+                },
+                {
+                    "name": "Cancel Profile Changes",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/users/me/cancel-profile-changes",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "users",
+                                "me",
+                                "cancel-profile-changes"
+                            ]
+                        },
+                        "description": "Cancels any pending unverified email or profile updates and clears cached OTPs."
+                    }
+                }
+            ]
+        },
+        {
+            "name": "3. Text-to-Speech (TTS)",
+            "item": [
+                {
+                    "name": "Get Available Voices",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/tts/voices",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "tts",
+                                "voices"
+                            ]
+                        },
+                        "description": "Retrieves available TTS voices filtered by the user's active subscription tier (Polly, ElevenLabs, Sarvam)."
+                    }
+                },
+                {
+                    "name": "Get Daily Usage Stats",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/tts/usage",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "tts",
+                                "usage"
+                            ]
+                        },
+                        "description": "Retrieves current daily synthesis count and daily limit based on the user's plan."
+                    }
+                },
+                {
+                    "name": "Synthesize Speech (Buffered)",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"text\": \"Welcome to SpeakIT text-to-speech platform.\",\n    \"voiceId\": \"Joanna\",\n    \"voiceName\": \"Joanna\",\n    \"voiceType\": \"NEURAL\",\n    \"outputFormat\": \"mp3\",\n    \"isElevenLabs\": false,\n    \"isSarvam\": false,\n    \"languageCode\": \"en-US\",\n    \"pace\": 1.0,\n    \"samplingRate\": 22050\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/tts/synthesize",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "tts",
+                                "synthesize"
+                            ]
+                        },
+                        "description": "Converts input text to speech audio bytes (MP3, OGG, or PCM) and saves to history."
+                    }
+                },
+                {
+                    "name": "Synthesize Speech (Streaming)",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"text\": \"Streaming low-latency audio directly from AWS Polly engine.\",\n    \"voiceId\": \"Matthew\",\n    \"voiceName\": \"Matthew\",\n    \"voiceType\": \"NEURAL\",\n    \"outputFormat\": \"mp3\",\n    \"isElevenLabs\": false,\n    \"isSarvam\": false,\n    \"languageCode\": \"en-US\",\n    \"pace\": 1.0,\n    \"samplingRate\": 22050\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/tts/synthesize-stream",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "tts",
+                                "synthesize-stream"
+                            ]
+                        },
+                        "description": "Streams generated speech audio in real time for immediate playback."
+                    }
+                }
+            ]
+        },
+        {
+            "name": "4. Speech-to-Text & Translation",
+            "item": [
+                {
+                    "name": "Transcribe Audio File",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "file",
+                                    "type": "file",
+                                    "src": [],
+                                    "description": "Audio file (WAV, MP3, M4A, OGG, WebM)"
+                                },
+                                {
+                                    "key": "language",
+                                    "value": "en",
+                                    "type": "text",
+                                    "description": "Optional source language code (e.g. en, hi)"
+                                },
+                                {
+                                    "key": "provider",
+                                    "value": "SARVAM",
+                                    "type": "text",
+                                    "description": "Optional STT provider (SARVAM or ELEVEN_LABS)"
+                                }
+                            ]
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/stt/transcribe",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "stt",
+                                "transcribe"
+                            ]
+                        },
+                        "description": "Uploads and transcribes audio files. Restricted to PRO, PRO_PLUS, and ENTERPRISE users."
+                    }
+                },
+                {
+                    "name": "Transcribe Live Recording",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "file",
+                                    "type": "file",
+                                    "src": [],
+                                    "description": "Live audio recording stream file (max 10MB)"
+                                },
+                                {
+                                    "key": "language",
+                                    "value": "en",
+                                    "type": "text",
+                                    "description": "Optional source language code"
+                                },
+                                {
+                                    "key": "provider",
+                                    "value": "SARVAM",
+                                    "type": "text",
+                                    "description": "Optional STT provider"
+                                }
+                            ]
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/stt/transcribe-live",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "stt",
+                                "transcribe-live"
+                            ]
+                        },
+                        "description": "Transcribes short microphone recordings (max 10MB). Restricted to PRO_PLUS and ENTERPRISE."
+                    }
+                },
+                {
+                    "name": "Translate Text",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"text\": \"Hello, welcome to SpeakIT translation service.\",\n    \"sourceLanguage\": \"en\",\n    \"targetLanguage\": \"hi\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/stt/translate",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "stt",
+                                "translate"
+                            ]
+                        },
+                        "description": "Translates transcribed text between supported languages."
+                    }
+                }
+            ]
+        },
+        {
+            "name": "5. Analytics & History",
+            "item": [
+                {
+                    "name": "Get Paginated History",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/history?page=0&size=20",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "history"
+                            ],
+                            "query": [
+                                {
+                                    "key": "page",
+                                    "value": "0",
+                                    "description": "0-indexed page number"
+                                },
+                                {
+                                    "key": "size",
+                                    "value": "20",
+                                    "description": "Page size"
+                                }
+                            ]
+                        },
+                        "description": "Retrieves paginated synthesis history logs for the current authenticated user."
+                    }
+                },
+                {
+                    "name": "Delete Selected History Items",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "[\n    1,\n    2,\n    3\n]"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/history/delete",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "history",
+                                "delete"
+                            ]
+                        },
+                        "description": "Deletes specific history IDs owned by the authenticated user (max 100 per request)."
+                    }
+                },
+                {
+                    "name": "Clear All History",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "DELETE",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/history/clear-all",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "history",
+                                "clear-all"
+                            ]
+                        },
+                        "description": "Deletes all synthesis history entries for the authenticated user."
+                    }
+                }
+            ]
+        },
+        {
+            "name": "6. Billing & Subscriptions",
+            "item": [
+                {
+                    "name": "Create Razorpay Order",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"planType\": \"PRO\",\n    \"amount\": 499,\n    \"currency\": \"INR\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/payments/create-order",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "payments",
+                                "create-order"
+                            ]
+                        },
+                        "description": "Creates a new Razorpay payment order for purchasing a subscription plan."
+                    }
+                },
+                {
+                    "name": "Verify Payment Signature",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"razorpayOrderId\": \"order_HpH789xYz\",\n    \"razorpaySubscriptionId\": \"\",\n    \"razorpayPaymentId\": \"pay_HpJ123abc\",\n    \"razorpaySignature\": \"abcdef0123456789abcdef0123456789abcdef0123456789\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/payments/verify",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "payments",
+                                "verify"
+                            ]
+                        },
+                        "description": "Verifies cryptographic HMAC SHA256 signature from Razorpay checkout and activates subscription."
+                    }
+                },
+                {
+                    "name": "Get Payment History",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/payments/history?page=0&size=20",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "payments",
+                                "history"
+                            ],
+                            "query": [
+                                {
+                                    "key": "page",
+                                    "value": "0",
+                                    "description": "Page number"
+                                },
+                                {
+                                    "key": "size",
+                                    "value": "20",
+                                    "description": "Page size"
+                                }
+                            ]
+                        },
+                        "description": "Retrieves paginated history of transactions and plan subscriptions."
+                    }
+                }
+            ]
+        },
+        {
+            "name": "7. Webhooks",
+            "item": [
+                {
+                    "name": "Razorpay Webhook Handler",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "X-Razorpay-Signature",
+                                "value": "<razorpay_webhook_signature>"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"entity\": \"event\",\n    \"account_id\": \"acc_BFQ7uISujFjQIK\",\n    \"event\": \"payment.captured\",\n    \"contains\": [\n        \"payment\"\n    ],\n    \"payload\": {\n        \"payment\": {\n            \"entity\": {\n                \"id\": \"pay_DESLFZ4ox4asD5\",\n                \"entity\": \"payment\",\n                \"amount\": 49900,\n                \"currency\": \"INR\",\n                \"status\": \"captured\",\n                \"order_id\": \"order_DESLeaves456\",\n                \"method\": \"card\",\n                \"email\": \"test@mohitur.com\",\n                \"contact\": \"+919876543210\"\n            }\n        }\n    },\n    \"created_at\": 1568212100\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/webhooks/razorpay",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "webhooks",
+                                "razorpay"
+                            ]
+                        },
+                        "description": "Public webhook endpoint receiving Razorpay payment events, verified with HMAC signature."
+                    }
+                }
+            ]
+        },
+        {
+            "name": "8. Contact & Inquiries",
+            "item": [
+                {
+                    "name": "Submit Contact Form",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "X-Request-ID",
+                                "value": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+                                "description": "Optional UUID for replay protection"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"firstName\": \"Mohitur\",\n    \"lastName\": \"Rahman\",\n    \"email\": \"test@mohitur.com\",\n    \"topic\": \"enterprise\",\n    \"message\": \"I am interested in high-volume API access for enterprise synthesis.\",\n    \"website\": \"\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/contact",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "contact"
+                            ]
+                        },
+                        "description": "Public contact form submission endpoint with defense-in-depth security:\n1. Telegram Bot Integration: Dispatches real-time alerts to the administrative Telegram channel via TelegramService (MarkdownV2 escaping, 5s timeout, 3 exponential backoff retries).\n2. Bot Protection: Invisible honeypot field ('website') silently rejects automated bot submissions.\n3. Replay Protection: Validates 'X-Request-ID' header against a 5-minute atomic in-memory cache to guarantee idempotency.\n4. Anti-Spam Deduplication: SHA-256 message fingerprinting suppresses duplicate submissions from the same sender within 60 seconds.\n5. Privacy Compliance: Client IP is hashed using SHA-256 before persisting to PostgreSQL ('contact_submissions').\n6. Supported Topics: 'support' (Technical Support), 'billing' (Billing), 'feature' (Feature Request), 'general' (General Inquiry), 'enterprise' (Enterprise / Partnership), 'feedback' (Feedback)."
+                    }
+                }
+            ]
+        },
+        {
+            "name": "9. System Parameters",
+            "item": [
+                {
+                    "name": "Get Bulk Parameters",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/system-parameters/bulk?names=SYSTEM_STATUS,FREE_PLAN_FEATURES,PRO_PLAN_PRICE_INR",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "system-parameters",
+                                "bulk"
+                            ],
+                            "query": [
+                                {
+                                    "key": "names",
+                                    "value": "SYSTEM_STATUS,FREE_PLAN_FEATURES,PRO_PLAN_PRICE_INR"
+                                }
+                            ]
+                        },
+                        "description": "Fetches multiple public whitelist-approved configuration parameters in a single batch request."
+                    }
+                },
+                {
+                    "name": "Get Live Parameter",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/system-parameters/live/:name?defaultValue=",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "system-parameters",
+                                "live",
+                                ":name"
+                            ],
+                            "query": [
+                                {
+                                    "key": "defaultValue",
+                                    "value": ""
+                                }
+                            ],
+                            "variable": [
+                                {
+                                    "key": "name",
+                                    "value": "PRO_PLAN_PRICE_INR",
+                                    "description": "Whitelist parameter name"
+                                }
+                            ]
+                        },
+                        "description": "Directly queries the database for real-time live parameter values (whitelisted parameters only)."
+                    }
+                },
+                {
+                    "name": "Get Cached Parameter",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/system-parameters/cached/:name?defaultValue=",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "system-parameters",
+                                "cached",
+                                ":name"
+                            ],
+                            "query": [
+                                {
+                                    "key": "defaultValue",
+                                    "value": ""
+                                }
+                            ],
+                            "variable": [
+                                {
+                                    "key": "name",
+                                    "value": "SYSTEM_STATUS",
+                                    "description": "Whitelist parameter name"
+                                }
+                            ]
+                        },
+                        "description": "Fetches parameter value from in-memory cache with periodic synchronization (whitelisted parameters only)."
+                    }
+                }
+            ]
+        },
+        {
+            "name": "10. Real-Time WebSockets",
+            "item": [
+                {
+                    "name": "WebSocket Logout Session",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Upgrade",
+                                "value": "websocket"
+                            },
+                            {
+                                "key": "Connection",
+                                "value": "Upgrade"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{wsUrl}}/ws/logout?ticket={{ticket}}",
+                            "host": [
+                                "{{wsUrl}}"
+                            ],
+                            "path": [
+                                "ws",
+                                "logout"
+                            ],
+                            "query": [
+                                {
+                                    "key": "ticket",
+                                    "value": "{{ticket}}",
+                                    "description": "Single-use ticket obtained from POST /api/auth/ws-ticket"
+                                }
+                            ]
+                        },
+                        "description": "WebSocket endpoint for real-time session invalidation across multiple browser tabs. Handshake authenticated via single-use ticket."
+                    }
+                }
+            ]
+        }
+    ],
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost:8080",
+            "type": "string"
+        },
+        {
+            "key": "wsUrl",
+            "value": "ws://localhost:8080",
+            "type": "string"
+        },
+        {
+            "key": "token",
+            "value": "",
+            "type": "string"
+        },
+        {
+            "key": "ticket",
+            "value": "",
+            "type": "string"
+        }
+    ]
 }
