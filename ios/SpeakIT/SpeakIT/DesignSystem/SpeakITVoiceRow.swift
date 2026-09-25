@@ -43,6 +43,17 @@ struct SpeakITVoiceRow: View {
                     Text(voice.name)
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundColor(Color.speakitTextPrimary)
+                        .lineLimit(1)
+                    
+                    if voice.gender.uppercased() == "FEMALE" {
+                        Text("♀")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(Color(hex: "E85D75"))
+                    } else if voice.gender.uppercased() == "MALE" {
+                        Text("♂")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(Color(hex: "2563EB"))
+                    }
                     
                     if isLocked {
                         Image(systemName: "lock.fill")
@@ -54,6 +65,8 @@ struct SpeakITVoiceRow: View {
                 Text(voice.subtitle)
                     .font(.system(size: 11, weight: .regular))
                     .foregroundColor(Color.speakitTextSecondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
             }
             
             Spacer()
@@ -73,11 +86,11 @@ struct SpeakITVoiceRow: View {
         }
         .padding(.horizontal, 16)
         .frame(height: 60)
-        .background(isSelected ? Color.speakitBadgeBackground.opacity(0.5) : Color.speakitBackground)
+        .background(isSelected ? Color.speakitBadgeBackground.opacity(0.7) : Color.speakitCard)
         .cornerRadius(14)
         .overlay(
             RoundedRectangle(cornerRadius: 14)
-                .stroke(isSelected ? Color.speakitPrimary : Color(hex: "E1E1E6"), lineWidth: isSelected ? 1.5 : 1)
+                .stroke(isSelected ? Color.speakitPrimary : Color.speakitBorder, lineWidth: isSelected ? 1.5 : 1)
         )
         .contentShape(Rectangle())
         .onTapGesture {

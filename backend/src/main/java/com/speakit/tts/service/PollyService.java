@@ -93,7 +93,7 @@ public class PollyService implements SpeechProvider {
     public Engine getBestEngineForVoice(String voiceId, com.speakit.billing.entity.PlanType planType) {
         List<Voice> voices = getRawAvailableVoices();
         Voice voice = voices.stream()
-                .filter(v -> v.id().toString().equals(voiceId))
+                .filter(v -> v.id().toString().equalsIgnoreCase(voiceId) || v.name().equalsIgnoreCase(voiceId))
                 .findFirst()
                 .orElse(null);
 
@@ -126,10 +126,24 @@ public class PollyService implements SpeechProvider {
      * Internal method that executes the physical request to the AWS Polly API.
      */
     private InputStream synthesize(String text, String voiceId, String outputFormat, Engine engine) {
+        VoiceId pollyVoiceId = VoiceId.fromValue(voiceId);
+        if (pollyVoiceId == null || pollyVoiceId == VoiceId.UNKNOWN_TO_SDK_VERSION) {
+            // Check case-insensitive match against available voices
+            List<Voice> voices = getRawAvailableVoices();
+            Voice matched = voices.stream()
+                    .filter(v -> v.id().toString().equalsIgnoreCase(voiceId) || v.name().equalsIgnoreCase(voiceId))
+                    .findFirst()
+                    .orElse(null);
+            if (matched != null) {
+                pollyVoiceId = matched.id();
+            } else {
+                throw new IllegalArgumentException("Unknown or unsupported Polly voice: " + voiceId);
+            }
+        }
 
         SynthesizeSpeechRequest request = SynthesizeSpeechRequest.builder()
                 .text(text)
-                .voiceId(VoiceId.fromValue(voiceId))
+                .voiceId(pollyVoiceId)
                 .outputFormat(OutputFormat.fromValue(outputFormat))
                 .engine(engine)
                 .build();
@@ -195,6 +209,11 @@ public class PollyService implements SpeechProvider {
             map.put("id", v.id().toString());
             map.put("name", v.name());
             map.put("gender", v.genderAsString());
+            map.put("languageCode", v.languageCodeAsString());
+            map.put("languageName", v.languageName());
+            map.put("engine", v.supportedEngines().contains(Engine.NEURAL) ? "neural" : "standard");
+            map.put("isNeural", v.supportedEngines().contains(Engine.NEURAL));
+            map.put("isStandard", v.supportedEngines().contains(Engine.STANDARD));
             map.put("isElevenLabs", false);
             map.put("isSarvam", false);
             mappedVoices.add(map);
@@ -209,7 +228,6 @@ public class PollyService implements SpeechProvider {
 
         try {
             DescribeVoicesRequest request = DescribeVoicesRequest.builder()
-                    .languageCode(LanguageCode.EN_US)
                     .build();
             cachedVoices = pollyClient.describeVoices(request).voices();
             lastCacheUpdate = System.currentTimeMillis();

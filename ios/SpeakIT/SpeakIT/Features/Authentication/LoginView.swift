@@ -214,6 +214,8 @@ struct LoginView: View {
                     let email: String?
                     let role: String?
                     let planType: String?
+                    let characterLimit: Int?
+                    let charactersUsed: Int?
                 }
                 
                 let reqBody = try JSONEncoder().encode(LoginRequest(username: normalizedLogin, password: password))
@@ -226,7 +228,9 @@ struct LoginView: View {
                         username: response.username ?? normalizedLogin,
                         email: response.email ?? "",
                         role: response.role ?? "ROLE_USER",
-                        planType: resolvedPlan
+                        planType: resolvedPlan,
+                        characterLimit: response.characterLimit,
+                        charactersUsed: response.charactersUsed ?? 0
                     )
                     self.appState.login(token: response.token, user: user)
                 }

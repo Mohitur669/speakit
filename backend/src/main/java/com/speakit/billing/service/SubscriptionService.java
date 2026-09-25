@@ -1,4 +1,5 @@
 package com.speakit.billing.service;
+
 import com.speakit.parameter.service.SystemParameterService;
 
 import com.speakit.billing.entity.PlanType;
@@ -25,9 +26,11 @@ public class SubscriptionService {
      * Considers both the subscription status and potential expiry.
      */
     public boolean hasActivePremiumAccess(PlanType planType, SubscriptionStatus status, LocalDateTime expiry) {
-        if (planType == PlanType.FREE) return false;
-        
-        // Block access for non-active states unless within grace period (handled by status updates)
+        if (planType == PlanType.FREE)
+            return false;
+
+        // Block access for non-active states unless within grace period (handled by
+        // status updates)
         if (status == SubscriptionStatus.EXPIRED || status == SubscriptionStatus.SUSPENDED) {
             return false;
         }
@@ -60,14 +63,33 @@ public class SubscriptionService {
     }
 
     /**
+     * Returns the monthly character quota for a given plan.
+     */
+    public int getMonthlyCharacterLimit(PlanType planType) {
+        if (planType == null)
+            return 10_000;
+        return switch (planType) {
+            case FREE -> Integer.parseInt(systemParameterService.getLiveParameter("MAX_FREE_CHARACTERS", "10000"));
+            case PRO -> Integer.parseInt(systemParameterService.getLiveParameter("MAX_PRO_CHARACTERS", "100000"));
+            case PRO_PLUS ->
+                Integer.parseInt(systemParameterService.getLiveParameter("MAX_PRO_PLUS_CHARACTERS", "250000"));
+            case ENTERPRISE ->
+                Integer.parseInt(systemParameterService.getLiveParameter("MAX_ENTERPRISE_CHARACTERS", "1000000"));
+        };
+    }
+
+    /**
      * Checks if the user's plan permits access to ElevenLabs AI voices.
      */
     public boolean canUseElevenLabs(PlanType planType, SubscriptionStatus status, LocalDateTime expiry) {
-        if (!hasActivePremiumAccess(planType, status, expiry)) return false;
+        if (!hasActivePremiumAccess(planType, status, expiry))
+            return false;
 
         // Also check global ElevenLabs feature flag from live parameters
-        boolean elevenLabsEnabled = Boolean.parseBoolean(systemParameterService.getLiveParameter("ELEVENLABS_ENABLED", "true"));
-        if (!elevenLabsEnabled) return false;
+        boolean elevenLabsEnabled = Boolean
+                .parseBoolean(systemParameterService.getLiveParameter("ELEVENLABS_ENABLED", "true"));
+        if (!elevenLabsEnabled)
+            return false;
 
         return PlanType.PRO_PLUS == planType || PlanType.ENTERPRISE == planType;
     }
@@ -76,11 +98,13 @@ public class SubscriptionService {
      * Checks if the user's plan permits access to Sarvam AI Indian voices.
      */
     public boolean canUseSarvam(PlanType planType, SubscriptionStatus status, LocalDateTime expiry) {
-        if (!hasActivePremiumAccess(planType, status, expiry)) return false;
+        if (!hasActivePremiumAccess(planType, status, expiry))
+            return false;
 
         // Also check global Sarvam feature flag from live parameters
         boolean sarvamEnabled = Boolean.parseBoolean(systemParameterService.getLiveParameter("SARVAM_ENABLED", "true"));
-        if (!sarvamEnabled) return false;
+        if (!sarvamEnabled)
+            return false;
 
         return PlanType.PRO == planType || PlanType.PRO_PLUS == planType || PlanType.ENTERPRISE == planType;
     }
@@ -90,11 +114,13 @@ public class SubscriptionService {
      * Restricted to PRO and above.
      */
     public boolean hasSpeechToText(PlanType planType, SubscriptionStatus status, LocalDateTime expiry) {
-        if (!hasActivePremiumAccess(planType, status, expiry)) return false;
-        
+        if (!hasActivePremiumAccess(planType, status, expiry))
+            return false;
+
         // Also check global STT feature flag from live parameters
         boolean sttEnabled = Boolean.parseBoolean(systemParameterService.getLiveParameter("STT_ENABLED", "true"));
-        if (!sttEnabled) return false;
+        if (!sttEnabled)
+            return false;
 
         return planType == PlanType.PRO || planType == PlanType.PRO_PLUS || planType == PlanType.ENTERPRISE;
     }
@@ -104,10 +130,13 @@ public class SubscriptionService {
      * Restricted to PRO_PLUS and ENTERPRISE.
      */
     public boolean hasLiveRecording(PlanType planType, SubscriptionStatus status, LocalDateTime expiry) {
-        if (!hasSpeechToText(planType, status, expiry)) return false;
-        
-        boolean liveRecordingEnabled = Boolean.parseBoolean(systemParameterService.getLiveParameter("LIVE_RECORDING_ENABLED", "true"));
-        if (!liveRecordingEnabled) return false;
+        if (!hasSpeechToText(planType, status, expiry))
+            return false;
+
+        boolean liveRecordingEnabled = Boolean
+                .parseBoolean(systemParameterService.getLiveParameter("LIVE_RECORDING_ENABLED", "true"));
+        if (!liveRecordingEnabled)
+            return false;
 
         return planType == PlanType.PRO_PLUS || planType == PlanType.ENTERPRISE;
     }
@@ -147,8 +176,9 @@ public class SubscriptionService {
      * Retrieves the daily STT quota for a given plan.
      */
     public int getSttDailyLimit(PlanType planType, SubscriptionStatus status, LocalDateTime expiry) {
-        if (!hasSpeechToText(planType, status, expiry)) return 0;
-        
+        if (!hasSpeechToText(planType, status, expiry))
+            return 0;
+
         if (planType == PlanType.PRO) {
             return Integer.parseInt(systemParameterService.getLiveParameter("STT_DAILY_QUOTA_PRO", "100"));
         } else if (planType == PlanType.PRO_PLUS) {
@@ -175,17 +205,19 @@ public class SubscriptionService {
     /**
      * Validates if the user has reached their daily synthesis quota.
      * Only applies to FREE tier users (or users with inactive premium).
-     * 
+     *
      * @throws RuntimeException if the limit is exceeded
      */
-    public void validateSynthesisLimit(Long userId, PlanType planType, SubscriptionStatus status, LocalDateTime expiry) {
+    public void validateSynthesisLimit(Long userId, PlanType planType, SubscriptionStatus status,
+            LocalDateTime expiry) {
         int limit = getDailySynthesisLimit(planType, status, expiry);
         if (limit > 0 && userId != null) {
             LocalDateTime todayStart = LocalDateTime.now().truncatedTo(ChronoUnit.DAYS);
             long count = ttsHistoryRepository.countRecentByUserId(userId, todayStart);
-            
+
             if (count >= limit) {
-                throw new RuntimeException("Daily limit of " + limit + " syntheses reached. Please upgrade to PRO for unlimited generations.");
+                throw new RuntimeException("Daily limit of " + limit
+                        + " syntheses reached. Please upgrade to PRO for unlimited generations.");
             }
         }
     }

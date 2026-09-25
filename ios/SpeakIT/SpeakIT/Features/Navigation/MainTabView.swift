@@ -14,25 +14,25 @@ struct MainTabView: View {
         @Bindable var state = appState
         
         TabView(selection: $state.selectedTab) {
-            // Tab 1: TTS
+            // Tab 1: Studio (Voice Generation)
             NavigationStack {
                 TTSStudioView()
             }
             .tabItem {
-                Label("TTS", systemImage: "waveform")
+                Label("Studio", systemImage: "waveform")
             }
             .tag(0)
             
-            // Tab 2: STT
+            // Tab 2: Transcribe (Speech-to-Text)
             NavigationStack {
                 STTStudioView()
             }
             .tabItem {
-                Label("STT", systemImage: "mic.fill")
+                Label("Transcribe", systemImage: "mic.fill")
             }
             .tag(1)
             
-            // Tab 3: Activity
+            // Tab 3: Activity (History & Usage)
             NavigationStack {
                 ActivityView()
             }
