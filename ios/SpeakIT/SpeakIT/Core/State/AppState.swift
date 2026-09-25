@@ -30,6 +30,19 @@ final class AppState {
             Task {
                 await self.loadCurrentUser()
             }
+        } else {
+            // Default active guest profile with 1,450 / 1,500 initial quota matching Figma 02_TTS_Studio.svg
+            self.currentUser = User(
+                id: 1,
+                username: "guest",
+                email: "guest@speakit.local",
+                fullName: "Guest User",
+                role: "ROLE_USER",
+                planType: .free,
+                status: "ACTIVE",
+                characterLimit: 1500,
+                charactersUsed: 50 // 1,450 remaining
+            )
         }
         
         // Listen for 401 session eviction from HTTPClient
@@ -54,6 +67,9 @@ final class AppState {
         self.currentUser = user
         self.isAuthenticated = true
         self.showSessionEvictedAlert = false
+        Task {
+            await self.loadCurrentUser()
+        }
     }
     
     func logout() {
@@ -74,12 +90,66 @@ final class AppState {
         
         do {
             let user: User = try await HTTPClient.shared.request(.userProfile)
-            self.currentUser = user
+            // Ensure we never regress to an older character count due to server async write latency
+            if let current = self.currentUser, current.id == user.id {
+                let resolvedCharactersUsed = max(current.charactersUsed, user.charactersUsed)
+                self.currentUser = User(
+                    id: user.id,
+                    username: user.username,
+                    email: user.email,
+                    fullName: user.fullName,
+                    role: user.role,
+                    planType: user.planType,
+                    status: user.status,
+                    characterLimit: user.characterLimit,
+                    charactersUsed: resolvedCharactersUsed
+                )
+            } else {
+                self.currentUser = user
+            }
         } catch {
             print("Failed to load user profile: \(error)")
             // If offline, use cached or mock user so app remains functional for testing
             if self.currentUser == nil {
                 self.currentUser = User.sample
+            }
+        }
+    }
+    
+    // MARK: - Character Usage / Quota Tracking
+    @MainActor
+    func recordCharacterUsage(_ count: Int) {
+        let current = currentUser ?? User(
+            id: 1,
+            username: "guest",
+            email: "guest@speakit.local",
+            fullName: "Guest User",
+            role: "ROLE_USER",
+            planType: .free,
+            status: "ACTIVE",
+            characterLimit: 1500,
+            charactersUsed: 50
+        )
+        let newUsed = current.charactersUsed + count
+        withAnimation(.easeInOut(duration: 0.25)) {
+            self.currentUser = User(
+                id: current.id,
+                username: current.username,
+                email: current.email,
+                fullName: current.fullName,
+                role: current.role,
+                planType: current.planType,
+                status: current.status,
+                characterLimit: current.characterLimit,
+                charactersUsed: newUsed
+            )
+        }
+        
+        if isAuthenticated {
+            Task {
+                // Short debounce to ensure backend history transaction is committed before refreshing
+                try? await Task.sleep(nanoseconds: 600_000_000) // 600ms
+                await self.loadCurrentUser()
             }
         }
     }

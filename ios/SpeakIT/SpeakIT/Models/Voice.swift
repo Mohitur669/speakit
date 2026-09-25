@@ -9,9 +9,9 @@ import Foundation
 
 enum VoiceCategory: String, CaseIterable, Identifiable {
     case all = "All"
-    case pollyNeural = "Polly Neural"
-    case elevenLabs = "ElevenLabs"
-    case sarvam = "Sarvam"
+    case indian = "Indian"
+    case international = "International"
+    case pollyNeural = "Standard"
     
     var id: String { rawValue }
 }
@@ -116,10 +116,10 @@ struct Voice: Codable, Identifiable, Hashable {
     
     var engineDisplayName: String {
         switch engine.lowercased() {
-        case "sarvam": return "Sarvam"
-        case "elevenlabs": return "ElevenLabs"
-        case "neural": return "Polly Neural"
-        default: return "Polly Standard"
+        case "sarvam": return "Indian"
+        case "elevenlabs": return "International"
+        case "neural", "standard": return "Standard"
+        default: return "Standard"
         }
     }
     
@@ -127,9 +127,9 @@ struct Voice: Codable, Identifiable, Hashable {
         return { category in
             switch category {
             case .all: return true
-            case .pollyNeural: return self.engine.lowercased() == "neural"
-            case .elevenLabs: return self.engine.lowercased() == "elevenlabs"
-            case .sarvam: return self.engine.lowercased() == "sarvam"
+            case .indian: return self.engine.lowercased() == "sarvam"
+            case .international: return self.engine.lowercased() == "elevenlabs"
+            case .pollyNeural: return self.engine.lowercased() == "neural" || self.engine.lowercased() == "standard"
             }
         }
     }
@@ -137,11 +137,21 @@ struct Voice: Codable, Identifiable, Hashable {
     // Sample voices matching the approved design reference
     static let samples: [Voice] = [
         Voice(
-            id: "Aditi",
+            id: "ritu:en-IN",
             name: "Aditi",
             languageCode: "en-IN",
             languageName: "Indian English",
             gender: "FEMALE",
+            engine: "sarvam",
+            isNeural: true,
+            requiresPlan: .proPlus
+        ),
+        Voice(
+            id: "aditya:en-IN",
+            name: "Aditya",
+            languageCode: "en-IN",
+            languageName: "Indian English",
+            gender: "MALE",
             engine: "sarvam",
             isNeural: true,
             requiresPlan: .proPlus
@@ -157,6 +167,16 @@ struct Voice: Codable, Identifiable, Hashable {
             requiresPlan: .pro
         ),
         Voice(
+            id: "Matthew",
+            name: "Matthew",
+            languageCode: "en-US",
+            languageName: "US English",
+            gender: "MALE",
+            engine: "neural",
+            isNeural: true,
+            requiresPlan: .pro
+        ),
+        Voice(
             id: "Rachel",
             name: "Rachel",
             languageCode: "en-US",
@@ -167,7 +187,17 @@ struct Voice: Codable, Identifiable, Hashable {
             requiresPlan: .proPlus
         ),
         Voice(
-            id: "Ananya",
+            id: "Josh",
+            name: "Josh",
+            languageCode: "en-US",
+            languageName: "US English",
+            gender: "MALE",
+            engine: "elevenlabs",
+            isNeural: true,
+            requiresPlan: .proPlus
+        ),
+        Voice(
+            id: "priya:hi-IN",
             name: "Ananya",
             languageCode: "hi-IN",
             languageName: "Hindi",

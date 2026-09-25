@@ -102,78 +102,76 @@ import { getVoiceTypeLabel, getVoiceTypeClass } from '../../../../shared';
           }
         </div>
 
-        <!-- 2. Gender Multi-Select (Hidden for Global voices) -->
-        @if (currentFilter() !== 'Global') {
-          <div class="relative">
-            <label class="block text-xs font-semibold text-primary-500 mb-2 tracking-widest px-1"
-              >Gender</label
+        <!-- 2. Gender Multi-Select -->
+        <div class="relative">
+          <label class="block text-xs font-semibold text-primary-500 mb-2 tracking-widest px-1"
+            >Gender</label
+          >
+          <button
+            (click)="toggleGenderDropdown($event)"
+            class="w-full flex items-center justify-between px-4 py-3 bg-primary-50 dark:bg-primary-800 border border-primary-300 dark:border-primary-700 rounded-xl hover:border-brand-blue/30 transition-all text-left"
+          >
+            <span class="text-sm font-bold text-primary-900 dark:text-white truncate">
+              {{ getGenderSummary() }}
+            </span>
+            <svg
+              class="w-4 h-4 text-primary-400 transition-transform shrink-0 ml-1"
+              [class.rotate-180]="isGenderDropdownOpen"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
-            <button
-              (click)="toggleGenderDropdown($event)"
-              class="w-full flex items-center justify-between px-4 py-3 bg-primary-50 dark:bg-primary-800 border border-primary-300 dark:border-primary-700 rounded-xl hover:border-brand-blue/30 transition-all text-left"
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 9l-7 7-7-7"
+              ></path>
+            </svg>
+          </button>
+          @if (isGenderDropdownOpen) {
+            <div
+              (click)="$event.stopPropagation()"
+              class="absolute top-full left-0 mt-2 w-full bg-white dark:bg-primary-900 border border-primary-300 dark:border-primary-700 rounded-xl shadow-2xl z-[70] p-2 flex flex-col gap-1 animate-fade-in"
             >
-              <span class="text-sm font-bold text-primary-900 dark:text-white truncate">
-                {{ getGenderSummary() }}
-              </span>
-              <svg
-                class="w-4 h-4 text-primary-400 transition-transform shrink-0 ml-1"
-                [class.rotate-180]="isGenderDropdownOpen"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M19 9l-7 7-7-7"
-                ></path>
-              </svg>
-            </button>
-            @if (isGenderDropdownOpen) {
-              <div
-                (click)="$event.stopPropagation()"
-                class="absolute top-full left-0 mt-2 w-full bg-white dark:bg-primary-900 border border-primary-300 dark:border-primary-700 rounded-xl shadow-2xl z-[70] p-2 flex flex-col gap-1 animate-fade-in"
-              >
-                @for (gender of genderOptions; track gender) {
-                  <button
-                    (click)="toggleGender(gender)"
-                    class="flex items-center gap-2 w-full px-3 py-2 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-800 transition-colors text-left group"
+              @for (gender of genderOptions; track gender) {
+                <button
+                  (click)="toggleGender(gender)"
+                  class="flex items-center gap-2 w-full px-3 py-2 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-800 transition-colors text-left group"
+                >
+                  <div
+                    class="w-4 h-4 rounded border flex items-center justify-center transition-colors shrink-0"
+                    [ngClass]="
+                      selectedGenders().has(gender)
+                        ? 'bg-brand-blue border-brand-blue'
+                        : 'border-primary-300 dark:border-primary-600'
+                    "
                   >
-                    <div
-                      class="w-4 h-4 rounded border flex items-center justify-center transition-colors shrink-0"
-                      [ngClass]="
-                        selectedGenders().has(gender)
-                          ? 'bg-brand-blue border-brand-blue'
-                          : 'border-primary-300 dark:border-primary-600'
-                      "
-                    >
-                      @if (selectedGenders().has(gender)) {
-                        <svg
-                          class="w-3 h-3 text-white"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M5 13l4 4L19 7"
-                          ></path>
-                        </svg>
-                      }
-                    </div>
-                    <span
-                      class="text-xs font-bold text-primary-700 dark:text-primary-200 capitalize group-hover:text-primary-900 dark:group-hover:text-white"
-                      >{{ gender }}</span
-                    >
-                  </button>
-                }
-              </div>
-            }
-          </div>
-        }
+                    @if (selectedGenders().has(gender)) {
+                      <svg
+                        class="w-3 h-3 text-white"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M5 13l4 4L19 7"
+                        ></path>
+                      </svg>
+                    }
+                  </div>
+                  <span
+                    class="text-xs font-bold text-primary-700 dark:text-primary-200 capitalize group-hover:text-primary-900 dark:group-hover:text-white"
+                    >{{ gender }}</span
+                  >
+                </button>
+              }
+            </div>
+          }
+        </div>
       </div>
 
       <!-- 3. Language Filter (Only for Indian Engine) -->
@@ -376,7 +374,7 @@ export class VoiceSelectorComponent {
   @Output() showNotification = new EventEmitter<{ message: string; type: 'success' | 'error' }>();
 
   currentFilter = signal<string>('Standard');
-  filterOptions = ['Standard', 'Indian', 'Global', 'All'];
+  filterOptions = ['Standard', 'Indian', 'International', 'All'];
 
   isVoiceDropdownOpen = false;
   isEngineDropdownOpen = false;
@@ -384,7 +382,7 @@ export class VoiceSelectorComponent {
   isLanguageDropdownOpen = false;
 
   selectedGenders = signal<Set<string>>(new Set(['Male', 'Female']));
-  selectedLanguages = signal<Set<string>>(new Set(['hi-IN']));
+  selectedLanguages = signal<Set<string>>(new Set());
   genderOptions = ['Male', 'Female'];
 
   languageOptions = computed(() => {
@@ -486,7 +484,7 @@ export class VoiceSelectorComponent {
   getLanguageSummary(): string {
     const selected = this.selectedLanguages();
     const options = this.languageOptions();
-    if (selected.size === options.length) return 'All Dialects';
+    if (selected.size === 0 || selected.size === options.length) return 'All Dialects';
     if (selected.size === 1) {
       const lang = options.find((o) => o.code === Array.from(selected)[0]);
       return lang ? lang.name : 'Selected';
@@ -500,9 +498,9 @@ export class VoiceSelectorComponent {
   }
 
   setFilter(filter: string): void {
-    if (filter === 'Global' && !this.userCanUseGlobal) {
+    if ((filter === 'International' || filter === 'Global') && !this.userCanUseGlobal) {
       this.showNotification.emit({
-        message: 'Global voices require a Pro Plus subscription',
+        message: 'International voices require a Pro Plus subscription',
         type: 'error',
       });
       return;
@@ -525,25 +523,31 @@ export class VoiceSelectorComponent {
 
     if (filter === 'Standard') {
       filtered = this.voices.filter((v) => !v.isElevenLabs && !v.isSarvam);
-    } else if (filter === 'Global') {
+    } else if (filter === 'International' || filter === 'Global') {
       filtered = this.voices.filter((v) => v.isElevenLabs);
     } else if (filter === 'Indian') {
       filtered = this.voices.filter((v) => v.isSarvam);
       const languages = this.selectedLanguages();
-      filtered = filtered.filter((v) => v.languageCode && languages.has(v.languageCode));
+      if (languages.size > 0 && languages.size < this.languageOptions().length) {
+        filtered = filtered.filter((v) => v.languageCode && languages.has(v.languageCode));
+      }
     }
 
-    // Apply Gender filter to everything EXCEPT Global (since ElevenLabs uses 'neutral' for all)
-    if (filter !== 'Global') {
-      const genders = this.selectedGenders();
-      filtered = filtered.filter((v) => genders.has(v.gender));
+    const genders = this.selectedGenders();
+    if (genders.size === 1) {
+      const selected = Array.from(genders)[0].toLowerCase();
+      filtered = filtered.filter((v) => {
+        const vg = (v.gender || '').toLowerCase();
+        if (vg === 'neutral') return true;
+        return vg === selected;
+      });
     }
 
     return filtered;
   }
 
   canUseFilter(filter: string): boolean {
-    if (filter === 'Global') return this.userCanUseGlobal;
+    if (filter === 'International' || filter === 'Global') return this.userCanUseGlobal;
     if (filter === 'Indian') return this.userCanUseSarvam;
     return true;
   }

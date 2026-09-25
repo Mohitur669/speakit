@@ -31,6 +31,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.speakit.tts.repository.TtsHistoryRepository;
+import com.speakit.billing.service.SubscriptionService;
+import java.time.temporal.ChronoUnit;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -49,6 +52,8 @@ public class AuthService {
     private final OtpEmailSender otpEmailSender;
     private final WSTicketService wsTicketService;
     private final WebSocketConfig webSocketConfig;
+    private final TtsHistoryRepository ttsHistoryRepository;
+    private final SubscriptionService subscriptionService;
 
     @Value("${auth.session-duration-ms:7200000}")
     private long sessionDurationMs;
@@ -493,6 +498,26 @@ public class AuthService {
         Map<String, Object> claims = new HashMap<>();
         claims.put("sessionVersion", sessionVersion);
         String token = jwtService.generateToken(claims, userDetails);
+
+        Integer dailyCount = null;
+        Integer dailyLimit = null;
+        Integer charactersUsed = null;
+        Integer characterLimit = null;
+
+        if (user.getId() != null && ttsHistoryRepository != null && subscriptionService != null) {
+            try {
+                LocalDateTime todayStart = LocalDateTime.now().truncatedTo(ChronoUnit.DAYS);
+                dailyCount = (int) ttsHistoryRepository.countRecentByUserId(user.getId(), todayStart);
+                dailyLimit = subscriptionService.getDailySynthesisLimit(user.getPlanType(), user.getSubscriptionStatus(), user.getPlanExpiry());
+
+                LocalDateTime monthStart = LocalDateTime.now().withDayOfMonth(1).truncatedTo(ChronoUnit.DAYS);
+                charactersUsed = (int) ttsHistoryRepository.sumCharactersUsedSince(user.getId(), monthStart);
+                characterLimit = subscriptionService.getMonthlyCharacterLimit(user.getPlanType());
+            } catch (Exception e) {
+                log.warn("Failed to compute user usage stats for auth response", e);
+            }
+        }
+
         return AuthResponse.builder()
                 .token(token)
                 .username(user.getUsername())
@@ -504,6 +529,10 @@ public class AuthService {
                 .sessionDurationMs(sessionDurationMs)
                 .idleTimeoutMs(idleTimeoutMs)
                 .emailVerified(user.isEmailVerified())
+                .characterLimit(characterLimit)
+                .charactersUsed(charactersUsed)
+                .dailyCount(dailyCount)
+                .dailyLimit(dailyLimit)
                 .build();
     }
 }

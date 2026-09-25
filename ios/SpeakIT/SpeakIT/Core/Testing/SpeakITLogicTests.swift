@@ -66,13 +66,13 @@ public struct SpeakITLogicTests {
         assert(!voices.isEmpty, "Voice catalog samples are non-empty")
         
         let pollyVoices = voices.filter { $0.matchesCategory(.pollyNeural) }
-        assert(pollyVoices.allSatisfy { $0.engine.lowercased() == "neural" }, "All filtered Polly voices have neural engine")
+        assert(pollyVoices.allSatisfy { $0.engine.lowercased() == "neural" || $0.engine.lowercased() == "standard" }, "All filtered Standard voices have neural or standard engine")
         
-        let elevenLabsVoices = voices.filter { $0.matchesCategory(.elevenLabs) }
-        assert(elevenLabsVoices.allSatisfy { $0.engine.lowercased() == "elevenlabs" }, "All filtered ElevenLabs voices have elevenlabs engine")
+        let internationalVoices = voices.filter { $0.matchesCategory(.international) }
+        assert(internationalVoices.allSatisfy { $0.engine.lowercased() == "elevenlabs" }, "All filtered International voices have elevenlabs engine")
         
-        let sarvamVoices = voices.filter { $0.matchesCategory(.sarvam) }
-        assert(sarvamVoices.allSatisfy { $0.engine.lowercased() == "sarvam" }, "All filtered Sarvam voices have sarvam engine")
+        let indianVoices = voices.filter { $0.matchesCategory(.indian) }
+        assert(indianVoices.allSatisfy { $0.engine.lowercased() == "sarvam" }, "All filtered Indian voices have sarvam engine")
         
         if let aditi = voices.first(where: { $0.name == "Aditi" }) {
             assert(aditi.requiresPlan == .proPlus, "Aditi voice requires Pro Plus plan")
@@ -88,6 +88,9 @@ public struct SpeakITLogicTests {
         assert(APIEndpoint.voices.path == "/api/tts/voices", "TTS voices endpoint matches contract (/api/tts/voices)")
         assert(APIEndpoint.transcribeLive.path == "/api/stt/transcribe-live", "STT live endpoint matches contract (/api/stt/transcribe-live)")
         assert(APIEndpoint.transcribeFile.path == "/api/stt/transcribe", "STT file endpoint matches contract (/api/stt/transcribe)")
+        assert(APIEndpoint.history(page: 0, size: 5).path == "/api/history?page=0&size=5", "History endpoint matches paginated contract (/api/history?page=0&size=5)")
+        assert(APIEndpoint.history(page: 0, size: 10).path == "/api/history?page=0&size=10", "History endpoint matches paginated contract (/api/history?page=0&size=10)")
+        assert(APIEndpoint.history(page: 0, size: 20).path == "/api/history?page=0&size=20", "History endpoint matches paginated contract (/api/history?page=0&size=20)")
         assert(APIEndpoint.clearAllHistory.path == "/api/history/clear-all", "Clear all history endpoint matches contract (/api/history/clear-all)")
         assert(APIEndpoint.deleteHistory.path == "/api/history/delete", "Delete history endpoint matches contract (/api/history/delete)")
         assert(APIEndpoint.deleteAccount.path == "/api/v1/users/me", "Account deletion endpoint matches contract (/api/v1/users/me)")

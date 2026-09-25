@@ -71,6 +71,20 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(org.springframework.web.bind.MissingServletRequestParameterException.class)
+    public ResponseEntity<ApiErrorResponse> handleMissingParams(
+            org.springframework.web.bind.MissingServletRequestParameterException ex,
+            HttpServletRequest request) {
+        log.warn("Missing request parameter: {}", ex.getParameterName());
+        captureHandledException(ex, SentryLevel.INFO);
+        ApiErrorResponse response = buildResponse(
+                HttpStatus.BAD_REQUEST,
+                "Bad Request",
+                "Required request parameter '" + ex.getParameterName() + "' is missing",
+                request);
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
     @ExceptionHandler(RateLimitExceededException.class)
     public ResponseEntity<ApiErrorResponse> handleRateLimitExceeded(RateLimitExceededException ex, HttpServletRequest request) {
         log.warn("Rate limit exceeded for request. Retry after: {}s", ex.getRetryAfterSeconds());

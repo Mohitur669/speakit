@@ -85,7 +85,7 @@ struct SubscriptionPaywallView: View {
                         tierName: "PRO PLUS",
                         price: "$19.99 / month",
                         features: [
-                            "250,000 chars • ElevenLabs • Sarvam",
+                            "250,000 chars • International • Indian",
                             "Live Mic STT"
                         ],
                         isSelected: selectedPlan == .proPlus,

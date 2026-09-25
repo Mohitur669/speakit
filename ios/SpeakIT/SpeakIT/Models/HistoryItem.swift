@@ -118,6 +118,60 @@ struct HistoryItem: Codable, Identifiable {
             voiceName: "Whisper",
             engineType: "STT",
             createdAt: "Nov 10"
+        ),
+        HistoryItem(
+            id: 5,
+            textSnippet: "Exploring artificial intelligence and voice synthesis",
+            characterCount: 54,
+            voiceId: "Matthew",
+            voiceName: "Matthew",
+            engineType: "TTS",
+            createdAt: "Nov 8"
+        ),
+        HistoryItem(
+            id: 6,
+            textSnippet: "Quarterly earnings call summary",
+            characterCount: 32,
+            voiceId: "Whisper",
+            voiceName: "Whisper",
+            engineType: "STT",
+            createdAt: "Nov 7"
+        ),
+        HistoryItem(
+            id: 7,
+            textSnippet: "Your daily news briefing is ready to listen",
+            characterCount: 42,
+            voiceId: "Amy",
+            voiceName: "Amy",
+            engineType: "TTS",
+            createdAt: "Nov 5"
+        ),
+        HistoryItem(
+            id: 8,
+            textSnippet: "Customer support audio log transcription",
+            characterCount: 40,
+            voiceId: "Whisper",
+            voiceName: "Whisper",
+            engineType: "STT",
+            createdAt: "Nov 4"
+        ),
+        HistoryItem(
+            id: 9,
+            textSnippet: "Chapter one: The beginnings of audio engineering",
+            characterCount: 48,
+            voiceId: "Brian",
+            voiceName: "Brian",
+            engineType: "TTS",
+            createdAt: "Nov 1"
+        ),
+        HistoryItem(
+            id: 10,
+            textSnippet: "Product launch keynote rehearsal speech",
+            characterCount: 39,
+            voiceId: "Kendra",
+            voiceName: "Kendra",
+            engineType: "TTS",
+            createdAt: "Oct 28"
         )
     ]
 }

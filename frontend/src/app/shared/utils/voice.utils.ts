@@ -3,14 +3,14 @@ import { Voice } from '../../core/services/tts.service';
 
 export function getVoiceTypeLabel(voice: Voice | undefined, activeFilter: string): string {
   if (!voice) return '';
-  if (voice.isElevenLabs) return 'Natural';
+  if (voice.isElevenLabs) return 'International';
   if (voice.isSarvam) return 'Indian';
   return 'Standard';
 }
 
 export function getVoiceLabelFromType(voiceType: string): string {
   switch (voiceType) {
-    case 'NATURAL': return 'Natural';
+    case 'NATURAL': return 'International';
     case 'INDIAN': return 'Indian';
     case 'NEURAL': return 'Neural';
     default: return 'Standard';

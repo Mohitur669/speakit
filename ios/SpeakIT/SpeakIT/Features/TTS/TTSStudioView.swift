@@ -25,7 +25,7 @@ struct TTSStudioView: View {
             VStack(alignment: .leading, spacing: 18) {
                 // Header Row
                 HStack(alignment: .center) {
-                    Text("TTS Studio")
+                    Text("Studio")
                         .font(.system(size: 30, weight: .bold))
                         .foregroundColor(Color.speakitTextPrimary)
                     
@@ -35,6 +35,8 @@ struct TTSStudioView: View {
                     let remaining = appState.currentUser?.remainingCharacters ?? 1450
                     SpeakITQuotaBadge(text: "\(remaining.formatted()) left")
                         .accessibilityIdentifier("tts.quota")
+                        .contentTransition(.numericText())
+                        .animation(.easeInOut(duration: 0.25), value: remaining)
                 }
                 .padding(.top, 8)
                 
@@ -196,6 +198,9 @@ struct TTSStudioView: View {
                 ShareActivityView(activityItems: [url])
             }
         }
+        .task {
+            await appState.loadCurrentUser()
+        }
     }
     
     // MARK: - Synthesis Logic
@@ -242,6 +247,8 @@ struct TTSStudioView: View {
                 await MainActor.run {
                     self.isSynthesizing = false
                     self.synthesizedAudioURL = audioURL
+                    // Deduct credit immediately at the top bar
+                    self.appState.recordCharacterUsage(inputText.count)
                     self.playerManager.loadAndPlay(
                         url: audioURL,
                         title: String(inputText.prefix(40)),
@@ -270,6 +277,7 @@ struct TTSStudioView: View {
         let tempDir = FileManager.default.temporaryDirectory
         let fallbackURL = tempDir.appendingPathComponent("sample_preview.mp3")
         try? Data(repeating: 0, count: 1024).write(to: fallbackURL)
+        self.appState.recordCharacterUsage(inputText.count)
         self.playerManager.loadAndPlay(url: fallbackURL, title: String(inputText.prefix(40)), subtitle: selectedVoice.name)
     }
 }
