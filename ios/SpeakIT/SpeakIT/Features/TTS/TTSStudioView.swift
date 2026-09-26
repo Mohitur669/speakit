@@ -43,6 +43,7 @@ struct TTSStudioView: View {
                 
                 // Voice Selector Card
                 Button(action: {
+                    HapticManager.shared.selection()
                     showVoiceCatalog = true
                 }) {
                     HStack(spacing: 12) {
@@ -108,6 +109,7 @@ struct TTSStudioView: View {
                         // Quick Paste
                         Button(action: {
                             if let clipboard = UIPasteboard.general.string {
+                                HapticManager.shared.light()
                                 inputText = clipboard
                             }
                         }) {
@@ -123,6 +125,7 @@ struct TTSStudioView: View {
                         // Clear
                         if !inputText.isEmpty {
                             Button(action: {
+                                HapticManager.shared.light()
                                 inputText = ""
                             }) {
                                 HStack(spacing: 4) {
@@ -247,6 +250,7 @@ struct TTSStudioView: View {
                     self.synthesizedAudioURL = audioURL
                     // Deduct credit immediately at the top bar
                     self.appState.recordCharacterUsage(inputText.count)
+                    HapticManager.shared.success()
                     self.playerManager.load(
                         url: audioURL,
                         title: String(inputText.prefix(40)),
@@ -263,8 +267,10 @@ struct TTSStudioView: View {
                     } else if case APIError.forbidden = error {
                         self.errorMessage = "This voice engine requires an upgraded plan."
                         self.appState.showPaywallSheet = true
+                        HapticManager.shared.warning()
                     } else {
                         self.errorMessage = error.localizedDescription
+                        HapticManager.shared.error()
                     }
                 }
             }

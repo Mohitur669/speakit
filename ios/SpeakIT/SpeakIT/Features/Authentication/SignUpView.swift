@@ -14,6 +14,7 @@ struct SignUpView: View {
     @State private var fullName: String = ""
     @State private var username: String = ""
     @State private var email: String = ""
+    @State private var phoneNumber: String = ""
     @State private var password: String = ""
     @State private var confirmPassword: String = ""
     @State private var isLoading: Bool = false
@@ -40,6 +41,7 @@ struct SignUpView: View {
                     SpeakITTextField(placeholder: "Full Name", text: $fullName, icon: "person.crop.circle")
                     SpeakITTextField(placeholder: "Username", text: $username, icon: "at", autoCapitalization: .never)
                     SpeakITTextField(placeholder: "Email Address", text: $email, icon: "envelope.fill", keyboardType: .emailAddress, autoCapitalization: .never)
+                    SpeakITTextField(placeholder: "Phone Number (Optional)", text: $phoneNumber, icon: "phone", keyboardType: .phonePad)
                     SpeakITTextField(placeholder: "Password", text: $password, icon: "lock.fill", isSecure: true)
                     SpeakITTextField(placeholder: "Confirm Password", text: $confirmPassword, icon: "lock.shield.fill", isSecure: true)
                 }
@@ -57,6 +59,7 @@ struct SignUpView: View {
                 HStack {
                     Spacer()
                     Button(action: {
+                        HapticManager.shared.selection()
                         dismiss()
                     }) {
                         HStack(spacing: 4) {
@@ -87,6 +90,7 @@ struct SignUpView: View {
         
         let normalizedEmail = email.trimmingCharacters(in: .whitespaces).lowercased()
         let normalizedUsername = username.trimmingCharacters(in: .whitespaces).lowercased()
+        let cleanPhone = phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines)
         
         Task {
             do {
@@ -94,6 +98,7 @@ struct SignUpView: View {
                     let fullName: String?
                     let username: String
                     let email: String
+                    let phoneNumber: String?
                     let password: String
                 }
                 
@@ -102,6 +107,7 @@ struct SignUpView: View {
                     let username: String?
                     let fullName: String?
                     let email: String?
+                    let phoneNumber: String?
                     let role: String?
                     let planType: String?
                 }
@@ -110,6 +116,7 @@ struct SignUpView: View {
                     fullName: fullName.trimmingCharacters(in: .whitespaces).isEmpty ? nil : fullName.trimmingCharacters(in: .whitespaces),
                     username: normalizedUsername,
                     email: normalizedEmail,
+                    phoneNumber: cleanPhone.isEmpty ? nil : cleanPhone,
                     password: password
                 ))
                 
@@ -117,6 +124,7 @@ struct SignUpView: View {
                 
                 await MainActor.run {
                     self.isLoading = false
+                    HapticManager.shared.success()
                     if let token = response.token {
                         let resolvedPlan = PlanType(rawValue: (response.planType ?? "FREE").uppercased()) ?? .free
                         let user = User(
@@ -124,7 +132,8 @@ struct SignUpView: View {
                             email: response.email ?? normalizedEmail,
                             fullName: fullName.isEmpty ? nil : fullName,
                             role: response.role ?? "ROLE_USER",
-                            planType: resolvedPlan
+                            planType: resolvedPlan,
+                            phoneNumber: response.phoneNumber ?? (cleanPhone.isEmpty ? nil : cleanPhone)
                         )
                         self.appState.login(token: token, user: user)
                     } else {
@@ -135,6 +144,7 @@ struct SignUpView: View {
             } catch {
                 await MainActor.run {
                     self.isLoading = false
+                    HapticManager.shared.error()
                     self.errorMessage = error.localizedDescription
                 }
             }

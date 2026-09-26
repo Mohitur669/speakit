@@ -39,7 +39,7 @@ struct ActivityView: View {
                         Spacer()
                         
                         Button(action: {
-                            UISelectionFeedbackGenerator().selectionChanged()
+                            HapticManager.shared.selection()
                             appState.selectedTab = 3
                         }) {
                             Image(systemName: "gearshape")
@@ -78,15 +78,15 @@ struct ActivityView: View {
                         .frame(height: 10)
                         
                         HStack {
-                            Text("\(Int(user.usagePercentage * 100))% used")
-                                .font(.system(size: 11, weight: .medium))
+                            Text("\(user.remainingCharacters.formatted()) remaining")
+                                .font(.system(size: 12, weight: .semibold))
                                 .foregroundColor(Color.speakitTextSecondary)
                             
                             Spacer()
                             
-                            Text("Renews Oct 14")
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundColor(Color.speakitTextSecondary)
+                            Text("\(Int(user.usagePercentage * 100))% used")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(Color.speakitPrimary)
                         }
                     }
                     .padding(18)
@@ -105,7 +105,7 @@ struct ActivityView: View {
                         if isSelectionMode {
                             // "Select All" / "Deselect All"
                             Button(action: {
-                                UISelectionFeedbackGenerator().selectionChanged()
+                                HapticManager.shared.selection()
                                 if selectedItemIds.count == historyItems.count {
                                     selectedItemIds.removeAll()
                                 } else {
@@ -119,7 +119,7 @@ struct ActivityView: View {
                             
                             // "Done" button to exit multiselect mode
                             Button(action: {
-                                UISelectionFeedbackGenerator().selectionChanged()
+                                HapticManager.shared.selection()
                                 withAnimation {
                                     isSelectionMode = false
                                     selectedItemIds.removeAll()
@@ -137,7 +137,7 @@ struct ActivityView: View {
                             if !historyItems.isEmpty {
                                 // "Select" button to enter multiselect mode
                                 Button(action: {
-                                    UISelectionFeedbackGenerator().selectionChanged()
+                                    HapticManager.shared.selection()
                                     withAnimation {
                                         isSelectionMode = true
                                         selectedItemIds.removeAll()
@@ -209,7 +209,7 @@ struct ActivityView: View {
                             } else if hasMorePages {
                                 HStack(spacing: 10) {
                                     Button(action: {
-                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        HapticManager.shared.light()
                                         Task {
                                             await loadNextPage()
                                         }
@@ -398,7 +398,7 @@ struct ActivityView: View {
                     self.selectedItemIds.removeAll()
                     self.isSelectionMode = false
                 }
-                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                HapticManager.shared.success()
             }
         }
     }
@@ -417,7 +417,7 @@ struct ActivityView: View {
     
     private func changePageSize(to newSize: Int) {
         guard pageSize != newSize else { return }
-        UISelectionFeedbackGenerator().selectionChanged()
+        HapticManager.shared.selection()
         pageSize = newSize
         historyItems.removeAll()
         Task {

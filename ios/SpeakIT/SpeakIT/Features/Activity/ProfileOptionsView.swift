@@ -16,12 +16,14 @@ struct ProfileOptionsView: View {
         case fullName
         case username
         case email
+        case phone
         
         var id: String {
             switch self {
             case .fullName: return "fullName"
             case .username: return "username"
             case .email: return "email"
+            case .phone: return "phone"
             }
         }
     }
@@ -76,6 +78,15 @@ struct ProfileOptionsView: View {
                         icon: "envelope.fill",
                         action: { activeSheet = .email }
                     )
+                    
+                    menuDivider
+                    
+                    menuItem(
+                        title: "Phone Number",
+                        subtitle: (appState.currentUser?.phoneNumber?.isEmpty == false) ? appState.currentUser!.phoneNumber! : "Not set (Optional)",
+                        icon: "phone.fill",
+                        action: { activeSheet = .phone }
+                    )
                 }
                 .background(Color.speakitBackground)
                 .cornerRadius(16)
@@ -106,6 +117,11 @@ struct ProfileOptionsView: View {
                     successMessage = "Email updated successfully!"
                     errorMessage = nil
                 })
+            case .phone:
+                UpdatePhoneSheet(onSuccess: {
+                    successMessage = "Phone number updated successfully!"
+                    errorMessage = nil
+                })
             }
         }
     }
@@ -120,9 +136,7 @@ struct ProfileOptionsView: View {
     @ViewBuilder
     private func menuItem(title: String, subtitle: String, icon: String, action: @escaping () -> Void) -> some View {
         Button(action: {
-            if hapticsEnabled {
-                UISelectionFeedbackGenerator().selectionChanged()
-            }
+            HapticManager.shared.selection()
             action()
         }) {
             HStack(spacing: 12) {

@@ -61,12 +61,16 @@ import { environment } from '../../../core/config/environment';
                     <h3 class="font-semibold text-primary-900 dark:text-white mb-1">
                       Email Support
                     </h3>
-                    <p class="text-primary-500 dark:text-primary-400 text-sm">
+                    <a
+                      href="mailto:support@mohitur.com?subject=SpeakIT%20Support"
+                      class="text-primary-500 dark:text-primary-400 hover:text-brand-blue text-sm transition-colors"
+                    >
                       support&#64;mohitur.com
-                    </p>
+                    </a>
                   </div>
                 </div>
 
+                <!-- Hidden: Developer Community feature is not ready yet
                 <div class="flex items-start gap-4">
                   <div
                     class="w-10 h-10 rounded-lg bg-brand-purple/10 flex items-center justify-center shrink-0"
@@ -92,6 +96,7 @@ import { environment } from '../../../core/config/environment';
                     </p>
                   </div>
                 </div>
+                -->
 
                 <div class="flex items-start gap-4">
                   <div
@@ -186,19 +191,27 @@ import { environment } from '../../../core/config/environment';
                         </div>
                       </div>
                       <div>
-                        <label
-                          class="block text-sm font-medium text-primary-700 dark:text-primary-300 mb-2"
-                          >Email</label
-                        >
+                        <div class="flex items-center justify-between mb-2">
+                          <label
+                            class="block text-sm font-medium text-primary-700 dark:text-primary-300"
+                            >Email Address</label
+                          >
+                          <span class="text-xs font-medium text-brand-blue dark:text-brand-purple"
+                            >Editable</span
+                          >
+                        </div>
                         <input
                           type="email"
                           name="email"
                           [(ngModel)]="formData.email"
                           required
                           email
-                          placeholder="john@example.com"
+                          placeholder="your.email@example.com"
                           class="w-full px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all"
                         />
+                        <p class="text-xs text-primary-500 dark:text-primary-400 mt-1.5">
+                          Pre-filled from your profile. You can edit this if you lost access to your email or need replies sent elsewhere.
+                        </p>
                       </div>
                       <div>
                         <label

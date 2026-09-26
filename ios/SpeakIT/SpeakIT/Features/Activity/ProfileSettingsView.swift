@@ -220,9 +220,9 @@ struct ProfileSettingsView: View {
                 
                 Spacer()
                 
-                Text("\(user.remainingCharacters.formatted()) remaining")
-                    .font(.system(size: 12, weight: .regular))
-                    .foregroundColor(Color.speakitTextSecondary)
+                Text("\(Int(user.usagePercentage * 100))% used")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(Color.speakitPrimary)
             }
         }
         .padding(16)
@@ -438,6 +438,7 @@ struct ProfileSettingsView: View {
             
             VStack(spacing: 0) {
                 Button(action: {
+                    HapticManager.shared.warning()
                     showSignOutAlert = true
                 }) {
                     HStack(spacing: 12) {
@@ -458,6 +459,7 @@ struct ProfileSettingsView: View {
                 menuDivider
                 
                 Button(action: {
+                    HapticManager.shared.warning()
                     showDeleteConfirmation = true
                 }) {
                     HStack(spacing: 12) {
@@ -501,9 +503,7 @@ struct ProfileSettingsView: View {
         action: @escaping () -> Void
     ) -> some View {
         Button(action: {
-            if hapticsEnabled {
-                UISelectionFeedbackGenerator().selectionChanged()
-            }
+            HapticManager.shared.selection()
             action()
         }) {
             HStack(spacing: 12) {

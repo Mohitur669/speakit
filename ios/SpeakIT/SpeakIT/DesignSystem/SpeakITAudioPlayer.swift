@@ -16,7 +16,7 @@ struct SpeakITAudioPlayer: View {
             HStack(spacing: 16) {
                 // Play / Pause Circle
                 Button(action: {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    HapticManager.shared.medium()
                     playerManager.togglePlayPause()
                 }) {
                     ZStack {
@@ -59,7 +59,7 @@ struct SpeakITAudioPlayer: View {
                 // Share Button
                 if let onShare = onShare {
                     Button(action: {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        HapticManager.shared.light()
                         onShare()
                     }) {
                         Image(systemName: "square.and.arrow.up")

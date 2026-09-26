@@ -234,7 +234,7 @@ struct SubscriptionPaywallView: View {
                     )
                 }
                 
-                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                HapticManager.shared.success()
                 self.dismiss()
             }
         }
@@ -245,6 +245,7 @@ struct SubscriptionPaywallView: View {
             try? await Task.sleep(nanoseconds: 800_000_000)
             await MainActor.run {
                 self.showRestoreSuccess = true
+                HapticManager.shared.success()
             }
         }
     }

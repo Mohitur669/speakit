@@ -55,7 +55,7 @@ struct UpdateEmailSheet: View {
                 }
             }
         }
-        .presentationDetents([.large])
+        .presentationDetents([.medium])
     }
     
     // MARK: - Step 1: Security Password Verification

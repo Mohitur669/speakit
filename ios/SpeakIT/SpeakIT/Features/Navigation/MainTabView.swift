@@ -51,6 +51,9 @@ struct MainTabView: View {
             .tag(3)
         }
         .tint(Color.speakitPrimary)
+        .onChange(of: state.selectedTab) { _, _ in
+            HapticManager.shared.selection()
+        }
         .sheet(isPresented: $state.showPaywallSheet) {
             SubscriptionPaywallView()
         }

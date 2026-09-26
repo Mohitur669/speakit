@@ -86,7 +86,7 @@ struct LoginView: View {
     private var formFields: some View {
         VStack(spacing: 14) {
             SpeakITTextField(
-                placeholder: "Username or email",
+                placeholder: "Phone, email or username",
                 text: $usernameOrEmail,
                 icon: "person.fill",
                 keyboardType: .emailAddress,
@@ -109,6 +109,7 @@ struct LoginView: View {
         HStack {
             Spacer()
             Button(action: {
+                HapticManager.shared.selection()
                 showForgotPasswordSheet = true
             }) {
                 Text("Forgot Password?")
@@ -197,6 +198,7 @@ struct LoginView: View {
         HStack {
             Spacer()
             Button(action: {
+                HapticManager.shared.selection()
                 showSignUp = true
             }) {
                 HStack(spacing: 4) {
@@ -232,6 +234,7 @@ struct LoginView: View {
                     let token: String
                     let username: String?
                     let email: String?
+                    let phoneNumber: String?
                     let role: String?
                     let planType: String?
                     let characterLimit: Int?
@@ -250,19 +253,24 @@ struct LoginView: View {
                         role: response.role ?? "ROLE_USER",
                         planType: resolvedPlan,
                         characterLimit: response.characterLimit,
-                        charactersUsed: response.charactersUsed ?? 0
+                        charactersUsed: response.charactersUsed ?? 0,
+                        phoneNumber: response.phoneNumber
                     )
+                    HapticManager.shared.success()
                     self.appState.login(token: response.token, user: user)
                 }
             } catch {
                 await MainActor.run {
                     self.isLoading = false
                     if case APIError.unauthorized = error {
+                        HapticManager.shared.error()
                         self.errorMessage = "Invalid username or password. Please try again."
                     } else if case APIError.networkError = error {
                         // Offline preview fallback mode for smooth testing
+                        HapticManager.shared.success()
                         self.appState.login(token: "mock-offline-token", user: User.sample)
                     } else {
+                        HapticManager.shared.error()
                         self.errorMessage = error.localizedDescription
                     }
                 }
