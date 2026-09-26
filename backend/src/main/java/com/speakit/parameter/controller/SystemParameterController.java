@@ -26,6 +26,8 @@ public class SystemParameterController {
         "PRO_PLAN_PRICE_INR",
         "PRO_PLUS_PLAN_PRICE_INR",
         "ENTERPRISE_PLAN_PRICE_INR",
+        "IOS_PRO_PLAN_PRICE",
+        "IOS_PRO_PLUS_PLAN_PRICE",
         "MAX_FREE_CHARACTERS",
         "MAX_PRO_CHARACTERS",
         "MAX_PRO_PLUS_CHARACTERS",

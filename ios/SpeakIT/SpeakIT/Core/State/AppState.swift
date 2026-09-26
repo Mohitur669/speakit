@@ -20,6 +20,10 @@ final class AppState {
     var errorMessage: String? = nil
     var isLoadingUser: Bool = false
     
+    // Dynamic Pricing from Backend System Parameters
+    var proPriceDisplay: String = "$9.99 / month"
+    var proPlusPriceDisplay: String = "$19.99 / month"
+    
     private init() {
         // Support UI test / automation argument
         if ProcessInfo.processInfo.arguments.contains("-mockAuth") ||
@@ -53,6 +57,11 @@ final class AppState {
             name: .speakitSessionInvalidated,
             object: nil
         )
+        
+        // Pre-fetch live plan pricing from system parameters
+        Task {
+            await self.loadPlanPricing()
+        }
     }
     
     @objc private func handleSessionInvalidation() {
@@ -161,5 +170,45 @@ final class AppState {
                 await self.loadCurrentUser()
             }
         }
+    }
+    
+    // MARK: - Dynamic Plan Pricing
+    @MainActor
+    func loadPlanPricing() async {
+        do {
+            let params: [String: String] = try await HTTPClient.shared.request(
+                .systemParametersBulk(names: [
+                    "IOS_PRO_PLAN_PRICE",
+                    "IOS_PRO_PLUS_PLAN_PRICE",
+                    "PRO_PLAN_PRICE_INR",
+                    "PRO_PLUS_PLAN_PRICE_INR"
+                ])
+            )
+            
+            if let proPrice = params["IOS_PRO_PLAN_PRICE"], !proPrice.trimmingCharacters(in: .whitespaces).isEmpty {
+                self.proPriceDisplay = formatPrice(proPrice)
+            } else if let proInr = params["PRO_PLAN_PRICE_INR"], !proInr.trimmingCharacters(in: .whitespaces).isEmpty {
+                self.proPriceDisplay = "₹\(proInr) / month"
+            }
+            
+            if let proPlusPrice = params["IOS_PRO_PLUS_PLAN_PRICE"], !proPlusPrice.trimmingCharacters(in: .whitespaces).isEmpty {
+                self.proPlusPriceDisplay = formatPrice(proPlusPrice)
+            } else if let proPlusInr = params["PRO_PLUS_PLAN_PRICE_INR"], !proPlusInr.trimmingCharacters(in: .whitespaces).isEmpty {
+                self.proPlusPriceDisplay = "₹\(proPlusInr) / month"
+            }
+        } catch {
+            // Keep existing defaults on network error
+        }
+    }
+    
+    private func formatPrice(_ rawPrice: String) -> String {
+        let trimmed = rawPrice.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.hasPrefix("$") || trimmed.hasPrefix("₹") {
+            return "\(trimmed) / month"
+        }
+        if Double(trimmed) != nil {
+            return "$\(trimmed) / month"
+        }
+        return "\(trimmed) / month"
     }
 }

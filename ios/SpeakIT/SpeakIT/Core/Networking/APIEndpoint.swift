@@ -108,6 +108,12 @@ enum APIEndpoint {
     case deleteHistory
     case clearAllHistory
     
+    // System Parameters
+    case systemParametersBulk(names: [String])
+    
+    // Contact
+    case contact
+    
     var path: String {
         switch self {
         case .login:
@@ -160,6 +166,11 @@ enum APIEndpoint {
             return "/api/history/delete"
         case .clearAllHistory:
             return "/api/history/clear-all"
+        case .systemParametersBulk(let names):
+            let joined = names.joined(separator: ",")
+            return "/api/system-parameters/bulk?names=\(joined)"
+        case .contact:
+            return "/api/contact"
         }
     }
     

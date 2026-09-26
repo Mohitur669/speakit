@@ -51,13 +51,19 @@ final class HTTPClient {
     private init() {}
     
     // MARK: - Standard JSON Request
-    func request<T: Decodable>(_ endpoint: APIEndpoint, method: String = "GET", body: Data? = nil) async throws -> T {
+    func request<T: Decodable>(_ endpoint: APIEndpoint, method: String = "GET", body: Data? = nil, headers: [String: String]? = nil) async throws -> T {
         guard let url = endpoint.url else { throw APIError.invalidURL }
         
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
+        
+        if let headers = headers {
+            for (headerField, value) in headers {
+                request.setValue(value, forHTTPHeaderField: headerField)
+            }
+        }
         
         if let token = KeychainHelper.shared.getToken() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")

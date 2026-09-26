@@ -48,7 +48,9 @@ public class TtsHistory extends BaseEntity {
     @Column(name = "character_count", nullable = false)
     private int characterCount;
     
-    // We only store a snippet or hash for privacy, not full text in DB
     @Column(name = "text_snippet", length = 100)
     private String textSnippet;
+
+    @Column(name = "full_text", columnDefinition = "TEXT")
+    private String fullText;
 }
