@@ -207,14 +207,74 @@ struct Voice: Codable, Identifiable, Hashable {
             requiresPlan: .proPlus
         ),
         Voice(
-            id: "Aria",
-            name: "Aria",
-            languageCode: "en-GB",
-            languageName: "British English",
+            id: "kabir:hi-IN",
+            name: "Kabir",
+            languageCode: "hi-IN",
+            languageName: "Hindi",
+            gender: "MALE",
+            engine: "sarvam",
+            isNeural: true,
+            requiresPlan: .proPlus
+        ),
+        Voice(
+            id: "diya:bn-IN",
+            name: "Diya",
+            languageCode: "bn-IN",
+            languageName: "Bengali",
             gender: "FEMALE",
+            engine: "sarvam",
+            isNeural: true,
+            requiresPlan: .proPlus
+        ),
+        Voice(
+            id: "kavya:ta-IN",
+            name: "Kavya",
+            languageCode: "ta-IN",
+            languageName: "Tamil",
+            gender: "FEMALE",
+            engine: "sarvam",
+            isNeural: true,
+            requiresPlan: .proPlus
+        ),
+        Voice(
+            id: "murugan:ta-IN",
+            name: "Murugan",
+            languageCode: "ta-IN",
+            languageName: "Tamil",
+            gender: "MALE",
+            engine: "sarvam",
+            isNeural: true,
+            requiresPlan: .proPlus
+        ),
+        Voice(
+            id: "Adam",
+            name: "Adam",
+            languageCode: "en-US",
+            languageName: "US English",
+            gender: "MALE",
             engine: "elevenlabs",
             isNeural: true,
             requiresPlan: .proPlus
+        ),
+        Voice(
+            id: "Lucia",
+            name: "Lucia",
+            languageCode: "es-ES",
+            languageName: "Spanish",
+            gender: "FEMALE",
+            engine: "neural",
+            isNeural: true,
+            requiresPlan: .pro
+        ),
+        Voice(
+            id: "Celine",
+            name: "Celine",
+            languageCode: "fr-FR",
+            languageName: "French",
+            gender: "FEMALE",
+            engine: "neural",
+            isNeural: true,
+            requiresPlan: .pro
         )
     ]
 }

@@ -267,7 +267,8 @@ public class TtsController {
 
     @RateLimited
     @GetMapping("/voices")
-    public ResponseEntity<List<Map<String, Object>>> getVoices(HttpServletRequest httpRequest) {
+    public ResponseEntity<List<Map<String, Object>>> getVoices(HttpServletRequest httpRequest, Principal principal) {
+        resolveUserId(httpRequest, principal);
         PlanType planType = (PlanType) httpRequest.getAttribute("planType");
         SubscriptionStatus status = (SubscriptionStatus) httpRequest.getAttribute("subscriptionStatus");
         LocalDateTime expiry = (LocalDateTime) httpRequest.getAttribute("planExpiry");

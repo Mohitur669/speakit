@@ -7,6 +7,7 @@
 
 import SwiftUI
 import UniformTypeIdentifiers
+import AVFoundation
 
 enum STTMode: String, CaseIterable {
     case live = "Live Microphone"
@@ -224,22 +225,24 @@ struct STTStudioView: View {
     
     // MARK: - Recording Actions
     private func toggleRecording() {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         if recordingManager.isRecording {
             stopAndTranscribe()
         } else {
-            Task {
+            Task { @MainActor in
                 let success = await recordingManager.startRecording()
                 if !success {
-                    await MainActor.run {
-                        self.showPermissionAlert = true
-                    }
+                    self.showPermissionAlert = true
                 }
             }
         }
     }
     
     private func stopAndTranscribe() {
+        let fallbackDuration = recordingManager.elapsedTime
         guard let fileURL = recordingManager.stopRecording() else { return }
+        let exactMeasuredDuration = max(recordingManager.lastRecordedDuration, fallbackDuration)
+        
         isProcessing = true
         errorMessage = nil
         
@@ -270,12 +273,17 @@ struct STTStudioView: View {
                 let resultText = response.outputText
                 let words = resultText.split(separator: " ").count
                 
+                // Prioritize positive API duration, or fallback to exact locally measured audio duration
+                let apiDuration = response.duration ?? 0.0
+                let finalDuration = (apiDuration > 0.05) ? apiDuration : exactMeasuredDuration
+                let finalSeconds = max(1, Int(round(finalDuration)))
+                
                 await MainActor.run {
                     self.isProcessing = false
                     self.transcriptionResult = TranscriptionResult(
                         text: resultText,
-                        language: response.language ?? "English",
-                        durationSeconds: Int(response.duration ?? recordingManager.elapsedTime),
+                        language: response.language ?? "en-IN",
+                        durationSeconds: finalSeconds,
                         wordCount: words,
                         timestamp: "Today, \(Date().formatted(date: .omitted, time: .shortened))",
                         originalAudioURL: fileURL
@@ -302,6 +310,7 @@ struct STTStudioView: View {
     }
     
     private func processImportedAudio(fileURL: URL) {
+        let fileDuration = (try? AVAudioPlayer(contentsOf: fileURL))?.duration ?? 0.0
         isProcessing = true
         errorMessage = nil
         
@@ -332,12 +341,16 @@ struct STTStudioView: View {
                 let resultText = response.outputText
                 let words = resultText.split(separator: " ").count
                 
+                let apiDuration = response.duration ?? 0.0
+                let finalDuration = (apiDuration > 0.05) ? apiDuration : (fileDuration > 0.05 ? fileDuration : 15.0)
+                let finalSeconds = max(1, Int(round(finalDuration)))
+                
                 await MainActor.run {
                     self.isProcessing = false
                     self.transcriptionResult = TranscriptionResult(
                         text: resultText,
-                        language: response.language ?? "English",
-                        durationSeconds: Int(response.duration ?? 15),
+                        language: response.language ?? "en-IN",
+                        durationSeconds: finalSeconds,
                         wordCount: words,
                         timestamp: "Today, \(Date().formatted(date: .omitted, time: .shortened))",
                         originalAudioURL: fileURL

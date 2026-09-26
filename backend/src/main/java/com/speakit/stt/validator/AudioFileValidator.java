@@ -14,7 +14,7 @@ public class AudioFileValidator {
 
     private static final List<String> ALLOWED_EXTENSIONS = Arrays.asList("mp3", "wav", "m4a", "ogg", "webm");
     private static final List<String> ALLOWED_MIME_TYPES = Arrays.asList(
-        "audio/mpeg", "audio/wav", "audio/x-wav", "audio/mp4", "audio/ogg", "application/ogg", "audio/webm", "video/webm"
+        "audio/mpeg", "audio/wav", "audio/x-wav", "audio/mp4", "audio/m4a", "audio/x-m4a", "audio/aac", "audio/x-aac", "audio/ogg", "application/ogg", "audio/webm", "video/webm"
     );
 
     public void validate(MultipartFile file) {
