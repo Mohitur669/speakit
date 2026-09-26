@@ -1,0 +1,34 @@
+{
+  "colors": {
+    "BrandPrimary": "#6366F1",
+    "BrandSecondary": "#0EA5E9",
+    "SurfaceBackground": "#FFFFFF",
+    "SurfaceCard": "#F2F2F7",
+    "SurfaceCardElevated": "#FFFFFF",
+    "TextPrimary": "#000000",
+    "TextSecondary": "#3C3C43",
+    "TextTertiary": "#8E8E93",
+    "StatusSuccess": "#34C759",
+    "StatusWarning": "#FF9500",
+    "StatusDestructive": "#FF3B30"
+  },
+  "typography": {
+    "fontFamily": "SF Pro / system sans-serif",
+    "TitleLarge": 34,
+    "TitleSection": 22,
+    "Headline": 17,
+    "Body": 17,
+    "Caption": 12
+  },
+  "spacing": {
+    "base": 4,
+    "screenMargin": 20,
+    "card": 16,
+    "section": 24
+  },
+  "component": {
+    "buttonHeight": 52,
+    "buttonRadius": 16,
+    "touchTarget": 44
+  }
+}

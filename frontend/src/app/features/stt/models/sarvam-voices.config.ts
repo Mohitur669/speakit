@@ -10,7 +10,7 @@ export const SARVAM_VOICES: SarvamVoiceConfig = {
     "simran", "kavya", "amit", "dev", "ishita", "shreya", "ratan", "varun", 
     "manan", "sumit", "roopa", "kabir", "aayan", "shubh", "advait", "anand", 
     "tanya", "tarun", "sunny", "mani", "gokul", "vijay", "shruti", "suhani", 
-    "mohit", "kavitha", "rehan", "soham", "rupali", "niharika"
+    "mohit", "kavitha", "rehan", "soham", "rupali"
   ],
   languages: [
     { code: "en-IN", name: "English" },
@@ -23,11 +23,11 @@ export const SARVAM_VOICES: SarvamVoiceConfig = {
     { code: "ml-IN", name: "Malayalam" },
     { code: "gu-IN", name: "Gujarati" },
     { code: "pa-IN", name: "Punjabi" },
-    { code: "or-IN", name: "Odia" }
+    { code: "od-IN", name: "Odia" }
   ],
   female_speakers: [
     "ritu", "priya", "neha", "pooja", "simran", "kavya", "ishita", "shreya", 
-    "roopa", "tanya", "shruti", "suhani", "kavitha", "rupali", "niharika"
+    "roopa", "tanya", "shruti", "suhani", "kavitha", "rupali"
   ]
 };
 
@@ -42,7 +42,7 @@ export const DEFAULT_SPEAKERS: Record<string, string> = {
   'ml-IN': 'rohan',
   'gu-IN': 'amit',
   'pa-IN': 'simran',
-  'or-IN': 'ishita'
+  'od-IN': 'ishita'
 };
 
 export function capitalize(str: string): string {
@@ -66,7 +66,7 @@ export function normalizeLanguageCode(langCode: string): string {
   if (clean === 'ml' || clean.startsWith('ml-') || clean.startsWith('mal')) return 'ml-IN';
   if (clean === 'gu' || clean.startsWith('gu-') || clean.startsWith('guj')) return 'gu-IN';
   if (clean === 'pa' || clean.startsWith('pa-') || clean.startsWith('pan')) return 'pa-IN';
-  if (clean === 'or' || clean.startsWith('or-') || clean.startsWith('odi')) return 'or-IN';
+  if (clean === 'or' || clean.startsWith('or-') || clean.startsWith('odi') || clean === 'od' || clean.startsWith('od-')) return 'od-IN';
   if (clean === 'en' || clean.startsWith('en-')) return 'en-IN';
   return langCode;
 }

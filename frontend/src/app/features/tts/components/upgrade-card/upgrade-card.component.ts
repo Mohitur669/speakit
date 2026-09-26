@@ -51,7 +51,7 @@ export class UpgradeCardComponent {
 
   get description(): string {
     if (this.currentPlan === 'FREE') return 'Unlock Indian AI voices and higher character limits.';
-    if (this.currentPlan === 'PRO') return 'Unlock ElevenLabs Natural AI and 20k character limit.';
+    if (this.currentPlan === 'PRO') return 'Unlock International Natural AI and 20k character limit.';
     return 'Tailored character limits and dedicated SLA for large scale.';
   }
 

@@ -32,8 +32,8 @@ import { RouterLink } from '@angular/router';
         Speech-to-Text is a Pro Plus feature
       </h2>
       <p class="text-primary-600 dark:text-primary-400 mb-8 max-w-md">
-        Upgrade to a premium plan to unlock high-accuracy transcription powered by Sarvam and
-        ElevenLabs AI.
+        Upgrade to a premium plan to unlock high-accuracy transcription powered by Indian and
+        International AI.
       </p>
 
       <button

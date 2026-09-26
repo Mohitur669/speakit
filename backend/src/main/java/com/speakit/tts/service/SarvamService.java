@@ -32,6 +32,12 @@ public class SarvamService {
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    private static final Map<String, String> SPEAKER_ALIASES = Map.of(
+            "aditi", "ritu",
+            "ananya", "priya",
+            "niharika", "rupali"
+    );
+
     private SarvamConfig config;
 
     @PostConstruct
@@ -61,6 +67,92 @@ public class SarvamService {
     }
 
     /**
+     * Resolves requested speaker names against known aliases, legacy voice names,
+     * and supported speakers in the Sarvam bulbul:v3 catalog.
+     */
+    public String resolveSpeaker(String requestedSpeaker) {
+        if (requestedSpeaker == null || requestedSpeaker.isBlank()) {
+            return "shubh";
+        }
+        String normalized = requestedSpeaker.trim().toLowerCase(Locale.ROOT);
+        if (SPEAKER_ALIASES.containsKey(normalized)) {
+            String mapped = SPEAKER_ALIASES.get(normalized);
+            log.info("Mapping alias/legacy Sarvam speaker '{}' to '{}'", normalized, mapped);
+            normalized = mapped;
+        }
+
+        if (config != null && config.getSpeakers() != null && !config.getSpeakers().isEmpty()) {
+            if (!config.getSpeakers().contains(normalized)) {
+                String fallback = isFemale(normalized) ? "ritu" : "shubh";
+                log.warn("Speaker '{}' is not recognized in Sarvam bulbul:v3 catalog. Falling back to default speaker '{}'", 
+                        normalized, fallback);
+                return fallback;
+            }
+        }
+        return normalized;
+    }
+
+    public static final Set<String> VALID_SARVAM_LANGUAGES = Set.of(
+            "as-IN", "bn-IN", "brx-IN", "doi-IN", "en-IN", "gu-IN", "hi-IN", "kn-IN", "kok-IN", "ks-IN",
+            "mai-IN", "ml-IN", "mni-IN", "mr-IN", "ne-IN", "od-IN", "pa-IN", "sa-IN", "sat-IN", "sd-IN",
+            "ta-IN", "te-IN", "ur-IN"
+    );
+
+    /**
+     * Normalizes language codes to valid Sarvam bulbul:v3 target codes.
+     */
+    public String normalizeLanguageCode(String code) {
+        if (code == null || code.isBlank()) {
+            return "hi-IN";
+        }
+        String trimmed = code.trim();
+        String lower = trimmed.toLowerCase(Locale.ROOT);
+
+        // Normalize common language codes, aliases and variations
+        String resolved = switch (lower) {
+            case "en", "en-us", "en-gb", "en-in" -> "en-IN";
+            case "hi", "hi-in" -> "hi-IN";
+            case "bn", "bn-in" -> "bn-IN";
+            case "mr", "mr-in" -> "mr-IN";
+            case "ta", "ta-in" -> "ta-IN";
+            case "te", "te-in" -> "te-IN";
+            case "kn", "kn-in" -> "kn-IN";
+            case "ml", "ml-in" -> "ml-IN";
+            case "gu", "gu-in" -> "gu-IN";
+            case "pa", "pa-in" -> "pa-IN";
+            case "or", "od", "or-in", "od-in" -> "od-IN";
+            case "as", "as-in" -> "as-IN";
+            case "brx", "brx-in" -> "brx-IN";
+            case "doi", "doi-in" -> "doi-IN";
+            case "kok", "kok-in" -> "kok-IN";
+            case "ks", "ks-in" -> "ks-IN";
+            case "mai", "mai-in" -> "mai-IN";
+            case "mni", "mni-in" -> "mni-IN";
+            case "ne", "ne-in" -> "ne-IN";
+            case "sa", "sa-in" -> "sa-IN";
+            case "sat", "sat-in" -> "sat-IN";
+            case "sd", "sd-in" -> "sd-IN";
+            case "ur", "ur-in" -> "ur-IN";
+            default -> VALID_SARVAM_LANGUAGES.stream()
+                    .filter(l -> l.equalsIgnoreCase(lower))
+                    .findFirst()
+                    .orElse(null);
+        };
+
+        if (resolved != null && VALID_SARVAM_LANGUAGES.contains(resolved)) {
+            return resolved;
+        }
+
+        // If unknown or unsupported code, fall back safely
+        if (lower.startsWith("en")) {
+            log.warn("Language code '{}' not supported by Sarvam bulbul:v3, falling back to 'en-IN'", code);
+            return "en-IN";
+        }
+        log.warn("Language code '{}' not supported by Sarvam bulbul:v3, falling back to default 'hi-IN'", code);
+        return "hi-IN";
+    }
+
+    /**
      * Synthesizes text into speech using Sarvam AI.
      * Returns an InputStream of the audio data.
      */
@@ -73,10 +165,22 @@ public class SarvamService {
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("api-subscription-key", apiKey);
 
+        String speaker = voiceId != null ? voiceId.trim() : "shubh";
+        String targetLang = languageCode != null && !languageCode.isBlank() ? languageCode : "hi-IN";
+        if (speaker.contains(":")) {
+            String[] parts = speaker.split(":");
+            speaker = parts[0];
+            if (languageCode == null || languageCode.isBlank()) {
+                targetLang = parts[1];
+            }
+        }
+        speaker = resolveSpeaker(speaker);
+        targetLang = normalizeLanguageCode(targetLang);
+
         Map<String, Object> requestBody = new HashMap<>();
         requestBody.put("inputs", Collections.singletonList(text));
-        requestBody.put("target_language_code", languageCode != null ? languageCode : "hi-IN");
-        requestBody.put("speaker", voiceId);
+        requestBody.put("target_language_code", targetLang);
+        requestBody.put("speaker", speaker);
         requestBody.put("model", "bulbul:v3");
         requestBody.put("audio_format", "mp3");
         
@@ -147,9 +251,13 @@ public class SarvamService {
                 map.put("id", speaker + ":" + lang.getCode());
                 map.put("name", capitalize(speaker) + " (" + lang.getName() + ")");
                 map.put("gender", isFemale(speaker) ? "Female" : "Male");
+                map.put("engine", "sarvam");
+                map.put("isNeural", true);
+                map.put("isStandard", false);
                 map.put("isElevenLabs", false);
                 map.put("isSarvam", true);
                 map.put("languageCode", lang.getCode());
+                map.put("languageName", lang.getName());
                 voices.add(map);
             }
         }

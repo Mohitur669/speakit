@@ -26,6 +26,9 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 
+import com.speakit.user.repository.UserRepository;
+import java.security.Principal;
+
 /**
  * Controller for Text-to-Speech operations including buffered and streaming synthesis,
  * usage tracking, and voice metadata retrieval.
@@ -40,23 +43,44 @@ public class TtsController {
     private final SarvamService sarvamService;
     private final TtsService ttsService;
     private final SubscriptionService subscriptionService;
+    private final UserRepository userRepository;
 
-    public TtsController(PollyService pollyService, ElevenLabsService elevenLabsService, SarvamService sarvamService, TtsService ttsService, SubscriptionService subscriptionService) {
+    public TtsController(PollyService pollyService, ElevenLabsService elevenLabsService, SarvamService sarvamService, TtsService ttsService, SubscriptionService subscriptionService, UserRepository userRepository) {
         this.pollyService = pollyService;
         this.elevenLabsService = elevenLabsService;
         this.sarvamService = sarvamService;
         this.ttsService = ttsService;
         this.subscriptionService = subscriptionService;
+        this.userRepository = userRepository;
+    }
+
+    private Long resolveUserId(HttpServletRequest request, Principal principal) {
+        Long userId = (Long) request.getAttribute("userId");
+        if (userId != null) {
+            return userId;
+        }
+        if (principal != null && principal.getName() != null) {
+            var userOpt = userRepository.findByUsername(principal.getName());
+            if (userOpt.isPresent()) {
+                var user = userOpt.get();
+                request.setAttribute("userId", user.getId());
+                request.setAttribute("planType", user.getPlanType());
+                request.setAttribute("subscriptionStatus", user.getSubscriptionStatus());
+                request.setAttribute("planExpiry", user.getPlanExpiry());
+                return user.getId();
+            }
+        }
+        return null;
     }
 
     @RateLimited(action = RateLimitAction.TTS)
     @PostMapping("/synthesize")
     @SuppressWarnings("TaintFlow")
-    public ResponseEntity<byte[]> synthesize(@Valid @RequestBody TtsRequest request, HttpServletRequest httpRequest) {
+    public ResponseEntity<byte[]> synthesize(@Valid @RequestBody TtsRequest request, HttpServletRequest httpRequest, Principal principal) {
+        Long userId = resolveUserId(httpRequest, principal);
         PlanType planType = (PlanType) httpRequest.getAttribute("planType");
         SubscriptionStatus status = (SubscriptionStatus) httpRequest.getAttribute("subscriptionStatus");
         LocalDateTime expiry = (LocalDateTime) httpRequest.getAttribute("planExpiry");
-        Long userId = (Long) httpRequest.getAttribute("userId");
 
         try {
             ttsService.validatePlanAccess(planType, status, expiry, request, userId);
@@ -137,6 +161,10 @@ public class TtsController {
             // noinspection TaintFlow
             return new ResponseEntity<>(cleanBytes, headers, HttpStatus.OK);
 
+        } catch (IllegalArgumentException e) {
+            log.warn("Invalid TTS parameter for user {}: {}", userId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(("Bad request: " + e.getMessage()).getBytes());
         } catch (Exception e) {
             log.error("TTS failed for user {}: {}", userId, e.getMessage());
             // Security Fix: Do not return raw e.getMessage() to prevent information disclosure
@@ -147,11 +175,11 @@ public class TtsController {
 
     @RateLimited(action = RateLimitAction.TTS)
     @PostMapping("/synthesize-stream")
-    public ResponseEntity<?> synthesizeStream(@Valid @RequestBody TtsRequest request, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> synthesizeStream(@Valid @RequestBody TtsRequest request, HttpServletRequest httpRequest, Principal principal) {
+        Long userId = resolveUserId(httpRequest, principal);
         PlanType planType = (PlanType) httpRequest.getAttribute("planType");
         SubscriptionStatus status = (SubscriptionStatus) httpRequest.getAttribute("subscriptionStatus");
         LocalDateTime expiry = (LocalDateTime) httpRequest.getAttribute("planExpiry");
-        Long userId = (Long) httpRequest.getAttribute("userId");
 
         try {
             ttsService.validatePlanAccess(planType, status, expiry, request, userId);
@@ -176,7 +204,7 @@ public class TtsController {
             String sanitizedOutputFormat = Sanitizer.sanitize(request.getOutputFormat());
 
             if (request.isElevenLabs() || request.isSarvam()) {
-                return synthesize(request, httpRequest);
+                return synthesize(request, httpRequest, principal);
             }
 
             // Security: Negotiate engine based on user plan
@@ -198,6 +226,10 @@ public class TtsController {
             return ResponseEntity.ok()
                     .contentType(getMediaType(sanitizedOutputFormat))
                     .body(new InputStreamResource(stream));
+        } catch (IllegalArgumentException e) {
+            log.warn("Invalid streaming TTS parameter for user {}: {}", userId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Bad request: " + e.getMessage());
         } catch (Exception e) {
             log.error("Streaming TTS failed for user {}: {}", userId, e.getMessage());
             // Security Fix: Prevent info disclosure
@@ -207,8 +239,8 @@ public class TtsController {
     }
 
     @GetMapping("/usage")
-    public ResponseEntity<Map<String, Object>> getUsage(HttpServletRequest httpRequest) {
-        Long userId = (Long) httpRequest.getAttribute("userId");
+    public ResponseEntity<Map<String, Object>> getUsage(HttpServletRequest httpRequest, Principal principal) {
+        Long userId = resolveUserId(httpRequest, principal);
         PlanType planType = (PlanType) httpRequest.getAttribute("planType");
         SubscriptionStatus status = (SubscriptionStatus) httpRequest.getAttribute("subscriptionStatus");
         LocalDateTime expiry = (LocalDateTime) httpRequest.getAttribute("planExpiry");
@@ -222,6 +254,12 @@ public class TtsController {
             usage.put("dailyCount", count);
             
             usage.put("dailyLimit", subscriptionService.getDailySynthesisLimit(planType, status, expiry));
+
+            LocalDateTime monthStart = LocalDateTime.now().withDayOfMonth(1).truncatedTo(ChronoUnit.DAYS);
+            long charsUsed = ttsService.sumCharactersUsed(userId, monthStart);
+            usage.put("charactersUsed", charsUsed);
+            usage.put("characterLimit", subscriptionService.getMonthlyCharacterLimit(planType));
+            usage.put("maxCharsPerRequest", subscriptionService.getMaxCharacters(planType, status, expiry));
         }
 
         return ResponseEntity.ok(usage);
@@ -229,7 +267,8 @@ public class TtsController {
 
     @RateLimited
     @GetMapping("/voices")
-    public ResponseEntity<List<Map<String, Object>>> getVoices(HttpServletRequest httpRequest) {
+    public ResponseEntity<List<Map<String, Object>>> getVoices(HttpServletRequest httpRequest, Principal principal) {
+        resolveUserId(httpRequest, principal);
         PlanType planType = (PlanType) httpRequest.getAttribute("planType");
         SubscriptionStatus status = (SubscriptionStatus) httpRequest.getAttribute("subscriptionStatus");
         LocalDateTime expiry = (LocalDateTime) httpRequest.getAttribute("planExpiry");

@@ -22,6 +22,9 @@ public interface TtsHistoryRepository extends JpaRepository<TtsHistory, Long> {
     @Query("SELECT COUNT(t) FROM TtsHistory t WHERE t.user.id = :userId AND t.createdAt >= :since")
     long countRecentByUserId(@Param("userId") Long userId, @Param("since") LocalDateTime since);
 
+    @Query("SELECT COALESCE(SUM(t.characterCount), 0) FROM TtsHistory t WHERE t.user.id = :userId AND t.createdAt >= :since")
+    long sumCharactersUsedSince(@Param("userId") Long userId, @Param("since") LocalDateTime since);
+
     @Modifying
     @Transactional
     @Query("DELETE FROM TtsHistory t WHERE t.user.id = :userId")

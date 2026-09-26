@@ -111,10 +111,34 @@ public class ElevenLabsService {
                             Map<String, Object> map = new HashMap<>();
                             map.put("id", v.get("voice_id"));
                             map.put("name", v.get("name"));
-                            map.put("gender", "neutral");
+                            
+                            String gender = "neutral";
+                            String langCode = "en-US";
+                            String langName = "International English";
+                            
+                            Object labelsObj = v.get("labels");
+                            if (labelsObj instanceof Map<?, ?> labelsMap) {
+                                if (labelsMap.get("gender") != null) {
+                                    String g = String.valueOf(labelsMap.get("gender")).trim().toLowerCase();
+                                    if (g.contains("female") || g.contains("woman")) {
+                                        gender = "Female";
+                                    } else if (g.contains("male") || g.contains("man")) {
+                                        gender = "Male";
+                                    }
+                                }
+                                if (labelsMap.get("accent") != null) {
+                                    langName = capitalize(String.valueOf(labelsMap.get("accent"))) + " English";
+                                }
+                            }
+                            
+                            map.put("gender", gender);
+                            map.put("languageCode", langCode);
+                            map.put("languageName", langName);
+                            map.put("engine", "elevenlabs");
                             map.put("isNeural", true);
                             map.put("isStandard", false);
                             map.put("isElevenLabs", true);
+                            map.put("isSarvam", false);
                             result.add(map);
                         }
                     }
@@ -129,5 +153,10 @@ public class ElevenLabsService {
             return cachedVoices != null ? cachedVoices : List.of();
         }
         return List.of();
+    }
+
+    private String capitalize(String str) {
+        if (str == null || str.isEmpty()) return "";
+        return str.substring(0, 1).toUpperCase() + str.substring(1);
     }
 }
