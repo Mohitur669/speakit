@@ -25,7 +25,7 @@ struct SpeakITButton: View {
     var body: some View {
         Button(action: {
             guard isEnabled && !isLoading else { return }
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            HapticManager.shared.medium()
             action()
         }) {
             HStack(spacing: 8) {

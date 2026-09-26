@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS users (
     username VARCHAR(50) NOT NULL UNIQUE,
     full_name VARCHAR(100),
     email VARCHAR(100) NOT NULL UNIQUE,
-    phone_number VARCHAR(15) NOT NULL UNIQUE, -- NOT NULL enforced
+    phone_number VARCHAR(15) UNIQUE, -- Optional
     password VARCHAR(255) NOT NULL,
 
     -- Status/Flags
@@ -293,10 +293,10 @@ BEGIN
 
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='phone_number') THEN
         ALTER TABLE users ADD COLUMN phone_number VARCHAR(15);
-        -- Populate with username as temporary unique placeholder to avoid nulls
-        UPDATE users SET phone_number = username WHERE phone_number IS NULL;
-        ALTER TABLE users ALTER COLUMN phone_number SET NOT NULL;
         ALTER TABLE users ADD CONSTRAINT users_phone_number_unique UNIQUE (phone_number);
+    ELSE
+        -- Ensure phone_number is optional (nullable)
+        ALTER TABLE users ALTER COLUMN phone_number DROP NOT NULL;
     END IF;
 
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='role') THEN

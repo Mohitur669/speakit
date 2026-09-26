@@ -45,7 +45,7 @@ struct STTStudioView: View {
                     ForEach(STTMode.allCases, id: \.self) { mode in
                         let isSelected = selectedMode == mode
                         Button(action: {
-                            UISelectionFeedbackGenerator().selectionChanged()
+                            HapticManager.shared.selection()
                             selectedMode = mode
                         }) {
                             Text(mode.rawValue)
@@ -221,7 +221,7 @@ struct STTStudioView: View {
     
     // MARK: - Recording Actions
     private func toggleRecording() {
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        HapticManager.shared.heavy()
         if recordingManager.isRecording {
             stopAndTranscribe()
         } else {
@@ -284,6 +284,7 @@ struct STTStudioView: View {
                         timestamp: "Today, \(Date().formatted(date: .omitted, time: .shortened))",
                         originalAudioURL: fileURL
                     )
+                    HapticManager.shared.success()
                     self.showResultSheet = true
                 }
             } catch {
@@ -292,13 +293,16 @@ struct STTStudioView: View {
                     if case APIError.forbidden = error {
                         self.errorMessage = "Live microphone transcription requires Pro Plus."
                         self.appState.showPaywallSheet = true
+                        HapticManager.shared.warning()
                     } else if case APIError.networkError = error {
                         // Offline preview fallback
                         self.transcriptionResult = TranscriptionResult.sample
                         self.transcriptionResult?.originalAudioURL = fileURL
+                        HapticManager.shared.success()
                         self.showResultSheet = true
                     } else {
                         self.errorMessage = error.localizedDescription
+                        HapticManager.shared.error()
                     }
                 }
             }
@@ -361,12 +365,14 @@ struct STTStudioView: View {
                         timestamp: "Today, \(Date().formatted(date: .omitted, time: .shortened))",
                         originalAudioURL: fileURL
                     )
+                    HapticManager.shared.success()
                     self.showResultSheet = true
                 }
             } catch {
                 await MainActor.run {
                     self.isProcessing = false
                     self.transcriptionResult = TranscriptionResult.sample
+                    HapticManager.shared.success()
                     self.showResultSheet = true
                 }
             }

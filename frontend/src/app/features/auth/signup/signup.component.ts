@@ -24,8 +24,8 @@ import { CountrySelectorComponent } from '../../../shared/components/country-sel
     FormsModule,
     RouterLink,
     NavbarComponent,
-    // OnlyNumbersDirective,
-    // CountrySelectorComponent,
+    OnlyNumbersDirective,
+    CountrySelectorComponent,
   ],
 
   template: `
@@ -88,12 +88,16 @@ import { CountrySelectorComponent } from '../../../shared/components/country-sel
                   }
                 </div>
 
-                <!-- Hiding phone number from UI
                 <div class="relative">
-                  <label
-                    class="block text-sm font-medium text-primary-700 dark:text-primary-300 mb-2"
-                    >Phone Number</label
-                  >
+                  <div class="flex items-center justify-between mb-2">
+                    <label
+                      class="block text-sm font-medium text-primary-700 dark:text-primary-300"
+                      >Phone Number</label
+                    >
+                    <span class="text-xs text-primary-500 dark:text-primary-400 font-normal">
+                      Optional
+                    </span>
+                  </div>
                   <div class="flex items-stretch gap-2">
                     <app-country-selector
                       [(selectedCountry)]="selectedCountry"
@@ -102,39 +106,23 @@ import { CountrySelectorComponent } from '../../../shared/components/country-sel
                     >
                     </app-country-selector>
 
-                    <!- - 
-                  <input
-                    [(ngModel)]="phoneNumber"
-                    (input)="onPhoneInput()"
-                    appOnlyNumbers
-                    name="phoneNumber"
-                    type="tel"
-                    required
-                    inputmode="numeric"
-                    pattern="[0-9]*"
-                    placeholder="9876543210"
-                    class="flex-1 min-w-0 px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white text-sm placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all"
-                    [ngClass]="{ 'border-red-500': phoneTaken() }"
-                  />
-                  - ->
-                  <input
-                    [(ngModel)]="phoneNumber"
-                    (input)="onPhoneInput()"
-                    appOnlyNumbers
-                    name="phoneNumber"
-                    type="tel"
-                    inputmode="numeric"
-                    pattern="[0-9]*"
-                    placeholder="9876543210"
-                    class="flex-1 min-w-0 px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white text-sm placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all"
-                    [ngClass]="{ 'border-red-500': phoneTaken() }"
-                  />
+                    <input
+                      [(ngModel)]="phoneNumber"
+                      (input)="onPhoneInput()"
+                      appOnlyNumbers
+                      name="phoneNumber"
+                      type="tel"
+                      inputmode="numeric"
+                      pattern="[0-9]*"
+                      placeholder="9876543210"
+                      class="flex-1 min-w-0 px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white text-sm placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all"
+                      [ngClass]="{ 'border-red-500': phoneTaken() }"
+                    />
                   </div>
                   @if (phoneTaken()) {
                     <p class="text-xs text-red-500 mt-1">Phone number is already taken</p>
                   }
                 </div>
-                -->
 
                 @if (error()) {
                   <div
@@ -195,7 +183,7 @@ import { CountrySelectorComponent } from '../../../shared/components/country-sel
                   !email ||
                   usernameTaken() ||
                   emailTaken() ||
-                  phoneTaken() ||
+                  (phoneNumber && phoneTaken()) ||
                   !acceptedTerms
                 "
                 class="w-full mt-6 py-3 px-6 rounded-xl font-semibold text-white bg-brand-blue hover:bg-brand-blue/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl active:scale-[0.98] flex items-center justify-center gap-2"
@@ -306,7 +294,7 @@ export class SignupComponent implements OnInit, OnDestroy {
   }
 
   onSubmit(): void {
-    if (this.usernameTaken() || this.emailTaken() || this.phoneTaken()) return;
+    if (this.usernameTaken() || this.emailTaken() || (this.phoneNumber && this.phoneTaken())) return;
     // if (!this.username || !this.email || !this.phoneNumber) return;
     if (!this.username || !this.email) return;
 
@@ -320,7 +308,7 @@ export class SignupComponent implements OnInit, OnDestroy {
       cleanLocalNumber = cleanLocalNumber.substring(dialDigits.length);
     }
     // const fullPhoneNumber = countryCode + cleanLocalNumber;
-    const fullPhoneNumber = this.phoneNumber ? countryCode + cleanLocalNumber : '';
+    const fullPhoneNumber = this.phoneNumber ? countryCode + cleanLocalNumber : null;
 
     this.router.navigate(['/signup/password'], {
       state: {

@@ -148,7 +148,7 @@ import { ToastService } from '../../../core/services/toast.service';
                     !email ||
                     usernameTaken() ||
                     emailTaken() ||
-                    phoneTaken() ||
+                    (phoneNumber && phoneTaken()) ||
                     !hasChanges()
                   "
                   class="px-8 py-3 rounded-xl bg-brand-blue hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold shadow-lg shadow-brand-blue/20 transition-all active:scale-95"
@@ -206,7 +206,11 @@ export class ProfileSettingsComponent implements OnInit, OnDestroy {
   hasChanges(): boolean {
     const originalUsername = this.authService.currentUser() || '';
     const originalEmail = this.authService.currentUserEmail() || '';
-    return this.username !== originalUsername || this.email !== originalEmail;
+    const originalPhone = this.authService.currentUserPhone() || '';
+    const currentPhone = this.phoneNumber && this.phoneNumber.trim().length > 0
+      ? (this.selectedCountry ? this.selectedCountry.code + this.phoneNumber.trim() : this.phoneNumber.trim())
+      : '';
+    return this.username !== originalUsername || this.email !== originalEmail || currentPhone !== originalPhone;
   }
 
   ngOnInit(): void {
@@ -256,10 +260,14 @@ export class ProfileSettingsComponent implements OnInit, OnDestroy {
     this.loading.set(true);
     this.error.set('');
 
+    const fullPhone = this.phoneNumber && this.phoneNumber.trim().length > 0
+      ? (this.selectedCountry ? this.selectedCountry.code + this.phoneNumber.trim() : this.phoneNumber.trim())
+      : null;
+
     const request = {
       username: this.username,
       email: this.email,
-      phoneNumber: this.phoneNumber ? '' : '', // Dummy since phone is disabled
+      phoneNumber: fullPhone,
     };
 
     this.authService.requestProfileUpdate().subscribe({

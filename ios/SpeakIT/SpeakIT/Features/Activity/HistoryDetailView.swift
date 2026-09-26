@@ -112,14 +112,6 @@ struct HistoryDetailView: View {
                 .foregroundColor(Color.speakitTextSecondary)
                 
                 Spacer()
-                
-                HStack(spacing: 4) {
-                    Image(systemName: "tag.fill")
-                        .font(.system(size: 10))
-                    Text("ID: #\(item.id)")
-                        .font(.system(size: 12, weight: .medium))
-                }
-                .foregroundColor(Color.speakitTextTertiary)
             }
         }
         .padding(16)
@@ -257,7 +249,7 @@ struct HistoryDetailView: View {
     
     // MARK: - Actions
     private func togglePlayback() {
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        HapticManager.shared.light()
         if AudioPlayerManager.shared.isPlaying {
             AudioPlayerManager.shared.pause()
         } else {
@@ -274,7 +266,7 @@ struct HistoryDetailView: View {
     
     private func copyTextToClipboard() {
         UIPasteboard.general.string = item.displayText
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        HapticManager.shared.medium()
         withAnimation {
             copiedToClipboard = true
             bannerMessage = "Text copied to clipboard."
@@ -295,7 +287,7 @@ struct HistoryDetailView: View {
             
             await MainActor.run {
                 isDeleting = false
-                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                HapticManager.shared.success()
                 onDelete?(item)
                 dismiss()
             }

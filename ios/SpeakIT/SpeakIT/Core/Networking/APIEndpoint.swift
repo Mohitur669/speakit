@@ -87,6 +87,7 @@ enum APIEndpoint {
     case updateProfile
     case updateFullName
     case updateUsername
+    case updatePhoneNumber
     case requestEmailChangeOtp
     case updateEmail
     case requestPasswordChangeOtp
@@ -138,6 +139,8 @@ enum APIEndpoint {
             return "/api/v1/users/full-name"
         case .updateUsername:
             return "/api/v1/users/username"
+        case .updatePhoneNumber:
+            return "/api/v1/users/phone-number"
         case .requestEmailChangeOtp:
             return "/api/v1/users/email/request-otp"
         case .updateEmail:

@@ -17,7 +17,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
     Optional<User> findByPhoneNumber(String phoneNumber);
     
-    @Query("SELECT u FROM User u WHERE REPLACE(REPLACE(u.phoneNumber, '+', ''), ' ', '') LIKE %:suffix")
+    @Query("SELECT u FROM User u WHERE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(u.phoneNumber, '+', ''), ' ', ''), '-', ''), '(', ''), ')', '') LIKE %:suffix")
     Optional<User> findByPhoneNumberSuffix(@Param("suffix") String suffix);
     
     Optional<User> findByUsernameOrEmail(String username, String email);

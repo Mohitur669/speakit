@@ -14,6 +14,7 @@ import com.speakit.user.dto.UserProfileUpdateRequest;
 import com.speakit.user.dto.UpdateFullNameRequest;
 import com.speakit.user.dto.UpdateUsernameRequest;
 import com.speakit.user.dto.UpdateEmailRequest;
+import com.speakit.user.dto.UpdatePhoneRequest;
 
 import com.speakit.config.WebSocketConfig;
 import com.speakit.tts.dto.*;
@@ -71,7 +72,9 @@ public class AuthService {
     public AuthResponse register(AuthRequest request) {
         String sanitizedUsername = Sanitizer.sanitize(request.getUsername()).toLowerCase();
         String sanitizedEmail = Sanitizer.sanitize(request.getEmail()).toLowerCase();
-        String sanitizedPhone = Sanitizer.sanitize(request.getPhoneNumber());
+        String sanitizedPhone = (request.getPhoneNumber() != null && !request.getPhoneNumber().isBlank())
+                ? Sanitizer.sanitize(request.getPhoneNumber()).trim()
+                : null;
         String sanitizedFullName = (request.getFullName() != null && !request.getFullName().isBlank())
                 ? Sanitizer.sanitize(request.getFullName()).trim()
                 : null;
@@ -82,7 +85,7 @@ public class AuthService {
         if (userRepository.findByEmail(sanitizedEmail).isPresent()) {
             throw new RuntimeException("Email already taken");
         }
-        if (userRepository.findByPhoneNumber(sanitizedPhone).isPresent()) {
+        if (sanitizedPhone != null && userRepository.findByPhoneNumber(sanitizedPhone).isPresent()) {
             throw new RuntimeException("Phone number already taken");
         }
 
@@ -134,14 +137,18 @@ public class AuthService {
     }
 
     public AuthResponse login(AuthRequest request) {
-        String sanitizedIdentifier = Sanitizer.sanitize(request.getUsername()).toLowerCase();
+        String rawIdentifier = Sanitizer.sanitize(request.getUsername()).trim();
+        String sanitizedIdentifier = rawIdentifier.toLowerCase();
+        String digitsOnly = rawIdentifier.replaceAll("[^0-9]", "");
 
         var user = userRepository.findByUsername(sanitizedIdentifier)
                 .or(() -> userRepository.findByEmail(sanitizedIdentifier))
-                .or(() -> userRepository.findByPhoneNumber(sanitizedIdentifier))
+                .or(() -> userRepository.findByPhoneNumber(rawIdentifier))
                 .or(() -> {
-                    if (sanitizedIdentifier.matches("\\d{7,15}")) {
-                        return userRepository.findByPhoneNumberSuffix(sanitizedIdentifier);
+                    if (digitsOnly.length() >= 7 && digitsOnly.length() <= 15) {
+                        return userRepository.findByPhoneNumber("+" + digitsOnly)
+                                .or(() -> userRepository.findByPhoneNumber(digitsOnly))
+                                .or(() -> userRepository.findByPhoneNumberSuffix(digitsOnly));
                     }
                     return Optional.empty();
                 })
@@ -187,7 +194,10 @@ public class AuthService {
     }
 
     public boolean isPhoneTaken(String phone) {
-        return userRepository.findByPhoneNumber(Sanitizer.sanitize(phone)).isPresent();
+        if (phone == null || phone.isBlank()) {
+            return false;
+        }
+        return userRepository.findByPhoneNumber(Sanitizer.sanitize(phone).trim()).isPresent();
     }
 
     public AuthResponse getUserProfile(String username) {
@@ -286,8 +296,8 @@ public class AuthService {
         }
 
         if (request.getPhoneNumber() != null && !request.getPhoneNumber().equals(user.getPhoneNumber())) {
-            String sanitizedPhone = Sanitizer.sanitize(request.getPhoneNumber());
-            if (userRepository.findByPhoneNumber(sanitizedPhone).isPresent()) {
+            String sanitizedPhone = request.getPhoneNumber().isBlank() ? null : Sanitizer.sanitize(request.getPhoneNumber()).trim();
+            if (sanitizedPhone != null && userRepository.findByPhoneNumber(sanitizedPhone).isPresent()) {
                 throw new RuntimeException("Phone number already taken");
             }
             user.setPhoneNumber(sanitizedPhone);
@@ -346,6 +356,27 @@ public class AuthService {
             log.info("Username updated from {} to {}", currentUsername, newUsername);
         }
 
+        return authenticate(user, user.getSessionVersion());
+    }
+
+    @Transactional
+    public AuthResponse updatePhoneNumber(String username, UpdatePhoneRequest request) {
+        var user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        String rawPhone = request != null ? request.getPhoneNumber() : null;
+        String sanitizedPhone = (rawPhone == null || rawPhone.isBlank()) ? null : Sanitizer.sanitize(rawPhone).trim();
+
+        if (sanitizedPhone != null) {
+            Optional<User> existing = userRepository.findByPhoneNumber(sanitizedPhone);
+            if (existing.isPresent() && !existing.get().getId().equals(user.getId())) {
+                throw new RuntimeException("Phone number already taken");
+            }
+        }
+
+        user.setPhoneNumber(sanitizedPhone);
+        user = userRepository.save(user);
+        log.info("Phone number updated for user: {}", user.getUsername());
         return authenticate(user, user.getSessionVersion());
     }
 

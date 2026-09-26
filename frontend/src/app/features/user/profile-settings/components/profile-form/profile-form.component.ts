@@ -18,8 +18,8 @@ import { CountrySelectorComponent } from '../../../../../shared/components/count
   imports: [
     CommonModule, 
     FormsModule, 
-    // OnlyNumbersDirective, 
-    // CountrySelectorComponent
+    OnlyNumbersDirective, 
+    CountrySelectorComponent
   ],
   template: `
     <section class="space-y-6">
@@ -74,11 +74,15 @@ import { CountrySelectorComponent } from '../../../../../shared/components/count
           }
         </div>
 
-        <!-- Hiding phone number from UI
         <div class="md:col-span-2">
-          <label class="block text-sm font-semibold text-primary-700 dark:text-primary-300 mb-2"
-            >Phone Number</label
-          >
+          <div class="flex items-center justify-between mb-2">
+            <label class="block text-sm font-semibold text-primary-700 dark:text-primary-300">
+              Phone Number
+            </label>
+            <span class="text-xs text-primary-500 dark:text-primary-400 font-normal">
+              Optional
+            </span>
+          </div>
           <div class="flex items-stretch gap-2">
             <app-country-selector
               [selectedCountry]="selectedCountry"
@@ -88,21 +92,6 @@ import { CountrySelectorComponent } from '../../../../../shared/components/count
             >
             </app-country-selector>
 
-            <!- -
-            <input
-              [(ngModel)]="phoneNumber"
-              (input)="onPhoneInput()"
-              appOnlyNumbers
-              name="phoneNumber"
-              type="tel"
-              required
-              inputmode="numeric"
-              pattern="[0-9]*"
-              placeholder="9876543210"
-              class="flex-1 min-w-0 px-4 py-3 rounded-xl bg-primary-50 dark:bg-primary-800 border border-primary-200 dark:border-primary-700 text-primary-900 dark:text-white text-sm placeholder-primary-400 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 focus:border-brand-blue transition-all"
-              [ngClass]="{ 'border-red-500': phoneTaken }"
-            />
-            - ->
             <input
               [(ngModel)]="phoneNumber"
               (input)="onPhoneInput()"
@@ -120,7 +109,6 @@ import { CountrySelectorComponent } from '../../../../../shared/components/count
             <p class="text-xs text-red-500 mt-1">Phone number is already taken</p>
           }
         </div>
-        -->
       </div>
     </section>
   `,

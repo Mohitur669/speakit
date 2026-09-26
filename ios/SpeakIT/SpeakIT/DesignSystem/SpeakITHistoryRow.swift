@@ -20,7 +20,7 @@ struct SpeakITHistoryRow: View {
             if isSelectionMode {
                 // Multiselect Checkbox
                 Button(action: {
-                    UISelectionFeedbackGenerator().selectionChanged()
+                    HapticManager.shared.selection()
                     onSelect?()
                 }) {
                     Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
@@ -33,7 +33,7 @@ struct SpeakITHistoryRow: View {
             } else {
                 // Play Button
                 Button(action: {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    HapticManager.shared.light()
                     onPlay()
                 }) {
                     ZStack {
@@ -65,7 +65,7 @@ struct SpeakITHistoryRow: View {
             .contentShape(Rectangle())
             .onTapGesture {
                 if isSelectionMode {
-                    UISelectionFeedbackGenerator().selectionChanged()
+                    HapticManager.shared.selection()
                     onSelect?()
                 } else {
                     onTap?()
@@ -89,7 +89,7 @@ struct SpeakITHistoryRow: View {
             .contentShape(Rectangle())
             .onTapGesture {
                 if isSelectionMode {
-                    UISelectionFeedbackGenerator().selectionChanged()
+                    HapticManager.shared.selection()
                     onSelect?()
                 } else {
                     onTap?()

@@ -20,7 +20,7 @@ struct SpeakITVoiceRow: View {
         HStack(spacing: 12) {
             // Preview Button
             Button(action: {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                HapticManager.shared.light()
                 onPreview()
             }) {
                 ZStack {
@@ -73,7 +73,7 @@ struct SpeakITVoiceRow: View {
             
             // Favorite Button
             Button(action: {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                HapticManager.shared.light()
                 isFavorite.toggle()
             }) {
                 Image(systemName: isFavorite ? "heart.fill" : "heart")
@@ -94,7 +94,7 @@ struct SpeakITVoiceRow: View {
         )
         .contentShape(Rectangle())
         .onTapGesture {
-            UISelectionFeedbackGenerator().selectionChanged()
+            HapticManager.shared.selection()
             onSelect()
         }
     }

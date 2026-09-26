@@ -42,7 +42,7 @@ public class User extends BaseEntity {
     @Column(unique = true, nullable = false, length = 100)
     private String email;
 
-    @Column(name = "phone_number", unique = true, nullable = false, length = 15, columnDefinition = "varchar(15) default '0000000000'")
+    @Column(name = "phone_number", unique = true, length = 15)
     private String phoneNumber;
 
     @Column(nullable = false)

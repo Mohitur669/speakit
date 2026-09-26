@@ -9,6 +9,7 @@ import com.speakit.user.dto.RequestProfileUpdateRequest;
 import com.speakit.user.dto.UpdateEmailRequest;
 import com.speakit.user.dto.UpdateFullNameRequest;
 import com.speakit.user.dto.UpdateUsernameRequest;
+import com.speakit.user.dto.UpdatePhoneRequest;
 import com.speakit.user.dto.UserProfileUpdateRequest;
 import com.speakit.shared.aspect.RateLimitAction;
 import com.speakit.shared.aspect.RateLimited;
@@ -61,6 +62,17 @@ public class UserController {
         String username = principal.getName();
         log.info("Updating username for user: {}", username);
         AuthResponse response = authService.updateUsername(username, request);
+        return ResponseEntity.ok(response);
+    }
+
+    // MARK: - Separated Phone Number Update
+    @PutMapping({"/phone-number", "/phone"})
+    public ResponseEntity<AuthResponse> updatePhoneNumber(
+            @Valid @RequestBody UpdatePhoneRequest request,
+            Principal principal) {
+        String username = principal.getName();
+        log.info("Updating phone number for user: {}", username);
+        AuthResponse response = authService.updatePhoneNumber(username, request);
         return ResponseEntity.ok(response);
     }
 

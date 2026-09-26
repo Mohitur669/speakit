@@ -31,6 +31,8 @@ struct ContactSupportSheet: View {
     @State private var selectedTopicKey: String = "support"
     @State private var messageText: String = ""
     @State private var isSubmitting: Bool = false
+    @State private var hasPrefilled: Bool = false
+    @AppStorage("hapticsEnabled") private var hapticsEnabled: Bool = true
     
     @State private var successBanner: String? = nil
     @State private var errorBanner: String? = nil
@@ -94,11 +96,11 @@ struct ContactSupportSheet: View {
                             detail: "support@mohitur.com",
                             actionTitle: "Send Email"
                         ) {
-                            if let url = URL(string: "mailto:support@mohitur.com?subject=SpeakIT%20iOS%20Support") {
-                                openURL(url)
-                            }
+                            openEmailApp(to: "support@mohitur.com", subject: "SpeakIT iOS Support")
                         }
                         
+                        /*
+                        // Hidden: Developer Community feature is not ready yet
                         contactChannelCard(
                             icon: "bubble.left.and.bubble.right.fill",
                             title: "Developer Community",
@@ -109,6 +111,7 @@ struct ContactSupportSheet: View {
                                 openURL(url)
                             }
                         }
+                        */
                         
                         contactChannelCard(
                             icon: "shield.checkerboard",
@@ -116,9 +119,7 @@ struct ContactSupportSheet: View {
                             detail: "grievance@mohitur.com",
                             actionTitle: "Contact"
                         ) {
-                            if let url = URL(string: "mailto:grievance@mohitur.com?subject=SpeakIT%20Grievance") {
-                                openURL(url)
-                            }
+                            openEmailApp(to: "grievance@mohitur.com", subject: "SpeakIT Grievance")
                         }
                     }
                     
@@ -139,13 +140,14 @@ struct ContactSupportSheet: View {
                                 TextField("First name", text: $firstName)
                                     .padding(.horizontal, 14)
                                     .frame(height: 46)
-                                    .background(Color(hex: "F8F9FB"))
+                                    .background(Color.speakitCard)
                                     .cornerRadius(12)
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 12)
-                                            .stroke(Color(hex: "E5E7EB"), lineWidth: 1)
+                                            .stroke(Color.speakitBorder, lineWidth: 1)
                                     )
                                     .font(.system(size: 14))
+                                    .foregroundColor(Color.speakitTextPrimary)
                             }
                             
                             VStack(alignment: .leading, spacing: 6) {
@@ -156,35 +158,50 @@ struct ContactSupportSheet: View {
                                 TextField("Last name", text: $lastName)
                                     .padding(.horizontal, 14)
                                     .frame(height: 46)
-                                    .background(Color(hex: "F8F9FB"))
+                                    .background(Color.speakitCard)
                                     .cornerRadius(12)
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 12)
-                                            .stroke(Color(hex: "E5E7EB"), lineWidth: 1)
+                                            .stroke(Color.speakitBorder, lineWidth: 1)
                                     )
                                     .font(.system(size: 14))
+                                    .foregroundColor(Color.speakitTextPrimary)
                             }
                         }
                         
                         // Email Field
                         VStack(alignment: .leading, spacing: 6) {
-                            Text("Email Address")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundColor(Color.speakitTextPrimary)
+                            HStack {
+                                Text("Email Address")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundColor(Color.speakitTextPrimary)
+                                
+                                Spacer()
+                                
+                                Text("Editable")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundColor(Color.speakitPrimary)
+                            }
                             
                             TextField("your.email@example.com", text: $email)
                                 .textInputAutocapitalization(.never)
                                 .keyboardType(.emailAddress)
+                                .textContentType(.emailAddress)
                                 .autocorrectionDisabled(true)
                                 .padding(.horizontal, 14)
                                 .frame(height: 46)
-                                .background(Color(hex: "F8F9FB"))
+                                .background(Color.speakitCard)
                                 .cornerRadius(12)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 12)
-                                        .stroke(Color(hex: "E5E7EB"), lineWidth: 1)
+                                        .stroke(Color.speakitBorder, lineWidth: 1)
                                 )
                                 .font(.system(size: 14))
+                                .foregroundColor(Color.speakitTextPrimary)
+                            
+                            Text("Pre-filled from your profile. You can edit this if you lost access to your email or need replies sent elsewhere.")
+                                .font(.system(size: 11))
+                                .foregroundColor(Color.speakitTextSecondary)
                         }
                         
                         // Topic Selector
@@ -196,6 +213,7 @@ struct ContactSupportSheet: View {
                             Menu {
                                 ForEach(topicOptions, id: \.key) { option in
                                     Button(action: {
+                                        HapticManager.shared.selection()
                                         selectedTopicKey = option.key
                                     }) {
                                         HStack {
@@ -218,11 +236,11 @@ struct ContactSupportSheet: View {
                                 }
                                 .padding(.horizontal, 14)
                                 .frame(height: 46)
-                                .background(Color(hex: "F8F9FB"))
+                                .background(Color.speakitCard)
                                 .cornerRadius(12)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 12)
-                                        .stroke(Color(hex: "E5E7EB"), lineWidth: 1)
+                                        .stroke(Color.speakitBorder, lineWidth: 1)
                                 )
                             }
                         }
@@ -259,11 +277,11 @@ struct ContactSupportSheet: View {
                                     .padding(.vertical, 8)
                             }
                             .frame(minHeight: 125)
-                            .background(Color(hex: "F8F9FB"))
+                            .background(Color.speakitCard)
                             .cornerRadius(12)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 12)
-                                    .stroke(Color(hex: "E5E7EB"), lineWidth: 1)
+                                    .stroke(Color.speakitBorder, lineWidth: 1)
                             )
                         }
                         
@@ -295,6 +313,7 @@ struct ContactSupportSheet: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
+                        HapticManager.shared.selection()
                         dismiss()
                     }
                     .font(.system(size: 15, weight: .semibold))
@@ -308,6 +327,8 @@ struct ContactSupportSheet: View {
     }
     
     private func prefillUserInfo() {
+        guard !hasPrefilled else { return }
+        hasPrefilled = true
         if let user = appState.currentUser {
             if email.isEmpty {
                 email = user.email
@@ -326,30 +347,51 @@ struct ContactSupportSheet: View {
         }
     }
     
+    private func openEmailApp(to: String, subject: String) {
+        HapticManager.shared.medium()
+        
+        let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        if let url = URL(string: "mailto:\(to)?subject=\(encodedSubject)") {
+            if UIApplication.shared.canOpenURL(url) {
+                UIApplication.shared.open(url, options: [:], completionHandler: nil)
+            } else {
+                openURL(url) { success in
+                    if !success {
+                        UIPasteboard.general.string = to
+                        showTemporarySuccess("\(to) copied to clipboard")
+                    }
+                }
+            }
+        }
+    }
+    
     private func contactChannelCard(icon: String, title: String, detail: String, actionTitle: String, action: @escaping () -> Void) -> some View {
-        HStack(spacing: 14) {
-            ZStack {
-                Circle()
-                    .fill(Color.speakitBadgeBackground)
-                    .frame(width: 40, height: 40)
+        Button(action: {
+            HapticManager.shared.medium()
+            action()
+        }) {
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill(Color.speakitBadgeBackground)
+                        .frame(width: 40, height: 40)
+                    
+                    Image(systemName: icon)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(Color.speakitPrimary)
+                }
                 
-                Image(systemName: icon)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(Color.speakitPrimary)
-            }
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(Color.speakitTextPrimary)
-                Text(detail)
-                    .font(.system(size: 12, weight: .regular))
-                    .foregroundColor(Color.speakitTextSecondary)
-            }
-            
-            Spacer()
-            
-            Button(action: action) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(Color.speakitTextPrimary)
+                    Text(detail)
+                        .font(.system(size: 12, weight: .regular))
+                        .foregroundColor(Color.speakitTextSecondary)
+                }
+                
+                Spacer()
+                
                 Text(actionTitle)
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(Color.speakitPrimary)
@@ -358,18 +400,21 @@ struct ContactSupportSheet: View {
                     .background(Color.speakitBadgeBackground)
                     .clipShape(Capsule())
             }
+            .padding(14)
+            .background(Color.speakitBackground)
+            .cornerRadius(16)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Color.speakitBorder, lineWidth: 1)
+            )
         }
-        .padding(14)
-        .background(Color.speakitBackground)
-        .cornerRadius(16)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color(hex: "E6E6EB"), lineWidth: 1)
-        )
+        .buttonStyle(.plain)
     }
     
     private func submitInquiry() {
         guard isFormValid else { return }
+        
+        HapticManager.shared.medium()
         
         isSubmitting = true
         clearBanners()
@@ -399,14 +444,14 @@ struct ContactSupportSheet: View {
                     self.isSubmitting = false
                     self.messageText = ""
                     self.showTemporarySuccess(response.message.isEmpty ? "Your message has been received! Our support team will get back to you shortly." : response.message)
-                    UINotificationFeedbackGenerator().notificationOccurred(.success)
+                    HapticManager.shared.success()
                 }
             } catch {
                 await MainActor.run {
                     self.isSubmitting = false
                     let msg = error.localizedDescription
                     self.showTemporaryError(msg.isEmpty ? "Failed to send message. Please try again." : msg)
-                    UINotificationFeedbackGenerator().notificationOccurred(.error)
+                    HapticManager.shared.error()
                 }
             }
         }

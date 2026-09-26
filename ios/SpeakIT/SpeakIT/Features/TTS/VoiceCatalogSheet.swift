@@ -94,7 +94,7 @@ struct VoiceCatalogSheet: View {
                     ForEach(VoiceCategory.allCases) { category in
                         let isSelected = selectedCategory == category
                         Button(action: {
-                            UISelectionFeedbackGenerator().selectionChanged()
+                            HapticManager.shared.selection()
                             withAnimation(.easeInOut(duration: 0.15)) {
                                 selectedCategory = category
                                 validateLanguageSelection()
@@ -110,8 +110,8 @@ struct VoiceCatalogSheet: View {
                                 .overlay(
                                     Capsule()
                                         .stroke(isSelected ? Color.speakitPrimary : Color.speakitBorder, lineWidth: 1)
-                                )
-                                .shadow(color: isSelected ? Color.speakitPrimary.opacity(0.3) : .clear, radius: 4, y: 2)
+                                 )
+                                 .shadow(color: isSelected ? Color.speakitPrimary.opacity(0.3) : .clear, radius: 4, y: 2)
                         }
                     }
                 }
@@ -127,7 +127,7 @@ struct VoiceCatalogSheet: View {
                     ForEach(["ALL", "FEMALE", "MALE"], id: \.self) { g in
                         let isSelected = selectedGender == g
                         Button(action: {
-                            UISelectionFeedbackGenerator().selectionChanged()
+                            HapticManager.shared.selection()
                             withAnimation(.easeInOut(duration: 0.15)) {
                                 selectedGender = g
                             }
@@ -169,7 +169,7 @@ struct VoiceCatalogSheet: View {
                 // Language Dropdown Menu (directly adjacent to Gender, zero gap margin)
                 Menu {
                     Button(action: {
-                        UISelectionFeedbackGenerator().selectionChanged()
+                        HapticManager.shared.selection()
                         withAnimation(.easeInOut(duration: 0.15)) {
                             selectedLanguage = "ALL"
                         }
@@ -186,7 +186,7 @@ struct VoiceCatalogSheet: View {
                     
                     ForEach(availableLanguages, id: \.self) { lang in
                         Button(action: {
-                            UISelectionFeedbackGenerator().selectionChanged()
+                            HapticManager.shared.selection()
                             withAnimation(.easeInOut(duration: 0.15)) {
                                 selectedLanguage = lang
                             }
@@ -249,7 +249,7 @@ struct VoiceCatalogSheet: View {
                 
                 if hasActiveFilters {
                     Button(action: {
-                        UISelectionFeedbackGenerator().selectionChanged()
+                        HapticManager.shared.selection()
                         withAnimation(.easeInOut(duration: 0.15)) {
                             resetFilters()
                         }

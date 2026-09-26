@@ -20,7 +20,7 @@ struct SpeakITSubscriptionCard: View {
     var body: some View {
         Button(action: {
             guard !isDisabled else { return }
-            UISelectionFeedbackGenerator().selectionChanged()
+            HapticManager.shared.selection()
             onSelect()
         }) {
             VStack(alignment: .leading, spacing: 8) {

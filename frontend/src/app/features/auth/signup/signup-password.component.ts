@@ -154,7 +154,7 @@ export class SignupPasswordComponent implements OnInit {
       .register({
         username: this.registrationData.username,
         email: this.registrationData.email,
-        phoneNumber: this.registrationData.phoneNumber,
+        phoneNumber: this.registrationData.phoneNumber ? this.registrationData.phoneNumber : null,
         password: this.password,
       })
       .subscribe({

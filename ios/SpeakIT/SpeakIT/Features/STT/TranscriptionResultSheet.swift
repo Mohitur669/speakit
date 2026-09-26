@@ -105,7 +105,7 @@ struct TranscriptionResultSheet: View {
                             // Copy original button
                             Button(action: {
                                 UIPasteboard.general.string = result.text
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                HapticManager.shared.light()
                                 showCopiedOriginalToast = true
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                                     showCopiedOriginalToast = false
@@ -187,7 +187,7 @@ struct TranscriptionResultSheet: View {
                             Menu {
                                 ForEach(LanguageHelper.supportedTranslationLanguages) { lang in
                                     Button(action: {
-                                        UISelectionFeedbackGenerator().selectionChanged()
+                                        HapticManager.shared.selection()
                                         selectedTargetLanguage = lang
                                         updateSelectedVoiceForLanguage(lang)
                                     }) {
@@ -223,7 +223,7 @@ struct TranscriptionResultSheet: View {
                                 ForEach(["ALL", "FEMALE", "MALE"], id: \.self) { g in
                                     let isSelected = selectedGender == g
                                     Button(action: {
-                                        UISelectionFeedbackGenerator().selectionChanged()
+                                        HapticManager.shared.selection()
                                         withAnimation(.easeInOut(duration: 0.15)) {
                                             selectedGender = g
                                             ensureValidSelectedVoice()
@@ -260,7 +260,7 @@ struct TranscriptionResultSheet: View {
                             Section("Matching Voices (\(selectedTargetLanguage.name))") {
                                 ForEach(filteredVoices) { voice in
                                     Button(action: {
-                                        UISelectionFeedbackGenerator().selectionChanged()
+                                        HapticManager.shared.selection()
                                         selectedVoice = voice
                                     }) {
                                         HStack {
@@ -280,7 +280,7 @@ struct TranscriptionResultSheet: View {
                                         return v.gender.uppercased() == selectedGender
                                     }) { voice in
                                         Button(action: {
-                                            UISelectionFeedbackGenerator().selectionChanged()
+                                            HapticManager.shared.selection()
                                             selectedVoice = voice
                                         }) {
                                             HStack {
@@ -367,7 +367,7 @@ struct TranscriptionResultSheet: View {
                                     // Copy translated button
                                     Button(action: {
                                         UIPasteboard.general.string = translated
-                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        HapticManager.shared.light()
                                         showCopiedTranslationToast = true
                                         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
                                             showCopiedTranslationToast = false
@@ -439,7 +439,7 @@ struct TranscriptionResultSheet: View {
                             
                             HStack(spacing: 14) {
                                 Button(action: {
-                                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                 HapticManager.shared.medium()
                                  playerManager.loadAndPlay(url: audioURL, title: "Voice Memo", subtitle: "\(result.formattedDuration) recorded")
                                 }) {
                                     ZStack {
