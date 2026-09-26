@@ -9,37 +9,50 @@ import Foundation
 
 enum APIEndpoint {
     /// The backend API URL resolved based on environment:
-    /// - During Simulator testing: Automatically connects to `http://localhost:8080`.
-    /// - During Physical iPhone testing: Uses `IOS_API_BASE_URL` (configured before compiling),
+    /// - During Simulator testing: Defaults to `http://localhost:8080`, but fully configurable
+    ///   via `IOS_SIMULATOR_BASE_URL` in `Local.xcconfig` or Xcode Scheme Environment Variables.
+    /// - During Physical iPhone testing: Uses `IOS_API_BASE_URL` (from `Local.xcconfig`),
     ///   with fallback to `IOS_API_BASE_BACKUP_URL`.
     static var baseURL: String {
         #if targetEnvironment(simulator)
-        // 1. On iOS Simulator: Automatically use localhost
-        if let envURL = ProcessInfo.processInfo.environment["IOS_API_BASE_URL"],
+        // 1. Process environment variable (Xcode Scheme > Run > Arguments > Environment Variables)
+        // Allows instant runtime override in Xcode without editing any files.
+        if let envURL = ProcessInfo.processInfo.environment["IOS_SIMULATOR_BASE_URL"] ?? ProcessInfo.processInfo.environment["IOS_API_BASE_URL"],
            !envURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return cleanURL(envURL)
         }
+        
+        // 2. Custom Simulator URL from Info.plist (configured via Local.xcconfig)
+        if let plistSimURL = Bundle.main.object(forInfoDictionaryKey: "IOS_SIMULATOR_BASE_URL") as? String,
+           !plistSimURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+           plistSimURL != "$(IOS_SIMULATOR_BASE_URL)" {
+            return cleanURL(plistSimURL)
+        }
+        
+        // 3. Default fallback for Simulator
         return "http://localhost:8080"
         #else
-        // 2. On Physical iPhone: Use primary IOS_API_BASE_URL configured in Info.plist
+        // 4. Physical iPhone: Use primary IOS_API_BASE_URL configured in Info.plist / Local.xcconfig
         if let plistURL = Bundle.main.object(forInfoDictionaryKey: "IOS_API_BASE_URL") as? String,
-           !plistURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+           !plistURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+           plistURL != "$(IOS_API_BASE_URL)" {
             return cleanURL(plistURL)
         }
         
-        // 3. Fallback: Process environment
+        // 5. Fallback: Process environment (if launched via Xcode debugger)
         if let envURL = ProcessInfo.processInfo.environment["IOS_API_BASE_URL"],
            !envURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return cleanURL(envURL)
         }
         
-        // 4. Fallback: IOS_API_BASE_BACKUP_URL from Info.plist
+        // 6. Fallback: IOS_API_BASE_BACKUP_URL from Info.plist
         if let plistBackup = Bundle.main.object(forInfoDictionaryKey: "IOS_API_BASE_BACKUP_URL") as? String,
-           !plistBackup.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+           !plistBackup.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+           plistBackup != "$(IOS_API_BASE_BACKUP_URL)" {
             return cleanURL(plistBackup)
         }
         
-        // 5. Ultimate fallback
+        // 7. Ultimate fallback
         return "http://localhost:8080"
         #endif
     }

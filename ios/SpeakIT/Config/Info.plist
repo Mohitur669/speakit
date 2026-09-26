@@ -6,5 +6,7 @@
 	<string>$(IOS_API_BASE_URL)</string>
 	<key>IOS_API_BASE_BACKUP_URL</key>
 	<string>$(IOS_API_BASE_BACKUP_URL)</string>
+	<key>IOS_SIMULATOR_BASE_URL</key>
+	<string>$(IOS_SIMULATOR_BASE_URL)</string>
 </dict>
 </plist>
