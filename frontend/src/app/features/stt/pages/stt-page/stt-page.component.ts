@@ -546,7 +546,7 @@ export class SttPageComponent implements OnInit, OnDestroy {
 
   engines: DropdownOption[] = [
     { value: 'SARVAM', label: 'Indian' },
-    { value: 'ELEVEN_LABS', label: 'Global' },
+    { value: 'ELEVEN_LABS', label: 'International' },
   ];
 
   languages: DropdownOption[] = [
@@ -561,7 +561,7 @@ export class SttPageComponent implements OnInit, OnDestroy {
     { value: 'gu-IN', label: 'Gujarati' },
     { value: 'ml-IN', label: 'Malayalam' },
     { value: 'pa-IN', label: 'Punjabi' },
-    { value: 'or-IN', label: 'Odia' },
+    { value: 'od-IN', label: 'Odia' },
   ];
 
   onProviderChange(provider: string) {

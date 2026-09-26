@@ -20,4 +20,8 @@ public class AuthResponse {
     private Long sessionDurationMs;
     private Long idleTimeoutMs;
     private boolean emailVerified;
+    private Integer characterLimit;
+    private Integer charactersUsed;
+    private Integer dailyCount;
+    private Integer dailyLimit;
 }

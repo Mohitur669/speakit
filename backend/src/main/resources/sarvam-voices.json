@@ -4,10 +4,11 @@
     "simran", "kavya", "amit", "dev", "ishita", "shreya", "ratan", "varun", 
     "manan", "sumit", "roopa", "kabir", "aayan", "shubh", "advait", "anand", 
     "tanya", "tarun", "sunny", "mani", "gokul", "vijay", "shruti", "suhani", 
-    "mohit", "kavitha", "rehan", "soham", "rupali", "niharika"
+    "mohit", "kavitha", "rehan", "soham", "rupali"
   ],
   "languages": [
     {"code": "hi-IN", "name": "Hindi"},
+    {"code": "en-IN", "name": "Indian English"},
     {"code": "bn-IN", "name": "Bengali"},
     {"code": "mr-IN", "name": "Marathi"},
     {"code": "ta-IN", "name": "Tamil"},
@@ -16,10 +17,10 @@
     {"code": "ml-IN", "name": "Malayalam"},
     {"code": "gu-IN", "name": "Gujarati"},
     {"code": "pa-IN", "name": "Punjabi"},
-    {"code": "or-IN", "name": "Odia"}
+    {"code": "od-IN", "name": "Odia"}
   ],
   "female_speakers": [
     "ritu", "priya", "neha", "pooja", "simran", "kavya", "ishita", "shreya", 
-    "roopa", "tanya", "shruti", "suhani", "kavitha", "rupali", "niharika"
+    "roopa", "tanya", "shruti", "suhani", "kavitha", "rupali"
   ]
 }

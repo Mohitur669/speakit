@@ -19,6 +19,8 @@ import com.speakit.user.entity.User;
 import com.speakit.auth.repository.OtpVerificationRepository;
 import com.speakit.user.repository.UserRepository;
 import com.speakit.security.JwtService;
+import com.speakit.billing.service.SubscriptionService;
+import com.speakit.tts.repository.TtsHistoryRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -69,6 +71,12 @@ class AuthServiceOtpTest {
 
     @Mock
     private OtpEmailSender otpEmailSender;
+
+    @Mock
+    private TtsHistoryRepository ttsHistoryRepository;
+
+    @Mock
+    private SubscriptionService subscriptionService;
 
     private User pendingUser;
     private User activeUser;

@@ -1,5 +1,6 @@
 package com.speakit.stt.controller;
 import com.speakit.user.entity.User;
+import com.speakit.user.repository.UserRepository;
 
 import com.speakit.shared.aspect.RateLimitAction;
 import com.speakit.shared.aspect.RateLimited;
@@ -35,6 +36,7 @@ public class SttController {
     private final AudioFileValidator fileValidator;
     private final SystemParameterService systemParameterService;
     private final TranslationService translationService;
+    private final UserRepository userRepository;
 
     /**
       * Secure endpoint for audio transcription.
@@ -62,14 +64,17 @@ public class SttController {
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
         }
 
-        // 3. Extract Security Context from Filter attributes
-        Long userId = (Long) httpRequest.getAttribute("userId");
-        PlanType planType = (PlanType) httpRequest.getAttribute("planType");
-        SubscriptionStatus status = (SubscriptionStatus) httpRequest.getAttribute("subscriptionStatus");
-        LocalDateTime expiry = (LocalDateTime) httpRequest.getAttribute("planExpiry");
+        // 3. Extract Security Context from Filter attributes with database fallback
+        UserSecurityContext context = resolveSecurityContext(httpRequest);
+        Long userId = context.userId();
+        PlanType planType = context.planType();
+        SubscriptionStatus status = context.status();
+        LocalDateTime expiry = context.expiry();
 
         // 4. Plan Authorization (Zero-Trust)
         if (!subscriptionService.hasSpeechToText(planType, status, expiry)) {
+            log.warn("Access denied for STT transcription: userId={}, planType={}, status={}, expiry={}",
+                    userId, planType, status, expiry);
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
@@ -124,14 +129,17 @@ public class SttController {
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
         }
 
-        // 3. Extract Security Context
-        Long userId = (Long) httpRequest.getAttribute("userId");
-        PlanType planType = (PlanType) httpRequest.getAttribute("planType");
-        SubscriptionStatus status = (SubscriptionStatus) httpRequest.getAttribute("subscriptionStatus");
-        LocalDateTime expiry = (LocalDateTime) httpRequest.getAttribute("planExpiry");
+        // 3. Extract Security Context with database fallback
+        UserSecurityContext context = resolveSecurityContext(httpRequest);
+        Long userId = context.userId();
+        PlanType planType = context.planType();
+        SubscriptionStatus status = context.status();
+        LocalDateTime expiry = context.expiry();
 
         // 4. Plan Authorization (Zero-Trust)
         if (!subscriptionService.hasLiveRecording(planType, status, expiry)) {
+            log.warn("Access denied for live recording: userId={}, planType={}, status={}, expiry={}",
+                    userId, planType, status, expiry);
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
@@ -171,12 +179,15 @@ public class SttController {
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
         }
 
-        // 2. Extract and authorize plan
-        PlanType planType = (PlanType) httpRequest.getAttribute("planType");
-        SubscriptionStatus status = (SubscriptionStatus) httpRequest.getAttribute("subscriptionStatus");
-        LocalDateTime expiry = (LocalDateTime) httpRequest.getAttribute("planExpiry");
+        // 2. Extract and authorize plan with database fallback
+        UserSecurityContext context = resolveSecurityContext(httpRequest);
+        PlanType planType = context.planType();
+        SubscriptionStatus status = context.status();
+        LocalDateTime expiry = context.expiry();
 
         if (!subscriptionService.hasSpeechToText(planType, status, expiry)) {
+            log.warn("Access denied for translation: userId={}, planType={}, status={}, expiry={}",
+                    context.userId(), planType, status, expiry);
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
@@ -184,4 +195,32 @@ public class SttController {
         TranslationResponse result = translationService.translate(request);
         return ResponseEntity.ok(result);
     }
+
+    private UserSecurityContext resolveSecurityContext(HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        PlanType planType = (PlanType) request.getAttribute("planType");
+        SubscriptionStatus status = (SubscriptionStatus) request.getAttribute("subscriptionStatus");
+        LocalDateTime expiry = (LocalDateTime) request.getAttribute("planExpiry");
+
+        if (userId == null || planType == null) {
+            java.security.Principal principal = request.getUserPrincipal();
+            if (principal != null && principal.getName() != null) {
+                var userOpt = userRepository.findByUsername(principal.getName());
+                if (userOpt.isPresent()) {
+                    var user = userOpt.get();
+                    userId = user.getId();
+                    planType = user.getPlanType();
+                    status = user.getSubscriptionStatus();
+                    expiry = user.getPlanExpiry();
+                    request.setAttribute("userId", userId);
+                    request.setAttribute("planType", planType);
+                    request.setAttribute("subscriptionStatus", status);
+                    request.setAttribute("planExpiry", expiry);
+                }
+            }
+        }
+        return new UserSecurityContext(userId, planType, status, expiry);
+    }
+
+    private record UserSecurityContext(Long userId, PlanType planType, SubscriptionStatus status, LocalDateTime expiry) {}
 }

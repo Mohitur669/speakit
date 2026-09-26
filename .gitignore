@@ -7,3 +7,18 @@ reports/*
 !reports/audit/
 
 .venv
+
+# Xcode & macOS
+.DS_Store
+xcuserdata/
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+DerivedData/
+
+# IDE & Editor
+.idea/
+
+# iOS local environment overrides (gitignored to prevent leaking prod URLs)
+ios/SpeakIT/Config/Local.xcconfig
+ios/SpeakIT/Config/.env
+ios/SpeakIT/.env

@@ -20,6 +20,26 @@ class AudioFileValidatorTest {
     }
 
     @Test
+    void validate_ValidM4AFile_Success() {
+        MockMultipartFile file1 = new MockMultipartFile(
+            "file", "recording.m4a", "audio/m4a", new byte[10]
+        );
+        MockMultipartFile file2 = new MockMultipartFile(
+            "file", "recording.m4a", "audio/x-m4a", new byte[10]
+        );
+        MockMultipartFile file3 = new MockMultipartFile(
+            "file", "recording.m4a", "audio/mp4", new byte[10]
+        );
+        MockMultipartFile file4 = new MockMultipartFile(
+            "file", "recording.m4a", "audio/aac", new byte[10]
+        );
+        assertDoesNotThrow(() -> validator.validate(file1));
+        assertDoesNotThrow(() -> validator.validate(file2));
+        assertDoesNotThrow(() -> validator.validate(file3));
+        assertDoesNotThrow(() -> validator.validate(file4));
+    }
+
+    @Test
     void validate_ValidWebMFile_Success() {
         MockMultipartFile file1 = new MockMultipartFile(
             "file", "audio.webm", "audio/webm", new byte[10]
