@@ -1,0 +1,16 @@
+//
+//  Local.xcconfig.example
+//  SpeakIT
+//
+//  Copy this file to "Local.xcconfig" in the same directory (Config/)
+//  and set your production API endpoint before compiling for physical iPhone testing.
+//
+//  Local.xcconfig is ignored by git and will NEVER be committed to git history.
+//
+
+// Note: You can either use full URL (e.g. https:/$()/api.example.com)
+// or just domain/IP (e.g. api.example.com or 192.168.1.50:8080)
+// APIEndpoint.swift will automatically ensure https:// is prepended.
+
+IOS_API_BASE_URL = https:/$()/api.yourdomain.com
+IOS_API_BASE_BACKUP_URL = https:/$()/backup-api.yourdomain.com

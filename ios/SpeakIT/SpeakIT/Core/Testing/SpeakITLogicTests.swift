@@ -95,11 +95,19 @@ public struct SpeakITLogicTests {
         assert(APIEndpoint.deleteHistory.path == "/api/history/delete", "Delete history endpoint matches contract (/api/history/delete)")
         assert(APIEndpoint.deleteAccount.path == "/api/v1/users/me", "Account deletion endpoint matches contract (/api/v1/users/me)")
         
-        // MARK: - 5. Transcription Result Model Tests
-        print("▶️ Testing Transcription Result Calculations...")
+        // MARK: - 5. Transcription Result & Language Resolution Tests
+        print("▶️ Testing Transcription Result & Language Resolution...")
         let sampleResult = TranscriptionResult.sample
         assert(sampleResult.wordCount == 39, "Sample transcription result word count matches design pack (39 words)")
         assert(sampleResult.durationSeconds == 12, "Sample transcription result duration is 12 seconds")
+        assert(sampleResult.formattedDuration == "12 sec", "12 seconds duration formats to '12 sec'")
+        
+        let longerResult = TranscriptionResult(text: "Test", language: "hi-IN", durationSeconds: 75, wordCount: 1, timestamp: "Now")
+        assert(longerResult.formattedDuration == "1 min 15 sec", "75 seconds duration formats to '1 min 15 sec'")
+        assert(longerResult.displayLanguage == "Hindi", "Language code 'hi-IN' resolves to human-readable 'Hindi'")
+        assert(LanguageHelper.displayName(for: "en") == "English", "Language code 'en' resolves to 'English'")
+        assert(LanguageHelper.displayName(for: "ta-IN") == "Tamil", "Language code 'ta-IN' resolves to 'Tamil'")
+        assert(LanguageHelper.displayName(for: "bn") == "Bengali", "Language code 'bn' resolves to 'Bengali'")
         
         print("\n==========================================")
         print("🏁 [TEST SUITE SUMMARY]: \(passedCount) Passed, \(failedCount) Failed")

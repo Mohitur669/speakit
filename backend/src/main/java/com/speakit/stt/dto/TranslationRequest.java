@@ -12,10 +12,10 @@ public class TranslationRequest {
     private String text;
 
     @NotBlank(message = "Source language cannot be blank")
-    @Pattern(regexp = "^[a-zA-Z0-9\\-]+$", message = "Invalid source language format")
+    @Pattern(regexp = "^[a-zA-Z0-9\\-\\s()]+$", message = "Invalid source language format")
     private String sourceLanguage;
 
     @NotBlank(message = "Target language cannot be blank")
-    @Pattern(regexp = "^[a-zA-Z0-9\\-]+$", message = "Invalid target language format")
+    @Pattern(regexp = "^[a-zA-Z0-9\\-\\s()]+$", message = "Invalid target language format")
     private String targetLanguage;
 }
