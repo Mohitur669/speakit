@@ -17,6 +17,10 @@ struct User: Codable, Identifiable {
     let status: String?
     let characterLimit: Int
     let charactersUsed: Int
+    let phoneNumber: String?
+    let dailyCount: Int
+    let dailyLimit: Int
+    let emailVerified: Bool
     
     init(
         id: Int64 = 1,
@@ -27,7 +31,11 @@ struct User: Codable, Identifiable {
         planType: PlanType = .free,
         status: String? = "ACTIVE",
         characterLimit: Int? = nil,
-        charactersUsed: Int = 0
+        charactersUsed: Int = 0,
+        phoneNumber: String? = nil,
+        dailyCount: Int = 0,
+        dailyLimit: Int = 20,
+        emailVerified: Bool = true
     ) {
         self.id = id
         self.username = username
@@ -38,10 +46,15 @@ struct User: Codable, Identifiable {
         self.status = status
         self.characterLimit = characterLimit ?? planType.monthlyQuota
         self.charactersUsed = charactersUsed
+        self.phoneNumber = phoneNumber
+        self.dailyCount = dailyCount
+        self.dailyLimit = dailyLimit
+        self.emailVerified = emailVerified
     }
     
     enum CodingKeys: String, CodingKey {
         case id, username, email, fullName, role, planType, status, characterLimit, charactersUsed
+        case phoneNumber, dailyCount, dailyLimit, emailVerified
     }
     
     init(from decoder: Decoder) throws {
@@ -66,6 +79,10 @@ struct User: Codable, Identifiable {
         let limit = try? container.decode(Int.self, forKey: .characterLimit)
         self.characterLimit = limit ?? self.planType.monthlyQuota
         self.charactersUsed = (try? container.decode(Int.self, forKey: .charactersUsed)) ?? 0
+        self.phoneNumber = try? container.decode(String.self, forKey: .phoneNumber)
+        self.dailyCount = (try? container.decode(Int.self, forKey: .dailyCount)) ?? 0
+        self.dailyLimit = (try? container.decode(Int.self, forKey: .dailyLimit)) ?? 20
+        self.emailVerified = (try? container.decode(Bool.self, forKey: .emailVerified)) ?? true
     }
     
     var remainingCharacters: Int {

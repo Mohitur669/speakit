@@ -15,10 +15,10 @@ enum PlanType: String, Codable, CaseIterable, Comparable {
     
     var displayName: String {
         switch self {
-        case .free: return "FREE"
-        case .pro: return "PRO"
-        case .proPlus: return "PRO PLUS"
-        case .enterprise: return "ENTERPRISE"
+        case .free: return "Free"
+        case .pro: return "Pro"
+        case .proPlus: return "Pro Plus"
+        case .enterprise: return "Enterprise"
         }
     }
     

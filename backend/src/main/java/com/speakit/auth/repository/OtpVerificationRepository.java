@@ -12,12 +12,16 @@ import java.util.Optional;
 
 public interface OtpVerificationRepository extends JpaRepository<OtpVerification, Long> {
 
+    Optional<OtpVerification> findFirstByEmailIgnoreCaseAndPurposeAndConsumedFalseOrderByCreatedAtDesc(String email, String purpose);
+
     Optional<OtpVerification> findFirstByEmailAndPurposeAndConsumedFalseOrderByCreatedAtDesc(String email, String purpose);
+
+    List<OtpVerification> findAllByEmailIgnoreCaseAndPurposeAndConsumedFalse(String email, String purpose);
 
     List<OtpVerification> findAllByEmailAndPurposeAndConsumedFalse(String email, String purpose);
 
     @Modifying
-    @Query("UPDATE OtpVerification o SET o.consumed = true WHERE o.email = :email AND o.purpose = :purpose AND o.consumed = false")
+    @Query("UPDATE OtpVerification o SET o.consumed = true WHERE LOWER(TRIM(o.email)) = LOWER(TRIM(:email)) AND o.purpose = :purpose AND o.consumed = false")
     int invalidateExistingOtps(@Param("email") String email, @Param("purpose") String purpose);
 
     @Modifying

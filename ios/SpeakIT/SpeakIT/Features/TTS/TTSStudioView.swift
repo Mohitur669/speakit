@@ -17,6 +17,7 @@ struct TTSStudioView: View {
     @State private var showShareSheet: Bool = false
     @State private var synthesizedAudioURL: URL? = nil
     @State private var errorMessage: String? = nil
+    @AppStorage("autoPlayPreview") private var autoPlayPreview: Bool = true
     
     private var playerManager = AudioPlayerManager.shared
     
@@ -153,11 +154,7 @@ struct TTSStudioView: View {
                 )
                 
                 // Error Alert if any
-                if let errorMessage = errorMessage {
-                    Text(errorMessage)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(Color.speakitDestructive)
-                }
+                SpeakITBanner(message: $errorMessage, style: .error)
                 
                 // Generate Speech CTA
                 let maxAllowed = appState.currentUser?.planType.characterLimitPerRequest ?? 2500
@@ -239,9 +236,10 @@ struct TTSStudioView: View {
                 let reqBody = try JSONEncoder().encode(req)
                 let audioData = try await HTTPClient.shared.downloadBinary(.synthesize, body: reqBody)
                 
-                // Save binary stream to temporary MP3 file
+                // Save binary stream to temporary MP3 file (integer timestamp avoids floating-point dots in filename)
                 let tempDir = FileManager.default.temporaryDirectory
-                let audioURL = tempDir.appendingPathComponent("speakit_synthesis_\(Date().timeIntervalSince1970).mp3")
+                let timestamp = Int64(Date().timeIntervalSince1970 * 1000)
+                let audioURL = tempDir.appendingPathComponent("speakit_synthesis_\(timestamp).mp3")
                 try audioData.write(to: audioURL, options: .atomic)
                 
                 await MainActor.run {
@@ -249,10 +247,11 @@ struct TTSStudioView: View {
                     self.synthesizedAudioURL = audioURL
                     // Deduct credit immediately at the top bar
                     self.appState.recordCharacterUsage(inputText.count)
-                    self.playerManager.loadAndPlay(
+                    self.playerManager.load(
                         url: audioURL,
                         title: String(inputText.prefix(40)),
-                        subtitle: "\(selectedVoice.name) (\(selectedVoice.engineDisplayName))"
+                        subtitle: "\(selectedVoice.name) (\(selectedVoice.engineDisplayName))",
+                        autoPlay: self.autoPlayPreview
                     )
                 }
             } catch {
@@ -278,7 +277,12 @@ struct TTSStudioView: View {
         let fallbackURL = tempDir.appendingPathComponent("sample_preview.mp3")
         try? Data(repeating: 0, count: 1024).write(to: fallbackURL)
         self.appState.recordCharacterUsage(inputText.count)
-        self.playerManager.loadAndPlay(url: fallbackURL, title: String(inputText.prefix(40)), subtitle: selectedVoice.name)
+        self.playerManager.load(
+            url: fallbackURL,
+            title: String(inputText.prefix(40)),
+            subtitle: selectedVoice.name,
+            autoPlay: self.autoPlayPreview
+        )
     }
 }
 

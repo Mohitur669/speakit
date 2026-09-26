@@ -76,9 +76,22 @@ enum APIEndpoint {
     // Auth
     case login
     case register
+    case forgotPassword
+    case resetPassword
+    case verifyEmail
+    case resendSignupOtp
     
     // Users
     case userProfile
+    case requestProfileUpdate
+    case updateProfile
+    case updateFullName
+    case updateUsername
+    case requestEmailChangeOtp
+    case updateEmail
+    case requestPasswordChangeOtp
+    case changePassword
+    case resendProfileOtp
     case deleteAccount
     
     // TTS
@@ -101,8 +114,34 @@ enum APIEndpoint {
             return "/api/auth/login"
         case .register:
             return "/api/auth/register"
+        case .forgotPassword:
+            return "/api/auth/forgot-password"
+        case .resetPassword:
+            return "/api/auth/reset-password"
+        case .verifyEmail:
+            return "/api/auth/verify-email"
+        case .resendSignupOtp:
+            return "/api/auth/resend-otp"
         case .userProfile:
             return "/api/v1/users/me"
+        case .requestProfileUpdate:
+            return "/api/v1/users/profile/request-update"
+        case .updateProfile:
+            return "/api/v1/users/profile"
+        case .updateFullName:
+            return "/api/v1/users/full-name"
+        case .updateUsername:
+            return "/api/v1/users/username"
+        case .requestEmailChangeOtp:
+            return "/api/v1/users/email/request-otp"
+        case .updateEmail:
+            return "/api/v1/users/email"
+        case .requestPasswordChangeOtp:
+            return "/api/v1/users/password/request-otp"
+        case .changePassword:
+            return "/api/v1/users/password"
+        case .resendProfileOtp:
+            return "/api/v1/users/me/resend-profile-otp"
         case .deleteAccount:
             return "/api/v1/users/me"
         case .voices:

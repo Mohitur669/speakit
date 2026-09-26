@@ -637,7 +637,8 @@ struct TranscriptionResultSheet: View {
                 let audioData = try await HTTPClient.shared.downloadBinary(.synthesize, body: reqBody)
                 
                 let tempDir = FileManager.default.temporaryDirectory
-                let audioURL = tempDir.appendingPathComponent("speakit_tts_\(Date().timeIntervalSince1970).mp3")
+                let timestamp = Int64(Date().timeIntervalSince1970 * 1000)
+                let audioURL = tempDir.appendingPathComponent("speakit_tts_\(timestamp).mp3")
                 try audioData.write(to: audioURL, options: .atomic)
                 
                 await MainActor.run {

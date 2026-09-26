@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+@MainActor
 @Observable
 final class AppState {
     static let shared = AppState()
@@ -102,7 +103,11 @@ final class AppState {
                     planType: user.planType,
                     status: user.status,
                     characterLimit: user.characterLimit,
-                    charactersUsed: resolvedCharactersUsed
+                    charactersUsed: resolvedCharactersUsed,
+                    phoneNumber: user.phoneNumber,
+                    dailyCount: user.dailyCount,
+                    dailyLimit: user.dailyLimit,
+                    emailVerified: user.emailVerified
                 )
             } else {
                 self.currentUser = user
@@ -132,17 +137,21 @@ final class AppState {
         )
         let newUsed = current.charactersUsed + count
         withAnimation(.easeInOut(duration: 0.25)) {
-            self.currentUser = User(
-                id: current.id,
-                username: current.username,
-                email: current.email,
-                fullName: current.fullName,
-                role: current.role,
-                planType: current.planType,
-                status: current.status,
-                characterLimit: current.characterLimit,
-                charactersUsed: newUsed
-            )
+                self.currentUser = User(
+                    id: current.id,
+                    username: current.username,
+                    email: current.email,
+                    fullName: current.fullName,
+                    role: current.role,
+                    planType: current.planType,
+                    status: current.status,
+                    characterLimit: current.characterLimit,
+                    charactersUsed: newUsed,
+                    phoneNumber: current.phoneNumber,
+                    dailyCount: current.dailyCount,
+                    dailyLimit: current.dailyLimit,
+                    emailVerified: current.emailVerified
+                )
         }
         
         if isAuthenticated {

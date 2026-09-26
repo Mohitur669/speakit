@@ -61,7 +61,8 @@ final class AudioRecordingManager: NSObject, AVAudioRecorderDelegate {
         guard permitted else { return false }
         
         let tempDir = FileManager.default.temporaryDirectory
-        let fileURL = tempDir.appendingPathComponent("live_recording_\(Date().timeIntervalSince1970).m4a")
+        let timestamp = Int64(Date().timeIntervalSince1970 * 1000)
+        let fileURL = tempDir.appendingPathComponent("live_recording_\(timestamp).m4a")
         self.recordedFileURL = fileURL
         
         do {

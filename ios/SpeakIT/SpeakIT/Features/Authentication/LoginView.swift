@@ -14,166 +14,23 @@ struct LoginView: View {
     @State private var password: String = ""
     @State private var isLoading: Bool = false
     @State private var errorMessage: String? = nil
+    @State private var successMessage: String? = nil
     @State private var showSignUp: Bool = false
-    @State private var showForgotPasswordAlert: Bool = false
+    @State private var showForgotPasswordSheet: Bool = false
     @State private var showOAuthNotice: Bool = false
     
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    // Header Brand
-                    Text("SpeakIT")
-                        .font(.system(size: 22, weight: .bold))
-                        .foregroundColor(Color.speakitPrimary)
-                        .padding(.top, 16)
-                    
-                    Text("Welcome back")
-                        .font(.system(size: 30, weight: .bold))
-                        .foregroundColor(Color.speakitTextPrimary)
-                        .padding(.top, 18)
-                    
-                    Text("Transform your text and voice with SpeakIT.")
-                        .font(.system(size: 15, weight: .regular))
-                        .foregroundColor(Color.speakitTextSecondary)
-                        .padding(.top, 6)
-                        .padding(.bottom, 32)
-                    
-                    // Error Banner
-                    if let errorMessage = errorMessage {
-                        HStack(spacing: 8) {
-                            Image(systemName: "exclamationmark.circle.fill")
-                                .foregroundColor(Color.speakitDestructive)
-                            Text(errorMessage)
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundColor(Color.speakitDestructive)
-                        }
-                        .padding(12)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color.speakitDestructiveLight)
-                        .cornerRadius(12)
-                        .padding(.bottom, 16)
-                    }
-                    
-                    // Form Fields
-                    VStack(spacing: 14) {
-                        SpeakITTextField(
-                            placeholder: "Username or email",
-                            text: $usernameOrEmail,
-                            icon: "person.fill",
-                            keyboardType: .emailAddress,
-                            autoCapitalization: .never
-                        )
-                        .accessibilityIdentifier("login.username")
-                        
-                        SpeakITTextField(
-                            placeholder: "Password",
-                            text: $password,
-                            icon: "lock.fill",
-                            isSecure: true
-                        )
-                        .accessibilityIdentifier("login.password")
-                    }
-                    
-                    // Forgot Password
-                    HStack {
-                        Spacer()
-                        Button(action: {
-                            showForgotPasswordAlert = true
-                        }) {
-                            Text("Forgot Password?")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundColor(Color.speakitPrimary)
-                        }
-                        .padding(.top, 12)
-                    }
-                    
-                    // Sign In Button
-                    SpeakITButton(
-                        title: "Sign In",
-                        style: .primary,
-                        isLoading: isLoading,
-                        isEnabled: !usernameOrEmail.trimmingCharacters(in: .whitespaces).isEmpty && !password.isEmpty
-                    ) {
-                        performLogin()
-                    }
-                    .accessibilityIdentifier("login.signIn")
-                    .padding(.top, 22)
-                    
-                    // Divider
-                    HStack {
-                        Spacer()
-                        Text("or continue with")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(Color.speakitTextTertiary)
-                        Spacer()
-                    }
-                    .padding(.top, 26)
-                    .padding(.bottom, 18)
-                    
-                    // Social Login Buttons (Apple & Google reference)
-                    VStack(spacing: 14) {
-                        Button(action: {
-                            showOAuthNotice = true
-                        }) {
-                            HStack(spacing: 8) {
-                                Image(systemName: "apple.logo")
-                                    .font(.system(size: 16, weight: .semibold))
-                                Text("Continue with Apple")
-                                    .font(.system(size: 15, weight: .semibold))
-                            }
-                            .frame(maxWidth: .infinity)
-                            .frame(height: SpeakITSpacing.inputHeight)
-                            .background(Color.speakitBackground)
-                            .foregroundColor(Color.speakitTextPrimary)
-                            .cornerRadius(SpeakITSpacing.inputRadius)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: SpeakITSpacing.inputRadius)
-                                    .stroke(Color.speakitBorder, lineWidth: 1)
-                            )
-                        }
-                        
-                        Button(action: {
-                            showOAuthNotice = true
-                        }) {
-                            HStack(spacing: 8) {
-                                Text("G")
-                                    .font(.system(size: 16, weight: .bold))
-                                    .foregroundColor(.blue)
-                                Text("Continue with Google")
-                                    .font(.system(size: 15, weight: .semibold))
-                            }
-                            .frame(maxWidth: .infinity)
-                            .frame(height: SpeakITSpacing.inputHeight)
-                            .background(Color.speakitBackground)
-                            .foregroundColor(Color.speakitTextPrimary)
-                            .cornerRadius(SpeakITSpacing.inputRadius)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: SpeakITSpacing.inputRadius)
-                                    .stroke(Color.speakitBorder, lineWidth: 1)
-                            )
-                        }
-                    }
-                    
-                    // Sign Up Link
-                    HStack {
-                        Spacer()
-                        Button(action: {
-                            showSignUp = true
-                        }) {
-                            HStack(spacing: 4) {
-                                Text("Don't have an account?")
-                                    .foregroundColor(Color.speakitTextSecondary)
-                                Text("Create one")
-                                    .fontWeight(.semibold)
-                                    .foregroundColor(Color.speakitPrimary)
-                            }
-                            .font(.system(size: 14))
-                        }
-                        Spacer()
-                    }
-                    .padding(.top, 28)
-                    .padding(.bottom, 24)
+                    brandHeader
+                    feedbackBanners
+                    formFields
+                    forgotPasswordRow
+                    signInButton
+                    dividerView
+                    socialButtons
+                    signUpLink
                 }
                 .padding(.horizontal, SpeakITSpacing.screenMargin)
             }
@@ -181,10 +38,10 @@ struct LoginView: View {
             .navigationDestination(isPresented: $showSignUp) {
                 SignUpView()
             }
-            .alert("Password Reset", isPresented: $showForgotPasswordAlert) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text("Password reset instructions have been sent to your registered email address.")
+            .sheet(isPresented: $showForgotPasswordSheet) {
+                ForgotPasswordSheet(onSuccess: {
+                    self.successMessage = "Password reset successfully! You can now sign in with your new password."
+                })
             }
             .alert("Social Sign-In", isPresented: $showOAuthNotice) {
                 Button("OK", role: .cancel) {}
@@ -192,6 +49,169 @@ struct LoginView: View {
                 Text("OAuth social sign-in is managed by your backend provider. Please sign in with your SpeakIT email and password.")
             }
         }
+    }
+    
+    // MARK: - Subviews
+    
+    @ViewBuilder
+    private var brandHeader: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("SpeakIT")
+                .font(.system(size: 22, weight: .bold))
+                .foregroundColor(Color.speakitPrimary)
+                .padding(.top, 16)
+            
+            Text("Welcome back")
+                .font(.system(size: 30, weight: .bold))
+                .foregroundColor(Color.speakitTextPrimary)
+                .padding(.top, 18)
+            
+            Text("Transform your text and voice with SpeakIT.")
+                .font(.system(size: 15, weight: .regular))
+                .foregroundColor(Color.speakitTextSecondary)
+                .padding(.top, 6)
+                .padding(.bottom, 32)
+        }
+    }
+    
+    @ViewBuilder
+    private var feedbackBanners: some View {
+        SpeakITBanner(message: $successMessage, style: .success)
+            .padding(.bottom, successMessage != nil ? 16 : 0)
+        SpeakITBanner(message: $errorMessage, style: .error)
+            .padding(.bottom, errorMessage != nil ? 16 : 0)
+    }
+    
+    @ViewBuilder
+    private var formFields: some View {
+        VStack(spacing: 14) {
+            SpeakITTextField(
+                placeholder: "Username or email",
+                text: $usernameOrEmail,
+                icon: "person.fill",
+                keyboardType: .emailAddress,
+                autoCapitalization: .never
+            )
+            .accessibilityIdentifier("login.username")
+            
+            SpeakITTextField(
+                placeholder: "Password",
+                text: $password,
+                icon: "lock.fill",
+                isSecure: true
+            )
+            .accessibilityIdentifier("login.password")
+        }
+    }
+    
+    @ViewBuilder
+    private var forgotPasswordRow: some View {
+        HStack {
+            Spacer()
+            Button(action: {
+                showForgotPasswordSheet = true
+            }) {
+                Text("Forgot Password?")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(Color.speakitPrimary)
+            }
+            .padding(.top, 12)
+        }
+    }
+    
+    @ViewBuilder
+    private var signInButton: some View {
+        SpeakITButton(
+            title: "Sign In",
+            style: .primary,
+            isLoading: isLoading,
+            isEnabled: !usernameOrEmail.trimmingCharacters(in: .whitespaces).isEmpty && !password.isEmpty
+        ) {
+            performLogin()
+        }
+        .accessibilityIdentifier("login.signIn")
+        .padding(.top, 22)
+    }
+    
+    @ViewBuilder
+    private var dividerView: some View {
+        HStack {
+            Spacer()
+            Text("or continue with")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(Color.speakitTextTertiary)
+            Spacer()
+        }
+        .padding(.top, 26)
+        .padding(.bottom, 18)
+    }
+    
+    @ViewBuilder
+    private var socialButtons: some View {
+        VStack(spacing: 14) {
+            Button(action: {
+                showOAuthNotice = true
+            }) {
+                HStack(spacing: 8) {
+                    Image(systemName: "apple.logo")
+                        .font(.system(size: 16, weight: .semibold))
+                    Text("Continue with Apple")
+                        .font(.system(size: 15, weight: .semibold))
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: SpeakITSpacing.inputHeight)
+                .background(Color.speakitBackground)
+                .foregroundColor(Color.speakitTextPrimary)
+                .cornerRadius(SpeakITSpacing.inputRadius)
+                .overlay(
+                    RoundedRectangle(cornerRadius: SpeakITSpacing.inputRadius)
+                        .stroke(Color.speakitBorder, lineWidth: 1)
+                )
+            }
+            
+            Button(action: {
+                showOAuthNotice = true
+            }) {
+                HStack(spacing: 8) {
+                    Text("G")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(.blue)
+                    Text("Continue with Google")
+                        .font(.system(size: 15, weight: .semibold))
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: SpeakITSpacing.inputHeight)
+                .background(Color.speakitBackground)
+                .foregroundColor(Color.speakitTextPrimary)
+                .cornerRadius(SpeakITSpacing.inputRadius)
+                .overlay(
+                    RoundedRectangle(cornerRadius: SpeakITSpacing.inputRadius)
+                        .stroke(Color.speakitBorder, lineWidth: 1)
+                )
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private var signUpLink: some View {
+        HStack {
+            Spacer()
+            Button(action: {
+                showSignUp = true
+            }) {
+                HStack(spacing: 4) {
+                    Text("Don't have an account?")
+                        .foregroundColor(Color.speakitTextSecondary)
+                    Text("Create one")
+                        .fontWeight(.semibold)
+                        .foregroundColor(Color.speakitPrimary)
+                }
+                .font(.system(size: 14))
+            }
+            Spacer()
+        }
+        .padding(.top, 28)
+        .padding(.bottom, 24)
     }
     
     // MARK: - Login Action

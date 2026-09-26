@@ -1,5 +1,6 @@
-package com.speakit.auth.dto;
+package com.speakit.user.dto;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -9,8 +10,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ChangePasswordRequest {
+public class RequestEmailChangeOtpRequest {
+    @NotBlank(message = "Current password is required")
     private String currentPassword;
-    private String newPassword;
-    private String otp;
 }

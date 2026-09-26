@@ -97,12 +97,8 @@ struct STTStudioView: View {
                 }
                 
                 // Error banner
-                if let errorMessage = errorMessage {
-                    Text(errorMessage)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(Color.speakitDestructive)
-                        .padding(.horizontal)
-                }
+                SpeakITBanner(message: $errorMessage, style: .error)
+                    .padding(.horizontal)
                 
                 // Stop & Transcribe Button
                 if selectedMode == .live && recordingManager.isRecording {
@@ -330,11 +326,21 @@ struct STTStudioView: View {
                     }
                 }
                 
+                let rawExt = fileURL.pathExtension.lowercased()
+                let uploadMimeType: String
+                switch rawExt {
+                case "mp3": uploadMimeType = "audio/mpeg"
+                case "wav": uploadMimeType = "audio/wav"
+                case "ogg": uploadMimeType = "audio/ogg"
+                case "webm": uploadMimeType = "audio/webm"
+                default: uploadMimeType = "audio/m4a"
+                }
+                
                 let response: STTApiResponse = try await HTTPClient.shared.uploadMultipart(
                     .transcribeFile,
                     fileData: audioData,
                     fileName: fileURL.lastPathComponent,
-                    mimeType: "audio/m4a",
+                    mimeType: uploadMimeType,
                     fieldName: "file"
                 )
                 

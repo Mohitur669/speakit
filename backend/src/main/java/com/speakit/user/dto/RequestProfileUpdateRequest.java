@@ -1,4 +1,4 @@
-package com.speakit.auth.dto;
+package com.speakit.user.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,8 +9,6 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ChangePasswordRequest {
+public class RequestProfileUpdateRequest {
     private String currentPassword;
-    private String newPassword;
-    private String otp;
 }
