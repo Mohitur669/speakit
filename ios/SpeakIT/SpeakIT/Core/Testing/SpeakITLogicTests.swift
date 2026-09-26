@@ -31,6 +31,11 @@ public struct SpeakITLogicTests {
         assert(PlanType.pro < PlanType.proPlus, "PlanType hierarchy: pro < proPlus")
         assert(PlanType.proPlus < PlanType.enterprise, "PlanType hierarchy: proPlus < enterprise")
         
+        assert(PlanType.free.displayName == "Free", "Free plan displayName is Free")
+        assert(PlanType.pro.displayName == "Pro", "Pro plan displayName is Pro")
+        assert(PlanType.proPlus.displayName == "Pro Plus", "Pro Plus plan displayName is Pro Plus")
+        assert(PlanType.enterprise.displayName == "Enterprise", "Enterprise plan displayName is Enterprise")
+        
         assert(PlanType.free.monthlyQuota == 10_000, "Free plan quota is 10,000")
         assert(PlanType.pro.monthlyQuota == 100_000, "Pro plan quota is 100,000")
         assert(PlanType.proPlus.monthlyQuota == 250_000, "Pro Plus plan quota is 250,000")
@@ -84,6 +89,16 @@ public struct SpeakITLogicTests {
         // MARK: - 4. API Endpoints Path Tests
         print("▶️ Testing API Endpoints Construction...")
         assert(APIEndpoint.login.path == "/api/auth/login", "Login endpoint matches contract (/api/auth/login)")
+        assert(APIEndpoint.forgotPassword.path == "/api/auth/forgot-password", "Forgot password endpoint matches contract (/api/auth/forgot-password)")
+        assert(APIEndpoint.resetPassword.path == "/api/auth/reset-password", "Reset password endpoint matches contract (/api/auth/reset-password)")
+        assert(APIEndpoint.requestProfileUpdate.path == "/api/v1/users/profile/request-update", "Request profile update endpoint matches contract (/api/v1/users/profile/request-update)")
+        assert(APIEndpoint.requestPasswordChangeOtp.path == "/api/v1/users/password/request-otp", "Request password change OTP matches contract (/api/v1/users/password/request-otp)")
+        assert(APIEndpoint.updateProfile.path == "/api/v1/users/profile", "Update profile endpoint matches contract (/api/v1/users/profile)")
+        assert(APIEndpoint.updateFullName.path == "/api/v1/users/full-name", "Update full name endpoint matches contract (/api/v1/users/full-name)")
+        assert(APIEndpoint.updateUsername.path == "/api/v1/users/username", "Update username endpoint matches contract (/api/v1/users/username)")
+        assert(APIEndpoint.requestEmailChangeOtp.path == "/api/v1/users/email/request-otp", "Request email change OTP matches contract (/api/v1/users/email/request-otp)")
+        assert(APIEndpoint.updateEmail.path == "/api/v1/users/email", "Update email endpoint matches contract (/api/v1/users/email)")
+        assert(APIEndpoint.changePassword.path == "/api/v1/users/password", "Change password endpoint matches contract (/api/v1/users/password)")
         assert(APIEndpoint.synthesize.path == "/api/tts/synthesize", "TTS synthesize endpoint matches contract (/api/tts/synthesize)")
         assert(APIEndpoint.voices.path == "/api/tts/voices", "TTS voices endpoint matches contract (/api/tts/voices)")
         assert(APIEndpoint.transcribeLive.path == "/api/stt/transcribe-live", "STT live endpoint matches contract (/api/stt/transcribe-live)")

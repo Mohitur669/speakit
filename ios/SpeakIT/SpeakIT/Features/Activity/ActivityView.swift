@@ -11,7 +11,6 @@ struct ActivityView: View {
     @Environment(AppState.self) private var appState
     
     @State private var historyItems: [HistoryItem] = []
-    @State private var showSettings: Bool = false
     @State private var isLoadingInitial: Bool = false
     @State private var isLoadingMore: Bool = false
     @State private var currentPage: Int = 0
@@ -34,7 +33,8 @@ struct ActivityView: View {
                         Spacer()
                         
                         Button(action: {
-                            showSettings = true
+                            UISelectionFeedbackGenerator().selectionChanged()
+                            appState.selectedTab = 3
                         }) {
                             Image(systemName: "gearshape")
                                 .font(.system(size: 20, weight: .semibold))
@@ -212,9 +212,6 @@ struct ActivityView: View {
             }
             .refreshable {
                 await refreshAll()
-            }
-            .navigationDestination(isPresented: $showSettings) {
-                ProfileSettingsView()
             }
             .alert("Clear History", isPresented: $showClearConfirmation) {
                 Button("Cancel", role: .cancel) {}

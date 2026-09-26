@@ -40,6 +40,15 @@ struct MainTabView: View {
                 Label("Activity", systemImage: "clock.arrow.circlepath")
             }
             .tag(2)
+            
+            // Tab 4: Profile (Settings & Account)
+            NavigationStack {
+                ProfileSettingsView()
+            }
+            .tabItem {
+                Label("Profile", systemImage: "person.crop.circle.fill")
+            }
+            .tag(3)
         }
         .tint(Color.speakitPrimary)
         .sheet(isPresented: $state.showPaywallSheet) {

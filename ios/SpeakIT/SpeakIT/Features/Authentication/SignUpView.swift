@@ -33,20 +33,8 @@ struct SignUpView: View {
                     .padding(.top, 6)
                     .padding(.bottom, 24)
                 
-                if let errorMessage = errorMessage {
-                    HStack(spacing: 8) {
-                        Image(systemName: "exclamationmark.circle.fill")
-                            .foregroundColor(Color.speakitDestructive)
-                        Text(errorMessage)
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(Color.speakitDestructive)
-                    }
-                    .padding(12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.speakitDestructiveLight)
-                    .cornerRadius(12)
-                    .padding(.bottom, 16)
-                }
+                SpeakITBanner(message: $errorMessage, style: .error)
+                    .padding(.bottom, errorMessage != nil ? 16 : 0)
                 
                 VStack(spacing: 14) {
                     SpeakITTextField(placeholder: "Full Name", text: $fullName, icon: "person.crop.circle")
@@ -103,6 +91,7 @@ struct SignUpView: View {
         Task {
             do {
                 struct RegisterRequest: Codable {
+                    let fullName: String?
                     let username: String
                     let email: String
                     let password: String
@@ -111,12 +100,14 @@ struct SignUpView: View {
                 struct AuthResponse: Codable {
                     let token: String?
                     let username: String?
+                    let fullName: String?
                     let email: String?
                     let role: String?
                     let planType: String?
                 }
                 
                 let reqBody = try JSONEncoder().encode(RegisterRequest(
+                    fullName: fullName.trimmingCharacters(in: .whitespaces).isEmpty ? nil : fullName.trimmingCharacters(in: .whitespaces),
                     username: normalizedUsername,
                     email: normalizedEmail,
                     password: password

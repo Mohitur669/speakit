@@ -26,8 +26,8 @@ enum APIError: LocalizedError {
             return "Invalid server endpoint URL."
         case .networkError(let error):
             return "Network connection error: \(error.localizedDescription)"
-        case .serverError(let code, let msg):
-            return "Server error (\(code)): \(msg)"
+        case .serverError(_, let msg):
+            return msg.isEmpty ? "An unexpected server error occurred." : msg
         case .unauthorized:
             return "Your session has expired. Please sign in again."
         case .forbidden:
@@ -38,6 +38,10 @@ enum APIError: LocalizedError {
             return "No data received from the server."
         }
     }
+}
+
+struct EmptyResponse: Codable {
+    public init() {}
 }
 
 final class HTTPClient {
@@ -78,14 +82,21 @@ final class HTTPClient {
         }
         
         guard (200...299).contains(httpResponse.statusCode) else {
-            let errorMsg = String(data: data, encoding: .utf8) ?? "Unknown error"
-            throw APIError.serverError(statusCode: httpResponse.statusCode, message: errorMsg)
+            let cleanMsg = HTTPClient.extractErrorMessage(from: data, statusCode: httpResponse.statusCode)
+            throw APIError.serverError(statusCode: httpResponse.statusCode, message: cleanMsg)
+        }
+        
+        if data.isEmpty, let empty = EmptyResponse() as? T {
+            return empty
         }
         
         do {
             let decoded = try JSONDecoder().decode(T.self, from: data)
             return decoded
         } catch {
+            if let empty = EmptyResponse() as? T {
+                return empty
+            }
             throw APIError.decodingError(error)
         }
     }
@@ -120,8 +131,8 @@ final class HTTPClient {
         }
         
         guard (200...299).contains(httpResponse.statusCode) else {
-            let errorMsg = String(data: data, encoding: .utf8) ?? "Synthesis failed"
-            throw APIError.serverError(statusCode: httpResponse.statusCode, message: errorMsg)
+            let cleanMsg = HTTPClient.extractErrorMessage(from: data, statusCode: httpResponse.statusCode)
+            throw APIError.serverError(statusCode: httpResponse.statusCode, message: cleanMsg)
         }
         
         return data
@@ -141,9 +152,20 @@ final class HTTPClient {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         
+        // Sanitize fileName to prevent backend double-extension security rejections
+        let safeFileName: String
+        let ns = fileName as NSString
+        let ext = ns.pathExtension
+        if !ext.isEmpty {
+            let base = ns.deletingPathExtension.replacingOccurrences(of: ".", with: "_")
+            safeFileName = "\(base).\(ext)"
+        } else {
+            safeFileName = fileName
+        }
+        
         var body = Data()
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"\(fieldName)\"; filename=\"\(fileName)\"\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"\(fieldName)\"; filename=\"\(safeFileName)\"\r\n".data(using: .utf8)!)
         body.append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)
         body.append(fileData)
         body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
@@ -165,8 +187,8 @@ final class HTTPClient {
         }
         
         guard (200...299).contains(httpResponse.statusCode) else {
-            let errorMsg = String(data: data, encoding: .utf8) ?? "Upload failed"
-            throw APIError.serverError(statusCode: httpResponse.statusCode, message: errorMsg)
+            let cleanMsg = HTTPClient.extractErrorMessage(from: data, statusCode: httpResponse.statusCode)
+            throw APIError.serverError(statusCode: httpResponse.statusCode, message: cleanMsg)
         }
         
         do {
@@ -174,6 +196,43 @@ final class HTTPClient {
             return decoded
         } catch {
             throw APIError.decodingError(error)
+        }
+    }
+    
+    // MARK: - JSON Error Extraction
+    static func extractErrorMessage(from data: Data, statusCode: Int) -> String {
+        struct ErrorEnvelope: Decodable {
+            let message: String?
+            let error: String?
+            let detail: String?
+        }
+        
+        if let decoded = try? JSONDecoder().decode(ErrorEnvelope.self, from: data) {
+            if let msg = decoded.message, !msg.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                return msg.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+            if let err = decoded.error, !err.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                return err.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+            if let det = decoded.detail, !det.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                return det.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+        }
+        
+        if let raw = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty {
+            if !raw.hasPrefix("<") && !raw.hasPrefix("{") && raw.count < 200 {
+                return raw
+            }
+        }
+        
+        switch statusCode {
+        case 400: return "Invalid request. Please check your details and try again."
+        case 401: return "Authentication required. Please sign in again."
+        case 403: return "Access denied. You do not have permission for this action."
+        case 404: return "Requested resource was not found."
+        case 429: return "Rate limit exceeded. Please wait a moment and try again."
+        case 500...599: return "Server error. Please try again shortly."
+        default: return "An unexpected error occurred."
         }
     }
 }

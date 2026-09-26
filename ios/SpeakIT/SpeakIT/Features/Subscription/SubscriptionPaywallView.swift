@@ -97,11 +97,7 @@ struct SubscriptionPaywallView: View {
                 }
                 .padding(.top, 8)
                 
-                if let errorMessage = errorMessage {
-                    Text(errorMessage)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(Color.speakitDestructive)
-                }
+                SpeakITBanner(message: $errorMessage, style: .error)
                 
                 // Continue CTA Button
                 SpeakITButton(

@@ -68,6 +68,9 @@ extension Color {
     
     // Status
     static let speakitSuccess = Color(hex: "34C759")
+    static let speakitSuccessLight = Color(UIColor { traitCollection in
+        traitCollection.userInterfaceStyle == .dark ? UIColor(red: 0.12, green: 0.30, blue: 0.15, alpha: 1.0) : UIColor(red: 0.93, green: 0.98, blue: 0.94, alpha: 1.0) // #EEFAEF
+    })
     static let speakitWarning = Color(hex: "FF9500")
     static let speakitDestructive = Color(hex: "FF3B30")
     static let speakitDestructiveLight = Color(UIColor { traitCollection in

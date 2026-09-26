@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS users (
 
     -- Core Business Data
     username VARCHAR(50) NOT NULL UNIQUE,
+    full_name VARCHAR(100),
     email VARCHAR(100) NOT NULL UNIQUE,
     phone_number VARCHAR(15) NOT NULL UNIQUE, -- NOT NULL enforced
     password VARCHAR(255) NOT NULL,
@@ -395,5 +396,10 @@ BEGIN
         END IF;
 
         ALTER TABLE tts_history DROP COLUMN is_eleven_labs;
+    END IF;
+
+    -- Ensure full_name exists on users table
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='full_name') THEN
+        ALTER TABLE users ADD COLUMN full_name VARCHAR(100);
     END IF;
 END $$;
