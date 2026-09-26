@@ -10,11 +10,13 @@ import SwiftUI
 enum SpeakITBannerStyle {
     case success
     case error
+    case info
     
     var icon: String {
         switch self {
         case .success: return "checkmark.circle.fill"
         case .error: return "exclamationmark.circle.fill"
+        case .info: return "info.circle.fill"
         }
     }
     
@@ -22,6 +24,7 @@ enum SpeakITBannerStyle {
         switch self {
         case .success: return Color.speakitSuccess
         case .error: return Color.speakitDestructive
+        case .info: return Color.speakitPrimary
         }
     }
     
@@ -29,6 +32,7 @@ enum SpeakITBannerStyle {
         switch self {
         case .success: return Color.speakitSuccessLight
         case .error: return Color.speakitDestructiveLight
+        case .info: return Color.speakitBadgeBackground
         }
     }
     
@@ -36,6 +40,7 @@ enum SpeakITBannerStyle {
         switch self {
         case .success: return 4.0
         case .error: return 5.0
+        case .info: return 3.5
         }
     }
 }

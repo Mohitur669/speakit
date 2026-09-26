@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS tts_history (
     output_format VARCHAR(10) NOT NULL,
     character_count INTEGER NOT NULL,
     text_snippet VARCHAR(100),
+    full_text TEXT,
 
     -- Audit Fields
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -155,6 +156,8 @@ INSERT INTO system_parameters (parameter_name, parameter_value, description) VAL
 ('ENABLE_RAZORPAY', 'true', 'Global toggle for payment gateway'),
 ('PRO_PLAN_PRICE_INR', '1', 'Current price for Pro monthly subscription'),
 ('PRO_PLUS_PLAN_PRICE_INR', '2', 'Current price for Pro Plus subscription'),
+('IOS_PRO_PLAN_PRICE', '9.99', 'Dollar price for Pro monthly subscription on iOS App Store'),
+('IOS_PRO_PLUS_PLAN_PRICE', '19.99', 'Dollar price for Pro Plus subscription on iOS App Store'),
 ('ENTERPRISE_PLAN_PRICE_INR', '0', 'Contact sales for Enterprise pricing'),
 ('PRO_PLAN_ID_RAZORPAY', '', 'Razorpay Plan ID for Pro monthly subscription'),
 ('PRO_PLUS_PLAN_ID_RAZORPAY', '', 'Razorpay Plan ID for Pro Plus monthly subscription'),
@@ -402,4 +405,16 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='full_name') THEN
         ALTER TABLE users ADD COLUMN full_name VARCHAR(100);
     END IF;
+
+    -- Ensure full_text exists on tts_history table
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tts_history' AND column_name='full_text') THEN
+        ALTER TABLE tts_history ADD COLUMN full_text TEXT;
+    END IF;
+
+    -- Ensure iOS plan price parameters exist
+    INSERT INTO system_parameters (parameter_name, parameter_value, description)
+    VALUES 
+        ('IOS_PRO_PLAN_PRICE', '9.99', 'Dollar price for Pro monthly subscription on iOS App Store'),
+        ('IOS_PRO_PLUS_PLAN_PRICE', '19.99', 'Dollar price for Pro Plus subscription on iOS App Store')
+    ON CONFLICT (parameter_name) DO NOTHING;
 END $$;

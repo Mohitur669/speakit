@@ -10,6 +10,7 @@ import Foundation
 struct HistoryItem: Codable, Identifiable {
     let id: Int64
     let textSnippet: String
+    let fullText: String?
     let characterCount: Int
     let voiceId: String?
     let voiceName: String?
@@ -20,6 +21,7 @@ struct HistoryItem: Codable, Identifiable {
     init(
         id: Int64,
         textSnippet: String,
+        fullText: String? = nil,
         characterCount: Int = 0,
         voiceId: String? = nil,
         voiceName: String? = nil,
@@ -29,6 +31,7 @@ struct HistoryItem: Codable, Identifiable {
     ) {
         self.id = id
         self.textSnippet = textSnippet
+        self.fullText = fullText
         self.characterCount = characterCount
         self.voiceId = voiceId
         self.voiceName = voiceName
@@ -38,13 +41,14 @@ struct HistoryItem: Codable, Identifiable {
     }
     
     enum CodingKeys: String, CodingKey {
-        case id, textSnippet, characterCount, voiceId, voiceName, engineType, voiceType, createdAt
+        case id, textSnippet, fullText, characterCount, voiceId, voiceName, engineType, voiceType, createdAt
     }
     
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.id = try container.decode(Int64.self, forKey: .id)
         self.textSnippet = (try? container.decode(String.self, forKey: .textSnippet)) ?? "Audio generation"
+        self.fullText = try? container.decode(String.self, forKey: .fullText)
         self.characterCount = (try? container.decode(Int.self, forKey: .characterCount)) ?? 0
         self.voiceId = try? container.decode(String.self, forKey: .voiceId)
         self.voiceName = try? container.decode(String.self, forKey: .voiceName)
@@ -65,11 +69,19 @@ struct HistoryItem: Codable, Identifiable {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
         try container.encode(textSnippet, forKey: .textSnippet)
+        try container.encodeIfPresent(fullText, forKey: .fullText)
         try container.encode(characterCount, forKey: .characterCount)
         try container.encodeIfPresent(voiceId, forKey: .voiceId)
         try container.encodeIfPresent(voiceName, forKey: .voiceName)
         try container.encode(engineType, forKey: .engineType)
         try container.encode(createdAt, forKey: .createdAt)
+    }
+    
+    var displayText: String {
+        if let ft = fullText, !ft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return ft
+        }
+        return textSnippet
     }
     
     var subtitle: String {

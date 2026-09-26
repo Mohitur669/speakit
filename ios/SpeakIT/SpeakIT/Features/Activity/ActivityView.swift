@@ -20,6 +20,12 @@ struct ActivityView: View {
     @State private var pageSize: Int = 5
     private let pageSizeOptions: [Int] = [5, 10, 20]
     
+    @State private var selectedHistoryItem: HistoryItem? = nil
+    @State private var isSelectionMode: Bool = false
+    @State private var selectedItemIds: Set<Int64> = []
+    @State private var showDeleteSelectedConfirmation: Bool = false
+    @State private var isDeletingSelected: Bool = false
+    
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -88,52 +94,67 @@ struct ActivityView: View {
                     .cornerRadius(18)
                     .accessibilityIdentifier("activity.quota")
                     
-                    // Section Header with Max History Selector Dropdown (5, 10, 20)
+                    // Section Header with Edit/Select Toggle and Max History Selector Dropdown
                     HStack(spacing: 8) {
-                        Text("Recent Generations")
-                            .font(.system(size: 18, weight: .bold))
+                        Text("History")
+                            .font(.system(size: 20, weight: .bold))
                             .foregroundColor(Color.speakitTextPrimary)
                         
                         Spacer()
                         
-                        // Max History Selector Dropdown
-                        Menu {
-                            ForEach(pageSizeOptions, id: \.self) { size in
-                                Button(action: {
-                                    changePageSize(to: size)
-                                }) {
-                                    HStack {
-                                        Text("\(size) items")
-                                        if pageSize == size {
-                                            Image(systemName: "checkmark")
-                                        }
-                                    }
-                                }
-                            }
-                        } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: "slider.horizontal.3")
-                                    .font(.system(size: 10, weight: .semibold))
-                                Text("\(pageSize) max")
-                                    .font(.system(size: 11, weight: .bold))
-                                Image(systemName: "chevron.down")
-                                    .font(.system(size: 8, weight: .bold))
-                            }
-                            .foregroundColor(Color.speakitPrimary)
-                            .padding(.horizontal, 9)
-                            .padding(.vertical, 5)
-                            .background(Color.speakitBadgeBackground)
-                            .clipShape(Capsule())
-                        }
-                        .accessibilityIdentifier("activity.pageSizeSelector")
-                        
-                        if !historyItems.isEmpty {
+                        if isSelectionMode {
+                            // "Select All" / "Deselect All"
                             Button(action: {
-                                showClearConfirmation = true
+                                UISelectionFeedbackGenerator().selectionChanged()
+                                if selectedItemIds.count == historyItems.count {
+                                    selectedItemIds.removeAll()
+                                } else {
+                                    selectedItemIds = Set(historyItems.map { $0.id })
+                                }
                             }) {
-                                Text("Clear All")
+                                Text(selectedItemIds.count == historyItems.count ? "Deselect All" : "Select All")
                                     .font(.system(size: 12, weight: .semibold))
                                     .foregroundColor(Color.speakitPrimary)
+                            }
+                            
+                            // "Done" button to exit multiselect mode
+                            Button(action: {
+                                UISelectionFeedbackGenerator().selectionChanged()
+                                withAnimation {
+                                    isSelectionMode = false
+                                    selectedItemIds.removeAll()
+                                }
+                            }) {
+                                Text("Done")
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundColor(Color.speakitPrimary)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 4)
+                                    .background(Color.speakitBadgeBackground)
+                                    .clipShape(Capsule())
+                            }
+                        } else {
+                            if !historyItems.isEmpty {
+                                // "Select" button to enter multiselect mode
+                                Button(action: {
+                                    UISelectionFeedbackGenerator().selectionChanged()
+                                    withAnimation {
+                                        isSelectionMode = true
+                                        selectedItemIds.removeAll()
+                                    }
+                                }) {
+                                    Text("Select")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundColor(Color.speakitPrimary)
+                                }
+                                
+                                Button(action: {
+                                    showClearConfirmation = true
+                                }) {
+                                    Text("Clear All")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundColor(Color.speakitPrimary)
+                                }
                             }
                         }
                     }
@@ -158,9 +179,20 @@ struct ActivityView: View {
                     } else {
                         LazyVStack(spacing: 10) {
                             ForEach(historyItems) { item in
-                                SpeakITHistoryRow(item: item) {
-                                    playHistoryItem(item)
-                                }
+                                SpeakITHistoryRow(
+                                    item: item,
+                                    isSelectionMode: isSelectionMode,
+                                    isSelected: selectedItemIds.contains(item.id),
+                                    onSelect: {
+                                        toggleSelection(for: item.id)
+                                    },
+                                    onTap: {
+                                        selectedHistoryItem = item
+                                    },
+                                    onPlay: {
+                                        playHistoryItem(item)
+                                    }
+                                )
                             }
                             
                             // Controlled Pagination Footer
@@ -175,33 +207,42 @@ struct ActivityView: View {
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 14)
                             } else if hasMorePages {
-                                Button(action: {
-                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                    Task {
-                                        await loadNextPage()
+                                HStack(spacing: 10) {
+                                    Button(action: {
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        Task {
+                                            await loadNextPage()
+                                        }
+                                    }) {
+                                        HStack(spacing: 6) {
+                                            Image(systemName: "arrow.down.circle.fill")
+                                                .font(.system(size: 13, weight: .semibold))
+                                            Text("Load More")
+                                                .font(.system(size: 13, weight: .semibold))
+                                        }
+                                        .foregroundColor(Color.speakitPrimary)
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 8)
+                                        .background(Color.speakitBadgeBackground)
+                                        .clipShape(Capsule())
                                     }
-                                }) {
-                                    HStack(spacing: 6) {
-                                        Image(systemName: "arrow.down.circle.fill")
-                                            .font(.system(size: 13, weight: .semibold))
-                                        Text("Load More (\(pageSize))")
-                                            .font(.system(size: 13, weight: .semibold))
-                                    }
-                                    .foregroundColor(Color.speakitPrimary)
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 8)
-                                    .background(Color.speakitBadgeBackground)
-                                    .clipShape(Capsule())
+                                    .buttonStyle(.plain)
+                                    
+                                    // Page size selector dropdown beside Load More
+                                    pageSizeMenu
                                 }
-                                .buttonStyle(.plain)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 10)
                             } else if historyItems.count >= pageSize {
-                                Text("Showing all \(historyItems.count) generations")
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundColor(Color.speakitTextTertiary)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 12)
+                                HStack(spacing: 12) {
+                                    Text("Showing all \(historyItems.count) generations")
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundColor(Color.speakitTextTertiary)
+                                    
+                                    pageSizeMenu
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
                             }
                         }
                         .accessibilityIdentifier("activity.history")
@@ -212,6 +253,26 @@ struct ActivityView: View {
             }
             .refreshable {
                 await refreshAll()
+            }
+            .safeAreaInset(edge: .bottom) {
+                if isSelectionMode {
+                    selectionActionBar
+                }
+            }
+            .sheet(item: $selectedHistoryItem) { item in
+                HistoryDetailView(item: item) { deletedItem in
+                    withAnimation {
+                        historyItems.removeAll { $0.id == deletedItem.id }
+                    }
+                }
+            }
+            .alert("Delete Selected Items", isPresented: $showDeleteSelectedConfirmation) {
+                Button("Cancel", role: .cancel) {}
+                Button("Delete", role: .destructive) {
+                    deleteSelectedItems()
+                }
+            } message: {
+                Text("Are you sure you want to permanently delete \(selectedItemIds.count) generation(s) from your history? This action cannot be undone.")
             }
             .alert("Clear History", isPresented: $showClearConfirmation) {
                 Button("Cancel", role: .cancel) {}
@@ -230,6 +291,114 @@ struct ActivityView: View {
             .task {
                 await loadInitialHistory()
                 await appState.loadCurrentUser()
+            }
+        }
+    }
+    
+    // MARK: - Multiselect Floating Bar
+    private var selectionActionBar: some View {
+        HStack(spacing: 12) {
+            Text("\(selectedItemIds.count) of \(historyItems.count) selected")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(Color.speakitTextSecondary)
+            
+            Spacer()
+            
+            Button(action: {
+                showDeleteSelectedConfirmation = true
+            }) {
+                HStack(spacing: 6) {
+                    if isDeletingSelected {
+                        ProgressView()
+                            .scaleEffect(0.75)
+                    } else {
+                        Image(systemName: "trash.fill")
+                            .font(.system(size: 12))
+                    }
+                    Text(selectedItemIds.isEmpty ? "Delete" : "Delete (\(selectedItemIds.count))")
+                        .font(.system(size: 13, weight: .bold))
+                }
+                .foregroundColor(selectedItemIds.isEmpty ? Color.speakitTextTertiary : .white)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(selectedItemIds.isEmpty ? Color.gray.opacity(0.18) : Color.speakitDestructive)
+                .clipShape(Capsule())
+            }
+            .disabled(selectedItemIds.isEmpty || isDeletingSelected)
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 12)
+        .background(Color.speakitBackground)
+        .cornerRadius(18)
+        .shadow(color: Color.black.opacity(0.08), radius: 10, y: 4)
+        .overlay(
+            RoundedRectangle(cornerRadius: 18)
+                .stroke(Color(hex: "E6E6EB"), lineWidth: 1)
+        )
+        .padding(.horizontal, SpeakITSpacing.screenMargin)
+        .padding(.bottom, 8)
+        .transition(.move(edge: .bottom).combined(with: .opacity))
+    }
+    
+    // MARK: - Page Size Selector Menu
+    private var pageSizeMenu: some View {
+        Menu {
+            ForEach(pageSizeOptions, id: \.self) { size in
+                Button(action: {
+                    changePageSize(to: size)
+                }) {
+                    HStack {
+                        Text("\(size) items")
+                        if pageSize == size {
+                            Image(systemName: "checkmark")
+                        }
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "slider.horizontal.3")
+                    .font(.system(size: 13, weight: .semibold))
+                Text("\(pageSize) per page")
+                    .font(.system(size: 13, weight: .semibold))
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 10, weight: .bold))
+            }
+            .foregroundColor(Color.speakitPrimary)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(Color.speakitBadgeBackground)
+            .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("activity.pageSizeSelector")
+    }
+    
+    private func toggleSelection(for itemId: Int64) {
+        if selectedItemIds.contains(itemId) {
+            selectedItemIds.remove(itemId)
+        } else {
+            selectedItemIds.insert(itemId)
+        }
+    }
+    
+    private func deleteSelectedItems() {
+        guard !selectedItemIds.isEmpty else { return }
+        let idsToDelete = Array(selectedItemIds)
+        isDeletingSelected = true
+        
+        Task {
+            let bodyData = try? JSONEncoder().encode(idsToDelete)
+            let _: EmptyResponse? = try? await HTTPClient.shared.request(.deleteHistory, method: "DELETE", body: bodyData)
+            
+            await MainActor.run {
+                isDeletingSelected = false
+                withAnimation {
+                    self.historyItems.removeAll { idsToDelete.contains($0.id) }
+                    self.selectedItemIds.removeAll()
+                    self.isSelectionMode = false
+                }
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
             }
         }
     }

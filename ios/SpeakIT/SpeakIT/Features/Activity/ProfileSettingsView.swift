@@ -12,24 +12,34 @@ import Combine
 struct ProfileSettingsView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
     
     enum ActiveSheet: Identifiable {
         case password
         case paywall
         case passwordPolicy
+        case terms
+        case privacy
+        case about
+        case contact
+        case blog
         
         var id: String {
             switch self {
             case .password: return "password"
             case .paywall: return "paywall"
             case .passwordPolicy: return "passwordPolicy"
+            case .terms: return "terms"
+            case .privacy: return "privacy"
+            case .about: return "about"
+            case .contact: return "contact"
+            case .blog: return "blog"
             }
         }
     }
     
     // Sub-screens & Sheets
     @State private var activeSheet: ActiveSheet? = nil
-    @State private var showTermsAlert: Bool = false
     @State private var showSignOutAlert: Bool = false
     @State private var showDeleteConfirmation: Bool = false
     
@@ -82,12 +92,17 @@ struct ProfileSettingsView: View {
                 SubscriptionPaywallView()
             case .passwordPolicy:
                 PasswordPolicySheet()
+            case .terms:
+                TermsOfServiceSheet()
+            case .privacy:
+                PrivacyPolicySheet()
+            case .about:
+                AboutSpeakITSheet()
+            case .contact:
+                ContactSupportSheet()
+            case .blog:
+                BlogUpdatesSheet()
             }
-        }
-        .alert("Terms & Privacy", isPresented: $showTermsAlert) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text("SpeakIT is dedicated to protecting your data privacy and synthesis security. For full terms, visit speakit.app/terms.")
         }
         .alert("Sign Out", isPresented: $showSignOutAlert) {
             Button("Cancel", role: .cancel) {}
@@ -175,33 +190,13 @@ struct ProfileSettingsView: View {
         let user = appState.currentUser ?? User.sample
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .center) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Plan & Quota")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(Color.speakitTextSecondary)
-                    
-                    SpeakITQuotaBadge(text: "\(user.planType.displayName) Plan")
-                }
+                Text("Plan & Quota")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(Color.speakitTextPrimary)
                 
                 Spacer()
                 
-                if user.planType < .proPlus {
-                    Button(action: {
-                        activeSheet = .paywall
-                    }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "sparkles")
-                                .font(.system(size: 12, weight: .semibold))
-                            Text("Upgrade")
-                                .font(.system(size: 13, weight: .bold))
-                        }
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 7)
-                        .background(Color.speakitPrimary)
-                        .cornerRadius(20)
-                    }
-                }
+                SpeakITQuotaBadge(text: "\(user.planType.displayName) Plan")
             }
             
             // Progress Bar
@@ -239,9 +234,10 @@ struct ProfileSettingsView: View {
         )
     }
     
-    // MARK: - 3. Account Settings Section (Profile Settings & Password Change)
+    // MARK: - 3. Account Settings Section (Profile Settings, Password & Plan)
     @ViewBuilder
     private var accountSettingsSection: some View {
+        let user = appState.currentUser ?? User.sample
         VStack(alignment: .leading, spacing: 10) {
             Text("ACCOUNT SETTINGS")
                 .font(.system(size: 11, weight: .bold))
@@ -283,6 +279,15 @@ struct ProfileSettingsView: View {
                     subtitle: "Protected with 2-Factor OTP verification",
                     icon: "lock.shield.fill",
                     action: { activeSheet = .password }
+                )
+                
+                menuDivider
+                
+                menuItem(
+                    title: "Change Plan",
+                    subtitle: "Upgrade or modify your subscription tier",
+                    icon: "sparkles",
+                    action: { activeSheet = .paywall }
                 )
             }
             .background(Color.speakitBackground)
@@ -351,11 +356,11 @@ struct ProfileSettingsView: View {
         }
     }
     
-    // MARK: - 5. Security & Legal Section
+    // MARK: - 5. Legal & Company Section
     @ViewBuilder
     private var securityAndLegalSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("SECURITY & LEGAL")
+            Text("LEGAL & COMPANY")
                 .font(.system(size: 11, weight: .bold))
                 .foregroundColor(Color.speakitTextTertiary)
                 .padding(.leading, 4)
@@ -371,10 +376,46 @@ struct ProfileSettingsView: View {
                 menuDivider
                 
                 menuItem(
-                    title: "Terms & Privacy Policy",
-                    subtitle: "Data encryption and usage rights",
+                    title: "Terms of Service",
+                    subtitle: "Usage rights, licensing & account terms",
                     icon: "doc.text.fill",
-                    action: { showTermsAlert = true }
+                    action: { activeSheet = .terms }
+                )
+                
+                menuDivider
+                
+                menuItem(
+                    title: "Privacy Policy",
+                    subtitle: "Data encryption, audio retention & cookies",
+                    icon: "lock.shield.fill",
+                    action: { activeSheet = .privacy }
+                )
+                
+                menuDivider
+                
+                menuItem(
+                    title: "About SpeakIT",
+                    subtitle: "Platform vision, technology & mission",
+                    icon: "info.circle.fill",
+                    action: { activeSheet = .about }
+                )
+                
+                menuDivider
+                
+                menuItem(
+                    title: "Contact Support",
+                    subtitle: "Customer service, inquiries & bug reports",
+                    icon: "envelope.fill",
+                    action: { activeSheet = .contact }
+                )
+                
+                menuDivider
+                
+                menuItem(
+                    title: "Blog & Updates",
+                    subtitle: "Release notes, voice tutorials & guides",
+                    icon: "newspaper.fill",
+                    action: { activeSheet = .blog }
                 )
             }
             .background(Color.speakitBackground)
@@ -451,7 +492,14 @@ struct ProfileSettingsView: View {
     
     // MARK: - Helper Views & Actions
     @ViewBuilder
-    private func menuItem(title: String, subtitle: String, icon: String, action: @escaping () -> Void) -> some View {
+    private func menuItem(
+        title: String,
+        subtitle: String,
+        icon: String,
+        badgeText: String? = nil,
+        trailingIcon: String = "chevron.right",
+        action: @escaping () -> Void
+    ) -> some View {
         Button(action: {
             if hapticsEnabled {
                 UISelectionFeedbackGenerator().selectionChanged()
@@ -476,13 +524,22 @@ struct ProfileSettingsView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
+                if let badgeText = badgeText {
+                    SpeakITQuotaBadge(text: badgeText)
+                }
+                
+                Image(systemName: trailingIcon)
+                    .font(.system(size: trailingIcon == "chevron.right" ? 12 : 11, weight: .semibold))
                     .foregroundColor(Color.speakitTextTertiary)
             }
             .padding(14)
         }
         .buttonStyle(.plain)
+    }
+    
+    private func openWebLink(_ urlString: String) {
+        guard let url = URL(string: urlString) else { return }
+        openURL(url)
     }
     
     private var menuDivider: some View {

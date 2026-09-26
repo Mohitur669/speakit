@@ -10,19 +10,23 @@ import StoreKit
 
 struct SubscriptionPaywallView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
     @Environment(AppState.self) private var appState
     
     @State private var selectedPlan: PlanType = .proPlus
     @State private var isPurchasing: Bool = false
     @State private var errorMessage: String? = nil
     @State private var showRestoreSuccess: Bool = false
+    @State private var showTermsSheet: Bool = false
+    @State private var showPrivacySheet: Bool = false
     
     var body: some View {
+        let currentPlan = appState.currentUser?.planType ?? .free
         ScrollView {
             VStack(spacing: 20) {
                 // Header Bar with Close Button
                 HStack {
-                    Text("Upgrade")
+                    Text("Change Plan")
                         .font(.system(size: 26, weight: .bold))
                         .foregroundColor(Color.speakitTextPrimary)
                     
@@ -53,11 +57,7 @@ struct SubscriptionPaywallView: View {
                 
                 // Hero Headlines
                 VStack(spacing: 4) {
-                    Text("Unlock Premium Voices")
-                        .font(.system(size: 23, weight: .bold))
-                        .foregroundColor(Color.speakitTextPrimary)
-                    
-                    Text("and Live Dictation")
+                    Text("Choose Your Plan")
                         .font(.system(size: 23, weight: .bold))
                         .foregroundColor(Color.speakitTextPrimary)
                     
@@ -70,26 +70,44 @@ struct SubscriptionPaywallView: View {
                 // Plan Comparison Cards
                 VStack(spacing: 14) {
                     SpeakITSubscriptionCard(
-                        tierName: "PRO",
-                        price: "$9.99 / month",
+                        tierName: "Free",
+                        price: "$0 / month",
+                        features: [
+                            "10,000 chars • Standard Polly Voices"
+                        ],
+                        isSelected: selectedPlan == .free,
+                        isCurrentPlan: currentPlan == .free,
+                        isDisabled: currentPlan == .free
+                    ) {
+                        selectedPlan = .free
+                    }
+                    .accessibilityIdentifier("subscription.free")
+                    
+                    SpeakITSubscriptionCard(
+                        tierName: "Pro",
+                        price: appState.proPriceDisplay,
                         features: [
                             "100,000 chars • Neural Polly • File STT"
                         ],
-                        isSelected: selectedPlan == .pro
+                        isSelected: selectedPlan == .pro,
+                        isCurrentPlan: currentPlan == .pro,
+                        isDisabled: currentPlan == .pro
                     ) {
                         selectedPlan = .pro
                     }
                     .accessibilityIdentifier("subscription.pro")
                     
                     SpeakITSubscriptionCard(
-                        tierName: "PRO PLUS",
-                        price: "$19.99 / month",
+                        tierName: "Pro Plus",
+                        price: appState.proPlusPriceDisplay,
                         features: [
-                            "250,000 chars • International • Indian",
+                            "250,000 chars • International & Indian",
                             "Live Mic STT"
                         ],
                         isSelected: selectedPlan == .proPlus,
-                        isPopular: true
+                        isPopular: true,
+                        isCurrentPlan: currentPlan == .proPlus,
+                        isDisabled: currentPlan == .proPlus
                     ) {
                         selectedPlan = .proPlus
                     }
@@ -99,11 +117,25 @@ struct SubscriptionPaywallView: View {
                 
                 SpeakITBanner(message: $errorMessage, style: .error)
                 
-                // Continue CTA Button
+                // Change Plan / Upgrade / Downgrade CTA Button
+                let isCurrentSelected = (selectedPlan == currentPlan)
+                let canChangePlan = !isCurrentSelected
+                
+                let buttonTitle: String = {
+                    if isCurrentSelected {
+                        return "\(currentPlan.displayName) (Active Plan)"
+                    } else if selectedPlan < currentPlan {
+                        return "Downgrade to \(selectedPlan.displayName)"
+                    } else {
+                        return "Upgrade to \(selectedPlan.displayName)"
+                    }
+                }()
+                
                 SpeakITButton(
-                    title: "Continue with \(selectedPlan.displayName)",
-                    style: .primary,
-                    isLoading: isPurchasing
+                    title: buttonTitle,
+                    style: selectedPlan < currentPlan ? .secondary : .primary,
+                    isLoading: isPurchasing,
+                    isEnabled: canChangePlan
                 ) {
                     executePurchase()
                 }
@@ -120,18 +152,58 @@ struct SubscriptionPaywallView: View {
                         .frame(height: 36)
                 }
                 
-                // Terms & App Store Billing Disclosures
-                Text("Terms • Privacy • App Store billing")
-                    .font(.system(size: 11, weight: .regular))
-                    .foregroundColor(Color.speakitTextTertiary)
-                    .padding(.bottom, 24)
+                // Terms & App Store Billing Disclosures (Native in-app sheets)
+                HStack(spacing: 6) {
+                    Button(action: {
+                        showTermsSheet = true
+                    }) {
+                        Text("Terms")
+                            .font(.system(size: 11, weight: .regular))
+                            .foregroundColor(Color.speakitPrimary)
+                            .underline()
+                    }
+                    
+                    Text("•")
+                        .font(.system(size: 11, weight: .regular))
+                        .foregroundColor(Color.speakitTextTertiary)
+                    
+                    Button(action: {
+                        showPrivacySheet = true
+                    }) {
+                        Text("Privacy")
+                            .font(.system(size: 11, weight: .regular))
+                            .foregroundColor(Color.speakitPrimary)
+                            .underline()
+                    }
+                    
+                    Text("•")
+                        .font(.system(size: 11, weight: .regular))
+                        .foregroundColor(Color.speakitTextTertiary)
+                    
+                    Text("App Store billing")
+                        .font(.system(size: 11, weight: .regular))
+                        .foregroundColor(Color.speakitTextTertiary)
+                }
+                .padding(.bottom, 24)
             }
             .padding(.horizontal, SpeakITSpacing.screenMargin)
+        }
+        .sheet(isPresented: $showTermsSheet) {
+            TermsOfServiceSheet()
+        }
+        .sheet(isPresented: $showPrivacySheet) {
+            PrivacyPolicySheet()
         }
         .alert("Purchases Restored", isPresented: $showRestoreSuccess) {
             Button("OK", role: .cancel) { dismiss() }
         } message: {
             Text("Your previous App Store subscriptions have been verified and restored.")
+        }
+        .task {
+            if let activePlan = appState.currentUser?.planType {
+                self.selectedPlan = activePlan
+            }
+            await appState.loadPlanPricing()
         }
     }
     

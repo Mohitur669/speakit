@@ -110,6 +110,11 @@ public struct SpeakITLogicTests {
         assert(APIEndpoint.deleteHistory.path == "/api/history/delete", "Delete history endpoint matches contract (/api/history/delete)")
         assert(APIEndpoint.deleteAccount.path == "/api/v1/users/me", "Account deletion endpoint matches contract (/api/v1/users/me)")
         
+        let itemWithSnippetOnly = HistoryItem(id: 101, textSnippet: "Snippet Only")
+        assert(itemWithSnippetOnly.displayText == "Snippet Only", "HistoryItem displayText returns snippet when fullText is nil")
+        let itemWithFullText = HistoryItem(id: 102, textSnippet: "Snippet", fullText: "This is the complete and full transcript")
+        assert(itemWithFullText.displayText == "This is the complete and full transcript", "HistoryItem displayText returns fullText when available")
+        
         // MARK: - 5. Transcription Result & Language Resolution Tests
         print("▶️ Testing Transcription Result & Language Resolution...")
         let sampleResult = TranscriptionResult.sample

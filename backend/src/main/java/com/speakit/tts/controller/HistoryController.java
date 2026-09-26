@@ -44,6 +44,7 @@ public class HistoryController {
                         .outputFormat(history.getOutputFormat())
                         .characterCount(history.getCharacterCount())
                         .textSnippet(history.getTextSnippet())
+                        .fullText(history.getFullText() != null ? history.getFullText() : history.getTextSnippet())
                         .createdAt(history.getCreatedAt())
                         .build());
 
