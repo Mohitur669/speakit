@@ -12,5 +12,10 @@
 // or just domain/IP (e.g. api.example.com or 192.168.1.50:8080)
 // APIEndpoint.swift will automatically ensure https:// is prepended.
 
+// Physical iPhone endpoint:
 IOS_API_BASE_URL = https:/$()/api.yourdomain.com
 IOS_API_BASE_BACKUP_URL = https:/$()/backup-api.yourdomain.com
+
+// Optional: Override for iOS Simulator (default is http://localhost:8080)
+// Set this if you want the Simulator to test against a custom domain instead of localhost:
+// IOS_SIMULATOR_BASE_URL = https:/$()/api.staging.com
