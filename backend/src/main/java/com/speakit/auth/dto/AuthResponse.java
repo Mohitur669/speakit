@@ -15,6 +15,7 @@ public class AuthResponse {
     private String fullName;
     private String email;
     private String phoneNumber;
+    private String avatarUrl;
     private String role; // ROLE_USER, ROLE_ADMIN
     private String planType; // FREE, PRO_PLUS, ENTERPRISE
     private String subscriptionStatus;
@@ -27,4 +28,6 @@ public class AuthResponse {
     private Integer charactersUsed;
     private Integer dailyCount;
     private Integer dailyLimit;
+    private Integer avatarDailyLimit;
+    private Integer avatarChangeCount;
 }

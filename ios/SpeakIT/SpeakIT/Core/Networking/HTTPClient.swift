@@ -189,8 +189,8 @@ final class HTTPClient {
         return data
     }
     
-    // MARK: - Multipart Form Data Upload (for STT)
-    func uploadMultipart<T: Decodable>(_ endpoint: APIEndpoint, fileData: Data, fileName: String, mimeType: String, fieldName: String) async throws -> T {
+    // MARK: - Multipart Form Data Upload (for STT and Avatars)
+    func uploadMultipart<T: Decodable>(_ endpoint: APIEndpoint, fileData: Data, fileName: String, mimeType: String, fieldName: String = "file") async throws -> T {
         guard let url = endpoint.url else { throw APIError.invalidURL }
         
         let boundary = "Boundary-\(UUID().uuidString)"

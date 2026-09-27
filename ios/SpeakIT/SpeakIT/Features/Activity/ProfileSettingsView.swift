@@ -134,16 +134,23 @@ struct ProfileSettingsView: View {
     private var userHeaderCard: some View {
         let user = appState.currentUser ?? User.sample
         HStack(spacing: 14) {
-            ZStack {
-                Circle()
-                    .fill(Color.speakitPrimary)
-                    .frame(width: 54, height: 54)
-                
-                Text(user.initials)
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundColor(.white)
-            }
-            .frame(width: 54, height: 54)
+            SpeakITAvatarView(
+                user: user,
+                size: 56,
+                isEditable: true,
+                onAvatarUpdated: { _ in
+                    successMessage = "Profile photo updated successfully!"
+                    errorMessage = nil
+                },
+                onAvatarDeleted: {
+                    successMessage = "Profile photo removed."
+                    errorMessage = nil
+                },
+                onError: { err in
+                    errorMessage = err
+                    successMessage = nil
+                }
+            )
             
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
