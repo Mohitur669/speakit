@@ -44,6 +44,10 @@ struct ContentView: View {
                     NavigationStack {
                         ProfileSettingsView()
                     }
+                case "profile_options":
+                    NavigationStack {
+                        ProfileOptionsView()
+                    }
                 case "paywall":
                     SubscriptionPaywallView()
                 default:

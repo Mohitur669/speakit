@@ -65,6 +65,9 @@ public struct SpeakITLogicTests {
         let emptyNameUser = User(id: 3, username: "empty", email: "e@example.com", fullName: "", role: "USER", planType: .free, status: "ACTIVE", characterLimit: 1000, charactersUsed: 0)
         assert(emptyNameUser.initials == "U", "Empty name user initials should default to 'U'")
         
+        let avatarUser = User(id: 4, username: "avatarUser", email: "a@example.com", fullName: "Avatar User", role: "USER", planType: .free, status: "ACTIVE", characterLimit: 1000, charactersUsed: 0, avatarUrl: "https://cdn.speakit.com/avatars/u_4.jpg")
+        assert(avatarUser.avatarUrl == "https://cdn.speakit.com/avatars/u_4.jpg", "User avatarUrl preserves configured avatar URL")
+        
         // MARK: - 3. Voice Catalog Categorization Tests
         print("▶️ Testing Voice Catalog Categorization & Gating...")
         let voices = Voice.samples
@@ -109,6 +112,8 @@ public struct SpeakITLogicTests {
         assert(APIEndpoint.clearAllHistory.path == "/api/history/clear-all", "Clear all history endpoint matches contract (/api/history/clear-all)")
         assert(APIEndpoint.deleteHistory.path == "/api/history/delete", "Delete history endpoint matches contract (/api/history/delete)")
         assert(APIEndpoint.deleteAccount.path == "/api/v1/users/me", "Account deletion endpoint matches contract (/api/v1/users/me)")
+        assert(APIEndpoint.uploadAvatar.path == "/api/v1/users/avatar", "Upload avatar endpoint matches contract (/api/v1/users/avatar)")
+        assert(APIEndpoint.deleteAvatar.path == "/api/v1/users/avatar", "Delete avatar endpoint matches contract (/api/v1/users/avatar)")
         
         let itemWithSnippetOnly = HistoryItem(id: 101, textSnippet: "Snippet Only")
         assert(itemWithSnippetOnly.displayText == "Snippet Only", "HistoryItem displayText returns snippet when fullText is nil")

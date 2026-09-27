@@ -78,6 +78,9 @@ class AuthServiceOtpTest {
     @Mock
     private SubscriptionService subscriptionService;
 
+    @Mock
+    private com.speakit.user.repository.UserAvatarHistoryRepository userAvatarHistoryRepository;
+
     private User pendingUser;
     private User activeUser;
 

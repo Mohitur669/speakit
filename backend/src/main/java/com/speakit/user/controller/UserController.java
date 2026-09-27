@@ -4,6 +4,7 @@ import com.speakit.auth.dto.AuthResponse;
 import com.speakit.auth.dto.ChangePasswordRequest;
 import com.speakit.auth.dto.RequestPasswordChangeOtpRequest;
 import com.speakit.auth.dto.VerifyEmailChangeRequest;
+import com.speakit.user.dto.AvatarResponse;
 import com.speakit.user.dto.RequestEmailChangeOtpRequest;
 import com.speakit.user.dto.RequestProfileUpdateRequest;
 import com.speakit.user.dto.UpdateEmailRequest;
@@ -17,9 +18,12 @@ import com.speakit.auth.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.security.Principal;
 
 @RestController
@@ -169,5 +173,26 @@ public class UserController {
         log.info("Resending profile update OTP for user: {}", username);
         authService.resendProfileOtp(username);
         return ResponseEntity.ok().build();
+    }
+
+    // MARK: - Avatar Upload & Deletion (Cloudflare R2 Object Storage)
+    @RateLimited(action = RateLimitAction.PUBLIC)
+    @PostMapping(value = "/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<AvatarResponse> uploadAvatar(
+            @RequestParam("file") MultipartFile file,
+            Principal principal) throws IOException {
+        String username = principal.getName();
+        log.info("Uploading avatar for user: {}", username);
+        AvatarResponse response = authService.updateAvatar(username, file);
+        return ResponseEntity.ok(response);
+    }
+
+    @RateLimited(action = RateLimitAction.PUBLIC)
+    @DeleteMapping("/avatar")
+    public ResponseEntity<AvatarResponse> deleteAvatar(Principal principal) {
+        String username = principal.getName();
+        log.info("Deleting avatar for user: {}", username);
+        AvatarResponse response = authService.deleteAvatar(username);
+        return ResponseEntity.ok(response);
     }
 }
