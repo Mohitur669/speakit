@@ -58,7 +58,7 @@ struct ProfileSettingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 // Header Title
-                Text("Profile")
+                Text("Profile Settings")
                     .font(.system(size: 30, weight: .bold))
                     .foregroundColor(Color.speakitTextPrimary)
                     .padding(.top, 8)
@@ -279,7 +279,7 @@ struct ProfileSettingsView: View {
                             .frame(width: 24)
                         
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Profile Information")
+                            Text("Personal Information")
                                 .font(.system(size: 14, weight: .semibold))
                                 .foregroundColor(Color.speakitTextPrimary)
                             Text("Full name, username & email")
@@ -295,6 +295,8 @@ struct ProfileSettingsView: View {
                             .foregroundColor(Color.speakitTextTertiary)
                     }
                     .padding(14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 
@@ -489,7 +491,10 @@ struct ProfileSettingsView: View {
                         Spacer()
                     }
                     .padding(14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
                 
                 menuDivider
                 
@@ -515,7 +520,10 @@ struct ProfileSettingsView: View {
                         Spacer()
                     }
                     .padding(14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
                 .disabled(isDeletingAccount)
             }
             .background(Color.speakitCardSurface)
@@ -568,6 +576,8 @@ struct ProfileSettingsView: View {
                     .foregroundColor(Color.speakitTextTertiary)
             }
             .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
