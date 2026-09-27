@@ -315,3 +315,108 @@ The iOS client adheres to the 6 core profile avatar standards:
 3. **Automatic Old Avatar Cleanup:** When a user uploads a new avatar or deletes their account, `AvatarStorageService` automatically deletes the superseded object from R2 to prevent dangling storage costs.
 4. **Rate Limiting:** Both avatar upload and deletion endpoints are shielded by Spring Boot Bucket4j rate limiting (`@RateLimited(action = RateLimitAction.PUBLIC)`).
 5. **Audit History & Compliance:** All avatar changes are permanently cataloged in `user_avatar_history` with storage keys, timestamps, and file sizes for trust and safety traceability.
+
+---
+
+## 11. Edge Security & Bandwidth Protection (Cloudflare CDN Shield)
+
+While Cloudflare CDN provides **unlimited free data transfer** and Cloudflare R2 has **$0 egress fees**, public avatar URLs can still be targeted by external hotlinking (other websites displaying your images) or automated scrapers. Implementing the following two edge protections ensures that avatar assets are shielded at the Cloudflare network layer without requiring backend code changes.
+
+### Strategy 1: Enable Cloudflare Hotlink Protection (Easiest & Free)
+
+Hotlink Protection prevents external websites from leeching your CDN bandwidth by verifying the HTTP `Referer` header on image requests.
+
+* **Modern Cloudflare Dashboard Path (Option A - Direct Setting):**
+  1. Log in to the [Cloudflare Dashboard](https://dash.cloudflare.com/) and select your root domain: **`mohitur.com`**.
+  2. In the left navigation sidebar, click **Security**.
+  3. Under the **Security** dropdown, select **Settings**.
+  4. Scroll down to find **Hotlink Protection** (located under *Client-side abuse* / *Content Protection*).
+  5. Toggle the switch to **On**.
+
+* **Modern Cloudflare Dashboard Path (Option B - Granular Configuration Rule):**
+  1. In the left navigation sidebar, select **Rules** $\rightarrow$ **Configuration Rules**.
+  2. Click **Create rule**.
+  3. Set **Rule name**: `Enable Hotlink Protection for Avatars`.
+  4. Under **If incoming requests match...**, set:
+     - Field: `Hostname`
+     - Operator: `equals`
+     - Value: `cdn-speakit-avatars.mohitur.com`
+  5. Under **Then...**, find the setting **Hotlink Protection** and toggle it to **Active (On)**.
+  6. Click **Deploy**.
+
+* **What it does:**
+  - Cloudflare inspects the incoming `Referer` request header for all image extensions (`.jpg`, `.jpeg`, `.png`, `.webp`, `.gif`).
+  - If a third-party website (e.g. `malicious-site.com`) embeds `<img src="https://cdn-speakit-avatars.mohitur.com/avatars/u_102.jpg">`, Cloudflare blocks the request and serves an **HTTP 403 Forbidden** error.
+  - Direct requests from the native iOS app (which do not send a web referer) and your official web domain (`speakit.com` / `localhost`) continue to load normally without interruption.
+
+* **Effort:** 1 toggle in Cloudflare Dashboard, **0 code changes**.
+
+---
+
+---
+
+### Strategy 2: Protecting Against Scrapers & Abuse on Your Custom Domain
+
+Because Cloudflare's Free tier provides **only 1 free Rate Limiting rule** per zone, you have two options depending on whether you have a free rate limiting slot available:
+
+#### Option A: WAF Rate Limiting Rule (If you have a free rate limit slot)
+* **Modern Cloudflare Dashboard Path:**
+  1. In the Cloudflare Dashboard, select **`mohitur.com`**.
+  2. In the left navigation sidebar, click **Security** $\rightarrow$ **WAF** (Web Application Firewall).
+  3. Select the **Rate limiting rules** tab at the top.
+  4. Click **Create rule**.
+  5. Configure the rule parameters:
+     - **Rule name:** `Rate Limit Avatar CDN Downloads`
+     - **If incoming requests match... (Field Expression):**
+       - **Hostname** `equals` `cdn-speakit-avatars.mohitur.com`
+       - *AND*
+       - **URI Path** `starts with` `/avatars/`
+       *(Alternatively, click "Edit expression" and paste: `(http.host eq "cdn-speakit-avatars.mohitur.com" and starts_with(http.request.uri.path, "/avatars/"))`)*
+     - **Rate limiting criteria:**
+       - **Requests:** `60`
+       - **Period:** `1 minute` (or `10 requests per 10 seconds` for stricter enforcement)
+       - **Counting characteristics:** `IP` (tracks requests per client IP address)
+     - **Choose action:**
+       - **Action:** `Block` (returns **HTTP 429 Too Many Requests**) or `Managed Challenge` (serves a silent Cloudflare Turnstile verification).
+       - **Duration:** `10 minutes` (temporary cooldown for violating IPs).
+  6. Click **Deploy**.
+
+---
+
+#### Option B: WAF Custom Rule (Recommended if you already used your 1 free rate limit rule)
+Cloudflare Free tier provides **5 free WAF Custom Rules** under the "Custom rules" tab (completely separate from rate limiting). You can use a Custom Rule to block scraper libraries, bots, and non-GET requests from touching your CDN domain.
+
+* **Modern Cloudflare Dashboard Path:**
+  1. In the Cloudflare Dashboard, select **`mohitur.com`**.
+  2. In the left navigation sidebar, click **Security** $\rightarrow$ **WAF**.
+  3. Ensure you are on the **Custom rules** tab (the first tab, *not* Rate limiting rules).
+  4. Click **Create rule**.
+  5. Configure the rule parameters:
+     - **Rule name:** `Block Scrapers and Non-GET on Avatar CDN`
+     - Click **Edit expression** (right above the field builder) and paste this exact expression:
+       ```text
+       (http.host eq "cdn-speakit-avatars.mohitur.com" and (not http.request.method in {"GET" "HEAD"} or lower(http.user_agent) contains "curl" or lower(http.user_agent) contains "python" or lower(http.user_agent) contains "wget" or lower(http.user_agent) contains "scrapy" or lower(http.user_agent) contains "go-http-client" or lower(http.user_agent) contains "aiohttp"))
+       ```
+     - **Choose action:**
+       - Select **Block** (or **Managed Challenge** to present a Turnstile check to suspicious clients).
+  6. Click **Deploy**.
+
+* **Why this works:**
+  - **Method Enforcement:** Avatars only ever require `GET` or `HEAD`. Any bots probing with `POST`, `PUT`, or `DELETE` are instantly rejected.
+  - **Scraper Blocking:** Automated CLI tools and Python/Scrapy scraping scripts commonly used to crawl image buckets are blocked before they can make multiple requests.
+  - **Automated Edge Security:** Cloudflare's upgraded security automatically mitigates known malicious traffic and bad reputation IPs without needing manual threat score expressions.
+  - **Zero Impact on Real Users:** Regular browsers and the iOS app use standard GET requests with authentic Apple/browser User-Agents, so they load avatars normally.
+  - **Consumes 1 of your 5 free WAF Custom Rules** without needing an extra rate limiting slot.
+
+---
+
+### Edge Protection Summary
+
+| Feature | Protection Layer | Target Threat | Modern Dashboard Location |
+|---|---|---|---|
+| **Hotlink Protection** | Cloudflare Edge Protection | External websites embedding your avatar links | `mohitur.com` $\rightarrow$ **Security** $\rightarrow$ **Settings** $\rightarrow$ **Hotlink Protection** |
+| **WAF Custom Scraper Shield** | Cloudflare Edge Firewall (5 free rules) | Bot libraries, scrapers, automated tools, non-GET traffic | `mohitur.com` $\rightarrow$ **Security** $\rightarrow$ **WAF** $\rightarrow$ **Custom rules** |
+| **WAF Rate Limiting** | Cloudflare Edge Rate Limiter (1 free rule) | High-frequency request flooding per IP | `mohitur.com` $\rightarrow$ **Security** $\rightarrow$ **WAF** $\rightarrow$ **Rate limiting rules** |
+| **Edge Cache Control** | HTTP Header (`max-age=31536000`) | Repeated read latency & unnecessary origin traffic | Automated via `AvatarStorageService` metadata |
+| **Bucket4j API Shield** | Spring Boot Application Layer | Rapid avatar replacement / deletion abuse | `@RateLimited(action = RateLimitAction.PUBLIC)` |
+
