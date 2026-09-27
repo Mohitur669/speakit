@@ -31,8 +31,6 @@ struct EditProfileSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    SpeakITBanner(message: $errorMessage, style: .error)
-                    
                     if step == 1 {
                         step1EditAndVerifyPasswordView
                     } else {
@@ -43,6 +41,7 @@ struct EditProfileSheet: View {
                 .padding(.top, 16)
                 .padding(.bottom, 24)
             }
+            .background(Color.speakitScreenBackground.ignoresSafeArea())
             .navigationTitle(step == 1 ? "Edit Profile" : "Verify Changes")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -65,6 +64,7 @@ struct EditProfileSheet: View {
                     cooldownSeconds -= 1
                 }
             }
+            .speakITToast(message: $errorMessage, style: .error, bottomPadding: 20)
         }
     }
     
@@ -128,11 +128,11 @@ struct EditProfileSheet: View {
                     }
                 }
                 .padding(12)
-                .background(Color(hex: "F8F8FA"))
+                .background(Color.speakitCard)
                 .cornerRadius(12)
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color(hex: "E6E6EB"), lineWidth: 1)
+                        .stroke(Color.speakitBorder, lineWidth: 1)
                 )
             }
             .padding(.top, 4)

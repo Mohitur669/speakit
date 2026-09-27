@@ -88,8 +88,9 @@ struct TranscriptionResultSheet: View {
                     }
                     .padding(.horizontal, 20)
                     .frame(height: 36)
-                    .background(Color.speakitCard)
+                    .background(Color.speakitCardSurface)
                     .clipShape(Capsule())
+                    .overlay(Capsule().stroke(Color.speakitBorder, lineWidth: 1))
                     .padding(.top, 8)
                     
                     // Original Transcribed Text Card
@@ -163,7 +164,7 @@ struct TranscriptionResultSheet: View {
                     }
                     .padding(18)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.speakitCard)
+                    .background(Color.speakitCardSurface)
                     .cornerRadius(SpeakITSpacing.cardRadius)
                     .overlay(
                         RoundedRectangle(cornerRadius: SpeakITSpacing.cardRadius)
@@ -250,7 +251,7 @@ struct TranscriptionResultSheet: View {
                                 }
                             }
                             .padding(2)
-                            .background(Color.speakitBackground)
+                            .background(Color.speakitCardSurface)
                             .clipShape(Capsule())
                             .overlay(Capsule().stroke(Color.speakitBorder, lineWidth: 1))
                         }
@@ -316,7 +317,7 @@ struct TranscriptionResultSheet: View {
                                     .foregroundColor(Color.speakitTextTertiary)
                             }
                             .padding(12)
-                            .background(Color.speakitBackground)
+                            .background(Color.speakitCardSurface)
                             .cornerRadius(12)
                             .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.speakitBorder, lineWidth: 1))
                         }
@@ -422,7 +423,7 @@ struct TranscriptionResultSheet: View {
                         }
                     }
                     .padding(18)
-                    .background(Color.speakitCard)
+                    .background(Color.speakitCardSurface)
                     .cornerRadius(SpeakITSpacing.cardRadius)
                     .overlay(
                         RoundedRectangle(cornerRadius: SpeakITSpacing.cardRadius)
@@ -441,7 +442,7 @@ struct TranscriptionResultSheet: View {
                                 Button(action: {
                                  HapticManager.shared.medium()
                                  playerManager.loadAndPlay(url: audioURL, title: "Voice Memo", subtitle: "\(result.formattedDuration) recorded")
-                                }) {
+                                 }) {
                                     ZStack {
                                         Circle()
                                             .fill(Color.speakitPrimary)
@@ -462,7 +463,7 @@ struct TranscriptionResultSheet: View {
                             }
                         }
                         .padding(18)
-                        .background(Color.speakitCard)
+                        .background(Color.speakitCardSurface)
                         .cornerRadius(SpeakITSpacing.cardRadius)
                         .overlay(
                             RoundedRectangle(cornerRadius: SpeakITSpacing.cardRadius)
@@ -483,7 +484,7 @@ struct TranscriptionResultSheet: View {
                 .padding(.horizontal, SpeakITSpacing.screenMargin)
             }
         }
-        .background(Color.speakitBackground)
+        .background(Color.speakitScreenBackground.ignoresSafeArea())
         .task {
             await loadVoicesFromBackend()
         }

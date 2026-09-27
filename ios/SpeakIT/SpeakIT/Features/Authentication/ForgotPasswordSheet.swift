@@ -27,8 +27,6 @@ struct ForgotPasswordSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    SpeakITBanner(message: $errorMessage, style: .error)
-                    
                     if step == 1 {
                         step1EmailView
                     } else {
@@ -39,6 +37,7 @@ struct ForgotPasswordSheet: View {
                 .padding(.top, 16)
                 .padding(.bottom, 36)
             }
+            .background(Color.speakitScreenBackground.ignoresSafeArea())
             .scrollDismissesKeyboard(.interactively)
             .navigationTitle(step == 1 ? "Forgot Password" : "Reset Password")
             .navigationBarTitleDisplayMode(.inline)
@@ -49,6 +48,7 @@ struct ForgotPasswordSheet: View {
                     }
                 }
             }
+            .speakITToast(message: $errorMessage, style: .error, bottomPadding: 20)
         }
         .presentationDetents([.large])
     }
@@ -186,7 +186,7 @@ struct ForgotPasswordSheet: View {
             } catch {
                 await MainActor.run {
                     self.isLoading = false
-                    self.errorMessage = error.localizedDescription
+                    self.errorMessage = error.userFriendlyMessage
                 }
             }
         }
@@ -224,7 +224,7 @@ struct ForgotPasswordSheet: View {
             } catch {
                 await MainActor.run {
                     self.isLoading = false
-                    self.errorMessage = error.localizedDescription
+                    self.errorMessage = error.userFriendlyMessage
                 }
             }
         }

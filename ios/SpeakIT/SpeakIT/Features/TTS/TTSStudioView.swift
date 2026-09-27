@@ -75,7 +75,7 @@ struct TTSStudioView: View {
                     }
                     .padding(.horizontal, 16)
                     .frame(height: 64)
-                    .background(Color.speakitBackground)
+                    .background(Color.speakitCardSurface)
                     .cornerRadius(SpeakITSpacing.cardRadius)
                     .overlay(
                         RoundedRectangle(cornerRadius: SpeakITSpacing.cardRadius)
@@ -149,15 +149,12 @@ struct TTSStudioView: View {
                     }
                 }
                 .padding(16)
-                .background(Color.speakitCard)
+                .background(Color.speakitCardSurface)
                 .cornerRadius(SpeakITSpacing.cardRadius)
                 .overlay(
                     RoundedRectangle(cornerRadius: SpeakITSpacing.cardRadius)
-                        .stroke(Color(hex: "E1E1E6"), lineWidth: 1)
+                        .stroke(Color.speakitBorder, lineWidth: 1)
                 )
-                
-                // Error Alert if any
-                SpeakITBanner(message: $errorMessage, style: .error)
                 
                 // Generate Speech CTA
                 let maxAllowed = appState.currentUser?.planType.characterLimitPerRequest ?? 2500
@@ -190,6 +187,7 @@ struct TTSStudioView: View {
             }
             .padding(.horizontal, SpeakITSpacing.screenMargin)
         }
+        .background(Color.speakitScreenBackground.ignoresSafeArea())
         .sheet(isPresented: $showVoiceCatalog) {
             VoiceCatalogSheet(selectedVoice: $selectedVoice)
         }
@@ -201,6 +199,7 @@ struct TTSStudioView: View {
         .task {
             await appState.loadCurrentUser()
         }
+        .speakITToast(message: $errorMessage, style: .error, bottomPadding: 16)
     }
     
     // MARK: - Synthesis Logic
@@ -269,7 +268,7 @@ struct TTSStudioView: View {
                         self.appState.showPaywallSheet = true
                         HapticManager.shared.warning()
                     } else {
-                        self.errorMessage = error.localizedDescription
+                        self.errorMessage = error.userFriendlyMessage
                         HapticManager.shared.error()
                     }
                 }

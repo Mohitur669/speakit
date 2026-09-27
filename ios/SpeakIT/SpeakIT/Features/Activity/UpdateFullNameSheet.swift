@@ -12,9 +12,14 @@ struct UpdateFullNameSheet: View {
     @Environment(\.dismiss) private var dismiss
     var onSuccess: () -> Void
     
-    @State private var fullName: String = ""
+    @State private var fullName: String
     @State private var isLoading: Bool = false
     @State private var errorMessage: String? = nil
+    
+    init(initialName: String = "", onSuccess: @escaping () -> Void) {
+        self._fullName = State(initialValue: initialName)
+        self.onSuccess = onSuccess
+    }
     
     var body: some View {
         NavigationStack {
@@ -28,8 +33,6 @@ struct UpdateFullNameSheet: View {
                             .font(.system(size: 13))
                             .foregroundColor(Color.speakitTextSecondary)
                     }
-                    
-                    SpeakITBanner(message: $errorMessage, style: .error)
                     
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Full Name *")
@@ -55,7 +58,11 @@ struct UpdateFullNameSheet: View {
                 }
                 .padding(.horizontal, SpeakITSpacing.screenMargin)
                 .padding(.top, 16)
+                .padding(.bottom, 24)
             }
+            .scrollBounceBehavior(.basedOnSize)
+            .scrollDismissesKeyboard(.interactively)
+            .background(Color.speakitScreenBackground)
             .navigationTitle("Update Full Name")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -65,13 +72,9 @@ struct UpdateFullNameSheet: View {
                     }
                 }
             }
-            .onAppear {
-                if let user = appState.currentUser {
-                    self.fullName = user.fullName
-                }
-            }
+            .speakITToast(message: $errorMessage, style: .error, bottomPadding: 20)
         }
-        .presentationDetents([.medium])
+        .presentationBackground(Color.speakitScreenBackground)
     }
     
     private func saveFullName() {
@@ -89,6 +92,7 @@ struct UpdateFullNameSheet: View {
                 
                 await MainActor.run {
                     self.isLoading = false
+                    HapticManager.shared.success()
                     self.appState.currentUser = updatedUser
                     self.dismiss()
                     self.onSuccess()
@@ -96,7 +100,8 @@ struct UpdateFullNameSheet: View {
             } catch {
                 await MainActor.run {
                     self.isLoading = false
-                    self.errorMessage = error.localizedDescription
+                    HapticManager.shared.error()
+                    self.errorMessage = error.userFriendlyMessage
                 }
             }
         }

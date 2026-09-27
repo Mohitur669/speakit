@@ -51,11 +51,11 @@ struct PrivacyPolicySheet: View {
                         }
                     }
                     .padding(16)
-                    .background(Color.speakitBackground)
+                    .background(Color.speakitCardSurface)
                     .cornerRadius(16)
                     .overlay(
                         RoundedRectangle(cornerRadius: 16)
-                            .stroke(Color(hex: "E6E6EB"), lineWidth: 1)
+                            .stroke(Color.speakitBorder, lineWidth: 1)
                     )
                     
                     // Section 2
@@ -99,21 +99,21 @@ struct PrivacyPolicySheet: View {
                         }
                         .padding(12)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color(hex: "F2F2F7"))
+                        .background(Color.speakitCard)
                         .cornerRadius(10)
                     }
                     .padding(16)
-                    .background(Color.speakitBackground)
+                    .background(Color.speakitCardSurface)
                     .cornerRadius(16)
                     .overlay(
                         RoundedRectangle(cornerRadius: 16)
-                            .stroke(Color(hex: "E6E6EB"), lineWidth: 1)
+                            .stroke(Color.speakitBorder, lineWidth: 1)
                     )
                 }
                 .padding(.horizontal, SpeakITSpacing.screenMargin)
                 .padding(.bottom, 36)
             }
-            .background(Color(hex: "F8F9FB").ignoresSafeArea())
+            .background(Color.speakitScreenBackground.ignoresSafeArea())
             .navigationTitle("Privacy Policy")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -141,11 +141,11 @@ struct PrivacyPolicySheet: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.speakitBackground)
+        .background(Color.speakitCardSurface)
         .cornerRadius(16)
         .overlay(
             RoundedRectangle(cornerRadius: 16)
-                .stroke(Color(hex: "E6E6EB"), lineWidth: 1)
+                .stroke(Color.speakitBorder, lineWidth: 1)
         )
     }
     

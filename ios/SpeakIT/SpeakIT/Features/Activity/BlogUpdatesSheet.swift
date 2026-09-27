@@ -462,7 +462,7 @@ struct BlogUpdatesSheet: View {
                 .padding(.horizontal, SpeakITSpacing.screenMargin)
                 .padding(.bottom, 36)
             }
-            .background(Color(hex: "F8F9FB").ignoresSafeArea())
+            .background(Color.speakitScreenBackground.ignoresSafeArea())
             .navigationTitle("Blog & Updates")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -542,7 +542,7 @@ struct BlogUpdatesSheet: View {
                             .foregroundColor(Color.speakitTextSecondary)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 3)
-                            .background(Color(hex: "EFEFF4"))
+                            .background(Color.speakitBadgeBackground)
                             .clipShape(RoundedRectangle(cornerRadius: 6))
                     }
                 }
@@ -572,11 +572,11 @@ struct BlogUpdatesSheet: View {
             }
         }
         .padding(16)
-        .background(Color.speakitBackground)
+        .background(Color.speakitCardSurface)
         .cornerRadius(16)
         .overlay(
             RoundedRectangle(cornerRadius: 16)
-                .stroke(Color(hex: "E6E6EB"), lineWidth: 1)
+                .stroke(Color.speakitBorder, lineWidth: 1)
         )
     }
     
@@ -616,11 +616,11 @@ struct BlogUpdatesSheet: View {
                     // Author card
                     HStack(spacing: 12) {
                         Circle()
-                            .fill(Color(hex: "E2E8F0"))
+                            .fill(Color.speakitBadgeBackground)
                             .frame(width: 40, height: 40)
                             .overlay(
                                 Image(systemName: "person.fill")
-                                    .foregroundColor(Color(hex: "94A3B8"))
+                                    .foregroundColor(Color.speakitPrimary)
                                     .font(.system(size: 18))
                             )
                         

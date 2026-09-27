@@ -2,7 +2,7 @@
 //  SpeakITBanner.swift
 //  SpeakIT
 //
-//  Self-dismissing alert & toast banner supporting success and error notifications.
+//  Floating bottom toast notification matching modern iOS HIG and ergonomic standards.
 //
 
 import SwiftUI
@@ -54,33 +54,44 @@ struct SpeakITBanner: View {
     
     var body: some View {
         if let msg = message, !msg.isEmpty {
-            HStack(spacing: 10) {
+            HStack(spacing: 12) {
                 Image(systemName: style.icon)
                     .foregroundColor(style.tintColor)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: 16, weight: .semibold))
                 
                 Text(msg)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(style.tintColor)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(Color.speakitTextPrimary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .lineLimit(3)
                 
                 Button(action: {
                     dismissTask?.cancel()
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                         message = nil
                     }
                 }) {
                     Image(systemName: "xmark")
                         .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(style.tintColor.opacity(0.7))
+                        .foregroundColor(Color.speakitTextSecondary)
                         .padding(4)
                 }
             }
-            .padding(12)
-            .background(style.backgroundColor)
-            .cornerRadius(12)
-            .transition(.opacity.combined(with: .move(edge: .top)))
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color.speakitCardSurface)
+                    .shadow(color: Color.black.opacity(0.18), radius: 12, x: 0, y: 5)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(style.tintColor.opacity(0.4), lineWidth: 1)
+            )
+            .transition(.asymmetric(
+                insertion: .move(edge: .bottom).combined(with: .opacity),
+                removal: .move(edge: .bottom).combined(with: .opacity)
+            ))
             .onAppear {
                 scheduleDismissal(for: msg)
             }
@@ -102,12 +113,55 @@ struct SpeakITBanner: View {
             try? await Task.sleep(nanoseconds: UInt64(timeoutSeconds * 1_000_000_000))
             if !Task.isCancelled {
                 await MainActor.run {
-                    withAnimation(.easeInOut(duration: 0.25)) {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                         if self.message == currentText {
                             self.message = nil
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+// MARK: - View Toast Modifiers (Floating Bottom)
+extension View {
+    /// Presents a single toast anchored floating at the bottom with customizable bottom padding.
+    func speakITToast(
+        message: Binding<String?>,
+        style: SpeakITBannerStyle,
+        bottomPadding: CGFloat = 16
+    ) -> some View {
+        self.overlay(alignment: .bottom) {
+            if let msg = message.wrappedValue, !msg.isEmpty {
+                SpeakITBanner(message: message, style: style)
+                    .padding(.horizontal, SpeakITSpacing.screenMargin)
+                    .padding(.bottom, bottomPadding)
+                    .animation(.spring(response: 0.35, dampingFraction: 0.8), value: message.wrappedValue)
+                    .zIndex(999)
+            }
+        }
+    }
+    
+    /// Presents coordinated success and error toasts anchored floating at the bottom.
+    func speakITToast(
+        successMessage: Binding<String?>,
+        errorMessage: Binding<String?>,
+        bottomPadding: CGFloat = 16
+    ) -> some View {
+        self.overlay(alignment: .bottom) {
+            if let err = errorMessage.wrappedValue, !err.isEmpty {
+                SpeakITBanner(message: errorMessage, style: .error)
+                    .padding(.horizontal, SpeakITSpacing.screenMargin)
+                    .padding(.bottom, bottomPadding)
+                    .animation(.spring(response: 0.35, dampingFraction: 0.8), value: errorMessage.wrappedValue)
+                    .zIndex(999)
+            } else if let success = successMessage.wrappedValue, !success.isEmpty {
+                SpeakITBanner(message: successMessage, style: .success)
+                    .padding(.horizontal, SpeakITSpacing.screenMargin)
+                    .padding(.bottom, bottomPadding)
+                    .animation(.spring(response: 0.35, dampingFraction: 0.8), value: successMessage.wrappedValue)
+                    .zIndex(999)
             }
         }
     }

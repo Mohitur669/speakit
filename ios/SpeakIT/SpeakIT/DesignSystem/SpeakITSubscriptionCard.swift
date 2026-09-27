@@ -77,7 +77,7 @@ struct SpeakITSubscriptionCard: View {
             .background(
                 isCurrentPlan && isSelected
                     ? Color.speakitSuccessLight.opacity(0.35)
-                    : (isSelected ? Color.speakitBadgeBackground : Color.speakitBackground)
+                    : (isSelected ? Color.speakitBadgeBackground : Color.speakitCardSurface)
             )
             .cornerRadius(18)
             .overlay(
@@ -85,7 +85,7 @@ struct SpeakITSubscriptionCard: View {
                     .stroke(
                         isCurrentPlan && isSelected
                             ? Color.speakitSuccess
-                            : (isSelected ? Color.speakitPrimary : Color(hex: "D9D9E0")),
+                            : (isSelected ? Color.speakitPrimary : Color.speakitBorder),
                         lineWidth: isSelected ? 1.5 : 1
                     )
             )

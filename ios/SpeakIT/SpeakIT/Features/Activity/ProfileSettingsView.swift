@@ -23,6 +23,7 @@ struct ProfileSettingsView: View {
         case about
         case contact
         case blog
+        case billingHistory
         
         var id: String {
             switch self {
@@ -34,6 +35,7 @@ struct ProfileSettingsView: View {
             case .about: return "about"
             case .contact: return "contact"
             case .blog: return "blog"
+            case .billingHistory: return "billingHistory"
             }
         }
     }
@@ -61,8 +63,6 @@ struct ProfileSettingsView: View {
                     .foregroundColor(Color.speakitTextPrimary)
                     .padding(.top, 8)
                 
-                feedbackBanners
-                
                 // 1. User Identity Header Card
                 userHeaderCard
                 
@@ -78,6 +78,7 @@ struct ProfileSettingsView: View {
             .padding(.horizontal, SpeakITSpacing.screenMargin)
             .padding(.bottom, 36)
         }
+        .background(Color.speakitScreenBackground.ignoresSafeArea())
         .refreshable {
             await appState.loadCurrentUser()
         }
@@ -102,6 +103,11 @@ struct ProfileSettingsView: View {
                 ContactSupportSheet()
             case .blog:
                 BlogUpdatesSheet()
+            case .billingHistory:
+                BillingHistorySheet()
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+                    .presentationBackground(Color.speakitScreenBackground)
             }
         }
         .alert("Sign Out", isPresented: $showSignOutAlert) {
@@ -120,13 +126,7 @@ struct ProfileSettingsView: View {
         } message: {
             Text("This action cannot be undone. All your synthesis history and usage quotas will be permanently deleted.")
         }
-    }
-    
-    // MARK: - Feedback Banners
-    @ViewBuilder
-    private var feedbackBanners: some View {
-        SpeakITBanner(message: $successMessage, style: .success)
-        SpeakITBanner(message: $errorMessage, style: .error)
+        .speakITToast(successMessage: $successMessage, errorMessage: $errorMessage, bottomPadding: 16)
     }
     
     // MARK: - 1. User Header Card
@@ -176,11 +176,11 @@ struct ProfileSettingsView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(16)
-        .background(Color.speakitBackground)
+        .background(Color.speakitCardSurface)
         .cornerRadius(16)
         .overlay(
             RoundedRectangle(cornerRadius: 16)
-                .stroke(Color(hex: "E6E6EB"), lineWidth: 1)
+                .stroke(Color.speakitBorder, lineWidth: 1)
         )
     }
     
@@ -203,7 +203,7 @@ struct ProfileSettingsView: View {
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     RoundedRectangle(cornerRadius: 5)
-                        .fill(Color(hex: "E6E6EB"))
+                        .fill(Color.speakitBorder)
                         .frame(height: 8)
                     
                     RoundedRectangle(cornerRadius: 5)
@@ -224,20 +224,39 @@ struct ProfileSettingsView: View {
                     .font(.system(size: 12, weight: .bold))
                     .foregroundColor(Color.speakitPrimary)
             }
+            
+            // Subscription Validity Display
+            if user.planType != .free, let expiry = user.formattedExpiry {
+                HStack(spacing: 6) {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.system(size: 13))
+                        .foregroundColor(Color.speakitSuccess)
+                    
+                    Text("Valid until \(expiry)")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(Color.speakitSuccess)
+                    
+                    if let days = user.daysRemaining {
+                        Text("• \(days) days remaining")
+                            .font(.system(size: 11, weight: .regular))
+                            .foregroundColor(Color.speakitTextTertiary)
+                    }
+                }
+                .padding(.top, 2)
+            }
         }
         .padding(16)
-        .background(Color.speakitBackground)
+        .background(Color.speakitCardSurface)
         .cornerRadius(16)
         .overlay(
             RoundedRectangle(cornerRadius: 16)
-                .stroke(Color(hex: "E6E6EB"), lineWidth: 1)
+                .stroke(Color.speakitBorder, lineWidth: 1)
         )
     }
     
     // MARK: - 3. Account Settings Section (Profile Settings, Password & Plan)
     @ViewBuilder
     private var accountSettingsSection: some View {
-        let user = appState.currentUser ?? User.sample
         VStack(alignment: .leading, spacing: 10) {
             Text("ACCOUNT SETTINGS")
                 .font(.system(size: 11, weight: .bold))
@@ -253,7 +272,7 @@ struct ProfileSettingsView: View {
                             .frame(width: 24)
                         
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Profile Settings")
+                            Text("Profile Information")
                                 .font(.system(size: 14, weight: .semibold))
                                 .foregroundColor(Color.speakitTextPrimary)
                             Text("Full name, username & email")
@@ -289,12 +308,21 @@ struct ProfileSettingsView: View {
                     icon: "sparkles",
                     action: { activeSheet = .paywall }
                 )
+                
+                menuDivider
+                
+                menuItem(
+                    title: "Billing & Invoices",
+                    subtitle: "View payment history and receipts",
+                    icon: "creditcard.fill",
+                    action: { activeSheet = .billingHistory }
+                )
             }
-            .background(Color.speakitBackground)
+            .background(Color.speakitCardSurface)
             .cornerRadius(16)
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
-                    .stroke(Color(hex: "E6E6EB"), lineWidth: 1)
+                    .stroke(Color.speakitBorder, lineWidth: 1)
             )
         }
     }
@@ -347,11 +375,11 @@ struct ProfileSettingsView: View {
                 }
                 .padding(14)
             }
-            .background(Color.speakitBackground)
+            .background(Color.speakitCardSurface)
             .cornerRadius(16)
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
-                    .stroke(Color(hex: "E6E6EB"), lineWidth: 1)
+                    .stroke(Color.speakitBorder, lineWidth: 1)
             )
         }
     }
@@ -418,11 +446,11 @@ struct ProfileSettingsView: View {
                     action: { activeSheet = .blog }
                 )
             }
-            .background(Color.speakitBackground)
+            .background(Color.speakitCardSurface)
             .cornerRadius(16)
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
-                    .stroke(Color(hex: "E6E6EB"), lineWidth: 1)
+                    .stroke(Color.speakitBorder, lineWidth: 1)
             )
         }
     }
@@ -483,11 +511,11 @@ struct ProfileSettingsView: View {
                 }
                 .disabled(isDeletingAccount)
             }
-            .background(Color.speakitBackground)
+            .background(Color.speakitCardSurface)
             .cornerRadius(16)
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
-                    .stroke(Color(hex: "E6E6EB"), lineWidth: 1)
+                    .stroke(Color.speakitBorder, lineWidth: 1)
             )
         }
     }
@@ -543,7 +571,9 @@ struct ProfileSettingsView: View {
     }
     
     private var menuDivider: some View {
-        Divider()
+        Rectangle()
+            .fill(Color.speakitDivider)
+            .frame(height: 0.5)
             .padding(.leading, 50)
     }
     
@@ -561,7 +591,7 @@ struct ProfileSettingsView: View {
             } catch {
                 await MainActor.run {
                     self.isDeletingAccount = false
-                    self.errorMessage = error.localizedDescription
+                    self.errorMessage = error.userFriendlyMessage
                 }
             }
         }

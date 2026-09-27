@@ -50,6 +50,7 @@ struct PasswordPolicySheet: View {
                 .padding(.horizontal, SpeakITSpacing.screenMargin)
                 .padding(.top, 16)
             }
+            .background(Color.speakitScreenBackground.ignoresSafeArea())
             .navigationTitle("Security Guidelines")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -86,11 +87,11 @@ struct PasswordPolicySheet: View {
             Spacer()
         }
         .padding(14)
-        .background(Color.speakitBackground)
+        .background(Color.speakitCardSurface)
         .cornerRadius(14)
         .overlay(
             RoundedRectangle(cornerRadius: 14)
-                .stroke(Color(hex: "E6E6EB"), lineWidth: 1)
+                .stroke(Color.speakitBorder, lineWidth: 1)
         )
     }
 }

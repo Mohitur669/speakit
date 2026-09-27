@@ -23,6 +23,8 @@ final class AppState {
     // Dynamic Pricing from Backend System Parameters
     var proPriceDisplay: String = "$9.99 / month"
     var proPlusPriceDisplay: String = "$19.99 / month"
+    var proAmountINR: Double = 499.0
+    var proPlusAmountINR: Double = 999.0
     
     private init() {
         // Support UI test / automation argument
@@ -111,6 +113,8 @@ final class AppState {
                     role: user.role,
                     planType: user.planType,
                     status: user.status,
+                    subscriptionStatus: user.subscriptionStatus,
+                    planExpiry: user.planExpiry,
                     characterLimit: user.characterLimit,
                     charactersUsed: resolvedCharactersUsed,
                     phoneNumber: user.phoneNumber,
@@ -154,6 +158,8 @@ final class AppState {
                     role: current.role,
                     planType: current.planType,
                     status: current.status,
+                    subscriptionStatus: current.subscriptionStatus,
+                    planExpiry: current.planExpiry,
                     characterLimit: current.characterLimit,
                     charactersUsed: newUsed,
                     phoneNumber: current.phoneNumber,
@@ -188,12 +194,18 @@ final class AppState {
             if let proPrice = params["IOS_PRO_PLAN_PRICE"], !proPrice.trimmingCharacters(in: .whitespaces).isEmpty {
                 self.proPriceDisplay = formatPrice(proPrice)
             } else if let proInr = params["PRO_PLAN_PRICE_INR"], !proInr.trimmingCharacters(in: .whitespaces).isEmpty {
+                if let val = Double(proInr.trimmingCharacters(in: .whitespacesAndNewlines)), val > 0 {
+                    self.proAmountINR = val
+                }
                 self.proPriceDisplay = "₹\(proInr) / month"
             }
             
             if let proPlusPrice = params["IOS_PRO_PLUS_PLAN_PRICE"], !proPlusPrice.trimmingCharacters(in: .whitespaces).isEmpty {
                 self.proPlusPriceDisplay = formatPrice(proPlusPrice)
             } else if let proPlusInr = params["PRO_PLUS_PLAN_PRICE_INR"], !proPlusInr.trimmingCharacters(in: .whitespaces).isEmpty {
+                if let val = Double(proPlusInr.trimmingCharacters(in: .whitespacesAndNewlines)), val > 0 {
+                    self.proPlusAmountINR = val
+                }
                 self.proPlusPriceDisplay = "₹\(proPlusInr) / month"
             }
         } catch {

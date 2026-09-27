@@ -48,9 +48,9 @@ public struct SpeakITLogicTests {
         assert(PlanType.pro.allowsFileSTT, "Pro plan supports file STT")
         assert(PlanType.proPlus.allowsFileSTT, "Pro Plus plan supports file STT")
         
-        assert(PlanType.free.characterLimitPerRequest == 500, "Free char limit per request is 500")
-        assert(PlanType.pro.characterLimitPerRequest == 2_500, "Pro char limit per request is 2,500")
-        assert(PlanType.proPlus.characterLimitPerRequest == 10_000, "Pro Plus char limit per request is 10,000")
+        assert(PlanType.free.characterLimitPerRequest == 100, "Free char limit per request is 100")
+        assert(PlanType.pro.characterLimitPerRequest == 200, "Pro char limit per request is 200")
+        assert(PlanType.proPlus.characterLimitPerRequest == 500, "Pro Plus char limit per request is 500")
         
         // MARK: - 2. User Domain Model Tests
         print("▶️ Testing User Domain Model & Quota Computations...")

@@ -59,11 +59,11 @@ struct AboutSpeakITSheet: View {
                     }
                     .padding(18)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.speakitBackground)
+                    .background(Color.speakitCardSurface)
                     .cornerRadius(18)
                     .overlay(
                         RoundedRectangle(cornerRadius: 18)
-                            .stroke(Color(hex: "E6E6EB"), lineWidth: 1)
+                            .stroke(Color.speakitBorder, lineWidth: 1)
                     )
                     
                     // Core Values
@@ -95,11 +95,11 @@ struct AboutSpeakITSheet: View {
                         )
                     }
                     .padding(18)
-                    .background(Color.speakitBackground)
+                    .background(Color.speakitCardSurface)
                     .cornerRadius(18)
                     .overlay(
                         RoundedRectangle(cornerRadius: 18)
-                            .stroke(Color(hex: "E6E6EB"), lineWidth: 1)
+                            .stroke(Color.speakitBorder, lineWidth: 1)
                     )
                     
                     // App Version Footer
@@ -116,7 +116,7 @@ struct AboutSpeakITSheet: View {
                 .padding(.horizontal, SpeakITSpacing.screenMargin)
                 .padding(.bottom, 24)
             }
-            .background(Color(hex: "F8F9FB").ignoresSafeArea())
+            .background(Color.speakitScreenBackground.ignoresSafeArea())
             .navigationTitle("About SpeakIT")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

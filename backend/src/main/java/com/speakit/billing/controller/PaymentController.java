@@ -20,6 +20,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.speakit.billing.service.SubscriptionManagementService;
+
 @RestController
 @RequestMapping("/api/v1/payments")
 @RequiredArgsConstructor
@@ -29,6 +31,7 @@ public class PaymentController {
     private final RazorpayService razorpayService;
     private final UserService userService;
     private final PaymentRepository paymentRepository;
+    private final SubscriptionManagementService subscriptionManagementService;
 
     @PostMapping("/create-order")
     public ResponseEntity<PaymentOrderResponse> createOrder(
@@ -58,6 +61,28 @@ public class PaymentController {
         }
     }
 
+    @PostMapping("/downgrade-free")
+    public ResponseEntity<String> downgradeToFree(HttpServletRequest httpRequest) {
+        Long userId = (Long) httpRequest.getAttribute("userId");
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        User user = userService.getUserById(userId);
+        subscriptionManagementService.demoteUserToFree(user);
+        return ResponseEntity.ok("Downgraded to Free tier successfully");
+    }
+
+    @PostMapping("/cancel")
+    public ResponseEntity<String> cancelSubscription(HttpServletRequest httpRequest) {
+        Long userId = (Long) httpRequest.getAttribute("userId");
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        User user = userService.getUserById(userId);
+        subscriptionManagementService.cancelSubscription(user);
+        return ResponseEntity.ok("Subscription scheduled for cancellation at period end");
+    }
+
     @GetMapping("/history")
     public ResponseEntity<PagedModel<PaymentHistoryDto>> getPaymentHistory(
             HttpServletRequest request,
@@ -71,15 +96,25 @@ public class PaymentController {
 
         Page<PaymentHistoryDto> historyPage = paymentRepository
                 .findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(page, size))
-                .map(payment -> PaymentHistoryDto.builder()
-                        .id(payment.getId())
-                        .planName(payment.getSubscription() != null ? payment.getSubscription().getPlanType().name() : "N/A")
-                        .amount(payment.getAmount())
-                        .currency(payment.getCurrency())
-                        .status(payment.getStatus().name())
-                        .razorpayOrderId(payment.getRazorpayOrderId())
-                        .createdAt(payment.getCreatedAt())
-                        .build());
+                .map(payment -> {
+                    String rawPlan = payment.getSubscription() != null ? payment.getSubscription().getPlanType().name() : "N/A";
+                    String normalPlan = switch (rawPlan) {
+                        case "PRO" -> "Pro";
+                        case "PRO_PLUS" -> "Pro Plus";
+                        case "ENTERPRISE" -> "Enterprise";
+                        case "FREE" -> "Free";
+                        default -> rawPlan;
+                    };
+                    return PaymentHistoryDto.builder()
+                            .id(payment.getId())
+                            .planName(normalPlan)
+                            .amount(payment.getAmount())
+                            .currency(payment.getCurrency())
+                            .status(payment.getStatus().name())
+                            .razorpayOrderId(payment.getRazorpayOrderId())
+                            .createdAt(payment.getCreatedAt())
+                            .build();
+                });
 
         return ResponseEntity.ok(new PagedModel<>(historyPage));
     }
