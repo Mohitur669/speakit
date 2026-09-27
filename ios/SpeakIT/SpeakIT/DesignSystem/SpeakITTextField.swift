@@ -52,7 +52,7 @@ struct SpeakITTextField: View {
         }
         .padding(.horizontal, 16)
         .frame(height: SpeakITSpacing.inputHeight)
-        .background(Color.speakitBackground)
+        .background(Color.speakitCardSurface)
         .cornerRadius(SpeakITSpacing.inputRadius)
         .overlay(
             RoundedRectangle(cornerRadius: SpeakITSpacing.inputRadius)

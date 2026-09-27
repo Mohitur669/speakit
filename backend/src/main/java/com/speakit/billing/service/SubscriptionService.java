@@ -69,12 +69,12 @@ public class SubscriptionService {
         if (planType == null)
             return 10_000;
         return switch (planType) {
-            case FREE -> Integer.parseInt(systemParameterService.getLiveParameter("MAX_FREE_CHARACTERS", "10000"));
-            case PRO -> Integer.parseInt(systemParameterService.getLiveParameter("MAX_PRO_CHARACTERS", "100000"));
+            case FREE -> Integer.parseInt(systemParameterService.getLiveParameter("MONTHLY_FREE_CHARACTERS", "10000"));
+            case PRO -> Integer.parseInt(systemParameterService.getLiveParameter("MONTHLY_PRO_CHARACTERS", "100000"));
             case PRO_PLUS ->
-                Integer.parseInt(systemParameterService.getLiveParameter("MAX_PRO_PLUS_CHARACTERS", "250000"));
+                Integer.parseInt(systemParameterService.getLiveParameter("MONTHLY_PRO_PLUS_CHARACTERS", "250000"));
             case ENTERPRISE ->
-                Integer.parseInt(systemParameterService.getLiveParameter("MAX_ENTERPRISE_CHARACTERS", "1000000"));
+                Integer.parseInt(systemParameterService.getLiveParameter("MONTHLY_ENTERPRISE_CHARACTERS", "1000000"));
         };
     }
 

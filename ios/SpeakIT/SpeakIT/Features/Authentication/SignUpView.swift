@@ -14,6 +14,7 @@ struct SignUpView: View {
     @State private var fullName: String = ""
     @State private var username: String = ""
     @State private var email: String = ""
+    @State private var phoneNumber: String = ""
     @State private var password: String = ""
     @State private var confirmPassword: String = ""
     @State private var isLoading: Bool = false
@@ -33,25 +34,11 @@ struct SignUpView: View {
                     .padding(.top, 6)
                     .padding(.bottom, 24)
                 
-                if let errorMessage = errorMessage {
-                    HStack(spacing: 8) {
-                        Image(systemName: "exclamationmark.circle.fill")
-                            .foregroundColor(Color.speakitDestructive)
-                        Text(errorMessage)
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(Color.speakitDestructive)
-                    }
-                    .padding(12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.speakitDestructiveLight)
-                    .cornerRadius(12)
-                    .padding(.bottom, 16)
-                }
-                
                 VStack(spacing: 14) {
                     SpeakITTextField(placeholder: "Full Name", text: $fullName, icon: "person.crop.circle")
                     SpeakITTextField(placeholder: "Username", text: $username, icon: "at", autoCapitalization: .never)
                     SpeakITTextField(placeholder: "Email Address", text: $email, icon: "envelope.fill", keyboardType: .emailAddress, autoCapitalization: .never)
+                    SpeakITTextField(placeholder: "Phone Number (Optional)", text: $phoneNumber, icon: "phone", keyboardType: .numberPad)
                     SpeakITTextField(placeholder: "Password", text: $password, icon: "lock.fill", isSecure: true)
                     SpeakITTextField(placeholder: "Confirm Password", text: $confirmPassword, icon: "lock.shield.fill", isSecure: true)
                 }
@@ -69,6 +56,7 @@ struct SignUpView: View {
                 HStack {
                     Spacer()
                     Button(action: {
+                        HapticManager.shared.selection()
                         dismiss()
                     }) {
                         HStack(spacing: 4) {
@@ -86,11 +74,20 @@ struct SignUpView: View {
             }
             .padding(.horizontal, SpeakITSpacing.screenMargin)
         }
+        .background(Color.speakitScreenBackground.ignoresSafeArea())
+        .speakITToast(message: $errorMessage, style: .error, bottomPadding: 20)
         .navigationBarTitleDisplayMode(.inline)
+        .onChange(of: phoneNumber) { _, newValue in
+            let digits = newValue.filter { $0.isNumber }
+            let truncated = String(digits.prefix(10))
+            if phoneNumber != truncated {
+                phoneNumber = truncated
+            }
+        }
     }
     
     private var isFormValid: Bool {
-        !fullName.isEmpty && !username.isEmpty && !email.isEmpty && password.count >= 8 && password == confirmPassword
+        !fullName.isEmpty && !username.isEmpty && !email.isEmpty && password.count >= 8 && password == confirmPassword && (phoneNumber.isEmpty || phoneNumber.count == 10)
     }
     
     private func performSignUp() {
@@ -99,26 +96,33 @@ struct SignUpView: View {
         
         let normalizedEmail = email.trimmingCharacters(in: .whitespaces).lowercased()
         let normalizedUsername = username.trimmingCharacters(in: .whitespaces).lowercased()
+        let cleanPhone = phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines)
         
         Task {
             do {
                 struct RegisterRequest: Codable {
+                    let fullName: String?
                     let username: String
                     let email: String
+                    let phoneNumber: String?
                     let password: String
                 }
                 
                 struct AuthResponse: Codable {
                     let token: String?
                     let username: String?
+                    let fullName: String?
                     let email: String?
+                    let phoneNumber: String?
                     let role: String?
                     let planType: String?
                 }
                 
                 let reqBody = try JSONEncoder().encode(RegisterRequest(
+                    fullName: fullName.trimmingCharacters(in: .whitespaces).isEmpty ? nil : fullName.trimmingCharacters(in: .whitespaces),
                     username: normalizedUsername,
                     email: normalizedEmail,
+                    phoneNumber: cleanPhone.isEmpty ? nil : cleanPhone,
                     password: password
                 ))
                 
@@ -126,6 +130,7 @@ struct SignUpView: View {
                 
                 await MainActor.run {
                     self.isLoading = false
+                    HapticManager.shared.success()
                     if let token = response.token {
                         let resolvedPlan = PlanType(rawValue: (response.planType ?? "FREE").uppercased()) ?? .free
                         let user = User(
@@ -133,7 +138,8 @@ struct SignUpView: View {
                             email: response.email ?? normalizedEmail,
                             fullName: fullName.isEmpty ? nil : fullName,
                             role: response.role ?? "ROLE_USER",
-                            planType: resolvedPlan
+                            planType: resolvedPlan,
+                            phoneNumber: response.phoneNumber ?? (cleanPhone.isEmpty ? nil : cleanPhone)
                         )
                         self.appState.login(token: token, user: user)
                     } else {
@@ -144,7 +150,8 @@ struct SignUpView: View {
             } catch {
                 await MainActor.run {
                     self.isLoading = false
-                    self.errorMessage = error.localizedDescription
+                    HapticManager.shared.error()
+                    self.errorMessage = error.userFriendlyMessage
                 }
             }
         }

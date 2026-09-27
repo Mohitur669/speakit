@@ -52,6 +52,10 @@ final class AudioPlayerManager: NSObject, AVAudioPlayerDelegate {
     
     // MARK: - Playback Controls
     func loadAndPlay(url: URL, title: String = "Generated Speech", subtitle: String = "SpeakIT") {
+        load(url: url, title: title, subtitle: subtitle, autoPlay: true)
+    }
+    
+    func load(url: URL, title: String = "Generated Speech", subtitle: String = "SpeakIT", autoPlay: Bool = true) {
         stop()
         currentAudioURL = url
         
@@ -73,7 +77,11 @@ final class AudioPlayerManager: NSObject, AVAudioPlayerDelegate {
             }
         }
         
-        play()
+        if autoPlay {
+            play()
+        } else {
+            isPlaying = false
+        }
         updateNowPlayingInfo(title: title, subtitle: subtitle)
     }
     

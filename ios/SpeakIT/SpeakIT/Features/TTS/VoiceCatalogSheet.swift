@@ -79,7 +79,7 @@ struct VoiceCatalogSheet: View {
             }
             .padding(.horizontal, 12)
             .frame(height: 44)
-            .background(Color.speakitCard)
+            .background(Color.speakitCardSurface)
             .cornerRadius(12)
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
@@ -94,7 +94,7 @@ struct VoiceCatalogSheet: View {
                     ForEach(VoiceCategory.allCases) { category in
                         let isSelected = selectedCategory == category
                         Button(action: {
-                            UISelectionFeedbackGenerator().selectionChanged()
+                            HapticManager.shared.selection()
                             withAnimation(.easeInOut(duration: 0.15)) {
                                 selectedCategory = category
                                 validateLanguageSelection()
@@ -105,13 +105,13 @@ struct VoiceCatalogSheet: View {
                                 .foregroundColor(isSelected ? .white : Color.speakitTextPrimary)
                                 .padding(.horizontal, 16)
                                 .frame(height: 34)
-                                .background(isSelected ? Color.speakitPrimary : Color.speakitCard)
+                                .background(isSelected ? Color.speakitPrimary : Color.speakitCardSurface)
                                 .clipShape(Capsule())
                                 .overlay(
                                     Capsule()
                                         .stroke(isSelected ? Color.speakitPrimary : Color.speakitBorder, lineWidth: 1)
-                                )
-                                .shadow(color: isSelected ? Color.speakitPrimary.opacity(0.3) : .clear, radius: 4, y: 2)
+                                 )
+                                 .shadow(color: isSelected ? Color.speakitPrimary.opacity(0.3) : .clear, radius: 4, y: 2)
                         }
                     }
                 }
@@ -127,7 +127,7 @@ struct VoiceCatalogSheet: View {
                     ForEach(["ALL", "FEMALE", "MALE"], id: \.self) { g in
                         let isSelected = selectedGender == g
                         Button(action: {
-                            UISelectionFeedbackGenerator().selectionChanged()
+                            HapticManager.shared.selection()
                             withAnimation(.easeInOut(duration: 0.15)) {
                                 selectedGender = g
                             }
@@ -158,7 +158,7 @@ struct VoiceCatalogSheet: View {
                     }
                 }
                 .padding(2)
-                .background(Color.speakitCard)
+                .background(Color.speakitCardSurface)
                 .clipShape(Capsule())
                 .overlay(
                     Capsule()
@@ -169,7 +169,7 @@ struct VoiceCatalogSheet: View {
                 // Language Dropdown Menu (directly adjacent to Gender, zero gap margin)
                 Menu {
                     Button(action: {
-                        UISelectionFeedbackGenerator().selectionChanged()
+                        HapticManager.shared.selection()
                         withAnimation(.easeInOut(duration: 0.15)) {
                             selectedLanguage = "ALL"
                         }
@@ -186,7 +186,7 @@ struct VoiceCatalogSheet: View {
                     
                     ForEach(availableLanguages, id: \.self) { lang in
                         Button(action: {
-                            UISelectionFeedbackGenerator().selectionChanged()
+                            HapticManager.shared.selection()
                             withAnimation(.easeInOut(duration: 0.15)) {
                                 selectedLanguage = lang
                             }
@@ -215,7 +215,7 @@ struct VoiceCatalogSheet: View {
                     }
                     .padding(.horizontal, 10)
                     .frame(height: 34)
-                    .background(selectedLanguage == "ALL" ? Color.speakitCard : Color.speakitPrimary)
+                    .background(selectedLanguage == "ALL" ? Color.speakitCardSurface : Color.speakitPrimary)
                     .foregroundColor(selectedLanguage == "ALL" ? Color.speakitTextPrimary : .white)
                     .clipShape(Capsule())
                     .overlay(
@@ -249,7 +249,7 @@ struct VoiceCatalogSheet: View {
                 
                 if hasActiveFilters {
                     Button(action: {
-                        UISelectionFeedbackGenerator().selectionChanged()
+                        HapticManager.shared.selection()
                         withAnimation(.easeInOut(duration: 0.15)) {
                             resetFilters()
                         }
@@ -353,7 +353,7 @@ struct VoiceCatalogSheet: View {
             .padding(.bottom, 24)
             .padding(.top, 8)
         }
-        .background(Color.speakitBackground)
+        .background(Color.speakitScreenBackground.ignoresSafeArea())
         .task {
             await loadVoicesFromBackend()
         }
