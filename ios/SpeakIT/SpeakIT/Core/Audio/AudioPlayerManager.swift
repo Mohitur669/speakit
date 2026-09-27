@@ -39,11 +39,7 @@ final class AudioPlayerManager: NSObject, AVAudioPlayerDelegate {
             do {
                 let session = AVAudioSession.sharedInstance()
                 try session.setCategory(.playback, mode: .default, options: [.duckOthers])
-                if #available(iOS 27.0, *) {
-                    try await session.activate(options: [])
-                } else {
-                    try session.setActive(true)
-                }
+                try session.setActive(true)
             } catch {
                 print("Failed to set audio session category: \(error)")
             }

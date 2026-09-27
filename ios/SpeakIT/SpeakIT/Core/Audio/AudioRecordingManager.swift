@@ -70,11 +70,7 @@ final class AudioRecordingManager: NSObject, AVAudioRecorderDelegate {
             try await Task.detached(priority: .userInitiated) {
                 let session = AVAudioSession.sharedInstance()
                 try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetoothHFP])
-                if #available(iOS 27.0, *) {
-                    try await session.activate(options: [])
-                } else {
-                    try session.setActive(true)
-                }
+                try session.setActive(true)
             }.value
             
             // 44.1kHz mono AAC settings
@@ -130,11 +126,7 @@ final class AudioRecordingManager: NSObject, AVAudioRecorderDelegate {
         
         // Deactivate recording audio session asynchronously off the main thread
         Task.detached(priority: .utility) {
-            if #available(iOS 27.0, *) {
-                try? await AVAudioSession.sharedInstance().deactivate(options: .notifyOthersOnDeactivation)
-            } else {
-                try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-            }
+            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
         }
         
         // Ensure recorded audio file exists with valid payload
