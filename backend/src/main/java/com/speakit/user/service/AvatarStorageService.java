@@ -134,7 +134,10 @@ public class AvatarStorageService {
 
         // Local storage fallback
         String fileName = String.format("u_%d_%d%s", userId, timestamp, extension);
-        Path targetPath = localFallbackDir.resolve(fileName);
+        Path targetPath = localFallbackDir.resolve(fileName).normalize().toAbsolutePath();
+        if (!targetPath.startsWith(localFallbackDir.toAbsolutePath().normalize())) {
+            throw new SecurityException("Path traversal attempt detected in avatar filename: " + fileName);
+        }
         Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
         log.info("Avatar saved to local storage: {}", targetPath);
         return new StoredAvatar(
@@ -169,10 +172,16 @@ public class AvatarStorageService {
                         .build());
                 log.info("Deleted avatar from Cloudflare R2: {}", key);
             } else if (avatarUrl != null && avatarUrl.contains("/uploads/avatars/")) {
-                String fileName = avatarUrl.substring(avatarUrl.lastIndexOf('/') + 1);
-                Path path = localFallbackDir.resolve(fileName);
-                Files.deleteIfExists(path);
-                log.info("Deleted local avatar: {}", path);
+                String rawFileName = avatarUrl.substring(avatarUrl.lastIndexOf('/') + 1);
+                if (rawFileName.matches("^[a-zA-Z0-9_.-]+$")) {
+                    Path path = localFallbackDir.resolve(rawFileName).normalize().toAbsolutePath();
+                    if (path.startsWith(localFallbackDir.toAbsolutePath().normalize())) {
+                        Files.deleteIfExists(path);
+                        log.info("Deleted local avatar: {}", path);
+                    } else {
+                        log.warn("Path traversal detected during avatar deletion: {}", rawFileName);
+                    }
+                }
             }
         } catch (Exception e) {
             log.warn("Failed to delete avatar (key: {}, url: {}): {}", key, avatarUrl, e.getMessage());
@@ -194,13 +203,11 @@ public class AvatarStorageService {
 
     private String getFileExtension(MultipartFile file) {
         String contentType = file.getContentType();
-        if ("image/png".equalsIgnoreCase(contentType)) return ".png";
-        if ("image/webp".equalsIgnoreCase(contentType)) return ".webp";
-        if ("image/jpeg".equalsIgnoreCase(contentType) || "image/jpg".equalsIgnoreCase(contentType)) return ".jpg";
-
-        String originalName = file.getOriginalFilename();
-        if (originalName != null && originalName.contains(".")) {
-            return originalName.substring(originalName.lastIndexOf('.')).toLowerCase();
+        if (contentType != null) {
+            String clean = contentType.toLowerCase().trim();
+            if ("image/png".equals(clean)) return ".png";
+            if ("image/webp".equals(clean)) return ".webp";
+            if ("image/jpeg".equals(clean) || "image/jpg".equals(clean)) return ".jpg";
         }
         return ".jpg";
     }
