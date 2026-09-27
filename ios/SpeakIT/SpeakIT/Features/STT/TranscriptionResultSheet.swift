@@ -29,6 +29,10 @@ struct TranscriptionResultSheet: View {
     
     private var playerManager = AudioPlayerManager.shared
     
+    init(result: TranscriptionResult) {
+        self._result = State(initialValue: result)
+    }
+    
     var body: some View {
         VStack(spacing: 0) {
             // Header Bar
