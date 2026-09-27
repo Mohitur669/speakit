@@ -1,4 +1,5 @@
 package com.speakit.user.entity;
+
 import com.speakit.billing.entity.PlanType;
 import com.speakit.billing.entity.SubscriptionStatus;
 import com.speakit.shared.entity.BaseEntity;
@@ -14,8 +15,8 @@ import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "users", indexes = {
-    @Index(name = "idx_users_username", columnList = "username"),
-    @Index(name = "idx_users_email", columnList = "email")
+        @Index(name = "idx_users_username", columnList = "username"),
+        @Index(name = "idx_users_email", columnList = "email")
 })
 @Getter
 @Setter
@@ -26,11 +27,7 @@ public class User extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "users_seq")
-    @SequenceGenerator(
-        name = "users_seq",
-        sequenceName = "users_seq",
-        allocationSize = 50
-    )
+    @SequenceGenerator(name = "users_seq", sequenceName = "users_seq", allocationSize = 50)
     private Long id;
 
     @Column(unique = true, nullable = false, length = 50)
@@ -44,6 +41,9 @@ public class User extends BaseEntity {
 
     @Column(name = "phone_number", unique = true, length = 15)
     private String phoneNumber;
+
+    @Column(name = "avatar_url", length = 512)
+    private String avatarUrl;
 
     @Column(nullable = false)
     private String password;
@@ -84,8 +84,6 @@ public class User extends BaseEntity {
     @ColumnDefault("'PENDING_VERIFICATION'")
     @Builder.Default
     private String accountStatus = "PENDING_VERIFICATION";
-
-
 
     @Column(name = "consent_accepted", nullable = false)
     @ColumnDefault("false")

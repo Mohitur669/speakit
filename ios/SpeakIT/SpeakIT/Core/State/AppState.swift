@@ -118,6 +118,7 @@ final class AppState {
                     characterLimit: user.characterLimit,
                     charactersUsed: resolvedCharactersUsed,
                     phoneNumber: user.phoneNumber,
+                    avatarUrl: user.avatarUrl,
                     dailyCount: user.dailyCount,
                     dailyLimit: user.dailyLimit,
                     emailVerified: user.emailVerified
@@ -163,6 +164,7 @@ final class AppState {
                     characterLimit: current.characterLimit,
                     charactersUsed: newUsed,
                     phoneNumber: current.phoneNumber,
+                    avatarUrl: current.avatarUrl,
                     dailyCount: current.dailyCount,
                     dailyLimit: current.dailyLimit,
                     emailVerified: current.emailVerified

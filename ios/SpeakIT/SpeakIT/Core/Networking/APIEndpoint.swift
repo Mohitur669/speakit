@@ -94,6 +94,8 @@ enum APIEndpoint {
     case changePassword
     case resendProfileOtp
     case deleteAccount
+    case uploadAvatar
+    case deleteAvatar
     
     // TTS
     case voices
@@ -160,6 +162,8 @@ enum APIEndpoint {
             return "/api/v1/users/me/resend-profile-otp"
         case .deleteAccount:
             return "/api/v1/users/me"
+        case .uploadAvatar, .deleteAvatar:
+            return "/api/v1/users/avatar"
         case .voices:
             return "/api/tts/voices"
         case .synthesize:
