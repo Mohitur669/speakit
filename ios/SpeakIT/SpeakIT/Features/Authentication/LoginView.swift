@@ -12,6 +12,7 @@ struct LoginView: View {
     
     @State private var usernameOrEmail: String = ""
     @State private var password: String = ""
+    @State private var isSubmitting: Bool = false
     @State private var isLoading: Bool = false
     @State private var errorMessage: String? = nil
     @State private var successMessage: String? = nil
@@ -35,6 +36,16 @@ struct LoginView: View {
             }
             .background(Color.speakitScreenBackground.ignoresSafeArea())
             .scrollDismissesKeyboard(.interactively)
+            .onChange(of: password) { _, _ in
+                if isSubmitting {
+                    isSubmitting = false
+                }
+            }
+            .onChange(of: usernameOrEmail) { _, _ in
+                if isSubmitting {
+                    isSubmitting = false
+                }
+            }
             .navigationDestination(isPresented: $showSignUp) {
                 SignUpView()
             }
@@ -83,7 +94,8 @@ struct LoginView: View {
                 text: $usernameOrEmail,
                 icon: "person.fill",
                 keyboardType: .emailAddress,
-                autoCapitalization: .never
+                autoCapitalization: .never,
+                textContentType: isSubmitting ? .username : nil
             )
             .accessibilityIdentifier("login.username")
             
@@ -91,7 +103,8 @@ struct LoginView: View {
                 placeholder: "Password",
                 text: $password,
                 icon: "lock.fill",
-                isSecure: true
+                isSecure: true,
+                textContentType: isSubmitting ? .password : .oneTimeCode
             )
             .accessibilityIdentifier("login.password")
         }
@@ -212,7 +225,11 @@ struct LoginView: View {
     // MARK: - Login Action
     private func performLogin() {
         errorMessage = nil
+        isSubmitting = true
         isLoading = true
+        
+        // Dismiss keyboard so system registers form submission with credentials context
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         
         let normalizedLogin = usernameOrEmail.trimmingCharacters(in: .whitespaces).lowercased()
         

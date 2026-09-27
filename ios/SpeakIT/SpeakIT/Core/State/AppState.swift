@@ -19,6 +19,7 @@ final class AppState {
     var showPaywallSheet: Bool = false
     var errorMessage: String? = nil
     var isLoadingUser: Bool = false
+    var isHistoryDirty: Bool = false
     
     // Dynamic Pricing from Backend System Parameters
     var proPriceDisplay: String = "$9.99 / month"
@@ -138,6 +139,7 @@ final class AppState {
     // MARK: - Character Usage / Quota Tracking
     @MainActor
     func recordCharacterUsage(_ count: Int) {
+        self.isHistoryDirty = true
         let current = currentUser ?? User(
             id: 1,
             username: "guest",

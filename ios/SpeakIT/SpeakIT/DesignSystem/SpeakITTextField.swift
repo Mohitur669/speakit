@@ -14,6 +14,7 @@ struct SpeakITTextField: View {
     var isSecure: Bool = false
     var keyboardType: UIKeyboardType = .default
     var autoCapitalization: TextInputAutocapitalization = .never
+    var textContentType: UITextContentType? = nil
     
     @State private var isPasswordVisible: Bool = false
     
@@ -31,12 +32,16 @@ struct SpeakITTextField: View {
                     .foregroundColor(Color.speakitTextPrimary)
                     .textInputAutocapitalization(autoCapitalization)
                     .keyboardType(keyboardType)
+                    .textContentType(textContentType)
+                    .autocorrectionDisabled(true)
             } else {
                 TextField(placeholder, text: $text)
                     .font(.system(size: 16))
                     .foregroundColor(Color.speakitTextPrimary)
                     .textInputAutocapitalization(autoCapitalization)
                     .keyboardType(keyboardType)
+                    .textContentType(textContentType)
+                    .autocorrectionDisabled(true)
             }
             
             if isSecure {
