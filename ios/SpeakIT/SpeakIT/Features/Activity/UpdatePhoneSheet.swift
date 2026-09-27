@@ -3,6 +3,7 @@
 //  SpeakIT
 //
 //  Dedicated sheet for updating or removing user's optional phone number.
+//  Strictly allows up to 10 numeric digits only.
 //
 
 import SwiftUI
@@ -12,9 +13,15 @@ struct UpdatePhoneSheet: View {
     @Environment(\.dismiss) private var dismiss
     var onSuccess: () -> Void
     
-    @State private var phoneNumber: String = ""
+    @State private var phoneNumber: String
     @State private var isLoading: Bool = false
     @State private var errorMessage: String? = nil
+    
+    init(initialPhone: String = "", onSuccess: @escaping () -> Void) {
+        let cleaned = Self.cleanDigits(initialPhone)
+        self._phoneNumber = State(initialValue: cleaned)
+        self.onSuccess = onSuccess
+    }
     
     var body: some View {
         NavigationStack {
@@ -24,12 +31,10 @@ struct UpdatePhoneSheet: View {
                         Text("Phone Number (Optional)")
                             .font(.system(size: 17, weight: .bold))
                             .foregroundColor(Color.speakitTextPrimary)
-                        Text("Add or update your phone number for identification and easy login. You can leave it blank to remove it.")
+                        Text("Add or update your 10-digit mobile number for identification and easy login. Leave blank to remove.")
                             .font(.system(size: 13))
                             .foregroundColor(Color.speakitTextSecondary)
                     }
-                    
-                    SpeakITBanner(message: $errorMessage, style: .error)
                     
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Phone Number")
@@ -37,11 +42,24 @@ struct UpdatePhoneSheet: View {
                             .foregroundColor(Color.speakitTextSecondary)
                         
                         SpeakITTextField(
-                            placeholder: "+91 9876543210",
+                            placeholder: "9876543210",
                             text: $phoneNumber,
                             icon: "phone",
-                            keyboardType: .phonePad
+                            keyboardType: .numberPad
                         )
+                        
+                        HStack {
+                            Text(phoneHelperText)
+                                .font(.system(size: 11))
+                                .foregroundColor(isPhoneLengthValid ? Color.speakitTextTertiary : Color.speakitWarning)
+                            Spacer()
+                            if !phoneNumber.isEmpty {
+                                Text("\(phoneNumber.count)/10")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundColor(phoneNumber.count == 10 ? Color.speakitPrimary : Color.speakitTextTertiary)
+                            }
+                        }
+                        .padding(.top, 2)
                     }
                     
                     VStack(spacing: 12) {
@@ -49,7 +67,7 @@ struct UpdatePhoneSheet: View {
                             title: "Save Phone Number",
                             style: .primary,
                             isLoading: isLoading,
-                            isEnabled: hasChanges
+                            isEnabled: hasChanges && isPhoneLengthValid
                         ) {
                             savePhoneNumber()
                         }
@@ -76,7 +94,11 @@ struct UpdatePhoneSheet: View {
                 }
                 .padding(.horizontal, SpeakITSpacing.screenMargin)
                 .padding(.top, 16)
+                .padding(.bottom, 24)
             }
+            .scrollBounceBehavior(.basedOnSize)
+            .scrollDismissesKeyboard(.interactively)
+            .background(Color.speakitScreenBackground)
             .navigationTitle("Phone Number")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -86,24 +108,57 @@ struct UpdatePhoneSheet: View {
                     }
                 }
             }
-            .onAppear {
-                if let user = appState.currentUser {
-                    self.phoneNumber = user.phoneNumber ?? ""
-                }
+            .speakITToast(message: $errorMessage, style: .error, bottomPadding: 20)
+        }
+        .presentationBackground(Color.speakitScreenBackground)
+        .onChange(of: phoneNumber) { _, newValue in
+            let filtered = newValue.filter { $0.isNumber }
+            let truncated = String(filtered.prefix(10))
+            if phoneNumber != truncated {
+                phoneNumber = truncated
             }
         }
-        .presentationDetents([.medium])
+    }
+    
+    // MARK: - Helpers
+    private static func cleanDigits(_ input: String) -> String {
+        let digits = input.filter { $0.isNumber }
+        if digits.count > 10 {
+            return String(digits.suffix(10))
+        }
+        return String(digits.prefix(10))
+    }
+    
+    private var isPhoneLengthValid: Bool {
+        phoneNumber.isEmpty || phoneNumber.count == 10
+    }
+    
+    private var phoneHelperText: String {
+        if phoneNumber.isEmpty {
+            return "Enter 10-digit mobile number"
+        } else if phoneNumber.count < 10 {
+            return "Requires 10 digits (\(10 - phoneNumber.count) more needed)"
+        } else {
+            return "Valid 10-digit number"
+        }
     }
     
     private var hasChanges: Bool {
-        let current = appState.currentUser?.phoneNumber ?? ""
-        return phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines) != current
+        let current = Self.cleanDigits(appState.currentUser?.phoneNumber ?? "")
+        let clean = phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines)
+        return clean != current
     }
     
     private func savePhoneNumber() {
         errorMessage = nil
+        let cleanPhone = phoneNumber.filter { $0.isNumber }
+        
+        if !cleanPhone.isEmpty && cleanPhone.count != 10 {
+            errorMessage = "Please enter a valid 10-digit phone number"
+            return
+        }
+        
         isLoading = true
-        let cleanPhone = phoneNumber.trimmingCharacters(in: .whitespacesAndNewlines)
         
         Task {
             do {
@@ -124,7 +179,7 @@ struct UpdatePhoneSheet: View {
                 await MainActor.run {
                     self.isLoading = false
                     HapticManager.shared.error()
-                    self.errorMessage = error.localizedDescription
+                    self.errorMessage = error.userFriendlyMessage
                 }
             }
         }

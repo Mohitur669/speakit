@@ -19,6 +19,8 @@ struct SubscriptionPaywallView: View {
     @State private var showRestoreSuccess: Bool = false
     @State private var showTermsSheet: Bool = false
     @State private var showPrivacySheet: Bool = false
+    @State private var showDowngradeAlert: Bool = false
+    @State private var activeOrder: PaymentOrderResponse? = nil
     
     var body: some View {
         let currentPlan = appState.currentUser?.planType ?? .free
@@ -42,6 +44,34 @@ struct SubscriptionPaywallView: View {
                     }
                 }
                 .padding(.top, 16)
+                
+                // Current Plan Validity Card (if active subscription exists)
+                if currentPlan != .free, let expiry = appState.currentUser?.formattedExpiry {
+                    HStack(spacing: 12) {
+                        Image(systemName: "calendar.badge.clock")
+                            .font(.system(size: 20))
+                            .foregroundColor(Color.speakitPrimary)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Current: \(currentPlan.displayName) Plan")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundColor(Color.speakitTextPrimary)
+                            
+                            Text("Valid until \(expiry) • \(appState.currentUser?.daysRemaining ?? 0) days remaining")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(Color.speakitSuccess)
+                        }
+                        
+                        Spacer()
+                    }
+                    .padding(12)
+                    .background(Color.speakitPrimary.opacity(0.08))
+                    .cornerRadius(12)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.speakitPrimary.opacity(0.2), lineWidth: 1)
+                    )
+                }
                 
                 // Hero Star Icon
                 ZStack {
@@ -73,7 +103,8 @@ struct SubscriptionPaywallView: View {
                         tierName: "Free",
                         price: "$0 / month",
                         features: [
-                            "10,000 chars • Standard Polly Voices"
+                            "100 chars/request • 10,000 monthly chars",
+                            "5 daily syntheses • Standard Polly Voices"
                         ],
                         isSelected: selectedPlan == .free,
                         isCurrentPlan: currentPlan == .free,
@@ -87,7 +118,8 @@ struct SubscriptionPaywallView: View {
                         tierName: "Pro",
                         price: appState.proPriceDisplay,
                         features: [
-                            "100,000 chars • Neural Polly • File STT"
+                            "200 chars/request • 100,000 monthly chars",
+                            "Neural Polly • File STT"
                         ],
                         isSelected: selectedPlan == .pro,
                         isCurrentPlan: currentPlan == .pro,
@@ -101,8 +133,8 @@ struct SubscriptionPaywallView: View {
                         tierName: "Pro Plus",
                         price: appState.proPlusPriceDisplay,
                         features: [
-                            "250,000 chars • International & Indian",
-                            "Live Mic STT"
+                            "500 chars/request • 250,000 monthly chars",
+                            "ElevenLabs & Indian Voices • Live Mic STT"
                         ],
                         isSelected: selectedPlan == .proPlus,
                         isPopular: true,
@@ -115,8 +147,6 @@ struct SubscriptionPaywallView: View {
                 }
                 .padding(.top, 8)
                 
-                SpeakITBanner(message: $errorMessage, style: .error)
-                
                 // Change Plan / Upgrade / Downgrade CTA Button
                 let isCurrentSelected = (selectedPlan == currentPlan)
                 let canChangePlan = !isCurrentSelected
@@ -127,7 +157,8 @@ struct SubscriptionPaywallView: View {
                     } else if selectedPlan < currentPlan {
                         return "Downgrade to \(selectedPlan.displayName)"
                     } else {
-                        return "Upgrade to \(selectedPlan.displayName)"
+                        let price = selectedPlan == .pro ? appState.proPriceDisplay : appState.proPlusPriceDisplay
+                        return "Upgrade to \(selectedPlan.displayName) • \(price)"
                     }
                 }()
                 
@@ -137,7 +168,7 @@ struct SubscriptionPaywallView: View {
                     isLoading: isPurchasing,
                     isEnabled: canChangePlan
                 ) {
-                    executePurchase()
+                    handlePlanAction()
                 }
                 .accessibilityIdentifier("subscription.purchase")
                 .padding(.top, 12)
@@ -188,16 +219,30 @@ struct SubscriptionPaywallView: View {
             }
             .padding(.horizontal, SpeakITSpacing.screenMargin)
         }
+        .background(Color.speakitScreenBackground.ignoresSafeArea())
         .sheet(isPresented: $showTermsSheet) {
             TermsOfServiceSheet()
         }
         .sheet(isPresented: $showPrivacySheet) {
             PrivacyPolicySheet()
         }
+        .sheet(item: $activeOrder) { order in
+            PaymentCheckoutSheet(plan: selectedPlan, order: order) {
+                dismiss()
+            }
+        }
         .alert("Purchases Restored", isPresented: $showRestoreSuccess) {
             Button("OK", role: .cancel) { dismiss() }
         } message: {
-            Text("Your previous App Store subscriptions have been verified and restored.")
+            Text("Your previous subscriptions and plan validity have been verified and restored from backend.")
+        }
+        .alert("Downgrade to Free Tier", isPresented: $showDowngradeAlert) {
+            Button("Cancel", role: .cancel) {}
+            Button("Downgrade", role: .destructive) {
+                executeDowngrade()
+            }
+        } message: {
+            Text("Are you sure you want to downgrade to Free? You will lose access to neural and Indian AI voices immediately.")
         }
         .task {
             if let activePlan = appState.currentUser?.planType {
@@ -205,44 +250,77 @@ struct SubscriptionPaywallView: View {
             }
             await appState.loadPlanPricing()
         }
+        .speakITToast(message: $errorMessage, style: .error, bottomPadding: 20)
     }
     
-    // MARK: - StoreKit Purchase Simulation / Execution
-    private func executePurchase() {
+    // MARK: - Plan Change Handler
+    private func handlePlanAction() {
+        errorMessage = nil
+        let currentPlan = appState.currentUser?.planType ?? .free
+        
+        if selectedPlan == .free && currentPlan != .free {
+            showDowngradeAlert = true
+            return
+        }
+        
+        // Upgrade flow: Create order on backend first
+        executeCreateOrder()
+    }
+    
+    private func executeCreateOrder() {
         isPurchasing = true
         errorMessage = nil
         
         Task {
-            // Simulate StoreKit 2 flow or real In-App Purchase sandbox
-            try? await Task.sleep(nanoseconds: 1_200_000_000)
-            
-            await MainActor.run {
-                self.isPurchasing = false
+            do {
+                let amount = selectedPlan == .pro ? appState.proAmountINR : appState.proPlusAmountINR
+                let orderResponse = try await PaymentService.shared.createOrder(
+                    plan: selectedPlan,
+                    amount: amount,
+                    currency: "INR"
+                )
                 
-                // Update local user state
-                if let current = self.appState.currentUser {
-                    self.appState.currentUser = User(
-                        id: current.id,
-                        username: current.username,
-                        email: current.email,
-                        fullName: current.fullName,
-                        role: current.role,
-                        planType: self.selectedPlan,
-                        status: current.status,
-                        characterLimit: self.selectedPlan.monthlyQuota,
-                        charactersUsed: current.charactersUsed
-                    )
+                await MainActor.run {
+                    self.isPurchasing = false
+                    self.activeOrder = orderResponse
                 }
+            } catch {
+                await MainActor.run {
+                    self.isPurchasing = false
+                    self.errorMessage = (error as? APIError)?.errorDescription ?? "Failed to initialize payment order. Please try again."
+                    HapticManager.shared.error()
+                }
+            }
+        }
+    }
+    
+    private func executeDowngrade() {
+        isPurchasing = true
+        errorMessage = nil
+        
+        Task {
+            do {
+                _ = try await PaymentService.shared.downgradeToFree()
+                await appState.loadCurrentUser()
                 
-                HapticManager.shared.success()
-                self.dismiss()
+                await MainActor.run {
+                    self.isPurchasing = false
+                    HapticManager.shared.success()
+                    self.dismiss()
+                }
+            } catch {
+                await MainActor.run {
+                    self.isPurchasing = false
+                    self.errorMessage = (error as? APIError)?.errorDescription ?? "Failed to downgrade plan."
+                    HapticManager.shared.error()
+                }
             }
         }
     }
     
     private func restorePurchases() {
         Task {
-            try? await Task.sleep(nanoseconds: 800_000_000)
+            await appState.loadCurrentUser()
             await MainActor.run {
                 self.showRestoreSuccess = true
                 HapticManager.shared.success()

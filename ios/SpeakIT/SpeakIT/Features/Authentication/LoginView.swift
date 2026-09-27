@@ -24,7 +24,6 @@ struct LoginView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     brandHeader
-                    feedbackBanners
                     formFields
                     forgotPasswordRow
                     signInButton
@@ -34,6 +33,7 @@ struct LoginView: View {
                 }
                 .padding(.horizontal, SpeakITSpacing.screenMargin)
             }
+            .background(Color.speakitScreenBackground.ignoresSafeArea())
             .scrollDismissesKeyboard(.interactively)
             .navigationDestination(isPresented: $showSignUp) {
                 SignUpView()
@@ -48,6 +48,7 @@ struct LoginView: View {
             } message: {
                 Text("OAuth social sign-in is managed by your backend provider. Please sign in with your SpeakIT email and password.")
             }
+            .speakITToast(successMessage: $successMessage, errorMessage: $errorMessage, bottomPadding: 20)
         }
     }
     
@@ -72,14 +73,6 @@ struct LoginView: View {
                 .padding(.top, 6)
                 .padding(.bottom, 32)
         }
-    }
-    
-    @ViewBuilder
-    private var feedbackBanners: some View {
-        SpeakITBanner(message: $successMessage, style: .success)
-            .padding(.bottom, successMessage != nil ? 16 : 0)
-        SpeakITBanner(message: $errorMessage, style: .error)
-            .padding(.bottom, errorMessage != nil ? 16 : 0)
     }
     
     @ViewBuilder
@@ -161,7 +154,7 @@ struct LoginView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: SpeakITSpacing.inputHeight)
-                .background(Color.speakitBackground)
+                .background(Color.speakitCardSurface)
                 .foregroundColor(Color.speakitTextPrimary)
                 .cornerRadius(SpeakITSpacing.inputRadius)
                 .overlay(
@@ -182,7 +175,7 @@ struct LoginView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: SpeakITSpacing.inputHeight)
-                .background(Color.speakitBackground)
+                .background(Color.speakitCardSurface)
                 .foregroundColor(Color.speakitTextPrimary)
                 .cornerRadius(SpeakITSpacing.inputRadius)
                 .overlay(
@@ -271,7 +264,7 @@ struct LoginView: View {
                         self.appState.login(token: "mock-offline-token", user: User.sample)
                     } else {
                         HapticManager.shared.error()
-                        self.errorMessage = error.localizedDescription
+                        self.errorMessage = error.userFriendlyMessage
                     }
                 }
             }

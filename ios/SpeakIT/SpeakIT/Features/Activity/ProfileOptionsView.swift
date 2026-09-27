@@ -29,6 +29,7 @@ struct ProfileOptionsView: View {
     }
     
     @State private var activeSheet: ActiveProfileSheet? = nil
+    @State private var sheetDetent: PresentationDetent = .medium
     @State private var successMessage: String? = nil
     @State private var errorMessage: String? = nil
     @AppStorage("hapticsEnabled") private var hapticsEnabled: Bool = true
@@ -47,10 +48,6 @@ struct ProfileOptionsView: View {
                         .foregroundColor(Color.speakitTextSecondary)
                 }
                 .padding(.top, 8)
-                
-                // Feedback Banners
-                SpeakITBanner(message: $successMessage, style: .success)
-                SpeakITBanner(message: $errorMessage, style: .error)
                 
                 // Profile Options Card
                 VStack(spacing: 0) {
@@ -88,41 +85,70 @@ struct ProfileOptionsView: View {
                         action: { activeSheet = .phone }
                     )
                 }
-                .background(Color.speakitBackground)
+                .background(Color.speakitCardSurface)
                 .cornerRadius(16)
                 .overlay(
                     RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color(hex: "E6E6EB"), lineWidth: 1)
+                        .stroke(Color.speakitBorder, lineWidth: 1)
                 )
             }
             .padding(.horizontal, SpeakITSpacing.screenMargin)
             .padding(.bottom, 36)
         }
-        .navigationTitle("Profile Settings")
+        .background(Color.speakitScreenBackground.ignoresSafeArea())
+        .navigationTitle("Profile Information")
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(item: $activeSheet) { sheet in
-            switch sheet {
-            case .fullName:
-                UpdateFullNameSheet(onSuccess: {
+        .sheet(isPresented: Binding(
+            get: { activeSheet != nil },
+            set: { isPresented in
+                if !isPresented {
+                    activeSheet = nil
+                    sheetDetent = .medium
+                }
+            }
+        )) {
+            if let sheet = activeSheet {
+                sheetDestination(for: sheet)
+                    .presentationDetents([.medium], selection: $sheetDetent)
+                    .presentationDragIndicator(.visible)
+                    .presentationBackground(Color.speakitScreenBackground)
+            }
+        }
+        .speakITToast(successMessage: $successMessage, errorMessage: $errorMessage, bottomPadding: 16)
+    }
+    
+    @ViewBuilder
+    private func sheetDestination(for sheet: ActiveProfileSheet) -> some View {
+        switch sheet {
+        case .fullName:
+            UpdateFullNameSheet(
+                initialName: appState.currentUser?.fullName ?? "",
+                onSuccess: {
                     successMessage = "Full name updated successfully!"
                     errorMessage = nil
-                })
-            case .username:
-                UpdateUsernameSheet(onSuccess: {
+                }
+            )
+        case .username:
+            UpdateUsernameSheet(
+                initialUsername: appState.currentUser?.username ?? "",
+                onSuccess: {
                     successMessage = "Username updated successfully!"
                     errorMessage = nil
-                })
-            case .email:
-                UpdateEmailSheet(onSuccess: {
-                    successMessage = "Email updated successfully!"
-                    errorMessage = nil
-                })
-            case .phone:
-                UpdatePhoneSheet(onSuccess: {
+                }
+            )
+        case .email:
+            UpdateEmailSheet(onSuccess: {
+                successMessage = "Email updated successfully!"
+                errorMessage = nil
+            })
+        case .phone:
+            UpdatePhoneSheet(
+                initialPhone: appState.currentUser?.phoneNumber ?? "",
+                onSuccess: {
                     successMessage = "Phone number updated successfully!"
                     errorMessage = nil
-                })
-            }
+                }
+            )
         }
     }
     
@@ -136,7 +162,9 @@ struct ProfileOptionsView: View {
     @ViewBuilder
     private func menuItem(title: String, subtitle: String, icon: String, action: @escaping () -> Void) -> some View {
         Button(action: {
+            guard activeSheet == nil else { return }
             HapticManager.shared.selection()
+            sheetDetent = .medium
             action()
         }) {
             HStack(spacing: 12) {
@@ -167,7 +195,9 @@ struct ProfileOptionsView: View {
     }
     
     private var menuDivider: some View {
-        Divider()
+        Rectangle()
+            .fill(Color.speakitDivider)
+            .frame(height: 0.5)
             .padding(.leading, 50)
     }
 }

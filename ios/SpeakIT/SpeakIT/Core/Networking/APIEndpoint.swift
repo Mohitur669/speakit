@@ -115,6 +115,13 @@ enum APIEndpoint {
     // Contact
     case contact
     
+    // Billing & Payments
+    case createPaymentOrder
+    case verifyPayment
+    case downgradeToFree
+    case cancelSubscription
+    case paymentHistory(page: Int, size: Int)
+    
     var path: String {
         switch self {
         case .login:
@@ -174,6 +181,16 @@ enum APIEndpoint {
             return "/api/system-parameters/bulk?names=\(joined)"
         case .contact:
             return "/api/contact"
+        case .createPaymentOrder:
+            return "/api/v1/payments/create-order"
+        case .verifyPayment:
+            return "/api/v1/payments/verify"
+        case .downgradeToFree:
+            return "/api/v1/payments/downgrade-free"
+        case .cancelSubscription:
+            return "/api/v1/payments/cancel"
+        case .paymentHistory(let page, let size):
+            return "/api/v1/payments/history?page=\(page)&size=\(size)"
         }
     }
     

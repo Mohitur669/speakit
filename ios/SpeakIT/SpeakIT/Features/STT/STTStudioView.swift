@@ -25,6 +25,8 @@ struct STTStudioView: View {
     @State private var showPermissionAlert: Bool = false
     @State private var transcriptionResult: TranscriptionResult? = nil
     @State private var errorMessage: String? = nil
+    @State private var isPulsing: Bool = false
+    @State private var statusDotOpacity: Double = 1.0
     
     private var recordingManager = AudioRecordingManager.shared
     
@@ -53,8 +55,12 @@ struct STTStudioView: View {
                                 .foregroundColor(isSelected ? Color.speakitPrimary : Color.speakitTextSecondary)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 36)
-                                .background(isSelected ? Color.speakitBackground : Color.clear)
+                                .background(isSelected ? Color.speakitCardSurface : Color.clear)
                                 .cornerRadius(18)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 18)
+                                        .stroke(isSelected ? Color.speakitBorder : Color.clear, lineWidth: 1)
+                                )
                                 .shadow(color: isSelected ? Color.black.opacity(0.06) : Color.clear, radius: 4, x: 0, y: 2)
                         }
                     }
@@ -62,6 +68,10 @@ struct STTStudioView: View {
                 .padding(2)
                 .background(Color.speakitCard)
                 .cornerRadius(20)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20)
+                        .stroke(Color.speakitBorder, lineWidth: 1)
+                )
                 
                 if selectedMode == .live {
                     liveRecordingSection
@@ -92,13 +102,13 @@ struct STTStudioView: View {
                             .foregroundColor(Color.speakitTextTertiary)
                     }
                     .padding(16)
-                    .background(Color.speakitCard)
+                    .background(Color.speakitCardSurface)
                     .cornerRadius(SpeakITSpacing.cardRadius)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: SpeakITSpacing.cardRadius)
+                            .stroke(Color.speakitBorder, lineWidth: 1)
+                    )
                 }
-                
-                // Error banner
-                SpeakITBanner(message: $errorMessage, style: .error)
-                    .padding(.horizontal)
                 
                 // Stop & Transcribe Button
                 if selectedMode == .live && recordingManager.isRecording {
@@ -115,6 +125,20 @@ struct STTStudioView: View {
             }
             .padding(.horizontal, SpeakITSpacing.screenMargin)
             .padding(.bottom, 24)
+        }
+        .background(Color.speakitScreenBackground.ignoresSafeArea())
+        .onChange(of: recordingManager.isRecording) { _, isRecording in
+            if isRecording {
+                withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: false)) {
+                    isPulsing = true
+                }
+                withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
+                    statusDotOpacity = 0.3
+                }
+            } else {
+                isPulsing = false
+                statusDotOpacity = 1.0
+            }
         }
         .sheet(isPresented: $showResultSheet) {
             if let result = transcriptionResult {
@@ -136,51 +160,112 @@ struct STTStudioView: View {
         } message: {
             Text("SpeakIT needs microphone access to record and transcribe your voice. Please enable it in Settings.")
         }
+        .speakITToast(message: $errorMessage, style: .error, bottomPadding: 16)
     }
     
     // MARK: - Live Recording Subview
     @ViewBuilder
     private var liveRecordingSection: some View {
-        VStack(spacing: 24) {
-            Text(recordingManager.isRecording ? "Listening to your speech…" : "Tap to start recording")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(Color.speakitTextPrimary)
-                .padding(.top, 16)
-            
-            // Amplitude Visualizer
-            SpeakITRecordingVisualizer(amplitudes: recordingManager.amplitudes)
-                .frame(height: 48)
-            
-            // Record / Stop Circular Button
-            Button(action: {
-                toggleRecording()
-            }) {
-                ZStack {
+        VStack(spacing: 18) {
+            // Live Status Header with Pulsing Dot
+            HStack(spacing: 8) {
+                if recordingManager.isRecording {
                     Circle()
-                        .fill(recordingManager.isRecording ? Color.speakitDestructive : Color.speakitPrimary)
-                        .frame(width: 68, height: 68)
-                        .shadow(color: Color.speakitPrimary.opacity(0.3), radius: 8, x: 0, y: 4)
-                    
-                    if recordingManager.isRecording {
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(Color.white)
-                            .frame(width: 22, height: 22)
-                    } else {
-                        Circle()
-                            .fill(Color.white)
-                            .frame(width: 20, height: 20)
-                    }
+                        .fill(Color.speakitDestructive)
+                        .frame(width: 8, height: 8)
+                        .opacity(statusDotOpacity)
                 }
+                
+                Text(recordingManager.isRecording ? "RECORDING AUDIO" : "READY TO RECORD")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(recordingManager.isRecording ? Color.speakitDestructive : Color.speakitTextTertiary)
+                    .tracking(1.2)
             }
-            .accessibilityLabel(recordingManager.isRecording ? "Stop recording" : "Start recording")
-            .accessibilityIdentifier("stt.record")
+            .padding(.top, 4)
             
-            // Large Timer Display
-            Text(formatTimer(recordingManager.elapsedTime))
-                .font(Font.speakitTimer)
-                .foregroundColor(Color.speakitTextPrimary)
+            // Dynamic Waveform Visualizer
+            SpeakITRecordingVisualizer(
+                amplitudes: recordingManager.amplitudes,
+                isRecording: recordingManager.isRecording
+            )
+            .frame(height: 48)
+            .padding(.vertical, 4)
+            
+            // Apple Voice Memos Shutter / Record Button
+            recordShutterButton
+            
+            // Large Monospaced Timer Display
+            VStack(spacing: 4) {
+                Text(formatTimer(recordingManager.elapsedTime))
+                    .font(.system(size: 34, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundColor(Color.speakitTextPrimary)
+                
+                Text(recordingManager.isRecording ? "Listening to your speech…" : "Tap button to start recording")
+                    .font(.system(size: 13))
+                    .foregroundColor(Color.speakitTextSecondary)
+            }
+            .padding(.bottom, 4)
         }
-        .padding(.vertical, 16)
+        .padding(.vertical, 20)
+        .padding(.horizontal, 16)
+        .frame(maxWidth: .infinity)
+        .background(Color.speakitCardSurface)
+        .cornerRadius(SpeakITSpacing.cardRadius)
+        .overlay(
+            RoundedRectangle(cornerRadius: SpeakITSpacing.cardRadius)
+                .stroke(recordingManager.isRecording ? Color.speakitDestructive.opacity(0.3) : Color.speakitBorder, lineWidth: 1)
+        )
+        .animation(.easeInOut(duration: 0.25), value: recordingManager.isRecording)
+        .padding(.vertical, 8)
+    }
+    
+    // MARK: - iOS Voice Memos Shutter Button
+    private var recordShutterButton: some View {
+        Button(action: {
+            toggleRecording()
+        }) {
+            ZStack {
+                // Expanding concentric acoustic halo during recording
+                if recordingManager.isRecording {
+                    Circle()
+                        .stroke(Color.speakitDestructive.opacity(0.3), lineWidth: 2)
+                        .frame(width: 82, height: 82)
+                        .scaleEffect(isPulsing ? 1.28 : 0.96)
+                        .opacity(isPulsing ? 0.0 : 0.8)
+                }
+                
+                // Outer ring with Apple Voice Memos gap
+                Circle()
+                    .stroke(
+                        recordingManager.isRecording ? Color.speakitDestructive.opacity(0.6) : Color.speakitBorder,
+                        lineWidth: 3
+                    )
+                    .frame(width: 76, height: 76)
+                
+                // Inner button morphing between Circle (idle) and Squircle (recording)
+                RoundedRectangle(
+                    cornerRadius: recordingManager.isRecording ? 8 : 29,
+                    style: .continuous
+                )
+                .fill(recordingManager.isRecording ? Color.speakitDestructive : Color.speakitPrimary)
+                .frame(
+                    width: recordingManager.isRecording ? 28 : 58,
+                    height: recordingManager.isRecording ? 28 : 58
+                )
+                .shadow(
+                    color: (recordingManager.isRecording ? Color.speakitDestructive : Color.speakitPrimary).opacity(0.35),
+                    radius: 8,
+                    x: 0,
+                    y: 4
+                )
+            }
+            .frame(width: 96, height: 96)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(recordingManager.isRecording ? "Stop recording" : "Start recording")
+        .accessibilityIdentifier("stt.record")
+        .animation(.spring(response: 0.35, dampingFraction: 0.65), value: recordingManager.isRecording)
     }
     
     // MARK: - File Import Subview
@@ -205,7 +290,7 @@ struct STTStudioView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: 180)
-                .background(Color.speakitCard)
+                .background(Color.speakitCardSurface)
                 .cornerRadius(SpeakITSpacing.cardRadius)
                 .overlay(
                     RoundedRectangle(cornerRadius: SpeakITSpacing.cardRadius)
@@ -301,7 +386,7 @@ struct STTStudioView: View {
                         HapticManager.shared.success()
                         self.showResultSheet = true
                     } else {
-                        self.errorMessage = error.localizedDescription
+                        self.errorMessage = error.userFriendlyMessage
                         HapticManager.shared.error()
                     }
                 }

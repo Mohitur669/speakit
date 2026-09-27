@@ -67,7 +67,7 @@ struct ActivityView: View {
                         GeometryReader { geo in
                             ZStack(alignment: .leading) {
                                 RoundedRectangle(cornerRadius: 5)
-                                    .fill(Color(hex: "E6E6EB"))
+                                    .fill(Color.speakitBorder)
                                     .frame(height: 10)
                                 
                                 RoundedRectangle(cornerRadius: 5)
@@ -90,8 +90,12 @@ struct ActivityView: View {
                         }
                     }
                     .padding(18)
-                    .background(Color.speakitCard)
+                    .background(Color.speakitCardSurface)
                     .cornerRadius(18)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18)
+                            .stroke(Color.speakitBorder, lineWidth: 1)
+                    )
                     .accessibilityIdentifier("activity.quota")
                     
                     // Section Header with Edit/Select Toggle and Max History Selector Dropdown
@@ -251,6 +255,7 @@ struct ActivityView: View {
                 .padding(.horizontal, SpeakITSpacing.screenMargin)
                 .padding(.bottom, 24)
             }
+            .background(Color.speakitScreenBackground.ignoresSafeArea())
             .refreshable {
                 await refreshAll()
             }
@@ -328,12 +333,12 @@ struct ActivityView: View {
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 12)
-        .background(Color.speakitBackground)
+        .background(Color.speakitCardSurface)
         .cornerRadius(18)
         .shadow(color: Color.black.opacity(0.08), radius: 10, y: 4)
         .overlay(
             RoundedRectangle(cornerRadius: 18)
-                .stroke(Color(hex: "E6E6EB"), lineWidth: 1)
+                .stroke(Color.speakitBorder, lineWidth: 1)
         )
         .padding(.horizontal, SpeakITSpacing.screenMargin)
         .padding(.bottom, 8)

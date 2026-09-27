@@ -65,7 +65,7 @@ struct SpeakITButton: View {
         case .secondary:
             Color.speakitBadgeBackground
         case .outline:
-            Color.speakitBackground
+            Color.clear
         case .destructive:
             Color.speakitDestructiveLight
         }

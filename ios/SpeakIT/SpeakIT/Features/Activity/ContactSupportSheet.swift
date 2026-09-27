@@ -77,17 +77,6 @@ struct ContactSupportSheet: View {
                     }
                     .padding(.top, 8)
                     
-                    // Auto-timed Banners
-                    if successBanner != nil {
-                        SpeakITBanner(message: $successBanner, style: .success)
-                            .transition(.opacity.combined(with: .move(edge: .top)))
-                    }
-                    
-                    if errorBanner != nil {
-                        SpeakITBanner(message: $errorBanner, style: .error)
-                            .transition(.opacity.combined(with: .move(edge: .top)))
-                    }
-                    
                     // Contact Channels
                     VStack(spacing: 12) {
                         contactChannelCard(
@@ -296,18 +285,18 @@ struct ContactSupportSheet: View {
                         .padding(.top, 4)
                     }
                     .padding(20)
-                    .background(Color.speakitBackground)
+                    .background(Color.speakitCardSurface)
                     .cornerRadius(20)
                     .overlay(
                         RoundedRectangle(cornerRadius: 20)
-                            .stroke(Color(hex: "EAEAEA"), lineWidth: 1)
+                            .stroke(Color.speakitBorder, lineWidth: 1)
                     )
                     .shadow(color: Color.black.opacity(0.04), radius: 8, y: 3)
                 }
                 .padding(.horizontal, SpeakITSpacing.screenMargin)
                 .padding(.bottom, 36)
             }
-            .background(Color(hex: "F8F9FB").ignoresSafeArea())
+            .background(Color.speakitScreenBackground.ignoresSafeArea())
             .navigationTitle("Contact Support")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -323,6 +312,7 @@ struct ContactSupportSheet: View {
             .onAppear {
                 prefillUserInfo()
             }
+            .speakITToast(successMessage: $successBanner, errorMessage: $errorBanner, bottomPadding: 20)
         }
     }
     
@@ -401,7 +391,7 @@ struct ContactSupportSheet: View {
                     .clipShape(Capsule())
             }
             .padding(14)
-            .background(Color.speakitBackground)
+            .background(Color.speakitCardSurface)
             .cornerRadius(16)
             .overlay(
                 RoundedRectangle(cornerRadius: 16)

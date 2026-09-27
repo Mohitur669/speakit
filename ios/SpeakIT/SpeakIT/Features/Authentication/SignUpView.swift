@@ -34,14 +34,11 @@ struct SignUpView: View {
                     .padding(.top, 6)
                     .padding(.bottom, 24)
                 
-                SpeakITBanner(message: $errorMessage, style: .error)
-                    .padding(.bottom, errorMessage != nil ? 16 : 0)
-                
                 VStack(spacing: 14) {
                     SpeakITTextField(placeholder: "Full Name", text: $fullName, icon: "person.crop.circle")
                     SpeakITTextField(placeholder: "Username", text: $username, icon: "at", autoCapitalization: .never)
                     SpeakITTextField(placeholder: "Email Address", text: $email, icon: "envelope.fill", keyboardType: .emailAddress, autoCapitalization: .never)
-                    SpeakITTextField(placeholder: "Phone Number (Optional)", text: $phoneNumber, icon: "phone", keyboardType: .phonePad)
+                    SpeakITTextField(placeholder: "Phone Number (Optional)", text: $phoneNumber, icon: "phone", keyboardType: .numberPad)
                     SpeakITTextField(placeholder: "Password", text: $password, icon: "lock.fill", isSecure: true)
                     SpeakITTextField(placeholder: "Confirm Password", text: $confirmPassword, icon: "lock.shield.fill", isSecure: true)
                 }
@@ -77,11 +74,20 @@ struct SignUpView: View {
             }
             .padding(.horizontal, SpeakITSpacing.screenMargin)
         }
+        .background(Color.speakitScreenBackground.ignoresSafeArea())
+        .speakITToast(message: $errorMessage, style: .error, bottomPadding: 20)
         .navigationBarTitleDisplayMode(.inline)
+        .onChange(of: phoneNumber) { _, newValue in
+            let digits = newValue.filter { $0.isNumber }
+            let truncated = String(digits.prefix(10))
+            if phoneNumber != truncated {
+                phoneNumber = truncated
+            }
+        }
     }
     
     private var isFormValid: Bool {
-        !fullName.isEmpty && !username.isEmpty && !email.isEmpty && password.count >= 8 && password == confirmPassword
+        !fullName.isEmpty && !username.isEmpty && !email.isEmpty && password.count >= 8 && password == confirmPassword && (phoneNumber.isEmpty || phoneNumber.count == 10)
     }
     
     private func performSignUp() {
@@ -145,7 +151,7 @@ struct SignUpView: View {
                 await MainActor.run {
                     self.isLoading = false
                     HapticManager.shared.error()
-                    self.errorMessage = error.localizedDescription
+                    self.errorMessage = error.userFriendlyMessage
                 }
             }
         }

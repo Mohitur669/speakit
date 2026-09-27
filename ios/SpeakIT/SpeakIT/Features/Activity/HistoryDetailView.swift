@@ -26,14 +26,11 @@ struct HistoryDetailView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
-                    // Feedback / Error Banner
-                    SpeakITBanner(message: $bannerMessage, style: .info)
-                    
                     // Metadata Hero Card
                     metadataCard
                     
-                    // Audio Playback Controller
-                    audioPlaybackCard
+                    // Audio Playback Controller (Commented out per user request)
+                    // audioPlaybackCard
                     
                     // Full Text Transcript Card
                     fullTextCard
@@ -45,7 +42,7 @@ struct HistoryDetailView: View {
                 .padding(.top, 16)
                 .padding(.bottom, 32)
             }
-            .background(Color(hex: "F8F9FB").ignoresSafeArea())
+            .background(Color.speakitScreenBackground.ignoresSafeArea())
             .navigationTitle("Generation Details")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -65,6 +62,7 @@ struct HistoryDetailView: View {
             } message: {
                 Text("Are you sure you want to permanently delete this generation from your history? This action cannot be undone.")
             }
+            .speakITToast(message: $bannerMessage, style: .info, bottomPadding: 20)
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
@@ -115,11 +113,11 @@ struct HistoryDetailView: View {
             }
         }
         .padding(16)
-        .background(Color.speakitBackground)
+        .background(Color.speakitCardSurface)
         .cornerRadius(16)
         .overlay(
             RoundedRectangle(cornerRadius: 16)
-                .stroke(Color(hex: "E6E6EB"), lineWidth: 1)
+                .stroke(Color.speakitBorder, lineWidth: 1)
         )
     }
     
@@ -164,11 +162,11 @@ struct HistoryDetailView: View {
             }
         }
         .padding(14)
-        .background(Color.speakitBackground)
+        .background(Color.speakitCardSurface)
         .cornerRadius(16)
         .overlay(
             RoundedRectangle(cornerRadius: 16)
-                .stroke(Color(hex: "E6E6EB"), lineWidth: 1)
+                .stroke(Color.speakitBorder, lineWidth: 1)
         )
     }
     
@@ -206,15 +204,15 @@ struct HistoryDetailView: View {
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(14)
-                .background(Color(hex: "F2F2F7"))
+                .background(Color.speakitCard)
                 .cornerRadius(12)
         }
         .padding(16)
-        .background(Color.speakitBackground)
+        .background(Color.speakitCardSurface)
         .cornerRadius(16)
         .overlay(
             RoundedRectangle(cornerRadius: 16)
-                .stroke(Color(hex: "E6E6EB"), lineWidth: 1)
+                .stroke(Color.speakitBorder, lineWidth: 1)
         )
     }
     

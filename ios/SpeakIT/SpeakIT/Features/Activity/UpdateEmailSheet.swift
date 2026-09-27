@@ -27,8 +27,6 @@ struct UpdateEmailSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    SpeakITBanner(message: $errorMessage, style: .error)
-                    
                     if step == 1 {
                         step1PasswordView
                     } else {
@@ -39,7 +37,9 @@ struct UpdateEmailSheet: View {
                 .padding(.top, 16)
                 .padding(.bottom, 36)
             }
+            .scrollBounceBehavior(.basedOnSize)
             .scrollDismissesKeyboard(.interactively)
+            .background(Color.speakitScreenBackground)
             .navigationTitle(step == 1 ? "Update Email" : "Verify Email Change")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -54,8 +54,9 @@ struct UpdateEmailSheet: View {
                     cooldownSeconds -= 1
                 }
             }
+            .speakITToast(message: $errorMessage, style: .error, bottomPadding: 20)
         }
-        .presentationDetents([.medium])
+        .presentationBackground(Color.speakitScreenBackground)
     }
     
     // MARK: - Step 1: Security Password Verification
@@ -90,7 +91,7 @@ struct UpdateEmailSheet: View {
                     .foregroundColor(Color.speakitTextPrimary)
                     .padding(12)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color(hex: "F8F8FA"))
+                    .background(Color.speakitCard)
                     .cornerRadius(12)
             }
             
@@ -114,11 +115,11 @@ struct UpdateEmailSheet: View {
                     }
                 }
                 .padding(12)
-                .background(Color(hex: "F8F8FA"))
+                .background(Color.speakitCard)
                 .cornerRadius(12)
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color(hex: "E6E6EB"), lineWidth: 1)
+                        .stroke(Color.speakitBorder, lineWidth: 1)
                 )
             }
             
@@ -236,7 +237,7 @@ struct UpdateEmailSheet: View {
             } catch {
                 await MainActor.run {
                     self.isLoading = false
-                    self.errorMessage = error.localizedDescription
+                    self.errorMessage = error.userFriendlyMessage
                 }
             }
         }
@@ -271,7 +272,7 @@ struct UpdateEmailSheet: View {
             } catch {
                 await MainActor.run {
                     self.isLoading = false
-                    self.errorMessage = error.localizedDescription
+                    self.errorMessage = error.userFriendlyMessage
                 }
             }
         }

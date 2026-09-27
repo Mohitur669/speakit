@@ -31,8 +31,6 @@ struct ChangePasswordSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    SpeakITBanner(message: $errorMessage, style: .error)
-                    
                     if step == 1 {
                         step1PasswordsView
                     } else {
@@ -43,6 +41,7 @@ struct ChangePasswordSheet: View {
                 .padding(.top, 16)
                 .padding(.bottom, 36)
             }
+            .background(Color.speakitScreenBackground.ignoresSafeArea())
             .scrollDismissesKeyboard(.interactively)
             .navigationTitle(step == 1 ? "Change Password" : "Verify Password Change")
             .navigationBarTitleDisplayMode(.inline)
@@ -58,6 +57,7 @@ struct ChangePasswordSheet: View {
                     cooldownSeconds -= 1
                 }
             }
+            .speakITToast(message: $errorMessage, style: .error, bottomPadding: 20)
         }
         .presentationDetents([.large])
     }
@@ -91,11 +91,11 @@ struct ChangePasswordSheet: View {
                     }
                 }
                 .padding(12)
-                .background(Color(hex: "F8F8FA"))
+                .background(Color.speakitCard)
                 .cornerRadius(12)
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color(hex: "E6E6EB"), lineWidth: 1)
+                        .stroke(Color.speakitBorder, lineWidth: 1)
                 )
             }
             
@@ -120,11 +120,11 @@ struct ChangePasswordSheet: View {
                     }
                 }
                 .padding(12)
-                .background(Color(hex: "F8F8FA"))
+                .background(Color.speakitCard)
                 .cornerRadius(12)
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color(hex: "E6E6EB"), lineWidth: 1)
+                        .stroke(Color.speakitBorder, lineWidth: 1)
                 )
             }
             
@@ -149,11 +149,11 @@ struct ChangePasswordSheet: View {
                     }
                 }
                 .padding(12)
-                .background(Color(hex: "F8F8FA"))
+                .background(Color.speakitCard)
                 .cornerRadius(12)
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color(hex: "E6E6EB"), lineWidth: 1)
+                        .stroke(Color.speakitBorder, lineWidth: 1)
                 )
             }
             
@@ -171,8 +171,12 @@ struct ChangePasswordSheet: View {
                 policyRow(title: "Passwords match", isMet: !newPassword.isEmpty && newPassword == confirmPassword)
             }
             .padding(14)
-            .background(Color(hex: "F8F8FA"))
+            .background(Color.speakitCardSurface)
             .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.speakitBorder, lineWidth: 1)
+            )
             
             SpeakITButton(
                 title: "Send Verification Code",

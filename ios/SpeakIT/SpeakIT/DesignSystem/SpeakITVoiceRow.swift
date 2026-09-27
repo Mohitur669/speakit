@@ -86,7 +86,7 @@ struct SpeakITVoiceRow: View {
         }
         .padding(.horizontal, 16)
         .frame(height: 60)
-        .background(isSelected ? Color.speakitBadgeBackground.opacity(0.7) : Color.speakitCard)
+        .background(isSelected ? Color.speakitBadgeBackground.opacity(0.7) : Color.speakitCardSurface)
         .cornerRadius(14)
         .overlay(
             RoundedRectangle(cornerRadius: 14)

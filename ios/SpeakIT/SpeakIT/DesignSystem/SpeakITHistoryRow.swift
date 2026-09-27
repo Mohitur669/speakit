@@ -98,11 +98,11 @@ struct SpeakITHistoryRow: View {
         }
         .padding(.horizontal, 16)
         .frame(height: 70)
-        .background(isSelected ? Color.speakitPrimary.opacity(0.05) : Color.speakitBackground)
+        .background(isSelected ? Color.speakitBadgeBackground.opacity(0.7) : Color.speakitCardSurface)
         .cornerRadius(14)
         .overlay(
             RoundedRectangle(cornerRadius: 14)
-                .stroke(isSelected ? Color.speakitPrimary : Color(hex: "E3E3E8"), lineWidth: isSelected ? 1.5 : 1)
+                .stroke(isSelected ? Color.speakitPrimary : Color.speakitBorder, lineWidth: isSelected ? 1.5 : 1)
         )
     }
 }

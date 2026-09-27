@@ -73,10 +73,12 @@ struct SpeakITAudioPlayer: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
-        .background(Color(UIColor { traitCollection in
-            traitCollection.userInterfaceStyle == .dark ? UIColor(red: 0.12, green: 0.12, blue: 0.14, alpha: 1.0) : UIColor(red: 0.98, green: 0.98, blue: 0.98, alpha: 1.0)
-        }))
+        .background(Color.speakitCardSurface)
         .cornerRadius(18)
+        .overlay(
+            RoundedRectangle(cornerRadius: 18)
+                .stroke(Color.speakitBorder, lineWidth: 1)
+        )
     }
     
     private func formatTime(_ time: TimeInterval) -> String {

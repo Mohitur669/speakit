@@ -2,7 +2,7 @@
 //  UpdateUsernameSheet.swift
 //  SpeakIT
 //
-//  Dedicated sheet for updating user's unique account handle/username.
+//  Dedicated sheet for updating user's unique username handle.
 //
 
 import SwiftUI
@@ -12,16 +12,21 @@ struct UpdateUsernameSheet: View {
     @Environment(\.dismiss) private var dismiss
     var onSuccess: () -> Void
     
-    @State private var username: String = ""
+    @State private var username: String
     @State private var isLoading: Bool = false
     @State private var errorMessage: String? = nil
+    
+    init(initialUsername: String = "", onSuccess: @escaping () -> Void) {
+        self._username = State(initialValue: initialUsername)
+        self.onSuccess = onSuccess
+    }
     
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Account Handle")
+                        Text("Username")
                             .font(.system(size: 17, weight: .bold))
                             .foregroundColor(Color.speakitTextPrimary)
                         Text("Your username is your unique identifier across the platform.")
@@ -29,15 +34,13 @@ struct UpdateUsernameSheet: View {
                             .foregroundColor(Color.speakitTextSecondary)
                     }
                     
-                    SpeakITBanner(message: $errorMessage, style: .error)
-                    
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Username *")
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(Color.speakitTextSecondary)
                         
                         SpeakITTextField(
-                            placeholder: "Enter new username",
+                            placeholder: "Enter username",
                             text: $username,
                             icon: "at",
                             autoCapitalization: .never
@@ -48,7 +51,7 @@ struct UpdateUsernameSheet: View {
                         title: "Save Username",
                         style: .primary,
                         isLoading: isLoading,
-                        isEnabled: username.trimmingCharacters(in: .whitespaces).count >= 3
+                        isEnabled: !username.trimmingCharacters(in: .whitespaces).isEmpty
                     ) {
                         saveUsername()
                     }
@@ -56,7 +59,11 @@ struct UpdateUsernameSheet: View {
                 }
                 .padding(.horizontal, SpeakITSpacing.screenMargin)
                 .padding(.top, 16)
+                .padding(.bottom, 24)
             }
+            .scrollBounceBehavior(.basedOnSize)
+            .scrollDismissesKeyboard(.interactively)
+            .background(Color.speakitScreenBackground)
             .navigationTitle("Update Username")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -66,13 +73,9 @@ struct UpdateUsernameSheet: View {
                     }
                 }
             }
-            .onAppear {
-                if let user = appState.currentUser {
-                    self.username = user.username
-                }
-            }
+            .speakITToast(message: $errorMessage, style: .error, bottomPadding: 20)
         }
-        .presentationDetents([.medium])
+        .presentationBackground(Color.speakitScreenBackground)
     }
     
     private func saveUsername() {
@@ -90,6 +93,7 @@ struct UpdateUsernameSheet: View {
                 
                 await MainActor.run {
                     self.isLoading = false
+                    HapticManager.shared.success()
                     self.appState.currentUser = updatedUser
                     self.dismiss()
                     self.onSuccess()
@@ -97,7 +101,8 @@ struct UpdateUsernameSheet: View {
             } catch {
                 await MainActor.run {
                     self.isLoading = false
-                    self.errorMessage = error.localizedDescription
+                    HapticManager.shared.error()
+                    self.errorMessage = error.userFriendlyMessage
                 }
             }
         }
