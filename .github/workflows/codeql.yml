@@ -7,6 +7,7 @@ on:
     branches: [ "master" ]
   schedule:
     - cron: '0 2 * * 1' # Mondays 07:30 IST (02:00 UTC)
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -60,11 +61,11 @@ jobs:
           category: "/language:${{ matrix.language }}"
 
   # 2. Swift Analysis (macOS Runner with Custom xcodebuild - Free on Public Repos)
-  # Runs on scheduled weekly scans (Mondays) and pushes to master, skipping PRs for fast CI turnaround
+  # Runs ONLY on scheduled weekly scans (Mondays) and manual dispatch, skipping all pushes/PRs for sub-2m CI turnaround
   analyze-swift:
     name: Analyze (swift)
     runs-on: macos-latest
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     timeout-minutes: 60
 
     steps:
