@@ -30,6 +30,8 @@ struct SpeakITAvatarView: View {
     @State private var showActionSheet: Bool = false
     @State private var showPhotosPicker: Bool = false
     @State private var selectedPickerItem: PhotosPickerItem? = nil
+    @State private var imageToCrop: UIImage? = nil
+    @State private var showCropSheet: Bool = false
     
     // Deterministic palette gradients for monograms
     private static let avatarGradients: [[Color]] = [
@@ -120,6 +122,7 @@ struct SpeakITAvatarView: View {
             
             Button("Cancel", role: .cancel) {}
         }
+        .tint(Color.speakitTextPrimary)
         .photosPicker(
             isPresented: $showPhotosPicker,
             selection: $selectedPickerItem,
@@ -128,7 +131,23 @@ struct SpeakITAvatarView: View {
         )
         .onChange(of: selectedPickerItem) { _, newItem in
             if let item = newItem {
-                processAndUpload(item: item)
+                Task {
+                    if let rawData = try? await item.loadTransferable(type: Data.self),
+                       let image = UIImage(data: rawData) {
+                        await MainActor.run {
+                            self.imageToCrop = image
+                            self.showCropSheet = true
+                            self.selectedPickerItem = nil
+                        }
+                    }
+                }
+            }
+        }
+        .fullScreenCover(isPresented: $showCropSheet) {
+            if let img = imageToCrop {
+                AvatarCropView(sourceImage: img) { croppedData in
+                    uploadCroppedAvatar(data: croppedData)
+                }
             }
         }
         .task(id: resolvedUser.avatarUrl) {
@@ -228,9 +247,8 @@ struct SpeakITAvatarView: View {
     }
     
     // MARK: - Upload Pipeline
-    private func processAndUpload(item: PhotosPickerItem) {
+    private func uploadCroppedAvatar(data: Data) {
         isProcessing = true
-        selectedPickerItem = nil
         
         Task {
             defer {
@@ -240,27 +258,17 @@ struct SpeakITAvatarView: View {
             }
             
             do {
-                // 1. Load raw data out-of-process from PhotosPicker
-                guard let rawData = try await item.loadTransferable(type: Data.self) else {
-                    throw NSError(domain: "SpeakIT", code: -1, userInfo: [NSLocalizedDescriptionKey: "Could not read selected photo."])
-                }
-                
-                // 2. Client-side pre-processing: square crop, downsample to 512x512, compress JPEG ~120KB
-                guard let processedData = ImageProcessor.processAvatar(from: rawData, targetDimension: 512, compressionQuality: 0.80) else {
-                    throw NSError(domain: "SpeakIT", code: -2, userInfo: [NSLocalizedDescriptionKey: "Failed to process photo."])
-                }
-                
-                // 3. Upload multipart to backend (Cloudflare R2 / S3-compatible storage)
+                // 1. Upload multipart to backend (Cloudflare R2 / S3-compatible storage)
                 let avatarResponse: AvatarResponse = try await HTTPClient.shared.uploadMultipart(
                     .uploadAvatar,
-                    fileData: processedData,
+                    fileData: data,
                     fileName: "avatar_\(Int(Date().timeIntervalSince1970)).jpg",
                     mimeType: "image/jpeg"
                 )
                 
-                // 4. Update Cache & State
+                // 2. Update Cache & State
                 if let updatedUrl = avatarResponse.avatarUrl,
-                   let newImage = UIImage(data: processedData) {
+                   let newImage = UIImage(data: data) {
                     AvatarCacheManager.shared.storeImage(newImage, for: updatedUrl)
                     await MainActor.run {
                         self.loadedImage = newImage

@@ -17,6 +17,7 @@ struct SignUpView: View {
     @State private var phoneNumber: String = ""
     @State private var password: String = ""
     @State private var confirmPassword: String = ""
+    @State private var isSubmitting: Bool = false
     @State private var isLoading: Bool = false
     @State private var errorMessage: String? = nil
     
@@ -36,11 +37,29 @@ struct SignUpView: View {
                 
                 VStack(spacing: 14) {
                     SpeakITTextField(placeholder: "Full Name", text: $fullName, icon: "person.crop.circle")
-                    SpeakITTextField(placeholder: "Username", text: $username, icon: "at", autoCapitalization: .never)
+                    SpeakITTextField(
+                        placeholder: "Username",
+                        text: $username,
+                        icon: "at",
+                        autoCapitalization: .never,
+                        textContentType: isSubmitting ? .username : nil
+                    )
                     SpeakITTextField(placeholder: "Email Address", text: $email, icon: "envelope.fill", keyboardType: .emailAddress, autoCapitalization: .never)
                     SpeakITTextField(placeholder: "Phone Number (Optional)", text: $phoneNumber, icon: "phone", keyboardType: .numberPad)
-                    SpeakITTextField(placeholder: "Password", text: $password, icon: "lock.fill", isSecure: true)
-                    SpeakITTextField(placeholder: "Confirm Password", text: $confirmPassword, icon: "lock.shield.fill", isSecure: true)
+                    SpeakITTextField(
+                        placeholder: "Password",
+                        text: $password,
+                        icon: "lock.fill",
+                        isSecure: true,
+                        textContentType: isSubmitting ? .newPassword : .oneTimeCode
+                    )
+                    SpeakITTextField(
+                        placeholder: "Confirm Password",
+                        text: $confirmPassword,
+                        icon: "lock.shield.fill",
+                        isSecure: true,
+                        textContentType: isSubmitting ? .newPassword : .oneTimeCode
+                    )
                 }
                 
                 SpeakITButton(
@@ -77,6 +96,16 @@ struct SignUpView: View {
         .background(Color.speakitScreenBackground.ignoresSafeArea())
         .speakITToast(message: $errorMessage, style: .error, bottomPadding: 20)
         .navigationBarTitleDisplayMode(.inline)
+        .onChange(of: username) { _, newValue in
+            // Disallow special characters and symbols (allow only lowercase a-z, 0-9, and . _ -)
+            let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyz0123456789._-")
+            let lowercased = newValue.lowercased()
+            let filtered = lowercased.unicodeScalars.filter { allowed.contains($0) }
+            let sanitized = String(String.UnicodeScalarView(filtered)).prefix(50)
+            if username != String(sanitized) {
+                username = String(sanitized)
+            }
+        }
         .onChange(of: phoneNumber) { _, newValue in
             let digits = newValue.filter { $0.isNumber }
             let truncated = String(digits.prefix(10))
@@ -84,15 +113,34 @@ struct SignUpView: View {
                 phoneNumber = truncated
             }
         }
+        .onChange(of: password) { _, _ in
+            if isSubmitting {
+                isSubmitting = false
+            }
+        }
+        .onChange(of: confirmPassword) { _, _ in
+            if isSubmitting {
+                isSubmitting = false
+            }
+        }
     }
     
     private var isFormValid: Bool {
-        !fullName.isEmpty && !username.isEmpty && !email.isEmpty && password.count >= 8 && password == confirmPassword && (phoneNumber.isEmpty || phoneNumber.count == 10)
+        !fullName.trimmingCharacters(in: .whitespaces).isEmpty &&
+        username.count >= 3 &&
+        !email.trimmingCharacters(in: .whitespaces).isEmpty &&
+        password.count >= 8 &&
+        password == confirmPassword &&
+        (phoneNumber.isEmpty || phoneNumber.count == 10)
     }
     
     private func performSignUp() {
         errorMessage = nil
+        isSubmitting = true
         isLoading = true
+        
+        // Dismiss keyboard so system registers form submission
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         
         let normalizedEmail = email.trimmingCharacters(in: .whitespaces).lowercased()
         let normalizedUsername = username.trimmingCharacters(in: .whitespaces).lowercased()
