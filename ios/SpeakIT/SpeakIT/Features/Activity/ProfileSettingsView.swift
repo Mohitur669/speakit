@@ -295,6 +295,8 @@ struct ProfileSettingsView: View {
                             .foregroundColor(Color.speakitTextTertiary)
                     }
                     .padding(14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 
@@ -489,7 +491,10 @@ struct ProfileSettingsView: View {
                         Spacer()
                     }
                     .padding(14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
                 
                 menuDivider
                 
@@ -515,7 +520,10 @@ struct ProfileSettingsView: View {
                         Spacer()
                     }
                     .padding(14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
                 .disabled(isDeletingAccount)
             }
             .background(Color.speakitCardSurface)
@@ -568,6 +576,8 @@ struct ProfileSettingsView: View {
                     .foregroundColor(Color.speakitTextTertiary)
             }
             .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
