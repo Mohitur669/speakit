@@ -36,6 +36,7 @@ public class TtsService {
                         .outputFormat(format != null ? format : "mp3")
                         .characterCount(charCount)
                         .textSnippet(snippet)
+                        .fullText(text)
                         .build();
                 ttsHistoryRepository.save(history);
             }

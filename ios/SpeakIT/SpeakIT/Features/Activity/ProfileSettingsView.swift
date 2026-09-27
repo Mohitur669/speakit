@@ -2,124 +2,113 @@
 //  ProfileSettingsView.swift
 //  SpeakIT
 //
-//  Profile and settings screen matching 07_Profile_Settings.svg.
+//  Comprehensive Profile & Settings screen featuring a clean, modular menu architecture.
+//  Account Settings organizes Profile Settings (Full Name, Username, Email) and Change Password.
 //
 
 import SwiftUI
+import Combine
 
 struct ProfileSettingsView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
     
-    @State private var showPaywall: Bool = false
-    @State private var showDeleteConfirmation: Bool = false
-    @State private var isDeletingAccount: Bool = false
-    @State private var deleteErrorMessage: String? = nil
+    enum ActiveSheet: Identifiable {
+        case password
+        case paywall
+        case passwordPolicy
+        case terms
+        case privacy
+        case about
+        case contact
+        case blog
+        case billingHistory
+        
+        var id: String {
+            switch self {
+            case .password: return "password"
+            case .paywall: return "paywall"
+            case .passwordPolicy: return "passwordPolicy"
+            case .terms: return "terms"
+            case .privacy: return "privacy"
+            case .about: return "about"
+            case .contact: return "contact"
+            case .blog: return "blog"
+            case .billingHistory: return "billingHistory"
+            }
+        }
+    }
+    
+    // Sub-screens & Sheets
+    @State private var activeSheet: ActiveSheet? = nil
     @State private var showSignOutAlert: Bool = false
+    @State private var showDeleteConfirmation: Bool = false
+    
+    // Status & Feedback
+    @State private var successMessage: String? = nil
+    @State private var errorMessage: String? = nil
+    @State private var isDeletingAccount: Bool = false
+    
+    // Preferences (Stored locally)
+    @AppStorage("hapticsEnabled") private var hapticsEnabled: Bool = true
+    @AppStorage("autoPlayPreview") private var autoPlayPreview: Bool = true
     
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                // Title
+                // Header Title
                 Text("Profile")
                     .font(.system(size: 30, weight: .bold))
                     .foregroundColor(Color.speakitTextPrimary)
                     .padding(.top, 8)
                 
-                // User Card
-                let user = appState.currentUser ?? User.sample
-                HStack(spacing: 16) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.speakitPrimary)
-                            .frame(width: 56, height: 56)
-                        
-                        Text(user.initials)
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(.white)
-                    }
-                    
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(user.fullName)
-                            .font(.system(size: 17, weight: .bold))
-                            .foregroundColor(Color.speakitTextPrimary)
-                        
-                        Text(user.email)
-                            .font(.system(size: 13, weight: .regular))
-                            .foregroundColor(Color.speakitTextSecondary)
-                    }
-                    
-                    Spacer()
-                }
-                .padding(.vertical, 4)
+                // 1. User Identity Header Card
+                userHeaderCard
                 
-                // Menu Items
-                VStack(spacing: 12) {
-                    settingRow(
-                        title: "Subscription",
-                        subtitle: "\(user.planType.displayName) • Renews Oct 14",
-                        icon: "creditcard.fill"
-                    ) {
-                        showPaywall = true
-                    }
-                    
-                    settingRow(
-                        title: "Usage & Quota",
-                        subtitle: "\(user.charactersUsed.formatted()) / \(user.characterLimit.formatted()) characters",
-                        icon: "chart.bar.fill"
-                    ) {
-                        showPaywall = true
-                    }
-                    
-                    settingRow(
-                        title: "Settings",
-                        subtitle: "Playback, haptics, preferences",
-                        icon: "slider.horizontal.3"
-                    ) {}
-                    
-                    settingRow(
-                        title: "Help & Support",
-                        subtitle: "Privacy • Terms • Contact",
-                        icon: "questionmark.circle.fill"
-                    ) {}
-                }
+                // 2. Subscription & Quota Card
+                quotaCard
                 
-                // Danger Zone Section
-                Text("Danger Zone")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundColor(Color.speakitDestructive)
-                    .padding(.top, 16)
-                
-                // Delete Account Button
-                SpeakITButton(
-                    title: "Delete Account",
-                    style: .destructive,
-                    isLoading: isDeletingAccount
-                ) {
-                    showDeleteConfirmation = true
-                }
-                .accessibilityIdentifier("profile.deleteAccount")
-                
-                if let deleteErrorMessage = deleteErrorMessage {
-                    Text(deleteErrorMessage)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(Color.speakitDestructive)
-                }
-                
-                // Sign Out Button
-                SpeakITButton(
-                    title: "Sign Out",
-                    style: .outline
-                ) {
-                    showSignOutAlert = true
-                }
-                .accessibilityIdentifier("profile.signOut")
-                .padding(.bottom, 32)
+                // 3. Modular Menu Sections
+                accountSettingsSection
+                preferencesSection
+                securityAndLegalSection
+                dangerZoneSection
             }
             .padding(.horizontal, SpeakITSpacing.screenMargin)
+            .padding(.bottom, 36)
         }
-        .sheet(isPresented: $showPaywall) {
-            SubscriptionPaywallView()
+        .background(Color.speakitScreenBackground.ignoresSafeArea())
+        .refreshable {
+            await appState.loadCurrentUser()
+        }
+        .sheet(item: $activeSheet) { sheet in
+            switch sheet {
+            case .password:
+                ChangePasswordSheet(onSuccess: {
+                    successMessage = "Password changed successfully!"
+                    errorMessage = nil
+                })
+            case .paywall:
+                SubscriptionPaywallView()
+            case .passwordPolicy:
+                PasswordPolicySheet()
+            case .terms:
+                TermsOfServiceSheet()
+            case .privacy:
+                PrivacyPolicySheet()
+            case .about:
+                AboutSpeakITSheet()
+            case .contact:
+                ContactSupportSheet()
+            case .blog:
+                BlogUpdatesSheet()
+            case .billingHistory:
+                BillingHistorySheet()
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+                    .presentationBackground(Color.speakitScreenBackground)
+            }
         }
         .alert("Sign Out", isPresented: $showSignOutAlert) {
             Button("Cancel", role: .cancel) {}
@@ -135,65 +124,466 @@ struct ProfileSettingsView: View {
                 executeAccountDeletion()
             }
         } message: {
-            Text("This action cannot be undone. All your audio generation history and quota will be permanently deleted.")
+            Text("This action cannot be undone. All your synthesis history and usage quotas will be permanently deleted.")
         }
+        .speakITToast(successMessage: $successMessage, errorMessage: $errorMessage, bottomPadding: 16)
     }
     
-    // MARK: - Reusable Setting Row
-    private func settingRow(title: String, subtitle: String, icon: String, action: @escaping () -> Void) -> some View {
-        Button(action: {
-            UISelectionFeedbackGenerator().selectionChanged()
-            action()
-        }) {
-            HStack(spacing: 14) {
-                ZStack {
-                    Circle()
-                        .fill(Color(hex: "F0F0F5"))
-                        .frame(width: 32, height: 32)
+    // MARK: - 1. User Header Card
+    @ViewBuilder
+    private var userHeaderCard: some View {
+        let user = appState.currentUser ?? User.sample
+        HStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(Color.speakitPrimary)
+                    .frame(width: 54, height: 54)
+                
+                Text(user.initials)
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(.white)
+            }
+            .frame(width: 54, height: 54)
+            
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    Text(user.fullName.isEmpty ? user.username.capitalized : user.fullName)
+                        .font(.system(size: 17, weight: .bold))
+                        .foregroundColor(Color.speakitTextPrimary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .minimumScaleFactor(0.8)
                     
-                    Image(systemName: icon)
-                        .font(.system(size: 13))
-                        .foregroundColor(Color.speakitTextSecondary)
+                    if user.emailVerified {
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 14))
+                            .foregroundColor(Color.speakitPrimary)
+                    }
                 }
                 
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(title)
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(Color.speakitTextPrimary)
-                    
-                    Text(subtitle)
-                        .font(.system(size: 11, weight: .regular))
-                        .foregroundColor(Color.speakitTextSecondary)
-                }
+                Text("@\(user.username)")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(Color.speakitTextSecondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                
+                Text(user.email)
+                    .font(.system(size: 12, weight: .regular))
+                    .foregroundColor(Color.speakitTextTertiary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(16)
+        .background(Color.speakitCardSurface)
+        .cornerRadius(16)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.speakitBorder, lineWidth: 1)
+        )
+    }
+    
+    // MARK: - 2. Quota & Usage Card
+    @ViewBuilder
+    private var quotaCard: some View {
+        let user = appState.currentUser ?? User.sample
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .center) {
+                Text("Plan & Quota")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(Color.speakitTextPrimary)
                 
                 Spacer()
                 
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .semibold))
+                SpeakITQuotaBadge(text: "\(user.planType.displayName) Plan")
+            }
+            
+            // Progress Bar
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 5)
+                        .fill(Color.speakitBorder)
+                        .frame(height: 8)
+                    
+                    RoundedRectangle(cornerRadius: 5)
+                        .fill(Color.speakitPrimary)
+                        .frame(width: geo.size.width * CGFloat(user.usagePercentage), height: 8)
+                }
+            }
+            .frame(height: 8)
+            
+            HStack {
+                Text("\(user.charactersUsed.formatted()) / \(user.characterLimit.formatted()) chars")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(Color.speakitTextPrimary)
+                
+                Spacer()
+                
+                Text("\(Int(user.usagePercentage * 100))% used")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(Color.speakitPrimary)
+            }
+            
+            // Subscription Validity Display
+            if user.planType != .free, let expiry = user.formattedExpiry {
+                HStack(spacing: 6) {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.system(size: 13))
+                        .foregroundColor(Color.speakitSuccess)
+                    
+                    Text("Valid until \(expiry)")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(Color.speakitSuccess)
+                    
+                    if let days = user.daysRemaining {
+                        Text("• \(days) days remaining")
+                            .font(.system(size: 11, weight: .regular))
+                            .foregroundColor(Color.speakitTextTertiary)
+                    }
+                }
+                .padding(.top, 2)
+            }
+        }
+        .padding(16)
+        .background(Color.speakitCardSurface)
+        .cornerRadius(16)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.speakitBorder, lineWidth: 1)
+        )
+    }
+    
+    // MARK: - 3. Account Settings Section (Profile Settings, Password & Plan)
+    @ViewBuilder
+    private var accountSettingsSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("ACCOUNT SETTINGS")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundColor(Color.speakitTextTertiary)
+                .padding(.leading, 4)
+            
+            VStack(spacing: 0) {
+                NavigationLink(destination: ProfileOptionsView()) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "person.crop.circle")
+                            .font(.system(size: 15))
+                            .foregroundColor(Color.speakitPrimary)
+                            .frame(width: 24)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Profile Information")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(Color.speakitTextPrimary)
+                            Text("Full name, username & email")
+                                .font(.system(size: 11))
+                                .foregroundColor(Color.speakitTextSecondary)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(Color.speakitTextTertiary)
+                    }
+                    .padding(14)
+                }
+                .buttonStyle(.plain)
+                
+                menuDivider
+                
+                menuItem(
+                    title: "Change Password",
+                    subtitle: "Protected with 2-Factor OTP verification",
+                    icon: "lock.shield.fill",
+                    action: { activeSheet = .password }
+                )
+                
+                menuDivider
+                
+                menuItem(
+                    title: "Change Plan",
+                    subtitle: "Upgrade or modify your subscription tier",
+                    icon: "sparkles",
+                    action: { activeSheet = .paywall }
+                )
+                
+                menuDivider
+                
+                menuItem(
+                    title: "Billing & Invoices",
+                    subtitle: "View payment history and receipts",
+                    icon: "creditcard.fill",
+                    action: { activeSheet = .billingHistory }
+                )
+            }
+            .background(Color.speakitCardSurface)
+            .cornerRadius(16)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Color.speakitBorder, lineWidth: 1)
+            )
+        }
+    }
+    
+    // MARK: - 4. Preferences Section
+    @ViewBuilder
+    private var preferencesSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("PREFERENCES")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundColor(Color.speakitTextTertiary)
+                .padding(.leading, 4)
+            
+            VStack(spacing: 0) {
+                Toggle(isOn: $hapticsEnabled) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "iphone.radiowaves.left.and.right")
+                            .foregroundColor(Color.speakitPrimary)
+                            .frame(width: 24)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Haptic Feedback")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(Color.speakitTextPrimary)
+                            Text("Vibrate on button taps and synthesis actions")
+                                .font(.system(size: 11))
+                                .foregroundColor(Color.speakitTextSecondary)
+                        }
+                    }
+                }
+                .padding(14)
+                
+                menuDivider
+                
+                Toggle(isOn: $autoPlayPreview) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "play.circle.fill")
+                            .foregroundColor(Color.speakitPrimary)
+                            .frame(width: 24)
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Auto-Play Generations")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(Color.speakitTextPrimary)
+                            Text("Play synthesized audio automatically on completion")
+                                .font(.system(size: 11))
+                                .foregroundColor(Color.speakitTextSecondary)
+                        }
+                    }
+                }
+                .padding(14)
+            }
+            .background(Color.speakitCardSurface)
+            .cornerRadius(16)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Color.speakitBorder, lineWidth: 1)
+            )
+        }
+    }
+    
+    // MARK: - 5. Legal & Company Section
+    @ViewBuilder
+    private var securityAndLegalSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("LEGAL & COMPANY")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundColor(Color.speakitTextTertiary)
+                .padding(.leading, 4)
+            
+            VStack(spacing: 0) {
+                menuItem(
+                    title: "Password Security Policy",
+                    subtitle: "View complexity rules and safety standards",
+                    icon: "shield.lefthalf.filled",
+                    action: { activeSheet = .passwordPolicy }
+                )
+                
+                menuDivider
+                
+                menuItem(
+                    title: "Terms of Service",
+                    subtitle: "Usage rights, licensing & account terms",
+                    icon: "doc.text.fill",
+                    action: { activeSheet = .terms }
+                )
+                
+                menuDivider
+                
+                menuItem(
+                    title: "Privacy Policy",
+                    subtitle: "Data encryption, audio retention & cookies",
+                    icon: "lock.shield.fill",
+                    action: { activeSheet = .privacy }
+                )
+                
+                menuDivider
+                
+                menuItem(
+                    title: "About SpeakIT",
+                    subtitle: "Platform vision, technology & mission",
+                    icon: "info.circle.fill",
+                    action: { activeSheet = .about }
+                )
+                
+                menuDivider
+                
+                menuItem(
+                    title: "Contact Support",
+                    subtitle: "Customer service, inquiries & bug reports",
+                    icon: "envelope.fill",
+                    action: { activeSheet = .contact }
+                )
+                
+                menuDivider
+                
+                menuItem(
+                    title: "Blog & Updates",
+                    subtitle: "Release notes, voice tutorials & guides",
+                    icon: "newspaper.fill",
+                    action: { activeSheet = .blog }
+                )
+            }
+            .background(Color.speakitCardSurface)
+            .cornerRadius(16)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Color.speakitBorder, lineWidth: 1)
+            )
+        }
+    }
+    
+    // MARK: - 6. Danger Zone Section
+    @ViewBuilder
+    private var dangerZoneSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("ACCOUNT SESSIONS")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundColor(Color.speakitTextTertiary)
+                .padding(.leading, 4)
+            
+            VStack(spacing: 0) {
+                Button(action: {
+                    HapticManager.shared.warning()
+                    showSignOutAlert = true
+                }) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "rectangle.portrait.and.arrow.right")
+                            .font(.system(size: 15))
+                            .foregroundColor(Color.speakitDestructive)
+                            .frame(width: 24)
+                        
+                        Text("Sign Out")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(Color.speakitDestructive)
+                        
+                        Spacer()
+                    }
+                    .padding(14)
+                }
+                
+                menuDivider
+                
+                Button(action: {
+                    HapticManager.shared.warning()
+                    showDeleteConfirmation = true
+                }) {
+                    HStack(spacing: 12) {
+                        if isDeletingAccount {
+                            ProgressView()
+                                .frame(width: 24)
+                        } else {
+                            Image(systemName: "trash.fill")
+                                .font(.system(size: 15))
+                                .foregroundColor(Color.speakitDestructive)
+                                .frame(width: 24)
+                        }
+                        
+                        Text("Delete Account Permanently")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(Color.speakitDestructive)
+                        
+                        Spacer()
+                    }
+                    .padding(14)
+                }
+                .disabled(isDeletingAccount)
+            }
+            .background(Color.speakitCardSurface)
+            .cornerRadius(16)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Color.speakitBorder, lineWidth: 1)
+            )
+        }
+    }
+    
+    // MARK: - Helper Views & Actions
+    @ViewBuilder
+    private func menuItem(
+        title: String,
+        subtitle: String,
+        icon: String,
+        badgeText: String? = nil,
+        trailingIcon: String = "chevron.right",
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: {
+            HapticManager.shared.selection()
+            action()
+        }) {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.system(size: 15))
+                    .foregroundColor(Color.speakitPrimary)
+                    .frame(width: 24)
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(Color.speakitTextPrimary)
+                    Text(subtitle)
+                        .font(.system(size: 11))
+                        .foregroundColor(Color.speakitTextSecondary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                
+                if let badgeText = badgeText {
+                    SpeakITQuotaBadge(text: badgeText)
+                }
+                
+                Image(systemName: trailingIcon)
+                    .font(.system(size: trailingIcon == "chevron.right" ? 12 : 11, weight: .semibold))
                     .foregroundColor(Color.speakitTextTertiary)
             }
-            .padding(.horizontal, 16)
-            .frame(height: 67)
-            .background(Color.speakitBackground)
-            .cornerRadius(14)
-            .overlay(
-                RoundedRectangle(cornerRadius: 14)
-                    .stroke(Color(hex: "E1E1E6"), lineWidth: 1)
-            )
+            .padding(14)
         }
         .buttonStyle(.plain)
     }
     
-    // MARK: - Account Deletion Handler
+    private func openWebLink(_ urlString: String) {
+        guard let url = URL(string: urlString) else { return }
+        openURL(url)
+    }
+    
+    private var menuDivider: some View {
+        Rectangle()
+            .fill(Color.speakitDivider)
+            .frame(height: 0.5)
+            .padding(.leading, 50)
+    }
+    
     private func executeAccountDeletion() {
         isDeletingAccount = true
-        deleteErrorMessage = nil
+        errorMessage = nil
         
         Task {
             do {
-                struct EmptyResponse: Codable {}
                 let _: EmptyResponse = try await HTTPClient.shared.request(.deleteAccount, method: "DELETE")
-                
                 await MainActor.run {
                     self.isDeletingAccount = false
                     self.appState.logout()
@@ -201,9 +591,7 @@ struct ProfileSettingsView: View {
             } catch {
                 await MainActor.run {
                     self.isDeletingAccount = false
-                    // Real backend does not yet implement DELETE /api/v1/users/me (confirmed Phase A gap)
-                    // Per requirements: Surface controlled unavailable state, do NOT fake deletion!
-                    self.deleteErrorMessage = "Account deletion endpoint is currently unavailable on the backend. Please contact support@speakit.com."
+                    self.errorMessage = error.userFriendlyMessage
                 }
             }
         }

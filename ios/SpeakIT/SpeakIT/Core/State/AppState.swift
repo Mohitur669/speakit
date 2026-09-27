@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+@MainActor
 @Observable
 final class AppState {
     static let shared = AppState()
@@ -18,6 +19,12 @@ final class AppState {
     var showPaywallSheet: Bool = false
     var errorMessage: String? = nil
     var isLoadingUser: Bool = false
+    
+    // Dynamic Pricing from Backend System Parameters
+    var proPriceDisplay: String = "$9.99 / month"
+    var proPlusPriceDisplay: String = "$19.99 / month"
+    var proAmountINR: Double = 499.0
+    var proPlusAmountINR: Double = 999.0
     
     private init() {
         // Support UI test / automation argument
@@ -52,6 +59,11 @@ final class AppState {
             name: .speakitSessionInvalidated,
             object: nil
         )
+        
+        // Pre-fetch live plan pricing from system parameters
+        Task {
+            await self.loadPlanPricing()
+        }
     }
     
     @objc private func handleSessionInvalidation() {
@@ -101,8 +113,14 @@ final class AppState {
                     role: user.role,
                     planType: user.planType,
                     status: user.status,
+                    subscriptionStatus: user.subscriptionStatus,
+                    planExpiry: user.planExpiry,
                     characterLimit: user.characterLimit,
-                    charactersUsed: resolvedCharactersUsed
+                    charactersUsed: resolvedCharactersUsed,
+                    phoneNumber: user.phoneNumber,
+                    dailyCount: user.dailyCount,
+                    dailyLimit: user.dailyLimit,
+                    emailVerified: user.emailVerified
                 )
             } else {
                 self.currentUser = user
@@ -132,17 +150,23 @@ final class AppState {
         )
         let newUsed = current.charactersUsed + count
         withAnimation(.easeInOut(duration: 0.25)) {
-            self.currentUser = User(
-                id: current.id,
-                username: current.username,
-                email: current.email,
-                fullName: current.fullName,
-                role: current.role,
-                planType: current.planType,
-                status: current.status,
-                characterLimit: current.characterLimit,
-                charactersUsed: newUsed
-            )
+                self.currentUser = User(
+                    id: current.id,
+                    username: current.username,
+                    email: current.email,
+                    fullName: current.fullName,
+                    role: current.role,
+                    planType: current.planType,
+                    status: current.status,
+                    subscriptionStatus: current.subscriptionStatus,
+                    planExpiry: current.planExpiry,
+                    characterLimit: current.characterLimit,
+                    charactersUsed: newUsed,
+                    phoneNumber: current.phoneNumber,
+                    dailyCount: current.dailyCount,
+                    dailyLimit: current.dailyLimit,
+                    emailVerified: current.emailVerified
+                )
         }
         
         if isAuthenticated {
@@ -152,5 +176,51 @@ final class AppState {
                 await self.loadCurrentUser()
             }
         }
+    }
+    
+    // MARK: - Dynamic Plan Pricing
+    @MainActor
+    func loadPlanPricing() async {
+        do {
+            let params: [String: String] = try await HTTPClient.shared.request(
+                .systemParametersBulk(names: [
+                    "IOS_PRO_PLAN_PRICE",
+                    "IOS_PRO_PLUS_PLAN_PRICE",
+                    "PRO_PLAN_PRICE_INR",
+                    "PRO_PLUS_PLAN_PRICE_INR"
+                ])
+            )
+            
+            if let proPrice = params["IOS_PRO_PLAN_PRICE"], !proPrice.trimmingCharacters(in: .whitespaces).isEmpty {
+                self.proPriceDisplay = formatPrice(proPrice)
+            } else if let proInr = params["PRO_PLAN_PRICE_INR"], !proInr.trimmingCharacters(in: .whitespaces).isEmpty {
+                if let val = Double(proInr.trimmingCharacters(in: .whitespacesAndNewlines)), val > 0 {
+                    self.proAmountINR = val
+                }
+                self.proPriceDisplay = "₹\(proInr) / month"
+            }
+            
+            if let proPlusPrice = params["IOS_PRO_PLUS_PLAN_PRICE"], !proPlusPrice.trimmingCharacters(in: .whitespaces).isEmpty {
+                self.proPlusPriceDisplay = formatPrice(proPlusPrice)
+            } else if let proPlusInr = params["PRO_PLUS_PLAN_PRICE_INR"], !proPlusInr.trimmingCharacters(in: .whitespaces).isEmpty {
+                if let val = Double(proPlusInr.trimmingCharacters(in: .whitespacesAndNewlines)), val > 0 {
+                    self.proPlusAmountINR = val
+                }
+                self.proPlusPriceDisplay = "₹\(proPlusInr) / month"
+            }
+        } catch {
+            // Keep existing defaults on network error
+        }
+    }
+    
+    private func formatPrice(_ rawPrice: String) -> String {
+        let trimmed = rawPrice.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.hasPrefix("$") || trimmed.hasPrefix("₹") {
+            return "\(trimmed) / month"
+        }
+        if Double(trimmed) != nil {
+            return "$\(trimmed) / month"
+        }
+        return "\(trimmed) / month"
     }
 }

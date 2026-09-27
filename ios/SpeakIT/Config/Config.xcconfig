@@ -9,6 +9,7 @@
 // Default fallback endpoints
 IOS_API_BASE_URL = http:/$()/localhost:8080
 IOS_API_BASE_BACKUP_URL = http:/$()/localhost:8080
+IOS_SIMULATOR_BASE_URL = http:/$()/localhost:8080
 
 // Optional local developer overrides (gitignored - safe for production URLs)
 #include? "Local.xcconfig"

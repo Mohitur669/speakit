@@ -14,5 +14,6 @@ public class TtsHistoryDto {
     private String outputFormat;
     private int characterCount;
     private String textSnippet;
+    private String fullText;
     private LocalDateTime createdAt;
 }

@@ -15,18 +15,19 @@ enum PlanType: String, Codable, CaseIterable, Comparable {
     
     var displayName: String {
         switch self {
-        case .free: return "FREE"
-        case .pro: return "PRO"
-        case .proPlus: return "PRO PLUS"
-        case .enterprise: return "ENTERPRISE"
+        case .free: return "Free"
+        case .pro: return "Pro"
+        case .proPlus: return "Pro Plus"
+        case .enterprise: return "Enterprise"
         }
     }
     
     var characterLimitPerRequest: Int {
         switch self {
-        case .free: return 500
-        case .pro: return 2500
-        case .proPlus, .enterprise: return 10000
+        case .free: return 100
+        case .pro: return 200
+        case .proPlus: return 500
+        case .enterprise: return 2000
         }
     }
     

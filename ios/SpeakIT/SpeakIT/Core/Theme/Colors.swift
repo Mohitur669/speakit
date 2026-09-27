@@ -43,12 +43,20 @@ extension Color {
         traitCollection.userInterfaceStyle == .dark ? UIColor.black : UIColor.white
     })
     
+    static let speakitScreenBackground = Color(UIColor { traitCollection in
+        traitCollection.userInterfaceStyle == .dark ? UIColor.black : UIColor(red: 0.97, green: 0.98, blue: 0.99, alpha: 1.0) // #F8F9FB
+    })
+    
     static let speakitCard = Color(UIColor { traitCollection in
         traitCollection.userInterfaceStyle == .dark ? UIColor(red: 0.11, green: 0.11, blue: 0.12, alpha: 1.0) : UIColor(red: 0.95, green: 0.95, blue: 0.97, alpha: 1.0) // #F2F2F7
     })
     
     static let speakitCardElevated = Color(UIColor { traitCollection in
-        traitCollection.userInterfaceStyle == .dark ? UIColor(red: 0.17, green: 0.17, blue: 0.18, alpha: 1.0) : UIColor.white
+        traitCollection.userInterfaceStyle == .dark ? UIColor(red: 0.11, green: 0.11, blue: 0.12, alpha: 1.0) : UIColor.white
+    })
+    
+    static let speakitCardSurface = Color(UIColor { traitCollection in
+        traitCollection.userInterfaceStyle == .dark ? UIColor(red: 0.11, green: 0.11, blue: 0.12, alpha: 1.0) : UIColor.white
     })
 
     static let speakitBadgeBackground = Color(UIColor { traitCollection in
@@ -68,15 +76,23 @@ extension Color {
     
     // Status
     static let speakitSuccess = Color(hex: "34C759")
+    static let speakitSuccessLight = Color(UIColor { traitCollection in
+        traitCollection.userInterfaceStyle == .dark ? UIColor(red: 0.12, green: 0.30, blue: 0.15, alpha: 1.0) : UIColor(red: 0.93, green: 0.98, blue: 0.94, alpha: 1.0) // #EEFAEF
+    })
     static let speakitWarning = Color(hex: "FF9500")
     static let speakitDestructive = Color(hex: "FF3B30")
+    static let speakitError = speakitDestructive
     static let speakitDestructiveLight = Color(UIColor { traitCollection in
         traitCollection.userInterfaceStyle == .dark ? UIColor(red: 0.35, green: 0.12, blue: 0.12, alpha: 1.0) : UIColor(red: 1.0, green: 0.95, blue: 0.94, alpha: 1.0) // #FFF1F0
     })
 
     // Borders & Dividers
     static let speakitBorder = Color(UIColor { traitCollection in
-        traitCollection.userInterfaceStyle == .dark ? UIColor(white: 0.25, alpha: 1.0) : UIColor(red: 0.82, green: 0.82, blue: 0.84, alpha: 1.0) // #D1D1D6
+        traitCollection.userInterfaceStyle == .dark ? UIColor(white: 1.0, alpha: 0.08) : UIColor(red: 0.90, green: 0.90, blue: 0.92, alpha: 1.0) // Subtle hairline in dark mode, #E6E6EB in light
+    })
+    
+    static let speakitDivider = Color(UIColor { traitCollection in
+        traitCollection.userInterfaceStyle == .dark ? UIColor(white: 1.0, alpha: 0.08) : UIColor(red: 0.92, green: 0.92, blue: 0.94, alpha: 1.0)
     })
 
     static let speakitWaveformBar = Color(hex: "A5B4FC")

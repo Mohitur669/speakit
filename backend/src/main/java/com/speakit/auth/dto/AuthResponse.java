@@ -12,10 +12,13 @@ import lombok.NoArgsConstructor;
 public class AuthResponse {
     private String token;
     private String username;
+    private String fullName;
     private String email;
     private String phoneNumber;
     private String role; // ROLE_USER, ROLE_ADMIN
     private String planType; // FREE, PRO_PLUS, ENTERPRISE
+    private String subscriptionStatus;
+    private java.time.LocalDateTime planExpiry;
     private Long sessionVersion;
     private Long sessionDurationMs;
     private Long idleTimeoutMs;

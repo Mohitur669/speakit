@@ -17,6 +17,7 @@ struct TTSStudioView: View {
     @State private var showShareSheet: Bool = false
     @State private var synthesizedAudioURL: URL? = nil
     @State private var errorMessage: String? = nil
+    @AppStorage("autoPlayPreview") private var autoPlayPreview: Bool = true
     
     private var playerManager = AudioPlayerManager.shared
     
@@ -42,6 +43,7 @@ struct TTSStudioView: View {
                 
                 // Voice Selector Card
                 Button(action: {
+                    HapticManager.shared.selection()
                     showVoiceCatalog = true
                 }) {
                     HStack(spacing: 12) {
@@ -73,7 +75,7 @@ struct TTSStudioView: View {
                     }
                     .padding(.horizontal, 16)
                     .frame(height: 64)
-                    .background(Color.speakitBackground)
+                    .background(Color.speakitCardSurface)
                     .cornerRadius(SpeakITSpacing.cardRadius)
                     .overlay(
                         RoundedRectangle(cornerRadius: SpeakITSpacing.cardRadius)
@@ -107,6 +109,7 @@ struct TTSStudioView: View {
                         // Quick Paste
                         Button(action: {
                             if let clipboard = UIPasteboard.general.string {
+                                HapticManager.shared.light()
                                 inputText = clipboard
                             }
                         }) {
@@ -122,6 +125,7 @@ struct TTSStudioView: View {
                         // Clear
                         if !inputText.isEmpty {
                             Button(action: {
+                                HapticManager.shared.light()
                                 inputText = ""
                             }) {
                                 HStack(spacing: 4) {
@@ -145,19 +149,12 @@ struct TTSStudioView: View {
                     }
                 }
                 .padding(16)
-                .background(Color.speakitCard)
+                .background(Color.speakitCardSurface)
                 .cornerRadius(SpeakITSpacing.cardRadius)
                 .overlay(
                     RoundedRectangle(cornerRadius: SpeakITSpacing.cardRadius)
-                        .stroke(Color(hex: "E1E1E6"), lineWidth: 1)
+                        .stroke(Color.speakitBorder, lineWidth: 1)
                 )
-                
-                // Error Alert if any
-                if let errorMessage = errorMessage {
-                    Text(errorMessage)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(Color.speakitDestructive)
-                }
                 
                 // Generate Speech CTA
                 let maxAllowed = appState.currentUser?.planType.characterLimitPerRequest ?? 2500
@@ -190,6 +187,7 @@ struct TTSStudioView: View {
             }
             .padding(.horizontal, SpeakITSpacing.screenMargin)
         }
+        .background(Color.speakitScreenBackground.ignoresSafeArea())
         .sheet(isPresented: $showVoiceCatalog) {
             VoiceCatalogSheet(selectedVoice: $selectedVoice)
         }
@@ -201,6 +199,7 @@ struct TTSStudioView: View {
         .task {
             await appState.loadCurrentUser()
         }
+        .speakITToast(message: $errorMessage, style: .error, bottomPadding: 16)
     }
     
     // MARK: - Synthesis Logic
@@ -239,9 +238,10 @@ struct TTSStudioView: View {
                 let reqBody = try JSONEncoder().encode(req)
                 let audioData = try await HTTPClient.shared.downloadBinary(.synthesize, body: reqBody)
                 
-                // Save binary stream to temporary MP3 file
+                // Save binary stream to temporary MP3 file (integer timestamp avoids floating-point dots in filename)
                 let tempDir = FileManager.default.temporaryDirectory
-                let audioURL = tempDir.appendingPathComponent("speakit_synthesis_\(Date().timeIntervalSince1970).mp3")
+                let timestamp = Int64(Date().timeIntervalSince1970 * 1000)
+                let audioURL = tempDir.appendingPathComponent("speakit_synthesis_\(timestamp).mp3")
                 try audioData.write(to: audioURL, options: .atomic)
                 
                 await MainActor.run {
@@ -249,10 +249,12 @@ struct TTSStudioView: View {
                     self.synthesizedAudioURL = audioURL
                     // Deduct credit immediately at the top bar
                     self.appState.recordCharacterUsage(inputText.count)
-                    self.playerManager.loadAndPlay(
+                    HapticManager.shared.success()
+                    self.playerManager.load(
                         url: audioURL,
                         title: String(inputText.prefix(40)),
-                        subtitle: "\(selectedVoice.name) (\(selectedVoice.engineDisplayName))"
+                        subtitle: "\(selectedVoice.name) (\(selectedVoice.engineDisplayName))",
+                        autoPlay: self.autoPlayPreview
                     )
                 }
             } catch {
@@ -264,8 +266,10 @@ struct TTSStudioView: View {
                     } else if case APIError.forbidden = error {
                         self.errorMessage = "This voice engine requires an upgraded plan."
                         self.appState.showPaywallSheet = true
+                        HapticManager.shared.warning()
                     } else {
-                        self.errorMessage = error.localizedDescription
+                        self.errorMessage = error.userFriendlyMessage
+                        HapticManager.shared.error()
                     }
                 }
             }
@@ -278,7 +282,12 @@ struct TTSStudioView: View {
         let fallbackURL = tempDir.appendingPathComponent("sample_preview.mp3")
         try? Data(repeating: 0, count: 1024).write(to: fallbackURL)
         self.appState.recordCharacterUsage(inputText.count)
-        self.playerManager.loadAndPlay(url: fallbackURL, title: String(inputText.prefix(40)), subtitle: selectedVoice.name)
+        self.playerManager.load(
+            url: fallbackURL,
+            title: String(inputText.prefix(40)),
+            subtitle: selectedVoice.name,
+            autoPlay: self.autoPlayPreview
+        )
     }
 }
 
