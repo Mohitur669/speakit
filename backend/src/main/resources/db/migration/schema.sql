@@ -171,6 +171,10 @@ INSERT INTO system_parameters (parameter_name, parameter_value, description) VAL
 ('MAX_PRO_CHARACTERS', '200', 'Character limit for Pro tier requests'),
 ('MAX_PRO_PLUS_CHARACTERS', '500', 'Character limit for Pro Plus tier requests'),
 ('MAX_ENTERPRISE_CHARACTERS', '2000', 'Character limit for Enterprise tier requests'),
+('MONTHLY_FREE_CHARACTERS', '3000', 'Total monthly character quota for Free tier'),
+('MONTHLY_PRO_CHARACTERS', '5000', 'Total monthly character quota for Pro tier'),
+('MONTHLY_PRO_PLUS_CHARACTERS', '10000', 'Total monthly character quota for Pro Plus tier'),
+('MONTHLY_ENTERPRISE_CHARACTERS', '1000000', 'Total monthly character quota for Enterprise tier'),
 ('SHOW_BETA_FEATURES', 'false', 'Toggle for experimental UI components'),
 ('SYSTEM_STATUS', 'Operational', 'Current live status of the AI voice engine'),
 ('FREE_PLAN_SYNTHESIZE_LIMIT', '5', 'Daily synthesis limit for free tier users'),
@@ -397,7 +401,7 @@ BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tts_history' AND column_name='is_eleven_labs') THEN
         -- Standardize data first (Handle case where voice_type might already have been added by Hibernate)
         UPDATE tts_history SET voice_type = 'NATURAL' WHERE is_eleven_labs = TRUE;
-        
+
         IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tts_history' AND column_name='is_neural') THEN
             UPDATE tts_history SET voice_type = 'NEURAL' WHERE is_neural = TRUE AND is_eleven_labs = FALSE;
             ALTER TABLE tts_history DROP COLUMN is_neural;
@@ -432,7 +436,7 @@ BEGIN
 
     -- Ensure iOS plan price parameters exist
     INSERT INTO system_parameters (parameter_name, parameter_value, description)
-    VALUES 
+    VALUES
         ('IOS_PRO_PLAN_PRICE', '9.99', 'Dollar price for Pro monthly subscription on iOS App Store'),
         ('IOS_PRO_PLUS_PLAN_PRICE', '19.99', 'Dollar price for Pro Plus subscription on iOS App Store')
     ON CONFLICT (parameter_name) DO NOTHING;
@@ -458,4 +462,3 @@ CREATE TABLE IF NOT EXISTS user_avatar_history (
 );
 
 CREATE INDEX IF NOT EXISTS idx_avatar_history_user_date ON user_avatar_history(user_id, action, created_at);
-
