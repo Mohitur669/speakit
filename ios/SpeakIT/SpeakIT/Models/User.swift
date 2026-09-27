@@ -20,6 +20,7 @@ struct User: Codable, Identifiable {
     let characterLimit: Int
     let charactersUsed: Int
     let phoneNumber: String?
+    let avatarUrl: String?
     let dailyCount: Int
     let dailyLimit: Int
     let emailVerified: Bool
@@ -37,6 +38,7 @@ struct User: Codable, Identifiable {
         characterLimit: Int? = nil,
         charactersUsed: Int = 0,
         phoneNumber: String? = nil,
+        avatarUrl: String? = nil,
         dailyCount: Int = 0,
         dailyLimit: Int = 20,
         emailVerified: Bool = true
@@ -53,6 +55,7 @@ struct User: Codable, Identifiable {
         self.characterLimit = characterLimit ?? planType.monthlyQuota
         self.charactersUsed = charactersUsed
         self.phoneNumber = phoneNumber
+        self.avatarUrl = avatarUrl
         self.dailyCount = dailyCount
         self.dailyLimit = dailyLimit
         self.emailVerified = emailVerified
@@ -60,7 +63,7 @@ struct User: Codable, Identifiable {
     
     enum CodingKeys: String, CodingKey {
         case id, username, email, fullName, role, planType, status, subscriptionStatus, planExpiry, characterLimit, charactersUsed
-        case phoneNumber, dailyCount, dailyLimit, emailVerified
+        case phoneNumber, avatarUrl, dailyCount, dailyLimit, emailVerified
     }
     
     init(from decoder: Decoder) throws {
@@ -96,6 +99,7 @@ struct User: Codable, Identifiable {
         self.characterLimit = limit ?? self.planType.monthlyQuota
         self.charactersUsed = (try? container.decode(Int.self, forKey: .charactersUsed)) ?? 0
         self.phoneNumber = try? container.decode(String.self, forKey: .phoneNumber)
+        self.avatarUrl = try? container.decode(String.self, forKey: .avatarUrl)
         self.dailyCount = (try? container.decode(Int.self, forKey: .dailyCount)) ?? 0
         self.dailyLimit = (try? container.decode(Int.self, forKey: .dailyLimit)) ?? 20
         self.emailVerified = (try? container.decode(Bool.self, forKey: .emailVerified)) ?? true
@@ -161,6 +165,27 @@ struct User: Codable, Identifiable {
             return "\(first)\(second)".uppercased()
         }
         return String(trimmed.prefix(1)).uppercased()
+    }
+    
+    func updatingAvatarUrl(_ newUrl: String?) -> User {
+        User(
+            id: self.id,
+            username: self.username,
+            email: self.email,
+            fullName: self.fullName,
+            role: self.role,
+            planType: self.planType,
+            status: self.status,
+            subscriptionStatus: self.subscriptionStatus,
+            planExpiry: self.planExpiry,
+            characterLimit: self.characterLimit,
+            charactersUsed: self.charactersUsed,
+            phoneNumber: self.phoneNumber,
+            avatarUrl: newUrl,
+            dailyCount: self.dailyCount,
+            dailyLimit: self.dailyLimit,
+            emailVerified: self.emailVerified
+        )
     }
     
     // Sample mockup user for previews & offline

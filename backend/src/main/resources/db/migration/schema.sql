@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS users (
     full_name VARCHAR(100),
     email VARCHAR(100) NOT NULL UNIQUE,
     phone_number VARCHAR(15) UNIQUE, -- Optional
+    avatar_url VARCHAR(512),
     password VARCHAR(255) NOT NULL,
 
     -- Status/Flags
@@ -31,6 +32,10 @@ CREATE TABLE IF NOT EXISTS users (
     pending_username VARCHAR(50),
     pending_phone_number VARCHAR(15),
     pending_password VARCHAR(255),
+
+    -- Tracking / Avatar Daily Limit Fields
+    avatar_change_count INTEGER NOT NULL DEFAULT 0,
+    last_avatar_change_date DATE,
 
     -- Audit Fields
     consent_accepted BOOLEAN NOT NULL DEFAULT FALSE,
@@ -406,6 +411,20 @@ BEGIN
         ALTER TABLE users ADD COLUMN full_name VARCHAR(100);
     END IF;
 
+    -- Ensure avatar_url exists on users table
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='avatar_url') THEN
+        ALTER TABLE users ADD COLUMN avatar_url VARCHAR(512);
+    END IF;
+
+    -- Ensure avatar daily limit tracking columns exist on users table
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='avatar_change_count') THEN
+        ALTER TABLE users ADD COLUMN avatar_change_count INTEGER DEFAULT 0 NOT NULL;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='last_avatar_change_date') THEN
+        ALTER TABLE users ADD COLUMN last_avatar_change_date DATE;
+    END IF;
+
     -- Ensure full_text exists on tts_history table
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tts_history' AND column_name='full_text') THEN
         ALTER TABLE tts_history ADD COLUMN full_text TEXT;
@@ -418,3 +437,25 @@ BEGIN
         ('IOS_PRO_PLUS_PLAN_PRICE', '19.99', 'Dollar price for Pro Plus subscription on iOS App Store')
     ON CONFLICT (parameter_name) DO NOTHING;
 END $$;
+
+-- ============================================================================
+-- USER AVATAR HISTORY TABLE & AUDIT (Industry Standard Media Lifecycle)
+-- ============================================================================
+CREATE SEQUENCE IF NOT EXISTS user_avatar_history_seq START WITH 1 INCREMENT BY 50;
+
+CREATE TABLE IF NOT EXISTS user_avatar_history (
+    id BIGINT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    avatar_url VARCHAR(512),
+    storage_key VARCHAR(255),
+    action VARCHAR(20) NOT NULL,          -- 'UPLOAD' or 'DELETE'
+    file_size_bytes BIGINT,
+    mime_type VARCHAR(50),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE,
+    version BIGINT DEFAULT 0,
+    CONSTRAINT fk_avatar_history_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_avatar_history_user_date ON user_avatar_history(user_id, action, created_at);
+

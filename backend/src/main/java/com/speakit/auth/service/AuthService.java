@@ -16,6 +16,10 @@ import com.speakit.user.dto.UpdateUsernameRequest;
 import com.speakit.user.dto.UpdateEmailRequest;
 import com.speakit.user.dto.UpdatePhoneRequest;
 
+import com.speakit.user.service.AvatarStorageService;
+import org.springframework.web.multipart.MultipartFile;
+import java.io.IOException;
+
 import com.speakit.config.WebSocketConfig;
 import com.speakit.tts.dto.*;
 import com.speakit.billing.entity.PlanType;
@@ -35,6 +39,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.speakit.user.dto.AvatarResponse;
+import com.speakit.user.entity.UserAvatarHistory;
+import com.speakit.user.repository.UserAvatarHistoryRepository;
 import com.speakit.tts.repository.TtsHistoryRepository;
 import com.speakit.billing.service.SubscriptionService;
 import java.time.temporal.ChronoUnit;
@@ -58,6 +65,8 @@ public class AuthService {
     private final WebSocketConfig webSocketConfig;
     private final TtsHistoryRepository ttsHistoryRepository;
     private final SubscriptionService subscriptionService;
+    private final AvatarStorageService avatarStorageService;
+    private final UserAvatarHistoryRepository userAvatarHistoryRepository;
 
     @Value("${auth.session-duration-ms:7200000}")
     private long sessionDurationMs;
@@ -67,6 +76,9 @@ public class AuthService {
 
     @Value("${app.otp.expiry-minutes:10}")
     private int otpExpiryMinutes;
+
+    @Value("${avatar.daily-limit:2}")
+    private int avatarDailyLimit;
 
     @Transactional
     public AuthResponse register(AuthRequest request) {
@@ -127,6 +139,7 @@ public class AuthService {
                 .fullName(user.getFullName())
                 .email(user.getEmail())
                 .phoneNumber(user.getPhoneNumber())
+                .avatarUrl(user.getAvatarUrl())
                 .role(user.getRole())
                 .planType(user.getPlanType().name())
                 .subscriptionStatus(user.getSubscriptionStatus() != null ? user.getSubscriptionStatus().name() : "ACTIVE")
@@ -135,6 +148,8 @@ public class AuthService {
                 .sessionDurationMs(sessionDurationMs)
                 .idleTimeoutMs(idleTimeoutMs)
                 .emailVerified(user.isEmailVerified())
+                .avatarDailyLimit(avatarDailyLimit)
+                .avatarChangeCount(0)
                 .build();
     }
 
@@ -714,6 +729,97 @@ public class AuthService {
         }
     }
 
+    @Transactional
+    public AvatarResponse updateAvatar(String username, MultipartFile file) throws IOException {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        LocalDateTime startOfTodayUtc = java.time.LocalDate.now(java.time.ZoneOffset.UTC).atStartOfDay();
+        long currentChangesToday = userAvatarHistoryRepository.countByUserIdAndActionAndCreatedAtGreaterThanEqual(
+                user.getId(),
+                "UPLOAD",
+                startOfTodayUtc
+        );
+
+        if (avatarDailyLimit > 0 && currentChangesToday >= avatarDailyLimit) {
+            throw new IllegalArgumentException(String.format(
+                "Daily avatar change limit reached. You can only change your profile picture %d times per day. Resets at 00:00 UTC.",
+                avatarDailyLimit
+            ));
+        }
+
+        String oldAvatarUrl = user.getAvatarUrl();
+        AvatarStorageService.StoredAvatar stored = avatarStorageService.storeAvatar(user.getId(), file);
+
+        user.setAvatarUrl(stored.url());
+        userRepository.save(user);
+
+        if (oldAvatarUrl != null && !oldAvatarUrl.equals(stored.url())) {
+            avatarStorageService.deleteAvatar(oldAvatarUrl);
+        }
+
+        UserAvatarHistory history = UserAvatarHistory.builder()
+                .user(user)
+                .avatarUrl(stored.url())
+                .storageKey(stored.storageKey())
+                .action("UPLOAD")
+                .fileSizeBytes(stored.fileSizeBytes())
+                .mimeType(stored.mimeType())
+                .build();
+        userAvatarHistoryRepository.save(history);
+
+        int remainingToday = (int) Math.max(0, avatarDailyLimit - (currentChangesToday + 1));
+
+        return AvatarResponse.builder()
+                .avatarUrl(stored.url())
+                .storageKey(stored.storageKey())
+                .action("UPLOAD")
+                .dailyLimit(avatarDailyLimit)
+                .remainingChangesToday(remainingToday)
+                .updatedAt(LocalDateTime.now(java.time.ZoneOffset.UTC))
+                .build();
+    }
+
+    @Transactional
+    public AvatarResponse deleteAvatar(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        String oldAvatarUrl = user.getAvatarUrl();
+        if (oldAvatarUrl != null) {
+            user.setAvatarUrl(null);
+            userRepository.save(user);
+            avatarStorageService.deleteAvatar(oldAvatarUrl);
+        }
+
+        UserAvatarHistory history = UserAvatarHistory.builder()
+                .user(user)
+                .avatarUrl(null)
+                .storageKey(null)
+                .action("DELETE")
+                .fileSizeBytes(0L)
+                .mimeType(null)
+                .build();
+        userAvatarHistoryRepository.save(history);
+
+        LocalDateTime startOfTodayUtc = java.time.LocalDate.now(java.time.ZoneOffset.UTC).atStartOfDay();
+        long uploadsToday = userAvatarHistoryRepository.countByUserIdAndActionAndCreatedAtGreaterThanEqual(
+                user.getId(),
+                "UPLOAD",
+                startOfTodayUtc
+        );
+        int remainingToday = (int) Math.max(0, avatarDailyLimit - uploadsToday);
+
+        return AvatarResponse.builder()
+                .avatarUrl(null)
+                .storageKey(null)
+                .action("DELETE")
+                .dailyLimit(avatarDailyLimit)
+                .remainingChangesToday(remainingToday)
+                .updatedAt(LocalDateTime.now(java.time.ZoneOffset.UTC))
+                .build();
+    }
+
     private String maskEmail(String email) {
         if (email == null || !email.contains("@")) {
             return "***";
@@ -759,12 +865,27 @@ public class AuthService {
             }
         }
 
+        int avatarChangesToday = 0;
+        if (userAvatarHistoryRepository != null && user.getId() != null) {
+            try {
+                LocalDateTime startOfTodayUtc = java.time.LocalDate.now(java.time.ZoneOffset.UTC).atStartOfDay();
+                avatarChangesToday = (int) userAvatarHistoryRepository.countByUserIdAndActionAndCreatedAtGreaterThanEqual(
+                        user.getId(),
+                        "UPLOAD",
+                        startOfTodayUtc
+                );
+            } catch (Exception e) {
+                log.warn("Failed to query user avatar change count", e);
+            }
+        }
+
         return AuthResponse.builder()
                 .token(token)
                 .username(user.getUsername())
                 .fullName(user.getFullName())
                 .email(user.getEmail())
                 .phoneNumber(user.getPhoneNumber())
+                .avatarUrl(user.getAvatarUrl())
                 .role(user.getRole())
                 .planType(user.getPlanType().name())
                 .subscriptionStatus(user.getSubscriptionStatus() != null ? user.getSubscriptionStatus().name() : "ACTIVE")
@@ -777,6 +898,8 @@ public class AuthService {
                 .charactersUsed(charactersUsed)
                 .dailyCount(dailyCount)
                 .dailyLimit(dailyLimit)
+                .avatarDailyLimit(avatarDailyLimit)
+                .avatarChangeCount(avatarChangesToday)
                 .build();
     }
 }

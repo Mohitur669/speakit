@@ -49,6 +49,36 @@ struct ProfileOptionsView: View {
                 }
                 .padding(.top, 8)
                 
+                // Avatar Header Section
+                HStack {
+                    Spacer()
+                    VStack(spacing: 8) {
+                        SpeakITAvatarView(
+                            user: appState.currentUser,
+                            size: 88,
+                            isEditable: true,
+                            onAvatarUpdated: { _ in
+                                successMessage = "Profile photo updated successfully!"
+                                errorMessage = nil
+                            },
+                            onAvatarDeleted: {
+                                successMessage = "Profile photo removed."
+                                errorMessage = nil
+                            },
+                            onError: { err in
+                                errorMessage = err
+                                successMessage = nil
+                            }
+                        )
+                        
+                        Text("Tap photo to change")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(Color.speakitTextSecondary)
+                    }
+                    Spacer()
+                }
+                .padding(.vertical, 4)
+                
                 // Profile Options Card
                 VStack(spacing: 0) {
                     menuItem(
