@@ -220,6 +220,8 @@ struct ProfileOptionsView: View {
                     .foregroundColor(Color.speakitTextTertiary)
             }
             .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
