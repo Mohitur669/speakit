@@ -37,18 +37,6 @@ struct ProfileOptionsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                // Section description
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Personal Details")
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundColor(Color.speakitTextPrimary)
-                    
-                    Text("Manage your display name, unique handle, and primary email address.")
-                        .font(.system(size: 13))
-                        .foregroundColor(Color.speakitTextSecondary)
-                }
-                .padding(.top, 8)
-                
                 // Avatar Header Section
                 HStack {
                     Spacer()
@@ -77,7 +65,8 @@ struct ProfileOptionsView: View {
                     }
                     Spacer()
                 }
-                .padding(.vertical, 4)
+                .padding(.top, 16)
+                .padding(.bottom, 8)
                 
                 // Profile Options Card
                 VStack(spacing: 0) {
@@ -126,7 +115,7 @@ struct ProfileOptionsView: View {
             .padding(.bottom, 36)
         }
         .background(Color.speakitScreenBackground.ignoresSafeArea())
-        .navigationTitle("Profile Information")
+        .navigationTitle("Personal Information")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: Binding(
             get: { activeSheet != nil },
@@ -220,6 +209,8 @@ struct ProfileOptionsView: View {
                     .foregroundColor(Color.speakitTextTertiary)
             }
             .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
