@@ -22,3 +22,8 @@ DerivedData/
 ios/SpeakIT/Config/Local.xcconfig
 ios/SpeakIT/Config/.env
 ios/SpeakIT/.env
+
+# CDN testing inputs & audit reports
+cdn-url-list*
+cdn-scraping-report*.pdf
+cdn-scraping-report*.xlsx
