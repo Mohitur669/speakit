@@ -60,9 +60,11 @@ jobs:
           category: "/language:${{ matrix.language }}"
 
   # 2. Swift Analysis (macOS Runner with Custom xcodebuild - Free on Public Repos)
+  # Runs on scheduled weekly scans (Mondays) and pushes to master, skipping PRs for fast CI turnaround
   analyze-swift:
     name: Analyze (swift)
     runs-on: macos-latest
+    if: github.event_name != 'pull_request'
     timeout-minutes: 60
 
     steps:
