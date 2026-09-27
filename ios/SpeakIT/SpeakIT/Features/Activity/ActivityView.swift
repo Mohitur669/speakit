@@ -294,8 +294,12 @@ struct ActivityView: View {
                 Text("Are you sure you want to clear your generation logs?")
             }
             .task {
-                await loadInitialHistory()
-                await appState.loadCurrentUser()
+                // Event-Driven Invalidation: Only fetch if initial list is empty or marked dirty by a new synthesis
+                if historyItems.isEmpty || appState.isHistoryDirty {
+                    await loadInitialHistory()
+                    await appState.loadCurrentUser()
+                    appState.isHistoryDirty = false
+                }
             }
         }
     }
@@ -433,6 +437,7 @@ struct ActivityView: View {
     private func refreshAll() async {
         await appState.loadCurrentUser()
         await loadInitialHistory()
+        appState.isHistoryDirty = false
     }
     
     private func loadInitialHistory() async {

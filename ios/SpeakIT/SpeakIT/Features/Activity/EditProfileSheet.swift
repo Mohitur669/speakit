@@ -64,6 +64,16 @@ struct EditProfileSheet: View {
                     cooldownSeconds -= 1
                 }
             }
+            .onChange(of: username) { _, newValue in
+                // Disallow special characters and symbols (allow only lowercase a-z, 0-9, and . _ -)
+                let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyz0123456789._-")
+                let lowercased = newValue.lowercased()
+                let filtered = lowercased.unicodeScalars.filter { allowed.contains($0) }
+                let sanitized = String(String.UnicodeScalarView(filtered)).prefix(50)
+                if username != String(sanitized) {
+                    username = String(sanitized)
+                }
+            }
             .speakITToast(message: $errorMessage, style: .error, bottomPadding: 20)
         }
     }
@@ -118,8 +128,11 @@ struct EditProfileSheet: View {
                         TextField("Enter current password", text: $currentPassword)
                             .autocapitalization(.none)
                             .disableAutocorrection(true)
+                            .textContentType(.oneTimeCode)
                     } else {
                         SecureField("Enter current password", text: $currentPassword)
+                            .textContentType(.oneTimeCode)
+                            .autocorrectionDisabled(true)
                     }
                     
                     Button(action: { showPassword.toggle() }) {
@@ -218,7 +231,7 @@ struct EditProfileSheet: View {
     
     private var isFormValid: Bool {
         !fullName.trimmingCharacters(in: .whitespaces).isEmpty &&
-        !username.trimmingCharacters(in: .whitespaces).isEmpty &&
+        username.trimmingCharacters(in: .whitespaces).count >= 3 &&
         !email.trimmingCharacters(in: .whitespaces).isEmpty &&
         !currentPassword.isEmpty
     }
