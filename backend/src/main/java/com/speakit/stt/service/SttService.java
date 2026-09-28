@@ -63,7 +63,7 @@ public class SttService {
             String fingerprint = generateFileFingerprint(audioFile, userId);
             long now = System.currentTimeMillis();
             
-            long dedupeWindow = Long.parseLong(systemParameterService.getLiveParameter("STT_DEDUPE_WINDOW_MS", "60000"));
+            long dedupeWindow = systemParameterService.getLongParameter("STT_DEDUPE_WINDOW_MS", 60000L);
             Long previousTime = messageFingerprints.getIfPresent(fingerprint);
             
             if (previousTime != null && (now - previousTime < dedupeWindow)) {

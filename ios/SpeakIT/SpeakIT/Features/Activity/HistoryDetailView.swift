@@ -13,13 +13,49 @@ struct HistoryDetailView: View {
     var onDelete: ((HistoryItem) -> Void)?
     
     @Environment(\.dismiss) private var dismiss
+    @State private var playerManager = AudioPlayerManager.shared
+    @State private var isLoadingAudio: Bool = false
+    @State private var errorMessage: String? = nil
     @State private var isDeleting: Bool = false
     @State private var showDeleteConfirmation: Bool = false
     @State private var copiedToClipboard: Bool = false
     @State private var bannerMessage: String? = nil
     
-    private var isCurrentlyPlaying: Bool {
-        AudioPlayerManager.shared.isPlaying
+    private var isLoadedForThisItem: Bool {
+        guard let currentURL = playerManager.currentAudioURL else { return false }
+        if currentURL.lastPathComponent == "history_\(item.id).mp3" {
+            return true
+        }
+        if let localURL = item.localAudioURL, currentURL == localURL {
+            return true
+        }
+        return false
+    }
+    
+    private var isPlayingThisItem: Bool {
+        playerManager.isPlaying && isLoadedForThisItem
+    }
+    
+    private var activeAudioShareURL: URL? {
+        if let local = item.localAudioURL, FileManager.default.fileExists(atPath: local.path) {
+            return local
+        }
+        let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
+            .appendingPathComponent("AudioHistory", isDirectory: true)
+        let cachedFileURL = cacheDir.appendingPathComponent("history_\(item.id).mp3")
+        if FileManager.default.fileExists(atPath: cachedFileURL.path),
+           let attrs = try? FileManager.default.attributesOfItem(atPath: cachedFileURL.path),
+           let fileSize = attrs[.size] as? Int64, fileSize > 0 {
+            return cachedFileURL
+        }
+        return nil
+    }
+    
+    private var hasAudioAvailable: Bool {
+        if item.localAudioURL != nil { return true }
+        if let urlStr = item.audioUrl, !urlStr.isEmpty { return true }
+        if item.engineType == "TTS" { return true }
+        return false
     }
     
     var body: some View {
@@ -29,8 +65,10 @@ struct HistoryDetailView: View {
                     // Metadata Hero Card
                     metadataCard
                     
-                    // Audio Playback Controller (Commented out per user request)
-                    // audioPlaybackCard
+                    // Audio Playback Controller (Only visible when speech / audio is available)
+                    if hasAudioAvailable {
+                        audioPlaybackCard
+                    }
                     
                     // Full Text Transcript Card
                     fullTextCard
@@ -62,6 +100,7 @@ struct HistoryDetailView: View {
             } message: {
                 Text("Are you sure you want to permanently delete this generation from your history? This action cannot be undone.")
             }
+            .speakITToast(message: $errorMessage, style: .error, bottomPadding: 20)
             .speakITToast(message: $bannerMessage, style: .info, bottomPadding: 20)
         }
         .presentationDetents([.medium, .large])
@@ -121,47 +160,88 @@ struct HistoryDetailView: View {
         )
     }
     
-    // MARK: - 2. Audio Playback Card
+    // MARK: - 2. Minimal Audio Playback Controller
     private var audioPlaybackCard: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: 12) {
+            // 1. Play / Pause Button
             Button(action: {
                 togglePlayback()
             }) {
                 ZStack {
                     Circle()
                         .fill(Color.speakitPrimary)
-                        .frame(width: 42, height: 42)
+                        .frame(width: 40, height: 40)
                     
-                    Image(systemName: isCurrentlyPlaying ? "pause.fill" : "play.fill")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(.white)
-                        .offset(x: isCurrentlyPlaying ? 0 : 1)
+                    if isLoadingAudio {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            .scaleEffect(0.8)
+                    } else {
+                        Image(systemName: isPlayingThisItem ? "pause.fill" : "play.fill")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.white)
+                            .offset(x: isPlayingThisItem ? 0 : 1.5)
+                    }
                 }
             }
             .buttonStyle(.plain)
+            .disabled(isLoadingAudio)
+            .accessibilityLabel(isPlayingThisItem ? "Pause audio" : "Play audio")
             
-            VStack(alignment: .leading, spacing: 3) {
-                Text(isCurrentlyPlaying ? "Playing Audio" : "Listen to Generation")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(Color.speakitTextPrimary)
+            // 2. Progress Bar & Duration
+            VStack(spacing: 3) {
+                Slider(
+                    value: Binding(
+                        get: { isLoadedForThisItem ? playerManager.currentTime : 0 },
+                        set: { newValue in
+                            if isLoadedForThisItem {
+                                playerManager.seek(to: newValue)
+                            }
+                        }
+                    ),
+                    in: 0...max(1.0, isLoadedForThisItem ? playerManager.duration : 1.0)
+                )
+                .tint(Color.speakitPrimary)
+                .disabled(!isLoadedForThisItem || playerManager.duration <= 0)
                 
-                Text(item.subtitle)
-                    .font(.system(size: 11, weight: .regular))
-                    .foregroundColor(Color.speakitTextSecondary)
+                HStack {
+                    Text(formatTime(isLoadedForThisItem ? playerManager.currentTime : 0))
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(Color.speakitTextTertiary)
+                    
+                    Spacer()
+                    
+                    Text(formatTime(isLoadedForThisItem ? playerManager.duration : 0))
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(Color.speakitTextTertiary)
+                }
             }
             
-            Spacer()
-            
-            ShareLink(item: item.displayText, subject: Text("SpeakIT Audio Transcript")) {
-                Image(systemName: "square.and.arrow.up")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(Color.speakitPrimary)
-                    .frame(width: 36, height: 36)
-                    .background(Color.speakitBadgeBackground)
-                    .clipShape(Circle())
+            // 3. Share Button
+            if let shareURL = activeAudioShareURL {
+                ShareLink(item: shareURL) {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(Color.speakitPrimary)
+                        .frame(width: 36, height: 36)
+                        .background(Color.speakitBadgeBackground)
+                        .clipShape(Circle())
+                }
+                .accessibilityLabel("Share audio file")
+            } else {
+                ShareLink(item: item.displayText, subject: Text("SpeakIT Audio Transcript")) {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(Color.speakitPrimary)
+                        .frame(width: 36, height: 36)
+                        .background(Color.speakitBadgeBackground)
+                        .clipShape(Circle())
+                }
+                .accessibilityLabel("Share transcript")
             }
         }
-        .padding(14)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
         .background(Color.speakitCardSurface)
         .cornerRadius(16)
         .overlay(
@@ -248,18 +328,88 @@ struct HistoryDetailView: View {
     // MARK: - Actions
     private func togglePlayback() {
         HapticManager.shared.light()
-        if AudioPlayerManager.shared.isPlaying {
-            AudioPlayerManager.shared.pause()
-        } else {
-            if let localURL = item.localAudioURL {
-                AudioPlayerManager.shared.loadAndPlay(url: localURL, title: item.textSnippet, subtitle: item.subtitle)
-            } else {
-                let tempDir = FileManager.default.temporaryDirectory
-                let fallbackURL = tempDir.appendingPathComponent("history_\(item.id).mp3")
-                try? Data(repeating: 0, count: 1024).write(to: fallbackURL)
-                AudioPlayerManager.shared.loadAndPlay(url: fallbackURL, title: item.textSnippet, subtitle: item.subtitle)
+        
+        // 1. If currently playing this item, pause it
+        if isPlayingThisItem {
+            playerManager.pause()
+            return
+        }
+        
+        // 2. If this item's audio is already loaded in player, resume playback
+        if isLoadedForThisItem {
+            playerManager.play()
+            return
+        }
+        
+        // 3. Prevent duplicate requests
+        if isLoadingAudio { return }
+        
+        // 4. Local Memory URL check (e.g. freshly generated session audio)
+        if let localURL = item.localAudioURL, FileManager.default.fileExists(atPath: localURL.path) {
+            playerManager.loadAndPlay(url: localURL, title: item.textSnippet, subtitle: item.subtitle)
+            return
+        }
+        
+        // 5. Two-Tier Audio Cache: Check persistent local disk cache (<Caches>/AudioHistory/history_{id}.mp3)
+        let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
+            .appendingPathComponent("AudioHistory", isDirectory: true)
+        try? FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)
+        let cachedFileURL = cacheDir.appendingPathComponent("history_\(item.id).mp3")
+        
+        if FileManager.default.fileExists(atPath: cachedFileURL.path),
+           let attrs = try? FileManager.default.attributesOfItem(atPath: cachedFileURL.path),
+           let fileSize = attrs[.size] as? Int64, fileSize > 0 {
+            // Fast Path: Already cached on disk -> Instant 0ms playback!
+            playerManager.loadAndPlay(url: cachedFileURL, title: item.textSnippet, subtitle: item.subtitle)
+            return
+        }
+        
+        // 6. On-Demand Lazy Download
+        isLoadingAudio = true
+        Task {
+            do {
+                var data: Data? = nil
+                
+                // Tier A: Direct zero-egress Cloudflare R2 CDN download if public URL is present
+                if let urlStr = item.audioUrl, urlStr.hasPrefix("http"), let remoteURL = URL(string: urlStr) {
+                    data = try? await HTTPClient.shared.downloadBinaryFromURL(remoteURL)
+                }
+                
+                // Tier B: Fallback to authenticated backend streaming endpoint (/api/history/{id}/audio)
+                if data == nil || data?.isEmpty == true {
+                    data = try await HTTPClient.shared.downloadBinaryGet(.historyAudio(id: item.id))
+                }
+                
+                guard let finalData = data, !finalData.isEmpty else {
+                    throw APIError.missingData
+                }
+                
+                // Persist to local disk cache for instant offline and future replay
+                try finalData.write(to: cachedFileURL, options: .atomic)
+                
+                await MainActor.run {
+                    self.isLoadingAudio = false
+                    self.playerManager.loadAndPlay(
+                        url: cachedFileURL,
+                        title: item.textSnippet,
+                        subtitle: item.subtitle
+                    )
+                }
+            } catch {
+                await MainActor.run {
+                    self.isLoadingAudio = false
+                    print("Failed to load on-demand audio for history item \(item.id): \(error)")
+                    self.errorMessage = "Unable to play audio: \(error.localizedDescription)"
+                    HapticManager.shared.error()
+                }
             }
         }
+    }
+    
+    private func formatTime(_ time: TimeInterval) -> String {
+        let minutes = Int(time) / 60
+        let seconds = Int(time) % 60
+        return String(format: "%d:%02d", minutes, seconds)
     }
     
     private func copyTextToClipboard() {

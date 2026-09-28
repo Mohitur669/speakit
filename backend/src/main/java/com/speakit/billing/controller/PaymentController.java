@@ -104,7 +104,11 @@ public class PaymentController {
         Page<PaymentHistoryDto> historyPage = paymentRepository
                 .findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(page, size))
                 .map(payment -> {
-                    String rawPlan = payment.getSubscription() != null ? payment.getSubscription().getPlanType().name() : "N/A";
+                    com.speakit.billing.entity.PlanType resolvedPlan = payment.getPlanType();
+                    if (resolvedPlan == null && payment.getSubscription() != null) {
+                        resolvedPlan = payment.getSubscription().getPlanType();
+                    }
+                    String rawPlan = resolvedPlan != null ? resolvedPlan.name() : "N/A";
                     String normalPlan = switch (rawPlan) {
                         case "PRO" -> "Pro";
                         case "PRO_PLUS" -> "Pro Plus";

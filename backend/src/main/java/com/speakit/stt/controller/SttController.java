@@ -58,8 +58,8 @@ public class SttController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
 
-        // 2. Global Feature Flag Check (Live Parameter)
-        boolean sttEnabled = Boolean.parseBoolean(systemParameterService.getLiveParameter("STT_ENABLED", "true"));
+        // 2. Global Feature Flag Check (Governed Parameter)
+        boolean sttEnabled = systemParameterService.isFeatureEnabled("STT_ENABLED", true);
         if (!sttEnabled) {
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
         }
@@ -84,7 +84,7 @@ public class SttController {
         // 6. Upload Size Validation (Dynamic per Plan)
         long limitBytes = subscriptionService.getSttUploadLimitBytes(planType);
         if (file.getSize() > limitBytes) {
-            String limitMb = systemParameterService.getLiveParameter("STT_MAX_FILE_SIZE_MB_" + planType.name(), "0");
+            String limitMb = systemParameterService.getParameter("STT_MAX_FILE_SIZE_MB_" + planType.name(), "0");
             throw new RuntimeException("File size exceeds your plan limit of " + limitMb + "MB.");
         }
 
@@ -122,9 +122,9 @@ public class SttController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
 
-        // 2. Global Feature Flag Check (Live Parameter)
-        boolean sttEnabled = Boolean.parseBoolean(systemParameterService.getLiveParameter("STT_ENABLED", "true"));
-        boolean liveRecordingEnabled = Boolean.parseBoolean(systemParameterService.getLiveParameter("LIVE_RECORDING_ENABLED", "true"));
+        // 2. Global Feature Flag Check (Governed Parameter)
+        boolean sttEnabled = systemParameterService.isFeatureEnabled("STT_ENABLED", true);
+        boolean liveRecordingEnabled = systemParameterService.isFeatureEnabled("LIVE_RECORDING_ENABLED", true);
         if (!sttEnabled || !liveRecordingEnabled) {
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
         }
@@ -173,8 +173,8 @@ public class SttController {
             @Valid @RequestBody TranslationRequest request,
             HttpServletRequest httpRequest
     ) {
-        // 1. Global Feature Flag Check
-        boolean sttEnabled = Boolean.parseBoolean(systemParameterService.getLiveParameter("STT_ENABLED", "true"));
+        // 1. Global Feature Flag Check (Governed Parameter)
+        boolean sttEnabled = systemParameterService.isFeatureEnabled("STT_ENABLED", true);
         if (!sttEnabled) {
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
         }

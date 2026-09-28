@@ -108,6 +108,7 @@ enum APIEndpoint {
     
     // History
     case history(page: Int, size: Int)
+    case historyAudio(id: Int64)
     case deleteHistory
     case clearAllHistory
     
@@ -176,6 +177,8 @@ enum APIEndpoint {
             return "/api/stt/translate"
         case .history(let page, let size):
             return "/api/history?page=\(page)&size=\(size)"
+        case .historyAudio(let id):
+            return "/api/history/\(id)/audio"
         case .deleteHistory:
             return "/api/history/delete"
         case .clearAllHistory:

@@ -60,6 +60,7 @@ export interface TtsHistoryDto {
   outputFormat: string;
   characterCount: number;
   textSnippet: string;
+  audioUrl?: string;
   createdAt: string;
 }
 

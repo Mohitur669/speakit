@@ -54,7 +54,7 @@ public class RazorpayService {
         int amountInPaise = planPrice.multiply(new BigDecimal("100")).intValue();
 
         // Retrieve subscription Plan ID from system parameters
-        String planId = systemParameterService.getLiveParameter(
+        String planId = systemParameterService.getParameter(
                 request.getPlanType().toUpperCase() + "_PLAN_ID_RAZORPAY",
                 "");
         
@@ -68,8 +68,7 @@ public class RazorpayService {
             subscriptionRequest.put("plan_id", planId);
 
             // Default to a high cycle count (e.g. 60 cycles = 5 years of monthly billing)
-            int billingCycles = Integer
-                    .parseInt(systemParameterService.getLiveParameter("RAZORPAY_SUBSCRIPTION_BILLING_CYCLES", "60"));
+            int billingCycles = systemParameterService.getIntParameter("RAZORPAY_SUBSCRIPTION_BILLING_CYCLES", 60);
             subscriptionRequest.put("total_count", billingCycles);
             subscriptionRequest.put("quantity", 1);
             subscriptionRequest.put("customer_notify", 1);
@@ -85,23 +84,23 @@ public class RazorpayService {
             subscriptionId = razorpaySubscription.get("id");
         }
 
-        Subscription subscription = subscriptionRepository
-                .findFirstByUserAndStatusOrderByIdDesc(user, SubscriptionStatus.PAYMENT_PENDING)
-                .orElse(Subscription.builder()
-                        .user(user)
-                        .status(SubscriptionStatus.PAYMENT_PENDING)
-                        .build());
+        PlanType requestedPlan = PlanType.valueOf(request.getPlanType().toUpperCase());
 
-        subscription.setPlanType(PlanType.valueOf(request.getPlanType().toUpperCase()));
-        subscription.setRazorpaySubscriptionId(subscriptionId);
+        // FIX: Each checkout order creates a dedicated Subscription intent for this specific plan and gateway ID.
+        // Never mutate or overwrite previous pending subscriptions, ensuring historical payment audits remain intact.
+        Subscription subscription = Subscription.builder()
+                .user(user)
+                .planType(requestedPlan)
+                .status(SubscriptionStatus.PAYMENT_PENDING)
+                .razorpaySubscriptionId(subscriptionId)
+                .build();
         subscriptionRepository.save(subscription);
 
-        // Save a Payment record to track this billing attempt
-        // We store the subscriptionId in razorpayOrderId to satisfy the UNIQUE NOT NULL
-        // DB constraint
+        // Save a Payment record to track this billing attempt with immutable planType
         Payment payment = Payment.builder()
                 .user(user)
                 .subscription(subscription)
+                .planType(requestedPlan)
                 .razorpayOrderId(subscriptionId)
                 .amount(planPrice)
                 .currency(request.getCurrency())
@@ -213,8 +212,9 @@ public class RazorpayService {
                 cancelPreviousActiveSubscription(user, subOrOrderId);
 
                 // 3. Delegate Plan Change (Safe, Rank-Aware)
-                PlanType targetPlan = payment.getSubscription() != null ? payment.getSubscription().getPlanType()
-                        : PlanType.PRO_PLUS;
+                PlanType targetPlan = payment.getPlanType() != null 
+                        ? payment.getPlanType() 
+                        : (payment.getSubscription() != null ? payment.getSubscription().getPlanType() : PlanType.PRO_PLUS);
 
                 subscriptionManagementService.changePlan(user, targetPlan, subOrOrderId);
 

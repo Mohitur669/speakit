@@ -9,6 +9,8 @@ import SwiftUI
 
 struct SpeakITHistoryRow: View {
     let item: HistoryItem
+    var isPlaying: Bool = false
+    var isLoading: Bool = false
     var isSelectionMode: Bool = false
     var isSelected: Bool = false
     var onSelect: (() -> Void)? = nil
@@ -31,24 +33,34 @@ struct SpeakITHistoryRow: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel(isSelected ? "Selected" : "Not selected")
             } else {
-                // Play Button
+                // Play / Pause Button with On-Demand Loading State
                 Button(action: {
                     HapticManager.shared.light()
                     onPlay()
                 }) {
                     ZStack {
                         Circle()
-                            .fill(Color.speakitBadgeBackground)
+                            .fill(isPlaying ? Color.speakitPrimary.opacity(0.15) : Color.speakitBadgeBackground)
                             .frame(width: 36, height: 36)
                         
-                        Image(systemName: "play.fill")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(Color.speakitPrimary)
-                            .offset(x: 1)
+                        if isLoading {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: Color.speakitPrimary))
+                                .scaleEffect(0.7)
+                        } else if isPlaying {
+                            Image(systemName: "pause.fill")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(Color.speakitPrimary)
+                        } else {
+                            Image(systemName: "play.fill")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(Color.speakitPrimary)
+                                .offset(x: 1)
+                        }
                     }
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Play \(item.textSnippet)")
+                .accessibilityLabel(isPlaying ? "Pause \(item.textSnippet)" : "Play \(item.textSnippet)")
             }
             
             // Text snippet & subtitle - tapping opens detail or toggles selection

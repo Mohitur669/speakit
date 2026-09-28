@@ -201,6 +201,45 @@ final class HTTPClient {
         return data
     }
     
+    // MARK: - Binary Audio Stream Request via GET (for History Audio Playback & Cloudflare R2 CDN)
+    func downloadBinaryGet(_ endpoint: APIEndpoint) async throws -> Data {
+        guard let url = endpoint.url else { throw APIError.invalidURL }
+        return try await downloadBinaryFromURL(url)
+    }
+    
+    func downloadBinaryFromURL(_ url: URL) async throws -> Data {
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("SpeakIT-iOS/1.0 (Apple; iOS)", forHTTPHeaderField: "User-Agent")
+        request.setValue("audio/mpeg, audio/*;q=0.9, */*;q=0.8", forHTTPHeaderField: "Accept")
+        
+        // Only attach Authorization Bearer token if querying our own backend API
+        if let token = KeychainHelper.shared.getToken(), url.absoluteString.contains("/api/") {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        
+        let (data, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.missingData
+        }
+        
+        if httpResponse.statusCode == 401 {
+            NotificationCenter.default.post(name: .speakitSessionInvalidated, object: nil)
+            throw APIError.unauthorized
+        }
+        
+        if httpResponse.statusCode == 403 {
+            throw APIError.forbidden
+        }
+        
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let cleanMsg = HTTPClient.extractErrorMessage(from: data, statusCode: httpResponse.statusCode)
+            throw APIError.serverError(statusCode: httpResponse.statusCode, message: cleanMsg)
+        }
+        
+        return data
+    }
+    
     // MARK: - Multipart Form Data Upload (for STT and Avatars)
     func uploadMultipart<T: Decodable>(_ endpoint: APIEndpoint, fileData: Data, fileName: String, mimeType: String, fieldName: String = "file") async throws -> T {
         guard let url = endpoint.url else { throw APIError.invalidURL }

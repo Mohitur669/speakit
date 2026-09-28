@@ -67,12 +67,12 @@ public class SubscriptionService {
      */
     public int getMonthlyCharacterLimit(PlanType planType) {
         if (planType == null)
-            return 10_000;
+            return 3000;
         return switch (planType) {
-            case FREE -> Integer.parseInt(systemParameterService.getPlanFeatureParameter("MONTHLY_FREE_CHARACTERS", "10000"));
-            case PRO -> Integer.parseInt(systemParameterService.getPlanFeatureParameter("MONTHLY_PRO_CHARACTERS", "100000"));
+            case FREE -> Integer.parseInt(systemParameterService.getPlanFeatureParameter("MONTHLY_FREE_CHARACTERS", "3000"));
+            case PRO -> Integer.parseInt(systemParameterService.getPlanFeatureParameter("MONTHLY_PRO_CHARACTERS", "5000"));
             case PRO_PLUS ->
-                Integer.parseInt(systemParameterService.getPlanFeatureParameter("MONTHLY_PRO_PLUS_CHARACTERS", "250000"));
+                Integer.parseInt(systemParameterService.getPlanFeatureParameter("MONTHLY_PRO_PLUS_CHARACTERS", "10000"));
             case ENTERPRISE ->
                 Integer.parseInt(systemParameterService.getPlanFeatureParameter("MONTHLY_ENTERPRISE_CHARACTERS", "1000000"));
         };
