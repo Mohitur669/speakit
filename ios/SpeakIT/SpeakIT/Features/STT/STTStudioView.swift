@@ -73,54 +73,72 @@ struct STTStudioView: View {
                         .stroke(Color.speakitBorder, lineWidth: 1)
                 )
                 
-                if selectedMode == .live {
-                    liveRecordingSection
-                } else {
-                    fileImportSection
-                }
+                let currentPlan = appState.currentUser?.planType ?? .free
+                let isLiveLocked = (selectedMode == .live && !currentPlan.allowsLiveSTT)
+                let isFileLocked = (selectedMode == .file && !currentPlan.allowsFileSTT)
                 
-                // Language Selection Card
-                Menu {
-                    Button("Auto detect") { selectedLanguage = "Auto detect" }
-                    Button("English (US)") { selectedLanguage = "English (US)" }
-                    Button("Hindi") { selectedLanguage = "Hindi" }
-                    Button("Tamil") { selectedLanguage = "Tamil" }
-                    Button("Spanish") { selectedLanguage = "Spanish" }
-                } label: {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Language")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(Color.speakitTextSecondary)
-                            Text(selectedLanguage)
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(Color.speakitTextPrimary)
-                        }
-                        Spacer()
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(Color.speakitTextTertiary)
-                    }
-                    .padding(16)
-                    .background(Color.speakitCardSurface)
-                    .cornerRadius(SpeakITSpacing.cardRadius)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: SpeakITSpacing.cardRadius)
-                            .stroke(Color.speakitBorder, lineWidth: 1)
+                if isLiveLocked {
+                    sttFeatureLockView(
+                        title: "Live Microphone requires Pro Plus",
+                        description: "Real-time speech transcription with neural audio streaming requires an active Pro Plus subscription.",
+                        targetPlan: .proPlus
                     )
-                }
-                
-                // Stop & Transcribe Button
-                if selectedMode == .live && recordingManager.isRecording {
-                    SpeakITButton(
-                        title: "Stop & Transcribe",
-                        style: .primary,
-                        isLoading: isProcessing
-                    ) {
-                        stopAndTranscribe()
+                } else if isFileLocked {
+                    sttFeatureLockView(
+                        title: "Audio File Transcription requires Pro",
+                        description: "Transcribe WAV, MP3, and M4A audio recordings with high accuracy on the Pro plan or higher.",
+                        targetPlan: .pro
+                    )
+                } else {
+                    if selectedMode == .live {
+                        liveRecordingSection
+                    } else {
+                        fileImportSection
                     }
-                    .accessibilityIdentifier("stt.stop")
-                    .padding(.top, 8)
+                    
+                    // Language Selection Card
+                    Menu {
+                        Button("Auto detect") { selectedLanguage = "Auto detect" }
+                        Button("English (US)") { selectedLanguage = "English (US)" }
+                        Button("Hindi") { selectedLanguage = "Hindi" }
+                        Button("Tamil") { selectedLanguage = "Tamil" }
+                        Button("Spanish") { selectedLanguage = "Spanish" }
+                    } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Language")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(Color.speakitTextSecondary)
+                                Text(selectedLanguage)
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(Color.speakitTextPrimary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(Color.speakitTextTertiary)
+                        }
+                        .padding(16)
+                        .background(Color.speakitCardSurface)
+                        .cornerRadius(SpeakITSpacing.cardRadius)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: SpeakITSpacing.cardRadius)
+                                .stroke(Color.speakitBorder, lineWidth: 1)
+                        )
+                    }
+                    
+                    // Stop & Transcribe Button
+                    if selectedMode == .live && recordingManager.isRecording {
+                        SpeakITButton(
+                            title: "Stop & Transcribe",
+                            style: .primary,
+                            isLoading: isProcessing
+                        ) {
+                            stopAndTranscribe()
+                        }
+                        .accessibilityIdentifier("stt.stop")
+                        .padding(.top, 8)
+                    }
                 }
             }
             .padding(.horizontal, SpeakITSpacing.screenMargin)
@@ -462,6 +480,54 @@ struct STTStudioView: View {
                 }
             }
         }
+    }
+    
+    @ViewBuilder
+    private func sttFeatureLockView(title: String, description: String, targetPlan: PlanType) -> some View {
+        VStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(Color.speakitPrimary.opacity(0.12))
+                    .frame(width: 64, height: 64)
+                
+                Image(systemName: "lock.fill")
+                    .font(.system(size: 26, weight: .bold))
+                    .foregroundColor(Color.speakitPrimary)
+            }
+            .padding(.top, 8)
+            
+            VStack(spacing: 6) {
+                Text(title)
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(Color.speakitTextPrimary)
+                    .multilineTextAlignment(.center)
+                
+                Text(description)
+                    .font(.system(size: 13))
+                    .foregroundColor(Color.speakitTextSecondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 16)
+            }
+            
+            SpeakITButton(
+                title: "Upgrade to \(targetPlan.displayName)",
+                icon: "sparkles",
+                style: .primary
+            ) {
+                HapticManager.shared.selection()
+                appState.showPaywallSheet = true
+            }
+            .padding(.top, 4)
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity)
+        .background(Color.speakitCardSurface)
+        .cornerRadius(SpeakITSpacing.cardRadius)
+        .overlay(
+            RoundedRectangle(cornerRadius: SpeakITSpacing.cardRadius)
+                .stroke(Color.speakitBorder, lineWidth: 1)
+        )
+        .padding(.vertical, 8)
     }
     
     private func formatTimer(_ time: TimeInterval) -> String {

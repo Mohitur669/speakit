@@ -16,6 +16,7 @@ struct HistoryItem: Codable, Identifiable {
     let voiceName: String?
     let engineType: String // "TTS" or "STT"
     let createdAt: String
+    let audioUrl: String?
     var localAudioURL: URL? = nil
     
     init(
@@ -27,6 +28,7 @@ struct HistoryItem: Codable, Identifiable {
         voiceName: String? = nil,
         engineType: String = "TTS",
         createdAt: String = "Just now",
+        audioUrl: String? = nil,
         localAudioURL: URL? = nil
     ) {
         self.id = id
@@ -37,11 +39,12 @@ struct HistoryItem: Codable, Identifiable {
         self.voiceName = voiceName
         self.engineType = engineType
         self.createdAt = createdAt
+        self.audioUrl = audioUrl
         self.localAudioURL = localAudioURL
     }
     
     enum CodingKeys: String, CodingKey {
-        case id, textSnippet, fullText, characterCount, voiceId, voiceName, engineType, voiceType, createdAt
+        case id, textSnippet, fullText, characterCount, voiceId, voiceName, engineType, voiceType, createdAt, audioUrl
     }
     
     init(from decoder: Decoder) throws {
@@ -62,6 +65,7 @@ struct HistoryItem: Codable, Identifiable {
         }
         
         self.createdAt = (try? container.decode(String.self, forKey: .createdAt)) ?? "Recent"
+        self.audioUrl = try? container.decode(String.self, forKey: .audioUrl)
         self.localAudioURL = nil
     }
     
@@ -75,6 +79,7 @@ struct HistoryItem: Codable, Identifiable {
         try container.encodeIfPresent(voiceName, forKey: .voiceName)
         try container.encode(engineType, forKey: .engineType)
         try container.encode(createdAt, forKey: .createdAt)
+        try container.encodeIfPresent(audioUrl, forKey: .audioUrl)
     }
     
     var displayText: String {

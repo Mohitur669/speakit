@@ -34,4 +34,10 @@ public interface TtsHistoryRepository extends JpaRepository<TtsHistory, Long> {
     @Transactional
     @Query("DELETE FROM TtsHistory t WHERE t.id IN :ids AND t.user.id = :userId")
     void deleteAllByIdInAndUserId(@Param("ids") List<Long> ids, @Param("userId") Long userId);
+
+    java.util.Optional<TtsHistory> findByIdAndUserId(Long id, Long userId);
+
+    List<TtsHistory> findAllByIdInAndUserId(List<Long> ids, Long userId);
+
+    List<TtsHistory> findAllByUserId(Long userId);
 }

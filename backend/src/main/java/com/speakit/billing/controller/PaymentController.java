@@ -13,6 +13,7 @@ import com.speakit.billing.service.RazorpayService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import java.time.LocalDateTime;
 import org.springframework.data.web.PagedModel;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -94,10 +95,20 @@ public class PaymentController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
+        try {
+            paymentRepository.markStalePendingPaymentsAsFailed(LocalDateTime.now().minusMinutes(30));
+        } catch (Exception e) {
+            log.warn("Failed to sweep stale pending payments before fetching history: {}", e.getMessage());
+        }
+
         Page<PaymentHistoryDto> historyPage = paymentRepository
                 .findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(page, size))
                 .map(payment -> {
-                    String rawPlan = payment.getSubscription() != null ? payment.getSubscription().getPlanType().name() : "N/A";
+                    com.speakit.billing.entity.PlanType resolvedPlan = payment.getPlanType();
+                    if (resolvedPlan == null && payment.getSubscription() != null) {
+                        resolvedPlan = payment.getSubscription().getPlanType();
+                    }
+                    String rawPlan = resolvedPlan != null ? resolvedPlan.name() : "N/A";
                     String normalPlan = switch (rawPlan) {
                         case "PRO" -> "Pro";
                         case "PRO_PLUS" -> "Pro Plus";

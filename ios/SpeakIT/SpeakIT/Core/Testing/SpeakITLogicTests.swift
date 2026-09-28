@@ -36,9 +36,9 @@ public struct SpeakITLogicTests {
         assert(PlanType.proPlus.displayName == "Pro Plus", "Pro Plus plan displayName is Pro Plus")
         assert(PlanType.enterprise.displayName == "Enterprise", "Enterprise plan displayName is Enterprise")
         
-        assert(PlanType.free.monthlyQuota == 10_000, "Free plan quota is 10,000")
-        assert(PlanType.pro.monthlyQuota == 100_000, "Pro plan quota is 100,000")
-        assert(PlanType.proPlus.monthlyQuota == 250_000, "Pro Plus plan quota is 250,000")
+        assert(PlanType.free.monthlyQuota == 3_000, "Free plan quota is 3,000")
+        assert(PlanType.pro.monthlyQuota == 5_000, "Pro plan quota is 5,000")
+        assert(PlanType.proPlus.monthlyQuota == 10_000, "Pro Plus plan quota is 10,000")
         
         assert(!PlanType.free.allowsLiveSTT, "Free plan does not support live mic STT")
         assert(!PlanType.pro.allowsLiveSTT, "Pro plan does not support live mic STT")
@@ -111,12 +111,16 @@ public struct SpeakITLogicTests {
         assert(APIEndpoint.history(page: 0, size: 20).path == "/api/history?page=0&size=20", "History endpoint matches paginated contract (/api/history?page=0&size=20)")
         assert(APIEndpoint.clearAllHistory.path == "/api/history/clear-all", "Clear all history endpoint matches contract (/api/history/clear-all)")
         assert(APIEndpoint.deleteHistory.path == "/api/history/delete", "Delete history endpoint matches contract (/api/history/delete)")
+        assert(APIEndpoint.historyAudio(id: 42).path == "/api/history/42/audio", "History audio streaming endpoint matches contract (/api/history/42/audio)")
         assert(APIEndpoint.deleteAccount.path == "/api/v1/users/me", "Account deletion endpoint matches contract (/api/v1/users/me)")
         assert(APIEndpoint.uploadAvatar.path == "/api/v1/users/avatar", "Upload avatar endpoint matches contract (/api/v1/users/avatar)")
         assert(APIEndpoint.deleteAvatar.path == "/api/v1/users/avatar", "Delete avatar endpoint matches contract (/api/v1/users/avatar)")
         
         let itemWithSnippetOnly = HistoryItem(id: 101, textSnippet: "Snippet Only")
         assert(itemWithSnippetOnly.displayText == "Snippet Only", "HistoryItem displayText returns snippet when fullText is nil")
+        assert(itemWithSnippetOnly.audioUrl == nil, "HistoryItem audioUrl defaults to nil")
+        let itemWithAudioUrl = HistoryItem(id: 103, textSnippet: "Snippet", audioUrl: "https://cdn.speakit.com/audio/sample.mp3")
+        assert(itemWithAudioUrl.audioUrl == "https://cdn.speakit.com/audio/sample.mp3", "HistoryItem preserves remote audioUrl")
         let itemWithFullText = HistoryItem(id: 102, textSnippet: "Snippet", fullText: "This is the complete and full transcript")
         assert(itemWithFullText.displayText == "This is the complete and full transcript", "HistoryItem displayText returns fullText when available")
         

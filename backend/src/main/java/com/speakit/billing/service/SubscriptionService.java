@@ -49,17 +49,17 @@ public class SubscriptionService {
     public int getMaxCharacters(PlanType planType, SubscriptionStatus status, LocalDateTime expiry) {
         // Fallback to FREE limits if subscription is inactive or expired
         if (!hasActivePremiumAccess(planType, status, expiry)) {
-            return Integer.parseInt(systemParameterService.getLiveParameter("MAX_FREE_CHARACTERS", "100"));
+            return Integer.parseInt(systemParameterService.getPlanFeatureParameter("MAX_FREE_CHARACTERS", "100"));
         }
 
         if (PlanType.PRO == planType) {
-            return Integer.parseInt(systemParameterService.getLiveParameter("MAX_PRO_CHARACTERS", "200"));
+            return Integer.parseInt(systemParameterService.getPlanFeatureParameter("MAX_PRO_CHARACTERS", "200"));
         } else if (PlanType.PRO_PLUS == planType) {
-            return Integer.parseInt(systemParameterService.getLiveParameter("MAX_PRO_PLUS_CHARACTERS", "500"));
+            return Integer.parseInt(systemParameterService.getPlanFeatureParameter("MAX_PRO_PLUS_CHARACTERS", "500"));
         } else if (PlanType.ENTERPRISE == planType) {
-            return Integer.parseInt(systemParameterService.getLiveParameter("MAX_ENTERPRISE_CHARACTERS", "2000"));
+            return Integer.parseInt(systemParameterService.getPlanFeatureParameter("MAX_ENTERPRISE_CHARACTERS", "2000"));
         }
-        return Integer.parseInt(systemParameterService.getLiveParameter("MAX_FREE_CHARACTERS", "100"));
+        return Integer.parseInt(systemParameterService.getPlanFeatureParameter("MAX_FREE_CHARACTERS", "100"));
     }
 
     /**
@@ -67,14 +67,14 @@ public class SubscriptionService {
      */
     public int getMonthlyCharacterLimit(PlanType planType) {
         if (planType == null)
-            return 10_000;
+            return 3000;
         return switch (planType) {
-            case FREE -> Integer.parseInt(systemParameterService.getLiveParameter("MONTHLY_FREE_CHARACTERS", "10000"));
-            case PRO -> Integer.parseInt(systemParameterService.getLiveParameter("MONTHLY_PRO_CHARACTERS", "100000"));
+            case FREE -> Integer.parseInt(systemParameterService.getPlanFeatureParameter("MONTHLY_FREE_CHARACTERS", "3000"));
+            case PRO -> Integer.parseInt(systemParameterService.getPlanFeatureParameter("MONTHLY_PRO_CHARACTERS", "5000"));
             case PRO_PLUS ->
-                Integer.parseInt(systemParameterService.getLiveParameter("MONTHLY_PRO_PLUS_CHARACTERS", "250000"));
+                Integer.parseInt(systemParameterService.getPlanFeatureParameter("MONTHLY_PRO_PLUS_CHARACTERS", "10000"));
             case ENTERPRISE ->
-                Integer.parseInt(systemParameterService.getLiveParameter("MONTHLY_ENTERPRISE_CHARACTERS", "1000000"));
+                Integer.parseInt(systemParameterService.getPlanFeatureParameter("MONTHLY_ENTERPRISE_CHARACTERS", "1000000"));
         };
     }
 
@@ -87,7 +87,7 @@ public class SubscriptionService {
 
         // Also check global ElevenLabs feature flag from live parameters
         boolean elevenLabsEnabled = Boolean
-                .parseBoolean(systemParameterService.getLiveParameter("ELEVENLABS_ENABLED", "true"));
+                .parseBoolean(systemParameterService.getPlanFeatureParameter("ELEVENLABS_ENABLED", "true"));
         if (!elevenLabsEnabled)
             return false;
 
@@ -102,7 +102,7 @@ public class SubscriptionService {
             return false;
 
         // Also check global Sarvam feature flag from live parameters
-        boolean sarvamEnabled = Boolean.parseBoolean(systemParameterService.getLiveParameter("SARVAM_ENABLED", "true"));
+        boolean sarvamEnabled = Boolean.parseBoolean(systemParameterService.getPlanFeatureParameter("SARVAM_ENABLED", "true"));
         if (!sarvamEnabled)
             return false;
 
@@ -118,7 +118,7 @@ public class SubscriptionService {
             return false;
 
         // Also check global STT feature flag from live parameters
-        boolean sttEnabled = Boolean.parseBoolean(systemParameterService.getLiveParameter("STT_ENABLED", "true"));
+        boolean sttEnabled = Boolean.parseBoolean(systemParameterService.getPlanFeatureParameter("STT_ENABLED", "true"));
         if (!sttEnabled)
             return false;
 
@@ -134,7 +134,7 @@ public class SubscriptionService {
             return false;
 
         boolean liveRecordingEnabled = Boolean
-                .parseBoolean(systemParameterService.getLiveParameter("LIVE_RECORDING_ENABLED", "true"));
+                .parseBoolean(systemParameterService.getPlanFeatureParameter("LIVE_RECORDING_ENABLED", "true"));
         if (!liveRecordingEnabled)
             return false;
 
@@ -147,11 +147,11 @@ public class SubscriptionService {
     public long getSttUploadLimitBytes(PlanType planType) {
         long limitMb;
         if (planType == PlanType.PRO) {
-            limitMb = Long.parseLong(systemParameterService.getLiveParameter("STT_MAX_FILE_SIZE_MB_PRO", "25"));
+            limitMb = Long.parseLong(systemParameterService.getPlanFeatureParameter("STT_MAX_FILE_SIZE_MB_PRO", "25"));
         } else if (planType == PlanType.PRO_PLUS) {
-            limitMb = Long.parseLong(systemParameterService.getLiveParameter("STT_MAX_FILE_SIZE_MB_PRO_PLUS", "50"));
+            limitMb = Long.parseLong(systemParameterService.getPlanFeatureParameter("STT_MAX_FILE_SIZE_MB_PRO_PLUS", "50"));
         } else if (planType == PlanType.ENTERPRISE) {
-            limitMb = Long.parseLong(systemParameterService.getLiveParameter("STT_MAX_FILE_SIZE_MB_ENTERPRISE", "500"));
+            limitMb = Long.parseLong(systemParameterService.getPlanFeatureParameter("STT_MAX_FILE_SIZE_MB_ENTERPRISE", "500"));
         } else {
             return 0;
         }
@@ -163,11 +163,11 @@ public class SubscriptionService {
      */
     public int getSttMaxDurationMinutes(PlanType planType) {
         if (planType == PlanType.PRO) {
-            return Integer.parseInt(systemParameterService.getLiveParameter("STT_MAX_DURATION_MIN_PRO", "15"));
+            return Integer.parseInt(systemParameterService.getPlanFeatureParameter("STT_MAX_DURATION_MIN_PRO", "15"));
         } else if (planType == PlanType.PRO_PLUS) {
-            return Integer.parseInt(systemParameterService.getLiveParameter("STT_MAX_DURATION_MIN_PRO_PLUS", "30"));
+            return Integer.parseInt(systemParameterService.getPlanFeatureParameter("STT_MAX_DURATION_MIN_PRO_PLUS", "30"));
         } else if (planType == PlanType.ENTERPRISE) {
-            return Integer.parseInt(systemParameterService.getLiveParameter("STT_MAX_DURATION_MIN_ENTERPRISE", "120"));
+            return Integer.parseInt(systemParameterService.getPlanFeatureParameter("STT_MAX_DURATION_MIN_ENTERPRISE", "120"));
         }
         return 0;
     }
@@ -180,11 +180,11 @@ public class SubscriptionService {
             return 0;
 
         if (planType == PlanType.PRO) {
-            return Integer.parseInt(systemParameterService.getLiveParameter("STT_DAILY_QUOTA_PRO", "100"));
+            return Integer.parseInt(systemParameterService.getPlanFeatureParameter("STT_DAILY_QUOTA_PRO", "100"));
         } else if (planType == PlanType.PRO_PLUS) {
-            return Integer.parseInt(systemParameterService.getLiveParameter("STT_DAILY_QUOTA_PRO_PLUS", "500"));
+            return Integer.parseInt(systemParameterService.getPlanFeatureParameter("STT_DAILY_QUOTA_PRO_PLUS", "500"));
         } else if (planType == PlanType.ENTERPRISE) {
-            return Integer.parseInt(systemParameterService.getLiveParameter("STT_DAILY_QUOTA_ENTERPRISE", "5000"));
+            return Integer.parseInt(systemParameterService.getPlanFeatureParameter("STT_DAILY_QUOTA_ENTERPRISE", "5000"));
         }
         return 0;
     }
@@ -196,7 +196,7 @@ public class SubscriptionService {
     public int getDailySynthesisLimit(PlanType planType, SubscriptionStatus status, LocalDateTime expiry) {
         // If not active premium, they are effectively FREE
         if (!hasActivePremiumAccess(planType, status, expiry)) {
-            return Integer.parseInt(systemParameterService.getLiveParameter("FREE_PLAN_SYNTHESIZE_LIMIT", "5"));
+            return Integer.parseInt(systemParameterService.getPlanFeatureParameter("FREE_PLAN_SYNTHESIZE_LIMIT", "5"));
         }
         // Paid plans have no daily synthesis limit (only character limits per request)
         return -1;

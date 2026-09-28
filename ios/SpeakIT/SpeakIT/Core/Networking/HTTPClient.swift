@@ -17,6 +17,7 @@ enum APIError: LocalizedError {
     case serverError(statusCode: Int, message: String)
     case unauthorized
     case forbidden
+    case emailNotVerified(email: String)
     case decodingError(Error)
     case missingData
     
@@ -46,6 +47,10 @@ enum APIError: LocalizedError {
             return "Your session has expired. Please sign in again."
         case .forbidden:
             return "You do not have permission to access this feature. Please upgrade your plan."
+        case .emailNotVerified(let email):
+            return email.isEmpty
+                ? "Your email address is not verified. Please verify your account."
+                : "Please verify your email address (\(email)) to sign in."
         case .decodingError:
             return "Received an unexpected response from the server. Please try again."
         case .missingData:
@@ -98,6 +103,13 @@ final class HTTPClient {
         }
         
         if httpResponse.statusCode == 403 {
+            if let dict = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] {
+                let errCode = (dict["error"] as? String) ?? ""
+                if errCode == "EMAIL_NOT_VERIFIED" {
+                    let email = (dict["message"] as? String) ?? ""
+                    throw APIError.emailNotVerified(email: email)
+                }
+            }
             throw APIError.forbidden
         }
         
@@ -166,6 +178,45 @@ final class HTTPClient {
         }
         
         request.httpBody = body
+        
+        let (data, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.missingData
+        }
+        
+        if httpResponse.statusCode == 401 {
+            NotificationCenter.default.post(name: .speakitSessionInvalidated, object: nil)
+            throw APIError.unauthorized
+        }
+        
+        if httpResponse.statusCode == 403 {
+            throw APIError.forbidden
+        }
+        
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let cleanMsg = HTTPClient.extractErrorMessage(from: data, statusCode: httpResponse.statusCode)
+            throw APIError.serverError(statusCode: httpResponse.statusCode, message: cleanMsg)
+        }
+        
+        return data
+    }
+    
+    // MARK: - Binary Audio Stream Request via GET (for History Audio Playback & Cloudflare R2 CDN)
+    func downloadBinaryGet(_ endpoint: APIEndpoint) async throws -> Data {
+        guard let url = endpoint.url else { throw APIError.invalidURL }
+        return try await downloadBinaryFromURL(url)
+    }
+    
+    func downloadBinaryFromURL(_ url: URL) async throws -> Data {
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("SpeakIT-iOS/1.0 (Apple; iOS)", forHTTPHeaderField: "User-Agent")
+        request.setValue("audio/mpeg, audio/*;q=0.9, */*;q=0.8", forHTTPHeaderField: "Accept")
+        
+        // Only attach Authorization Bearer token if querying our own backend API
+        if let token = KeychainHelper.shared.getToken(), url.absoluteString.contains("/api/") {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
         
         let (data, response) = try await session.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse else {

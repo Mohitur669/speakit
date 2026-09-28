@@ -123,7 +123,7 @@ struct PaymentCheckoutSheet: View {
                         .font(.system(size: 13, weight: .medium))
                         .foregroundColor(Color.speakitTextSecondary)
                     Spacer()
-                    Text("\(plan.monthlyQuota.formatted()) chars")
+                    Text("\(appState.formattedMonthlyQuota(for: plan)) chars")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(Color.speakitTextPrimary)
                 }

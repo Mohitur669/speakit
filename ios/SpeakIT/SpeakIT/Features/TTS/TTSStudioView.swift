@@ -142,7 +142,8 @@ struct TTSStudioView: View {
                         Spacer()
                         
                         // Character count indicator
-                        let maxChars = appState.currentUser?.planType.characterLimitPerRequest ?? 2500
+                        let currentPlan = appState.currentUser?.planType ?? .free
+                        let maxChars = appState.getMaxCharacters(for: currentPlan)
                         Text("\(inputText.count) / \(maxChars)")
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(inputText.count > maxChars ? Color.speakitDestructive : Color.speakitPrimary)
@@ -156,14 +157,125 @@ struct TTSStudioView: View {
                         .stroke(Color.speakitBorder, lineWidth: 1)
                 )
                 
+                let currentPlan = appState.currentUser?.planType ?? .free
+                let maxChars = appState.getMaxCharacters(for: currentPlan)
+                let isVoiceLocked = currentPlan < selectedVoice.requiresPlan
+                let isCharLimitExceeded = inputText.count > maxChars
+                
+                // Plan Feature Lock Card for Selected Voice
+                if isVoiceLocked {
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(spacing: 12) {
+                            ZStack {
+                                Circle()
+                                    .fill(Color.speakitPrimary.opacity(0.12))
+                                    .frame(width: 40, height: 40)
+                                Image(systemName: "lock.fill")
+                                    .font(.system(size: 16, weight: .bold))
+                                    .foregroundColor(Color.speakitPrimary)
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("\(selectedVoice.name) requires \(selectedVoice.requiresPlan.displayName)")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundColor(Color.speakitTextPrimary)
+                                Text("Standard voices are available in Free. Upgrade to unlock \(selectedVoice.engineDisplayName) AI voices.")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(Color.speakitTextSecondary)
+                            }
+                        }
+                        
+                        Button(action: {
+                            HapticManager.shared.selection()
+                            appState.showPaywallSheet = true
+                        }) {
+                            HStack {
+                                Image(systemName: "sparkles")
+                                    .font(.system(size: 13, weight: .bold))
+                                Text("Upgrade to \(selectedVoice.requiresPlan.displayName)")
+                                    .font(.system(size: 13, weight: .bold))
+                            }
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 40)
+                            .background(Color.speakitPrimary)
+                            .cornerRadius(10)
+                        }
+                    }
+                    .padding(14)
+                    .background(Color.speakitCardSurface)
+                    .cornerRadius(SpeakITSpacing.cardRadius)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: SpeakITSpacing.cardRadius)
+                            .stroke(Color.speakitPrimary.opacity(0.3), lineWidth: 1)
+                    )
+                }
+                
+                // Character Limit Warning & Upgrade Card
+                if isCharLimitExceeded {
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(spacing: 12) {
+                            ZStack {
+                                Circle()
+                                    .fill(Color.speakitWarning.opacity(0.12))
+                                    .frame(width: 40, height: 40)
+                                Image(systemName: "lock.fill")
+                                    .font(.system(size: 16, weight: .bold))
+                                    .foregroundColor(Color.speakitWarning)
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Character limit exceeded (\(inputText.count)/\(maxChars))")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundColor(Color.speakitTextPrimary)
+                                Text("\(currentPlan.displayName) allows up to \(maxChars) characters per request. Upgrade for up to 2,000 characters.")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(Color.speakitTextSecondary)
+                            }
+                        }
+                        
+                        Button(action: {
+                            HapticManager.shared.selection()
+                            appState.showPaywallSheet = true
+                        }) {
+                            HStack {
+                                Image(systemName: "arrow.up.circle.fill")
+                                    .font(.system(size: 13, weight: .bold))
+                                Text("Upgrade Plan for Higher Limits")
+                                    .font(.system(size: 13, weight: .bold))
+                            }
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 40)
+                            .background(Color.speakitPrimary)
+                            .cornerRadius(10)
+                        }
+                    }
+                    .padding(14)
+                    .background(Color.speakitCardSurface)
+                    .cornerRadius(SpeakITSpacing.cardRadius)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: SpeakITSpacing.cardRadius)
+                            .stroke(Color.speakitWarning.opacity(0.3), lineWidth: 1)
+                    )
+                }
+                
                 // Generate Speech CTA
-                let maxAllowed = appState.currentUser?.planType.characterLimitPerRequest ?? 2500
-                let canGenerate = !inputText.trimmingCharacters(in: .whitespaces).isEmpty && inputText.count <= maxAllowed
+                let canGenerate = !inputText.trimmingCharacters(in: .whitespaces).isEmpty && !isVoiceLocked && !isCharLimitExceeded
+                let buttonTitle: String = {
+                    if isVoiceLocked {
+                        return "Locked — \(selectedVoice.requiresPlan.displayName) Required"
+                    } else if isCharLimitExceeded {
+                        return "Exceeds \(maxChars) Characters"
+                    } else {
+                        return "Generate Speech"
+                    }
+                }()
                 
                 SpeakITButton(
-                    title: "Generate Speech",
-                    icon: "speaker.wave.3.fill",
-                    style: .primary,
+                    title: buttonTitle,
+                    icon: isVoiceLocked ? "lock.fill" : "speaker.wave.3.fill",
+                    style: canGenerate ? .primary : .secondary,
                     isLoading: isSynthesizing,
                     isEnabled: canGenerate
                 ) {
@@ -171,19 +283,23 @@ struct TTSStudioView: View {
                 }
                 .accessibilityIdentifier("tts.generate")
                 .padding(.top, 4)
+                .padding(.bottom, synthesizedAudioURL == nil ? 32 : 0)
                 
-                // Inline Audio Player Card
-                SpeakITAudioPlayer(
-                    playerManager: playerManager,
-                    onShare: {
-                        if playerManager.currentAudioURL != nil {
-                            showShareSheet = true
+                // Inline Audio Player Card (Only visible once speech has been generated)
+                if synthesizedAudioURL != nil {
+                    SpeakITAudioPlayer(
+                        playerManager: playerManager,
+                        onShare: {
+                            if playerManager.currentAudioURL != nil {
+                                showShareSheet = true
+                            }
                         }
-                    }
-                )
-                .accessibilityIdentifier("tts.audioPlayer")
-                .padding(.top, 4)
-                .padding(.bottom, 24)
+                    )
+                    .accessibilityIdentifier("tts.audioPlayer")
+                    .padding(.top, 4)
+                    .padding(.bottom, 24)
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+                }
             }
             .padding(.horizontal, SpeakITSpacing.screenMargin)
         }
@@ -198,6 +314,7 @@ struct TTSStudioView: View {
         }
         .task {
             await appState.loadCurrentUser()
+            await appState.loadPlanPricing()
         }
         .speakITToast(message: $errorMessage, style: .error, bottomPadding: 16)
     }
@@ -246,7 +363,9 @@ struct TTSStudioView: View {
                 
                 await MainActor.run {
                     self.isSynthesizing = false
-                    self.synthesizedAudioURL = audioURL
+                    withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
+                        self.synthesizedAudioURL = audioURL
+                    }
                     // Deduct credit immediately at the top bar
                     self.appState.recordCharacterUsage(inputText.count)
                     HapticManager.shared.success()
@@ -282,6 +401,9 @@ struct TTSStudioView: View {
         let fallbackURL = tempDir.appendingPathComponent("sample_preview.mp3")
         try? Data(repeating: 0, count: 1024).write(to: fallbackURL)
         self.appState.recordCharacterUsage(inputText.count)
+        withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
+            self.synthesizedAudioURL = fallbackURL
+        }
         self.playerManager.load(
             url: fallbackURL,
             title: String(inputText.prefix(40)),

@@ -83,18 +83,21 @@ struct PaymentReceiptSheet: View {
     // MARK: - Header
     @ViewBuilder
     private var receiptHeader: some View {
+        let statusColor: Color = item.isSuccess ? Color.speakitSuccess : (item.isPending ? Color.speakitWarning : Color.speakitError)
+        let statusIcon: String = item.isSuccess ? "checkmark.seal.fill" : (item.isPending ? "clock.fill" : "xmark.seal.fill")
+        
         VStack(spacing: 8) {
             ZStack {
                 Circle()
-                    .fill(Color.speakitSuccess.opacity(0.14))
+                    .fill(statusColor.opacity(0.14))
                     .frame(width: 64, height: 64)
                 
-                Image(systemName: "checkmark.seal.fill")
+                Image(systemName: statusIcon)
                     .font(.system(size: 32))
-                    .foregroundColor(Color.speakitSuccess)
+                    .foregroundColor(statusColor)
             }
             
-            Text("Payment Successful")
+            Text(item.statusTitle)
                 .font(.system(size: 20, weight: .bold))
                 .foregroundColor(Color.speakitTextPrimary)
             
@@ -102,7 +105,7 @@ struct PaymentReceiptSheet: View {
                 .font(.system(size: 34, weight: .heavy))
                 .foregroundColor(Color.speakitTextPrimary)
             
-            Text("Billed on \(item.formattedDate)")
+            Text(item.statusDescription)
                 .font(.system(size: 12))
                 .foregroundColor(Color.speakitTextSecondary)
         }
@@ -126,12 +129,13 @@ struct PaymentReceiptSheet: View {
                 
                 Spacer()
                 
+                let statusColor: Color = item.isSuccess ? Color.speakitSuccess : (item.isPending ? Color.speakitWarning : Color.speakitError)
                 Text(item.status)
                     .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(Color.speakitSuccess)
+                    .foregroundColor(statusColor)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 4)
-                    .background(Color.speakitSuccess.opacity(0.12))
+                    .background(statusColor.opacity(0.12))
                     .cornerRadius(8)
             }
             
@@ -212,7 +216,7 @@ struct PaymentReceiptSheet: View {
                     .background(Color.speakitBorder.opacity(0.5))
                 
                 HStack {
-                    Text("Total Paid")
+                    Text(item.isSuccess ? "Total Paid" : (item.isPending ? "Amount Due" : "Amount"))
                         .font(.system(size: 15, weight: .bold))
                         .foregroundColor(Color.speakitTextPrimary)
                     Spacer()

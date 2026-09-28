@@ -36,6 +36,10 @@ public class Payment extends BaseEntity {
     @JoinColumn(name = "subscription_id")
     private Subscription subscription;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "plan_type", length = 20)
+    private PlanType planType;
+
     @Column(name = "razorpay_order_id", unique = true, nullable = false, length = 100)
     private String razorpayOrderId;
 

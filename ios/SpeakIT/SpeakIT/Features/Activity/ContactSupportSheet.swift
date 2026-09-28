@@ -38,6 +38,10 @@ struct ContactSupportSheet: View {
     @State private var errorBanner: String? = nil
     @State private var dismissTimerTask: Task<Void, Never>? = nil
     
+    init(initialTopicKey: String = "support") {
+        self._selectedTopicKey = State(initialValue: initialTopicKey)
+    }
+    
     private let topicOptions: [(key: String, label: String)] = [
         ("support", "Technical Support"),
         ("billing", "Billing & Subscriptions"),

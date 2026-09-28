@@ -24,13 +24,13 @@ public class KeepAliveService {
      */
     @Scheduled(fixedRateString = "${auth.keep-alive-interval-ms}")
     public void keepAlive() {
-        boolean enabled = Boolean.parseBoolean(systemParameterService.getLiveParameter("KEEP_ALIVE_ENABLED", "true"));
+        boolean enabled = systemParameterService.isFeatureEnabled("KEEP_ALIVE_ENABLED", true);
         if (!enabled) {
             log.info("Keep-alive self-ping is disabled dynamically via system parameters.");
             return;
         }
 
-        String targetUrl = systemParameterService.getCachedParameter("SELF_PING_URL", externalUrl);
+        String targetUrl = systemParameterService.getParameter("SELF_PING_URL", externalUrl);
         if (targetUrl == null || targetUrl.isEmpty()) {
             log.info("Keep-alive skipped: SELF_PING_URL and RENDER_EXTERNAL_URL are not set.");
             return;
