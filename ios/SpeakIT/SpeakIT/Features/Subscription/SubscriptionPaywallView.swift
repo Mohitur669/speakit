@@ -20,6 +20,7 @@ struct SubscriptionPaywallView: View {
     @State private var showTermsSheet: Bool = false
     @State private var showPrivacySheet: Bool = false
     @State private var showDowngradeAlert: Bool = false
+    @State private var showContactSheet: Bool = false
     @State private var activeOrder: PaymentOrderResponse? = nil
     
     var body: some View {
@@ -101,9 +102,10 @@ struct SubscriptionPaywallView: View {
                 VStack(spacing: 14) {
                     SpeakITSubscriptionCard(
                         tierName: "Free",
-                        price: "$0 / month",
+                        price: appState.freePriceDisplay,
                         features: [
-                            "100 chars/request • 10,000 monthly chars",
+                            "\(appState.formattedMaxCharacters(for: .free)) characters per request",
+                            "\(appState.formattedMonthlyQuota(for: .free)) monthly character quota",
                             "5 daily syntheses • Standard Polly Voices"
                         ],
                         isSelected: selectedPlan == .free,
@@ -118,8 +120,9 @@ struct SubscriptionPaywallView: View {
                         tierName: "Pro",
                         price: appState.proPriceDisplay,
                         features: [
-                            "200 chars/request • 100,000 monthly chars",
-                            "Neural Polly • File STT"
+                            "\(appState.formattedMaxCharacters(for: .pro)) characters per request",
+                            "\(appState.formattedMonthlyQuota(for: .pro)) monthly character quota",
+                            "Neural Polly AI Voices • File STT"
                         ],
                         isSelected: selectedPlan == .pro,
                         isCurrentPlan: currentPlan == .pro,
@@ -133,7 +136,8 @@ struct SubscriptionPaywallView: View {
                         tierName: "Pro Plus",
                         price: appState.proPlusPriceDisplay,
                         features: [
-                            "500 chars/request • 250,000 monthly chars",
+                            "\(appState.formattedMaxCharacters(for: .proPlus)) characters per request",
+                            "\(appState.formattedMonthlyQuota(for: .proPlus)) monthly character quota",
                             "ElevenLabs & Indian Voices • Live Mic STT"
                         ],
                         isSelected: selectedPlan == .proPlus,
@@ -144,6 +148,22 @@ struct SubscriptionPaywallView: View {
                         selectedPlan = .proPlus
                     }
                     .accessibilityIdentifier("subscription.proPlus")
+                    
+                    SpeakITSubscriptionCard(
+                        tierName: "Enterprise",
+                        price: "Contact Us",
+                        features: [
+                            "\(appState.formattedMaxCharacters(for: .enterprise)) characters per request",
+                            "\(appState.formattedMonthlyQuota(for: .enterprise)) monthly character quota",
+                            "Dedicated support • Custom models & all engines"
+                        ],
+                        isSelected: selectedPlan == .enterprise,
+                        isCurrentPlan: currentPlan == .enterprise,
+                        isDisabled: currentPlan == .enterprise
+                    ) {
+                        selectedPlan = .enterprise
+                    }
+                    .accessibilityIdentifier("subscription.enterprise")
                 }
                 .padding(.top, 8)
                 
@@ -154,16 +174,24 @@ struct SubscriptionPaywallView: View {
                 let buttonTitle: String = {
                     if isCurrentSelected {
                         return "\(currentPlan.displayName) (Active Plan)"
+                    } else if selectedPlan == .enterprise {
+                        return "Contact Us for Enterprise"
                     } else if selectedPlan < currentPlan {
                         return "Downgrade to \(selectedPlan.displayName)"
                     } else {
-                        let price = selectedPlan == .pro ? appState.proPriceDisplay : appState.proPlusPriceDisplay
-                        return "Upgrade to \(selectedPlan.displayName) • \(price)"
+                        let price: String
+                        switch selectedPlan {
+                        case .pro: price = appState.proPriceDisplay
+                        case .proPlus: price = appState.proPlusPriceDisplay
+                        default: price = ""
+                        }
+                        return price.isEmpty ? "Select \(selectedPlan.displayName)" : "Upgrade to \(selectedPlan.displayName) • \(price)"
                     }
                 }()
                 
                 SpeakITButton(
                     title: buttonTitle,
+                    icon: selectedPlan == .enterprise ? "envelope.fill" : (selectedPlan < currentPlan ? nil : "sparkles"),
                     style: selectedPlan < currentPlan ? .secondary : .primary,
                     isLoading: isPurchasing,
                     isEnabled: canChangePlan
@@ -226,6 +254,9 @@ struct SubscriptionPaywallView: View {
         .sheet(isPresented: $showPrivacySheet) {
             PrivacyPolicySheet()
         }
+        .sheet(isPresented: $showContactSheet) {
+            ContactSupportSheet(initialTopicKey: "enterprise")
+        }
         .sheet(item: $activeOrder) { order in
             PaymentCheckoutSheet(plan: selectedPlan, order: order) {
                 dismiss()
@@ -258,6 +289,12 @@ struct SubscriptionPaywallView: View {
         errorMessage = nil
         let currentPlan = appState.currentUser?.planType ?? .free
         
+        if selectedPlan == .enterprise {
+            HapticManager.shared.selection()
+            showContactSheet = true
+            return
+        }
+        
         if selectedPlan == .free && currentPlan != .free {
             showDowngradeAlert = true
             return
@@ -273,7 +310,13 @@ struct SubscriptionPaywallView: View {
         
         Task {
             do {
-                let amount = selectedPlan == .pro ? appState.proAmountINR : appState.proPlusAmountINR
+                let amount: Double
+                switch selectedPlan {
+                case .pro: amount = appState.proAmountINR
+                case .proPlus: amount = appState.proPlusAmountINR
+                case .enterprise: amount = 2999.0
+                case .free: amount = 0.0
+                }
                 let orderResponse = try await PaymentService.shared.createOrder(
                     plan: selectedPlan,
                     amount: amount,

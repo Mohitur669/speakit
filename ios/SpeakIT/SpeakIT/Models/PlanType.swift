@@ -33,9 +33,9 @@ enum PlanType: String, Codable, CaseIterable, Comparable {
     
     var monthlyQuota: Int {
         switch self {
-        case .free: return 10000
-        case .pro: return 100000
-        case .proPlus: return 250000
+        case .free: return 3000
+        case .pro: return 5000
+        case .proPlus: return 10000
         case .enterprise: return 1000000
         }
     }

@@ -25,6 +25,11 @@ public class TtsService {
 
     @Transactional
     public void recordHistory(Long userId, String voiceId, String voiceName, String voiceType, String format, int charCount, String text) {
+        recordHistory(userId, voiceId, voiceName, voiceType, format, charCount, text, null, null);
+    }
+
+    @Transactional
+    public TtsHistory recordHistory(Long userId, String voiceId, String voiceName, String voiceType, String format, int charCount, String text, String audioUrl, String storageKey) {
         try {
             if (userId != null) {
                 String snippet = (text != null && text.length() > 100) ? text.substring(0, 100) : (text != null ? text : "");
@@ -37,12 +42,15 @@ public class TtsService {
                         .characterCount(charCount)
                         .textSnippet(snippet)
                         .fullText(text)
+                        .audioUrl(audioUrl)
+                        .storageKey(storageKey)
                         .build();
-                ttsHistoryRepository.save(history);
+                return ttsHistoryRepository.save(history);
             }
         } catch (Exception e) {
             log.warn("Failed to record TTS history, proceeding anyway", e);
         }
+        return null;
     }
 
     public void validatePlanAccess(PlanType planType, SubscriptionStatus status, LocalDateTime expiry, TtsRequest request, Long userId) {

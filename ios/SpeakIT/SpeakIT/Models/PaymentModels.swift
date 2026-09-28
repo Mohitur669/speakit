@@ -59,6 +59,38 @@ struct PaymentHistoryItem: Codable, Identifiable {
         "REC-\(String(format: "%06d", id))"
     }
     
+    var isSuccess: Bool {
+        status.uppercased() == "SUCCESS"
+    }
+    
+    var isPending: Bool {
+        status.uppercased() == "PENDING"
+    }
+    
+    var isFailed: Bool {
+        status.uppercased() == "FAILED"
+    }
+    
+    var isRefunded: Bool {
+        status.uppercased() == "REFUNDED"
+    }
+    
+    var statusTitle: String {
+        if isSuccess { return "Payment Successful" }
+        if isPending { return "Payment Pending" }
+        if isFailed { return "Payment Failed" }
+        if isRefunded { return "Payment Refunded" }
+        return "Payment \(status.capitalized)"
+    }
+    
+    var statusDescription: String {
+        if isSuccess { return "Paid on \(formattedDate)" }
+        if isPending { return "Pending confirmation • Initiated on \(formattedDate)" }
+        if isFailed { return "Failed on \(formattedDate) • Not charged" }
+        if isRefunded { return "Refunded on \(formattedDate)" }
+        return "\(status.capitalized) on \(formattedDate)"
+    }
+    
     var formattedAmount: String {
         if currency.uppercased() == "INR" {
             return "₹\(Int(amount))"

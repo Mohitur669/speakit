@@ -143,9 +143,11 @@ public class WebhookService {
                 paymentRepository.save(payment);
 
                 User user = payment.getUser();
-                PlanType plan = java.util.Optional.ofNullable(payment.getSubscription())
-                        .map(Subscription::getPlanType)
-                        .orElse(PlanType.PRO_PLUS);
+                PlanType plan = payment.getPlanType() != null 
+                        ? payment.getPlanType()
+                        : java.util.Optional.ofNullable(payment.getSubscription())
+                                .map(Subscription::getPlanType)
+                                .orElse(PlanType.PRO_PLUS);
                 
                 subscriptionManagementService.changePlan(user, plan, null);
                 

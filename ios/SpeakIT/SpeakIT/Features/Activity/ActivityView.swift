@@ -26,6 +26,12 @@ struct ActivityView: View {
     @State private var showDeleteSelectedConfirmation: Bool = false
     @State private var isDeletingSelected: Bool = false
     
+    // Audio Playback Tracking (Lazy-loading on click)
+    @State private var playerManager = AudioPlayerManager.shared
+    @State private var playingItemId: Int64? = nil
+    @State private var loadingItemId: Int64? = nil
+    @State private var errorMessage: String? = nil
+    
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -185,6 +191,8 @@ struct ActivityView: View {
                             ForEach(historyItems) { item in
                                 SpeakITHistoryRow(
                                     item: item,
+                                    isPlaying: (playingItemId == item.id) && playerManager.isPlaying,
+                                    isLoading: loadingItemId == item.id,
                                     isSelectionMode: isSelectionMode,
                                     isSelected: selectedItemIds.contains(item.id),
                                     onSelect: {
@@ -301,6 +309,7 @@ struct ActivityView: View {
                     appState.isHistoryDirty = false
                 }
             }
+            .speakITToast(message: $errorMessage, style: .error, bottomPadding: 20)
         }
     }
     
@@ -413,14 +422,87 @@ struct ActivityView: View {
     }
     
     private func playHistoryItem(_ item: HistoryItem) {
-        if let localURL = item.localAudioURL {
-            AudioPlayerManager.shared.loadAndPlay(url: localURL, title: item.textSnippet, subtitle: item.subtitle)
-        } else {
-            // Mock preview playback for testing
-            let tempDir = FileManager.default.temporaryDirectory
-            let fallbackURL = tempDir.appendingPathComponent("history_\(item.id).mp3")
-            try? Data(repeating: 0, count: 1024).write(to: fallbackURL)
-            AudioPlayerManager.shared.loadAndPlay(url: fallbackURL, title: item.textSnippet, subtitle: item.subtitle)
+        // 1. Toggle Play / Pause if this item is already active
+        if playingItemId == item.id {
+            if playerManager.isPlaying {
+                playerManager.pause()
+            } else {
+                playerManager.play()
+            }
+            return
+        }
+        
+        // 2. If already loading this item, prevent duplicate network requests
+        if loadingItemId == item.id {
+            return
+        }
+        
+        // 3. Check for local memory URL (e.g. freshly synthesized in this session)
+        if let localURL = item.localAudioURL, FileManager.default.fileExists(atPath: localURL.path) {
+            playingItemId = item.id
+            playerManager.loadAndPlay(url: localURL, title: item.textSnippet, subtitle: item.subtitle)
+            return
+        }
+        
+        // 4. Two-Tier Audio Cache: Check persistent local disk cache (<Caches>/AudioHistory/history_{id}.mp3)
+        let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
+            .appendingPathComponent("AudioHistory", isDirectory: true)
+        try? FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)
+        let cachedFileURL = cacheDir.appendingPathComponent("history_\(item.id).mp3")
+        
+        if FileManager.default.fileExists(atPath: cachedFileURL.path),
+           let attrs = try? FileManager.default.attributesOfItem(atPath: cachedFileURL.path),
+           let fileSize = attrs[.size] as? Int64, fileSize > 0 {
+            // Fast Path: Already cached on disk -> Instant 0ms playback!
+            playingItemId = item.id
+            playerManager.loadAndPlay(url: cachedFileURL, title: item.textSnippet, subtitle: item.subtitle)
+            return
+        }
+        
+        // 5. On-Demand Lazy Download (Never pre-loaded in list view for maximum 120Hz performance)
+        loadingItemId = item.id
+        Task {
+            do {
+                var data: Data? = nil
+                
+                // Tier A: Direct zero-egress Cloudflare R2 CDN download if public URL is present
+                if let urlStr = item.audioUrl, urlStr.hasPrefix("http"), let remoteURL = URL(string: urlStr) {
+                    data = try? await HTTPClient.shared.downloadBinaryFromURL(remoteURL)
+                }
+                
+                // Tier B: Fallback to authenticated backend streaming endpoint (/api/history/{id}/audio)
+                if data == nil || data?.isEmpty == true {
+                    data = try await HTTPClient.shared.downloadBinaryGet(.historyAudio(id: item.id))
+                }
+                
+                guard let finalData = data, !finalData.isEmpty else {
+                    throw APIError.missingData
+                }
+                
+                // Persist to local disk cache for instant offline and future replay
+                try finalData.write(to: cachedFileURL, options: .atomic)
+                
+                await MainActor.run {
+                    if self.loadingItemId == item.id {
+                        self.loadingItemId = nil
+                        self.playingItemId = item.id
+                        self.playerManager.loadAndPlay(
+                            url: cachedFileURL,
+                            title: item.textSnippet,
+                            subtitle: item.subtitle
+                        )
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    if self.loadingItemId == item.id {
+                        self.loadingItemId = nil
+                    }
+                    print("Failed to load on-demand audio for history item \(item.id): \(error)")
+                    self.errorMessage = "Unable to play audio: \(error.localizedDescription)"
+                    HapticManager.shared.error()
+                }
+            }
         }
     }
     

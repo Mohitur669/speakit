@@ -8,6 +8,7 @@ import com.speakit.billing.entity.PlanType;
 import com.speakit.billing.entity.SubscriptionStatus;
 import com.speakit.tts.entity.TtsHistory;
 import com.speakit.tts.service.TtsService;
+import com.speakit.tts.service.AudioStorageService;
 import com.speakit.tts.service.ElevenLabsService;
 import com.speakit.tts.service.PollyService;
 import com.speakit.tts.service.SarvamService;
@@ -44,14 +45,16 @@ public class TtsController {
     private final TtsService ttsService;
     private final SubscriptionService subscriptionService;
     private final UserRepository userRepository;
+    private final AudioStorageService audioStorageService;
 
-    public TtsController(PollyService pollyService, ElevenLabsService elevenLabsService, SarvamService sarvamService, TtsService ttsService, SubscriptionService subscriptionService, UserRepository userRepository) {
+    public TtsController(PollyService pollyService, ElevenLabsService elevenLabsService, SarvamService sarvamService, TtsService ttsService, SubscriptionService subscriptionService, UserRepository userRepository, AudioStorageService audioStorageService) {
         this.pollyService = pollyService;
         this.elevenLabsService = elevenLabsService;
         this.sarvamService = sarvamService;
         this.ttsService = ttsService;
         this.subscriptionService = subscriptionService;
         this.userRepository = userRepository;
+        this.audioStorageService = audioStorageService;
     }
 
     private Long resolveUserId(HttpServletRequest request, Principal principal) {
@@ -152,7 +155,18 @@ public class TtsController {
                 cleanBytes[i] = audioBytes[i];
             }
             
-            ttsService.recordHistory(userId, sanitizedVoiceId, request.getVoiceName(), effectiveVoiceType, sanitizedOutputFormat, sanitizedText.length(), sanitizedText);
+            // Store synthesized audio in Cloudflare R2 / local fallback for on-demand streaming
+            String audioUrl = null;
+            String storageKey = null;
+            try {
+                var storedAudio = audioStorageService.storeAudio(userId, cleanBytes, sanitizedOutputFormat);
+                audioUrl = storedAudio.url();
+                storageKey = storedAudio.storageKey();
+            } catch (Exception e) {
+                log.warn("Failed to store audio in R2/storage for user {}: {}", userId, e.getMessage());
+            }
+
+            ttsService.recordHistory(userId, sanitizedVoiceId, request.getVoiceName(), effectiveVoiceType, sanitizedOutputFormat, sanitizedText.length(), sanitizedText, audioUrl, storageKey);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(getMediaType(sanitizedOutputFormat));

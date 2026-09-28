@@ -1,4 +1,8 @@
 name: "CodeQL Advanced Security"
+# NOTE: CodeQL Advanced Security requires a GitHub Advanced Security (GHAS) license
+# for private repositories. Both jobs below are gated on the repo being public.
+# If the repo is made public again, scanning resumes automatically — no config changes needed.
+# To enable on a private repo, purchase GHAS: https://github.com/features/security
 
 on:
   push:
@@ -15,9 +19,11 @@ permissions:
   actions: read
 
 jobs:
-  # 1. Non-Swift Languages (Fast Linux Runner - Free)
+  # 1. Non-Swift Languages (Fast Linux Runner)
+  # Skipped on private repos — CodeQL requires GHAS license for private repositories.
   analyze-general:
     name: Analyze (${{ matrix.language }})
+    if: ${{ !github.event.repository.private }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
@@ -60,12 +66,13 @@ jobs:
         with:
           category: "/language:${{ matrix.language }}"
 
-  # 2. Swift Analysis (macOS Runner with Custom xcodebuild - Free on Public Repos)
-  # Runs ONLY on scheduled weekly scans (Mondays) and manual dispatch, skipping all pushes/PRs for sub-2m CI turnaround
+  # 2. Swift Analysis (macOS Runner with Custom xcodebuild)
+  # Runs ONLY on scheduled weekly scans (Mondays) and manual dispatch, skipping all pushes/PRs for sub-2m CI turnaround.
+  # Skipped on private repos — CodeQL requires GHAS license for private repositories.
   analyze-swift:
     name: Analyze (swift)
     runs-on: macos-latest
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    if: ${{ !github.event.repository.private && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') }}
     timeout-minutes: 60
 
     steps:

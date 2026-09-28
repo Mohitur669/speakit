@@ -38,3 +38,6 @@ build/
 ### Log files
 *.log
 *.log.*
+
+### Local uploads
+uploads/

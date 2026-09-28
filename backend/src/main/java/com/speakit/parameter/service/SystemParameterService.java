@@ -22,7 +22,75 @@ public class SystemParameterService {
     private final SystemParameterRepository repository;
     public static final String CACHE_NAME = "systemParameters";
 
-    // --- 1. CACHED REPOSITORY CALLS (For stable UI Toggles, Feature Flags) ---
+    // --- 1. DYNAMICALLY GOVERNED PARAMETER ACCESS (Governed by DYNAMIC_PLAN_FEATURES_LIVE flag) ---
+
+    /**
+     * Generic parameter fetcher governed by DYNAMIC_PLAN_FEATURES_LIVE flag.
+     * If DYNAMIC_PLAN_FEATURES_LIVE is 'Y' (case-insensitive), performs a live DB fetch.
+     * If other than 'Y', retrieves the parameter from the in-memory cache.
+     *
+     * @param name The system parameter key (e.g., FREE_PLAN_SYNTHESIZE_LIMIT, STT_ENABLED)
+     * @param defaultValue Fallback value if missing from database
+     * @return The parameter value
+     */
+    public String getParameter(String name, String defaultValue) {
+        String dynamicLiveFlag = getCachedParameter("DYNAMIC_PLAN_FEATURES_LIVE", "Y");
+        if ("Y".equalsIgnoreCase(dynamicLiveFlag)) {
+            return getLiveParameter(name, defaultValue);
+        } else {
+            return getCachedParameter(name, defaultValue);
+        }
+    }
+
+    /**
+     * Backward-compatible alias for getParameter.
+     */
+    public String getPlanFeatureParameter(String name, String defaultValue) {
+        return getParameter(name, defaultValue);
+    }
+
+    public int getIntParameter(String name, int defaultValue) {
+        try {
+            return Integer.parseInt(getParameter(name, String.valueOf(defaultValue)));
+        } catch (NumberFormatException e) {
+            log.warn("Invalid integer value for parameter {}: using default {}", name, defaultValue);
+            return defaultValue;
+        }
+    }
+
+    public long getLongParameter(String name, long defaultValue) {
+        try {
+            return Long.parseLong(getParameter(name, String.valueOf(defaultValue)));
+        } catch (NumberFormatException e) {
+            log.warn("Invalid long value for parameter {}: using default {}", name, defaultValue);
+            return defaultValue;
+        }
+    }
+
+    public boolean getBooleanParameter(String name, boolean defaultValue) {
+        String val = getParameter(name, String.valueOf(defaultValue));
+        return Boolean.parseBoolean(val);
+    }
+
+    public boolean isFeatureEnabled(String name) {
+        return getBooleanParameter(name, false);
+    }
+
+    public boolean isFeatureEnabled(String name, boolean defaultValue) {
+        return getBooleanParameter(name, defaultValue);
+    }
+
+    public BigDecimal getPrice(String name, BigDecimal defaultPrice) {
+        try {
+            String value = getParameter(name, defaultPrice.toString());
+            return new BigDecimal(value);
+        } catch (Exception e) {
+            log.error("Error parsing price for parameter: {}", name);
+            return defaultPrice;
+        }
+    }
+
+    // --- 2. CACHED REPOSITORY CALLS (For stable UI Toggles, Feature Flags) ---
 
     @Cacheable(value = CACHE_NAME, key = "#name")
     public String getCachedParameter(String name, String defaultValue) {
@@ -36,11 +104,7 @@ public class SystemParameterService {
                 });
     }
 
-    public boolean isFeatureEnabled(String name) {
-        return Boolean.parseBoolean(getCachedParameter(name, "false"));
-    }
-
-    // --- 2. NON-CACHED REPOSITORY CALLS (For Prices, Payments, Rapid Changes) ---
+    // --- 3. NON-CACHED REPOSITORY CALLS (For Prices, Payments, Rapid Changes) ---
 
     public String getLiveParameter(String name, String defaultValue) {
         log.debug("Live DB fetch for: {}", name);
@@ -63,17 +127,28 @@ public class SystemParameterService {
         }
     }
 
-    // --- 3. BULK FETCH (Frontend Optimization) ---
+    // --- 4. BULK FETCH (Frontend Optimization) ---
 
     public Map<String, String> getBulkParameters(List<String> names) {
-        return repository.findByParameterNameIn(names).stream()
-                .collect(Collectors.toMap(
-                        SystemParameter::getParameterName,
-                        SystemParameter::getParameterValue
-                ));
+        String dynamicLiveFlag = getCachedParameter("DYNAMIC_PLAN_FEATURES_LIVE", "Y");
+        if ("Y".equalsIgnoreCase(dynamicLiveFlag)) {
+            return repository.findByParameterNameIn(names).stream()
+                    .collect(Collectors.toMap(
+                            SystemParameter::getParameterName,
+                            SystemParameter::getParameterValue,
+                            (v1, v2) -> v1
+                    ));
+        } else {
+            return names.stream()
+                    .collect(Collectors.toMap(
+                            name -> name,
+                            name -> getCachedParameter(name, ""),
+                            (v1, v2) -> v1
+                    ));
+        }
     }
 
-    // --- 4. WRITE OPERATIONS (With Cache Invalidation) ---
+    // --- 5. WRITE OPERATIONS (With Cache Invalidation) ---
 
     @Transactional
     @CacheEvict(value = CACHE_NAME, key = "#name")
@@ -86,5 +161,10 @@ public class SystemParameterService {
         repository.save(param);
         
         log.info("System parameter {} updated to {} by {}", name, value, updatedBy);
+    }
+
+    @CacheEvict(value = CACHE_NAME, allEntries = true)
+    public void evictCache() {
+        log.info("SystemParameter cache cleared completely.");
     }
 }

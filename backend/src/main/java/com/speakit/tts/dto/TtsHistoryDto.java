@@ -15,5 +15,6 @@ public class TtsHistoryDto {
     private int characterCount;
     private String textSnippet;
     private String fullText;
+    private String audioUrl;
     private LocalDateTime createdAt;
 }
