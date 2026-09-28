@@ -40,6 +40,20 @@ public class SystemParameterService {
         return Boolean.parseBoolean(getCachedParameter(name, "false"));
     }
 
+    /**
+     * Retrieves plan limits and feature parameters governed by DYNAMIC_PLAN_FEATURES_LIVE flag.
+     * If DYNAMIC_PLAN_FEATURES_LIVE is 'Y' (case-insensitive), fetches live parameter from DB.
+     * If other than 'Y', retrieves from fast cached parameters.
+     */
+    public String getPlanFeatureParameter(String name, String defaultValue) {
+        String dynamicLiveFlag = getCachedParameter("DYNAMIC_PLAN_FEATURES_LIVE", "Y");
+        if ("Y".equalsIgnoreCase(dynamicLiveFlag)) {
+            return getLiveParameter(name, defaultValue);
+        } else {
+            return getCachedParameter(name, defaultValue);
+        }
+    }
+
     // --- 2. NON-CACHED REPOSITORY CALLS (For Prices, Payments, Rapid Changes) ---
 
     public String getLiveParameter(String name, String defaultValue) {

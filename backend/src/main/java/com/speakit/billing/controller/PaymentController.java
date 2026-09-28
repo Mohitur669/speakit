@@ -13,6 +13,7 @@ import com.speakit.billing.service.RazorpayService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import java.time.LocalDateTime;
 import org.springframework.data.web.PagedModel;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -92,6 +93,12 @@ public class PaymentController {
         Long userId = (Long) request.getAttribute("userId");
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        try {
+            paymentRepository.markStalePendingPaymentsAsFailed(LocalDateTime.now().minusMinutes(30));
+        } catch (Exception e) {
+            log.warn("Failed to sweep stale pending payments before fetching history: {}", e.getMessage());
         }
 
         Page<PaymentHistoryDto> historyPage = paymentRepository

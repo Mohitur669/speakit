@@ -17,6 +17,7 @@ enum APIError: LocalizedError {
     case serverError(statusCode: Int, message: String)
     case unauthorized
     case forbidden
+    case emailNotVerified(email: String)
     case decodingError(Error)
     case missingData
     
@@ -46,6 +47,10 @@ enum APIError: LocalizedError {
             return "Your session has expired. Please sign in again."
         case .forbidden:
             return "You do not have permission to access this feature. Please upgrade your plan."
+        case .emailNotVerified(let email):
+            return email.isEmpty
+                ? "Your email address is not verified. Please verify your account."
+                : "Please verify your email address (\(email)) to sign in."
         case .decodingError:
             return "Received an unexpected response from the server. Please try again."
         case .missingData:
@@ -98,6 +103,13 @@ final class HTTPClient {
         }
         
         if httpResponse.statusCode == 403 {
+            if let dict = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] {
+                let errCode = (dict["error"] as? String) ?? ""
+                if errCode == "EMAIL_NOT_VERIFIED" {
+                    let email = (dict["message"] as? String) ?? ""
+                    throw APIError.emailNotVerified(email: email)
+                }
+            }
             throw APIError.forbidden
         }
         

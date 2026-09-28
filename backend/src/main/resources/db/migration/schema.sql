@@ -161,6 +161,7 @@ INSERT INTO system_parameters (parameter_name, parameter_value, description) VAL
 ('ENABLE_RAZORPAY', 'true', 'Global toggle for payment gateway'),
 ('PRO_PLAN_PRICE_INR', '1', 'Current price for Pro monthly subscription'),
 ('PRO_PLUS_PLAN_PRICE_INR', '2', 'Current price for Pro Plus subscription'),
+('IOS_FREE_PLAN_PRICE', '0', 'Dollar price for Free tier on iOS App Store'),
 ('IOS_PRO_PLAN_PRICE', '9.99', 'Dollar price for Pro monthly subscription on iOS App Store'),
 ('IOS_PRO_PLUS_PLAN_PRICE', '19.99', 'Dollar price for Pro Plus subscription on iOS App Store'),
 ('ENTERPRISE_PLAN_PRICE_INR', '0', 'Contact sales for Enterprise pricing'),
@@ -176,6 +177,7 @@ INSERT INTO system_parameters (parameter_name, parameter_value, description) VAL
 ('MONTHLY_PRO_PLUS_CHARACTERS', '10000', 'Total monthly character quota for Pro Plus tier'),
 ('MONTHLY_ENTERPRISE_CHARACTERS', '1000000', 'Total monthly character quota for Enterprise tier'),
 ('SHOW_BETA_FEATURES', 'false', 'Toggle for experimental UI components'),
+('DYNAMIC_PLAN_FEATURES_LIVE', 'Y', 'When Y, plan limits and features bypass cache and fetch live parameters; otherwise use cached parameters'),
 ('SYSTEM_STATUS', 'Operational', 'Current live status of the AI voice engine'),
 ('FREE_PLAN_SYNTHESIZE_LIMIT', '5', 'Daily synthesis limit for free tier users'),
 ('FREE_PLAN_FEATURES', 'Standard Voices;100 chars / request;5 daily syntheses', 'Features list for free tier'),
@@ -269,6 +271,32 @@ CREATE TABLE IF NOT EXISTS otp_verifications (
 
 CREATE INDEX IF NOT EXISTS idx_otp_email ON otp_verifications(email);
 CREATE INDEX IF NOT EXISTS idx_otp_expires_at ON otp_verifications(expires_at);
+
+-- 10. Pending Registrations Staging Table (For Pre-Verification Signup Quarantine)
+CREATE SEQUENCE IF NOT EXISTS pending_registrations_seq START WITH 1 INCREMENT BY 50;
+
+CREATE TABLE IF NOT EXISTS pending_registrations (
+    id BIGINT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL,
+    email VARCHAR(100) NOT NULL,
+    full_name VARCHAR(100),
+    phone_number VARCHAR(15),
+    password_hash VARCHAR(255) NOT NULL,
+    otp_hash VARCHAR(255) NOT NULL,
+    attempts_remaining INTEGER NOT NULL DEFAULT 5,
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING', -- PENDING, VERIFIED, EXPIRED
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    version BIGINT NOT NULL DEFAULT 0
+);
+
+COMMENT ON TABLE pending_registrations IS 'Pre-verification signup staging table ensuring primary users table holds only verified users';
+
+CREATE INDEX IF NOT EXISTS idx_pending_reg_email ON pending_registrations(email);
+CREATE INDEX IF NOT EXISTS idx_pending_reg_username ON pending_registrations(username);
+CREATE INDEX IF NOT EXISTS idx_pending_reg_status ON pending_registrations(status);
+CREATE INDEX IF NOT EXISTS idx_pending_reg_expires_at ON pending_registrations(expires_at);
 
 -- Migration Helper for existing databases
 DO $$

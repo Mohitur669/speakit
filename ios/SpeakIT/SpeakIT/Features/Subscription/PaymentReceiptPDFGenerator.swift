@@ -92,7 +92,22 @@ enum PaymentReceiptPDFGenerator {
             // Column 2: Transaction Details
             drawSectionHeader("PAYMENT DETAILS", at: CGPoint(x: col2X, y: currentY))
             drawMetaField(label: "Billing Date", value: item.formattedDate, x: col2X, y: currentY + 22, width: columnWidth)
-            drawMetaField(label: "Payment Status", value: item.status == "SUCCESS" ? "PAID / SUCCESS" : item.status, x: col2X, y: currentY + 56, width: columnWidth, valueColor: UIColor(red: 16/255, green: 185/255, blue: 129/255, alpha: 1.0))
+            let pdfStatusText: String
+            let pdfStatusColor: UIColor
+            if item.isSuccess {
+                pdfStatusText = "PAID / SUCCESS"
+                pdfStatusColor = UIColor(red: 16/255, green: 185/255, blue: 129/255, alpha: 1.0)
+            } else if item.isPending {
+                pdfStatusText = "PENDING CONFIRMATION"
+                pdfStatusColor = UIColor(red: 245/255, green: 158/255, blue: 11/255, alpha: 1.0)
+            } else if item.isFailed {
+                pdfStatusText = "FAILED / UNPAID"
+                pdfStatusColor = UIColor(red: 239/255, green: 68/255, blue: 68/255, alpha: 1.0)
+            } else {
+                pdfStatusText = item.status.uppercased()
+                pdfStatusColor = UIColor(red: 100/255, green: 116/255, blue: 139/255, alpha: 1.0)
+            }
+            drawMetaField(label: "Payment Status", value: pdfStatusText, x: col2X, y: currentY + 56, width: columnWidth, valueColor: pdfStatusColor)
             drawMetaField(label: "Order Reference", value: item.razorpayOrderId ?? "TXN-\(item.id)", x: col2X, y: currentY + 90, width: columnWidth)
             
             currentY += 136

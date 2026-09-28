@@ -104,13 +104,14 @@ struct BillingHistorySheet: View {
         }) {
             HStack(spacing: 14) {
                 ZStack {
+                    let circleColor: Color = item.isSuccess ? Color.speakitSuccess : (item.isPending ? Color.speakitWarning : Color.speakitError)
                     Circle()
-                        .fill(item.status == "SUCCESS" ? Color.speakitSuccess.opacity(0.12) : Color.speakitTextTertiary.opacity(0.12))
+                        .fill(circleColor.opacity(0.12))
                         .frame(width: 40, height: 40)
                     
-                    Image(systemName: item.status == "SUCCESS" ? "checkmark" : "clock")
+                    Image(systemName: item.isSuccess ? "checkmark" : (item.isPending ? "clock" : "xmark"))
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(item.status == "SUCCESS" ? Color.speakitSuccess : Color.speakitTextTertiary)
+                        .foregroundColor(circleColor)
                 }
                 
                 VStack(alignment: .leading, spacing: 3) {
@@ -138,9 +139,10 @@ struct BillingHistorySheet: View {
                         .foregroundColor(Color.speakitTextPrimary)
                     
                     HStack(spacing: 4) {
+                        let statusColor: Color = item.isSuccess ? Color.speakitSuccess : (item.isPending ? Color.speakitWarning : Color.speakitError)
                         Text(item.status)
                             .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(item.status == "SUCCESS" ? Color.speakitSuccess : Color.speakitWarning)
+                            .foregroundColor(statusColor)
                         
                         Image(systemName: "chevron.right")
                             .font(.system(size: 10, weight: .semibold))
