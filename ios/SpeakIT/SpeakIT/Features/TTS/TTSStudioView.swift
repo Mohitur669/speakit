@@ -283,19 +283,23 @@ struct TTSStudioView: View {
                 }
                 .accessibilityIdentifier("tts.generate")
                 .padding(.top, 4)
+                .padding(.bottom, synthesizedAudioURL == nil ? 32 : 0)
                 
-                // Inline Audio Player Card
-                SpeakITAudioPlayer(
-                    playerManager: playerManager,
-                    onShare: {
-                        if playerManager.currentAudioURL != nil {
-                            showShareSheet = true
+                // Inline Audio Player Card (Only visible once speech has been generated)
+                if synthesizedAudioURL != nil {
+                    SpeakITAudioPlayer(
+                        playerManager: playerManager,
+                        onShare: {
+                            if playerManager.currentAudioURL != nil {
+                                showShareSheet = true
+                            }
                         }
-                    }
-                )
-                .accessibilityIdentifier("tts.audioPlayer")
-                .padding(.top, 4)
-                .padding(.bottom, 24)
+                    )
+                    .accessibilityIdentifier("tts.audioPlayer")
+                    .padding(.top, 4)
+                    .padding(.bottom, 24)
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+                }
             }
             .padding(.horizontal, SpeakITSpacing.screenMargin)
         }
@@ -359,7 +363,9 @@ struct TTSStudioView: View {
                 
                 await MainActor.run {
                     self.isSynthesizing = false
-                    self.synthesizedAudioURL = audioURL
+                    withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
+                        self.synthesizedAudioURL = audioURL
+                    }
                     // Deduct credit immediately at the top bar
                     self.appState.recordCharacterUsage(inputText.count)
                     HapticManager.shared.success()
@@ -395,6 +401,9 @@ struct TTSStudioView: View {
         let fallbackURL = tempDir.appendingPathComponent("sample_preview.mp3")
         try? Data(repeating: 0, count: 1024).write(to: fallbackURL)
         self.appState.recordCharacterUsage(inputText.count)
+        withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
+            self.synthesizedAudioURL = fallbackURL
+        }
         self.playerManager.load(
             url: fallbackURL,
             title: String(inputText.prefix(40)),

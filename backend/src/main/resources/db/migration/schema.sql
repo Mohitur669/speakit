@@ -65,6 +65,10 @@ CREATE TABLE IF NOT EXISTS tts_history (
     text_snippet VARCHAR(100),
     full_text TEXT,
 
+    -- Audio Storage (Cloudflare R2 / S3 or Local Fallback)
+    audio_url VARCHAR(512),
+    storage_key VARCHAR(255),
+
     -- Audit Fields
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -117,6 +121,7 @@ CREATE TABLE IF NOT EXISTS payments (
     id BIGINT PRIMARY KEY,
     user_id BIGINT NOT NULL REFERENCES users(id),
     subscription_id BIGINT REFERENCES subscriptions(id),
+    plan_type VARCHAR(20),
     razorpay_order_id VARCHAR(100) UNIQUE NOT NULL,
     razorpay_payment_id VARCHAR(100),
     razorpay_signature VARCHAR(255),
@@ -460,6 +465,23 @@ BEGIN
     -- Ensure full_text exists on tts_history table
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tts_history' AND column_name='full_text') THEN
         ALTER TABLE tts_history ADD COLUMN full_text TEXT;
+    END IF;
+
+    -- Ensure audio_url and storage_key exist on tts_history table
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tts_history' AND column_name='audio_url') THEN
+        ALTER TABLE tts_history ADD COLUMN audio_url VARCHAR(512);
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tts_history' AND column_name='storage_key') THEN
+        ALTER TABLE tts_history ADD COLUMN storage_key VARCHAR(255);
+    END IF;
+
+    -- Ensure plan_type exists on payments table (Immutable Audit Ledger)
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='payments' AND column_name='plan_type') THEN
+        ALTER TABLE payments ADD COLUMN plan_type VARCHAR(20);
+        UPDATE payments p SET plan_type = s.plan_type
+        FROM subscriptions s
+        WHERE p.subscription_id = s.id AND p.plan_type IS NULL;
     END IF;
 
     -- Ensure iOS plan price parameters exist

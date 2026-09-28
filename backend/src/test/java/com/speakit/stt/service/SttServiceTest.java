@@ -49,6 +49,7 @@ class SttServiceTest {
                 .build();
 
         lenient().when(systemParameterService.getLiveParameter(anyString(), anyString())).thenReturn("60000");
+        lenient().when(systemParameterService.getLongParameter(anyString(), anyLong())).thenReturn(60000L);
         lenient().when(sarvamProvider.getName()).thenReturn("SARVAM");
         when(sarvamProvider.transcribe(any(File.class), eq("en"))).thenReturn(expected);
         when(userRepository.getReferenceById(1L)).thenReturn(new User());
@@ -73,6 +74,7 @@ class SttServiceTest {
         lenient().when(sarvamProvider.getName()).thenReturn("SARVAM");
         lenient().when(elevenLabsProvider.getName()).thenReturn("ELEVEN_LABS");
         lenient().when(systemParameterService.getLiveParameter(anyString(), anyString())).thenReturn("60000");
+        lenient().when(systemParameterService.getLongParameter(anyString(), anyLong())).thenReturn(60000L);
         
         // Primary fails
         when(sarvamProvider.transcribe(any(File.class), eq("en"))).thenThrow(new RuntimeException("Service Down"));

@@ -53,4 +53,10 @@ public class TtsHistory extends BaseEntity {
 
     @Column(name = "full_text", columnDefinition = "TEXT")
     private String fullText;
+
+    @Column(name = "audio_url", length = 512)
+    private String audioUrl;
+
+    @Column(name = "storage_key", length = 255)
+    private String storageKey;
 }
