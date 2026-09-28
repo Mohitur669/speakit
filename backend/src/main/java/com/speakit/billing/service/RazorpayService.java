@@ -126,22 +126,58 @@ public class RazorpayService {
     @Transactional
     public boolean verifyPayment(PaymentVerificationRequest request, User user) {
         try {
-            boolean isValid;
-            if (request.getRazorpaySubscriptionId() != null && request.getRazorpaySubscriptionId().startsWith("sub_sim_")) {
+            String subOrOrderId = (request.getRazorpaySubscriptionId() != null && !request.getRazorpaySubscriptionId().isBlank())
+                    ? request.getRazorpaySubscriptionId().trim()
+                    : (request.getRazorpayOrderId() != null ? request.getRazorpayOrderId().trim() : null);
+
+            boolean isValid = false;
+            if (subOrOrderId != null && subOrOrderId.startsWith("sub_sim_")) {
                 isValid = true;
-            } else {
-                isValid = verifySubscriptionSignature(
-                        request.getRazorpaySubscriptionId(),
-                        request.getRazorpayPaymentId(),
-                        request.getRazorpaySignature(),
-                        razorpayConfig.getKeySecret());
+            } else if (subOrOrderId != null && request.getRazorpayPaymentId() != null && request.getRazorpaySignature() != null) {
+                String secret = razorpayConfig.getKeySecret();
+                String paymentId = request.getRazorpayPaymentId().trim();
+                String signature = request.getRazorpaySignature().trim();
+                
+                // 1. Try official Razorpay SDK Subscription verification
+                try {
+                    JSONObject subOptions = new JSONObject();
+                    subOptions.put("razorpay_subscription_id", subOrOrderId);
+                    subOptions.put("razorpay_payment_id", paymentId);
+                    subOptions.put("razorpay_signature", signature);
+                    if (com.razorpay.Utils.verifySubscription(subOptions, secret)) {
+                        isValid = true;
+                    }
+                } catch (Exception e) {
+                    log.debug("SDK verifySubscription check failed: {}", e.getMessage());
+                }
+
+                // 2. Try official Razorpay SDK Order verification (in case gateway returns order_id context)
+                if (!isValid) {
+                    try {
+                        JSONObject orderOptions = new JSONObject();
+                        orderOptions.put("razorpay_order_id", subOrOrderId);
+                        orderOptions.put("razorpay_payment_id", paymentId);
+                        orderOptions.put("razorpay_signature", signature);
+                        if (com.razorpay.Utils.verifyPaymentSignature(orderOptions, secret)) {
+                            isValid = true;
+                        }
+                    } catch (Exception e) {
+                        log.debug("SDK verifyPaymentSignature check failed: {}", e.getMessage());
+                    }
+                }
+
+                // 3. Fallback: Constant-time direct HMAC comparison for both signature permutations
+                if (!isValid) {
+                    isValid = verifyDirectHmac(paymentId + "|" + subOrOrderId, signature, secret)
+                           || verifyDirectHmac(subOrOrderId + "|" + paymentId, signature, secret);
+                }
             }
 
-            if (isValid) {
-                Payment payment = paymentRepository.findByRazorpayOrderId(request.getRazorpaySubscriptionId())
+            if (isValid && subOrOrderId != null) {
+                Payment payment = paymentRepository.findByRazorpayOrderId(subOrOrderId)
                         .orElseGet(() -> {
                             Subscription sub = subscriptionRepository
-                                    .findByRazorpaySubscriptionId(request.getRazorpaySubscriptionId())
+                                    .findByRazorpaySubscriptionId(subOrOrderId)
                                     .orElseThrow(() -> new RuntimeException("Subscription record not found"));
                             return paymentRepository
                                     .findByUserIdOrderByCreatedAtDesc(user.getId(),
@@ -154,18 +190,16 @@ public class RazorpayService {
                         });
 
                 // Security Fix: IDOR Check
-                // Ensure that the payment record fetched actually belongs to the authenticated
-                // user
+                // Ensure that the payment record fetched actually belongs to the authenticated user
                 if (!payment.getUser().getId().equals(user.getId())) {
                     log.error(
                             "SECURITY ALERT: User {} attempted to verify payment for SubscriptionId {} belonging to User {}",
-                            user.getId(), request.getRazorpaySubscriptionId(), payment.getUser().getId());
+                            user.getId(), subOrOrderId, payment.getUser().getId());
                     return false;
                 }
 
                 if (payment.getStatus() == PaymentStatus.SUCCESS) {
-                    log.warn("Idempotency Triggered: Payment already processed for subscription {}",
-                            request.getRazorpaySubscriptionId());
+                    log.warn("Idempotency Triggered: Payment already processed for subscription {}", subOrOrderId);
                     return true;
                 }
 
@@ -176,13 +210,13 @@ public class RazorpayService {
                 paymentRepository.save(payment);
 
                 // 2. Cancel previous active subscription on the Razorpay gateway and DB
-                cancelPreviousActiveSubscription(user, request.getRazorpaySubscriptionId());
+                cancelPreviousActiveSubscription(user, subOrOrderId);
 
                 // 3. Delegate Plan Change (Safe, Rank-Aware)
                 PlanType targetPlan = payment.getSubscription() != null ? payment.getSubscription().getPlanType()
                         : PlanType.PRO_PLUS;
 
-                subscriptionManagementService.changePlan(user, targetPlan, request.getRazorpaySubscriptionId());
+                subscriptionManagementService.changePlan(user, targetPlan, subOrOrderId);
 
                 return true;
             }
@@ -203,8 +237,7 @@ public class RazorpayService {
                             if (!oldSubId.startsWith("sub_sim_")) {
                                 try {
                                     JSONObject cancelRequest = new JSONObject();
-                                    cancelRequest.put("cancel_at_cycle_end", false); // Cancel immediately to prevent double
-                                                                                     // charges
+                                    cancelRequest.put("cancel_at_cycle_end", false); // Cancel immediately to prevent double charges
                                     razorpayClient.subscriptions.cancel(oldSubId, cancelRequest);
                                     log.info("Successfully cancelled old Razorpay subscription {} for user {}", oldSubId,
                                             user.getUsername());
@@ -224,15 +257,13 @@ public class RazorpayService {
         }
     }
 
-    private boolean verifySubscriptionSignature(String subscriptionId, String paymentId, String signature,
-            String secret) {
+    private boolean verifyDirectHmac(String data, String signature, String secret) {
         try {
-            String data = paymentId + "|" + subscriptionId;
             javax.crypto.Mac sha256HMAC = javax.crypto.Mac.getInstance("HmacSHA256");
-            javax.crypto.spec.SecretKeySpec secretKey = new javax.crypto.spec.SecretKeySpec(secret.getBytes("UTF-8"),
-                    "HmacSHA256");
+            javax.crypto.spec.SecretKeySpec secretKey = new javax.crypto.spec.SecretKeySpec(
+                    secret.getBytes(java.nio.charset.StandardCharsets.UTF_8), "HmacSHA256");
             sha256HMAC.init(secretKey);
-            byte[] hash = sha256HMAC.doFinal(data.getBytes("UTF-8"));
+            byte[] hash = sha256HMAC.doFinal(data.getBytes(java.nio.charset.StandardCharsets.UTF_8));
 
             StringBuilder hexString = new StringBuilder();
             for (byte b : hash) {
@@ -242,14 +273,31 @@ public class RazorpayService {
                 }
                 hexString.append(hex);
             }
-            // SEC-05: Use constant-time comparison to prevent timing-side-channel
-            // attacks on HMAC signature verification (CWE-208).
+            // SEC-05: Use constant-time comparison to prevent timing-side-channel attacks (CWE-208).
             return java.security.MessageDigest.isEqual(
                     hexString.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8),
                     signature.getBytes(java.nio.charset.StandardCharsets.UTF_8));
         } catch (Exception e) {
-            log.error("Subscription signature verification failed manually", e);
+            log.error("Direct HMAC verification failed", e);
             return false;
+        }
+    }
+
+    /**
+     * Sweeps stale PENDING payments created more than 30 minutes ago and marks them FAILED,
+     * adhering to Razorpay transaction lifecycle and billing standards.
+     */
+    @org.springframework.scheduling.annotation.Scheduled(fixedRate = 900_000)
+    @Transactional
+    public void cleanupStalePendingPayments() {
+        try {
+            java.time.LocalDateTime cutoff = java.time.LocalDateTime.now().minusMinutes(30);
+            int updated = paymentRepository.markStalePendingPaymentsAsFailed(cutoff);
+            if (updated > 0) {
+                log.info("Razorpay housekeeping: Marked {} stale pending payments as FAILED", updated);
+            }
+        } catch (Exception e) {
+            log.error("Error during stale pending payments sweep", e);
         }
     }
 }

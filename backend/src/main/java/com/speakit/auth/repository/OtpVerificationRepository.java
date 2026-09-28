@@ -27,4 +27,8 @@ public interface OtpVerificationRepository extends JpaRepository<OtpVerification
     @Modifying
     @Query("DELETE FROM OtpVerification o WHERE o.expiresAt < :now")
     int pruneExpiredOtps(@Param("now") LocalDateTime now);
+
+    @Modifying
+    @Query("DELETE FROM OtpVerification o WHERE o.user.id IN (SELECT u.id FROM User u WHERE u.emailVerified = false AND u.createdAt < :cutoff)")
+    int deleteOtpsForUnverifiedUsersOlderThan(@Param("cutoff") LocalDateTime cutoff);
 }

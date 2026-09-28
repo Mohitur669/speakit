@@ -25,8 +25,10 @@ import com.speakit.tts.dto.*;
 import com.speakit.billing.entity.PlanType;
 import com.speakit.user.entity.User;
 import com.speakit.auth.entity.OtpVerification;
+import com.speakit.auth.entity.PendingRegistration;
 import com.speakit.user.repository.UserRepository;
 import com.speakit.auth.repository.OtpVerificationRepository;
+import com.speakit.auth.repository.PendingRegistrationRepository;
 import com.speakit.security.JwtService;
 import com.speakit.shared.util.Sanitizer;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +40,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.scheduling.annotation.Scheduled;
 
 import com.speakit.user.dto.AvatarResponse;
 import com.speakit.user.entity.UserAvatarHistory;
@@ -56,6 +59,7 @@ import java.util.Optional;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final PendingRegistrationRepository pendingRegistrationRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
@@ -82,8 +86,8 @@ public class AuthService {
 
     @Transactional
     public AuthResponse register(AuthRequest request) {
-        String sanitizedUsername = Sanitizer.sanitize(request.getUsername()).toLowerCase();
-        String sanitizedEmail = Sanitizer.sanitize(request.getEmail()).toLowerCase();
+        String sanitizedUsername = Sanitizer.sanitize(request.getUsername()).toLowerCase().trim();
+        String sanitizedEmail = Sanitizer.sanitize(request.getEmail()).toLowerCase().trim();
         String sanitizedPhone = (request.getPhoneNumber() != null && !request.getPhoneNumber().isBlank())
                 ? Sanitizer.sanitize(request.getPhoneNumber()).trim()
                 : null;
@@ -91,63 +95,60 @@ public class AuthService {
                 ? Sanitizer.sanitize(request.getFullName()).trim()
                 : null;
 
-        if (userRepository.findByUsername(sanitizedUsername).isPresent()) {
-            throw new RuntimeException("Username already taken");
-        }
+        // 1. Conflict check against permanent, verified users in users table
         if (userRepository.findByEmail(sanitizedEmail).isPresent()) {
             throw new RuntimeException("Email already taken");
+        }
+        if (userRepository.findByUsername(sanitizedUsername).isPresent()) {
+            throw new RuntimeException("Username already taken");
         }
         if (sanitizedPhone != null && userRepository.findByPhoneNumber(sanitizedPhone).isPresent()) {
             throw new RuntimeException("Phone number already taken");
         }
 
-        var user = User.builder()
+        // 2. Conflict check in pending_registrations staging table
+        var pendingByUsername = pendingRegistrationRepository.findFirstByUsernameIgnoreCaseAndStatusOrderByCreatedAtDesc(sanitizedUsername, "PENDING");
+        if (pendingByUsername.isPresent() && !pendingByUsername.get().getEmail().equalsIgnoreCase(sanitizedEmail)) {
+            if (pendingByUsername.get().getExpiresAt().isAfter(LocalDateTime.now())) {
+                throw new RuntimeException("Username already taken");
+            }
+        }
+
+        // 3. Expire previous pending registrations for this email (seamless retry support)
+        pendingRegistrationRepository.expireActiveRegistrationsForEmail(sanitizedEmail);
+
+        // 4. Generate secure OTP
+        String rawOtp = generateSecureOtp();
+        String otpHash = hashOtp(rawOtp);
+
+        // 5. Stage registration in pending_registrations table (primary users table is not touched!)
+        PendingRegistration pendingRegistration = PendingRegistration.builder()
                 .username(sanitizedUsername)
                 .fullName(sanitizedFullName)
                 .email(sanitizedEmail)
                 .phoneNumber(sanitizedPhone)
-                .password(passwordEncoder.encode(request.getPassword()))
-                .role("ROLE_USER")
-                .planType(PlanType.FREE)
-                .emailVerified(false)
-                .accountStatus("PENDING_VERIFICATION")
-                .consentAccepted(true)
-                .consentTimestamp(LocalDateTime.now())
-                .build();
-        user = userRepository.save(user);
-
-        log.info("New user registered in pending verification status: {}", sanitizedUsername);
-
-        String rawOtp = generateSecureOtp();
-        String otpHash = hashOtp(rawOtp);
-        
-        OtpVerification verification = OtpVerification.builder()
-                .user(user)
-                .email(sanitizedEmail)
+                .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .otpHash(otpHash)
-                .purpose("SIGNUP_VERIFICATION")
-                .expiresAt(LocalDateTime.now().plusMinutes(otpExpiryMinutes))
                 .attemptsRemaining(5)
-                .consumed(false)
+                .status("PENDING")
+                .expiresAt(LocalDateTime.now().plusMinutes(otpExpiryMinutes))
                 .build();
-        otpVerificationRepository.save(verification);
+        pendingRegistrationRepository.save(pendingRegistration);
 
+        // 6. Send OTP email
         otpEmailSender.sendOtpEmail(sanitizedEmail, sanitizedUsername, rawOtp, otpExpiryMinutes);
 
+        log.info("New registration staged in pending_registrations for email: {}", maskEmail(sanitizedEmail));
+
         return AuthResponse.builder()
-                .username(user.getUsername())
-                .fullName(user.getFullName())
-                .email(user.getEmail())
-                .phoneNumber(user.getPhoneNumber())
-                .avatarUrl(user.getAvatarUrl())
-                .role(user.getRole())
-                .planType(user.getPlanType().name())
-                .subscriptionStatus(user.getSubscriptionStatus() != null ? user.getSubscriptionStatus().name() : "ACTIVE")
-                .planExpiry(user.getPlanExpiry())
-                .sessionVersion(user.getSessionVersion())
-                .sessionDurationMs(sessionDurationMs)
-                .idleTimeoutMs(idleTimeoutMs)
-                .emailVerified(user.isEmailVerified())
+                .username(sanitizedUsername)
+                .fullName(sanitizedFullName)
+                .email(sanitizedEmail)
+                .phoneNumber(sanitizedPhone)
+                .role("ROLE_USER")
+                .planType(PlanType.FREE.name())
+                .subscriptionStatus("ACTIVE")
+                .emailVerified(false)
                 .avatarDailyLimit(avatarDailyLimit)
                 .avatarChangeCount(0)
                 .build();
@@ -203,18 +204,27 @@ public class AuthService {
     }
 
     public boolean isUsernameTaken(String username) {
-        return userRepository.findByUsername(Sanitizer.sanitize(username).toLowerCase()).isPresent();
+        String sanitized = Sanitizer.sanitize(username).toLowerCase().trim();
+        if (userRepository.findByUsername(sanitized).isPresent()) {
+            return true;
+        }
+        return pendingRegistrationRepository
+                .findFirstByUsernameIgnoreCaseAndStatusOrderByCreatedAtDesc(sanitized, "PENDING")
+                .filter(p -> p.getExpiresAt().isAfter(LocalDateTime.now()))
+                .isPresent();
     }
 
     public boolean isEmailTaken(String email) {
-        return userRepository.findByEmail(Sanitizer.sanitize(email).toLowerCase()).isPresent();
+        String sanitized = Sanitizer.sanitize(email).toLowerCase().trim();
+        return userRepository.findByEmail(sanitized).isPresent();
     }
 
     public boolean isPhoneTaken(String phone) {
         if (phone == null || phone.isBlank()) {
             return false;
         }
-        return userRepository.findByPhoneNumber(Sanitizer.sanitize(phone).trim()).isPresent();
+        String sanitized = Sanitizer.sanitize(phone).trim();
+        return userRepository.findByPhoneNumber(sanitized).isPresent();
     }
 
     public AuthResponse getUserProfile(String username) {
@@ -481,7 +491,66 @@ public class AuthService {
     @Transactional
     public AuthResponse verifyEmail(VerifyEmailRequest request) {
         String sanitizedEmail = Sanitizer.sanitize(request.getEmail()).toLowerCase().trim();
-        
+
+        // 1. Check pending_registrations staging table (Standard flow)
+        var pendingOpt = pendingRegistrationRepository
+                .findFirstByEmailIgnoreCaseAndStatusOrderByCreatedAtDesc(sanitizedEmail, "PENDING");
+
+        if (pendingOpt.isPresent()) {
+            PendingRegistration pending = pendingOpt.get();
+
+            if (pending.getExpiresAt().isBefore(LocalDateTime.now())) {
+                pending.setStatus("EXPIRED");
+                pendingRegistrationRepository.save(pending);
+                throw new RuntimeException("Verification code has expired. Please request a new one.");
+            }
+
+            if (pending.getAttemptsRemaining() <= 0) {
+                pending.setStatus("EXPIRED");
+                pendingRegistrationRepository.save(pending);
+                throw new RuntimeException("Maximum attempts exceeded. Please request a new code.");
+            }
+
+            String providedHash = hashOtp(request.getOtp());
+            if (!pending.getOtpHash().equals(providedHash)) {
+                pending.setAttemptsRemaining(pending.getAttemptsRemaining() - 1);
+                pendingRegistrationRepository.save(pending);
+                throw new RuntimeException("Invalid verification code. Attempts remaining: " + pending.getAttemptsRemaining());
+            }
+
+            // OTP verified! Mark staging record as VERIFIED
+            pending.setStatus("VERIFIED");
+            pendingRegistrationRepository.save(pending);
+
+            // Double check race condition for unique constraints
+            if (userRepository.findByEmail(pending.getEmail()).isPresent()) {
+                throw new RuntimeException("Email already taken");
+            }
+            if (userRepository.findByUsername(pending.getUsername()).isPresent()) {
+                throw new RuntimeException("Username already taken");
+            }
+
+            // Promote staging record to permanent verified user in users table
+            User newUser = User.builder()
+                    .username(pending.getUsername())
+                    .fullName(pending.getFullName())
+                    .email(pending.getEmail())
+                    .phoneNumber(pending.getPhoneNumber())
+                    .password(pending.getPasswordHash()) // already BCrypt encoded
+                    .role("ROLE_USER")
+                    .planType(PlanType.FREE)
+                    .emailVerified(true)
+                    .accountStatus("ACTIVE")
+                    .consentAccepted(true)
+                    .consentTimestamp(LocalDateTime.now())
+                    .build();
+            newUser = userRepository.save(newUser);
+
+            log.info("User {} verified and promoted from staging to users table", newUser.getUsername());
+            return authenticate(newUser, newUser.getSessionVersion());
+        }
+
+        // 2. Legacy fallback for existing users already in users table
         OtpVerification verification = otpVerificationRepository
                 .findFirstByEmailIgnoreCaseAndPurposeAndConsumedFalseOrderByCreatedAtDesc(sanitizedEmail, "SIGNUP_VERIFICATION")
                 .or(() -> otpVerificationRepository.findFirstByEmailAndPurposeAndConsumedFalseOrderByCreatedAtDesc(sanitizedEmail, "SIGNUP_VERIFICATION"))
@@ -527,31 +596,54 @@ public class AuthService {
 
     @Transactional
     public void resendOtp(ResendOtpRequest request) {
-        String email = Sanitizer.sanitize(request.getEmail()).toLowerCase();
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        String email = Sanitizer.sanitize(request.getEmail()).toLowerCase().trim();
 
-        if (user.isEmailVerified()) {
-            throw new RuntimeException("Email is already verified");
+        // 1. Check pending_registrations staging table (Standard flow)
+        var pendingOpt = pendingRegistrationRepository
+                .findFirstByEmailIgnoreCaseAndStatusOrderByCreatedAtDesc(email, "PENDING");
+
+        if (pendingOpt.isPresent()) {
+            PendingRegistration pending = pendingOpt.get();
+            String rawOtp = generateSecureOtp();
+            pending.setOtpHash(hashOtp(rawOtp));
+            pending.setExpiresAt(LocalDateTime.now().plusMinutes(otpExpiryMinutes));
+            pending.setAttemptsRemaining(5);
+            pendingRegistrationRepository.save(pending);
+
+            otpEmailSender.sendOtpEmail(email, pending.getUsername(), rawOtp, otpExpiryMinutes);
+            log.info("Signup OTP resent to pending staging registration for email: {}", maskEmail(email));
+            return;
         }
 
-        otpVerificationRepository.invalidateExistingOtps(email, "SIGNUP_VERIFICATION");
+        // 2. Check users table (Legacy unverified fallback)
+        Optional<User> userOpt = userRepository.findByEmail(email);
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            if (user.isEmailVerified()) {
+                throw new RuntimeException("Email is already verified");
+            }
 
-        String rawOtp = generateSecureOtp();
-        String otpHash = hashOtp(rawOtp);
-        OtpVerification verification = OtpVerification.builder()
-                .user(user)
-                .email(email)
-                .otpHash(otpHash)
-                .purpose("SIGNUP_VERIFICATION")
-                .expiresAt(LocalDateTime.now().plusMinutes(otpExpiryMinutes))
-                .attemptsRemaining(5)
-                .consumed(false)
-                .build();
-        otpVerificationRepository.save(verification);
+            otpVerificationRepository.invalidateExistingOtps(email, "SIGNUP_VERIFICATION");
 
-        otpEmailSender.sendOtpEmail(email, user.getUsername(), rawOtp, otpExpiryMinutes);
-        log.info("Signup OTP resent to email: {}", maskEmail(email));
+            String rawOtp = generateSecureOtp();
+            String otpHash = hashOtp(rawOtp);
+            OtpVerification verification = OtpVerification.builder()
+                    .user(user)
+                    .email(email)
+                    .otpHash(otpHash)
+                    .purpose("SIGNUP_VERIFICATION")
+                    .expiresAt(LocalDateTime.now().plusMinutes(otpExpiryMinutes))
+                    .attemptsRemaining(5)
+                    .consumed(false)
+                    .build();
+            otpVerificationRepository.save(verification);
+
+            otpEmailSender.sendOtpEmail(email, user.getUsername(), rawOtp, otpExpiryMinutes);
+            log.info("Signup OTP resent to legacy unverified user: {}", maskEmail(email));
+            return;
+        }
+
+        throw new RuntimeException("No pending registration found for this email");
     }
 
     @Transactional
@@ -901,5 +993,28 @@ public class AuthService {
                 .avatarDailyLimit(avatarDailyLimit)
                 .avatarChangeCount(avatarChangesToday)
                 .build();
+    }
+
+    /**
+     * Periodic maintenance task to expire abandoned staging registrations
+     * and purge stale staging audit records older than 30 days (GDPR data minimization).
+     */
+    @Scheduled(cron = "0 0 3 * * *") // Daily at 3 AM server time
+    @Transactional
+    public void purgeStaleUnverifiedAccounts() {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime purgeCutoff = now.minusDays(30);
+        try {
+            int expiredCount = pendingRegistrationRepository.expireStaleRegistrations(now);
+            int deletedPending = pendingRegistrationRepository.deleteExpiredRegistrationsOlderThan(purgeCutoff);
+            int deletedOtps = otpVerificationRepository.pruneExpiredOtps(now);
+
+            if (expiredCount > 0 || deletedPending > 0 || deletedOtps > 0) {
+                log.info("Staging maintenance: expired {} pending registrations, purged {} stale records (>30d), pruned {} expired OTPs",
+                        expiredCount, deletedPending, deletedOtps);
+            }
+        } catch (Exception e) {
+            log.error("Failed to run staging registrations maintenance: {}", e.getMessage(), e);
+        }
     }
 }

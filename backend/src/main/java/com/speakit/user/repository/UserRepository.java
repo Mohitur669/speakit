@@ -28,4 +28,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Modifying
     @Query("UPDATE User u SET u.sessionVersion = u.sessionVersion + 1 WHERE u.username = :username")
     int incrementSessionVersion(@Param("username") String username);
+
+    @Modifying
+    @Query("DELETE FROM User u WHERE u.emailVerified = false AND u.createdAt < :cutoff")
+    int deleteUnverifiedUsersOlderThan(@Param("cutoff") java.time.LocalDateTime cutoff);
 }

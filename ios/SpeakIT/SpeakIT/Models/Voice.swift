@@ -53,7 +53,7 @@ struct Voice: Codable, Identifiable, Hashable {
     
     enum CodingKeys: String, CodingKey {
         case id, name, languageCode, languageName, gender, engine, isNeural, requiresPlan, previewURL
-        case isElevenLabs, isSarvam
+        case isElevenLabs, isSarvam, isStandard
     }
     
     init(from decoder: Decoder) throws {
@@ -88,10 +88,15 @@ struct Voice: Codable, Identifiable, Hashable {
         
         self.isNeural = (try? container.decode(Bool.self, forKey: .isNeural)) ?? true
         
+        let isNeuralVoice = (try? container.decode(Bool.self, forKey: .isNeural)) ?? true
+        let isStandardVoice = (try? container.decode(Bool.self, forKey: .isStandard)) ?? false
+        
         if let plan = try? container.decode(PlanType.self, forKey: .requiresPlan) {
             self.requiresPlan = plan
         } else if isEleven || isSarv {
             self.requiresPlan = .proPlus
+        } else if !isNeuralVoice || isStandardVoice || self.engine.lowercased() == "standard" {
+            self.requiresPlan = .free
         } else {
             self.requiresPlan = .pro
         }
@@ -118,7 +123,8 @@ struct Voice: Codable, Identifiable, Hashable {
         switch engine.lowercased() {
         case "sarvam": return "Indian"
         case "elevenlabs": return "International"
-        case "neural", "standard": return "Standard"
+        case "neural": return "Neural"
+        case "standard": return "Standard"
         default: return "Standard"
         }
     }
@@ -136,6 +142,26 @@ struct Voice: Codable, Identifiable, Hashable {
     
     // Sample voices matching the approved design reference
     static let samples: [Voice] = [
+        Voice(
+            id: "Joanna",
+            name: "Joanna",
+            languageCode: "en-US",
+            languageName: "US English",
+            gender: "FEMALE",
+            engine: "standard",
+            isNeural: false,
+            requiresPlan: .free
+        ),
+        Voice(
+            id: "Matthew",
+            name: "Matthew",
+            languageCode: "en-US",
+            languageName: "US English",
+            gender: "MALE",
+            engine: "standard",
+            isNeural: false,
+            requiresPlan: .free
+        ),
         Voice(
             id: "ritu:en-IN",
             name: "Aditi",
@@ -157,8 +183,8 @@ struct Voice: Codable, Identifiable, Hashable {
             requiresPlan: .proPlus
         ),
         Voice(
-            id: "Joanna",
-            name: "Joanna",
+            id: "Joanna-Neural",
+            name: "Joanna (Neural)",
             languageCode: "en-US",
             languageName: "US English",
             gender: "FEMALE",

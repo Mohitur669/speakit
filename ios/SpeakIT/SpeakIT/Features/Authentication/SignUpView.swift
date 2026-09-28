@@ -20,6 +20,8 @@ struct SignUpView: View {
     @State private var isSubmitting: Bool = false
     @State private var isLoading: Bool = false
     @State private var errorMessage: String? = nil
+    @State private var showVerificationSheet: Bool = false
+    @State private var registeredEmail: String = ""
     
     var body: some View {
         ScrollView {
@@ -123,6 +125,11 @@ struct SignUpView: View {
                 isSubmitting = false
             }
         }
+        .sheet(isPresented: $showVerificationSheet) {
+            EmailVerificationSheet(email: registeredEmail) {
+                self.dismiss()
+            }
+        }
     }
     
     private var isFormValid: Bool {
@@ -192,7 +199,8 @@ struct SignUpView: View {
                         self.appState.login(token: token, user: user)
                     } else {
                         // User created in PENDING_VERIFICATION status
-                        self.dismiss()
+                        self.registeredEmail = normalizedEmail
+                        self.showVerificationSheet = true
                     }
                 }
             } catch {

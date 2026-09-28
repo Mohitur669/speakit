@@ -14,6 +14,8 @@ import com.speakit.user.dto.UserProfileUpdateRequest;
 import com.speakit.config.WebSocketConfig;
 import com.speakit.tts.dto.*;
 import com.speakit.auth.entity.OtpVerification;
+import com.speakit.auth.entity.PendingRegistration;
+import com.speakit.auth.repository.PendingRegistrationRepository;
 import com.speakit.billing.entity.PlanType;
 import com.speakit.user.entity.User;
 import com.speakit.auth.repository.OtpVerificationRepository;
@@ -47,6 +49,9 @@ class AuthServiceOtpTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private PendingRegistrationRepository pendingRegistrationRepository;
 
     @Mock
     private PasswordEncoder passwordEncoder;
@@ -123,28 +128,97 @@ class AuthServiceOtpTest {
                 .email("new@example.com")
                 .phoneNumber("1234567890")
                 .password("password123")
+                .fullName("New User")
                 .build();
 
         when(passwordEncoder.encode("password123")).thenReturn("hashedpassword");
-        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         AuthResponse response = authService.register(req);
 
         assertNotNull(response);
         assertNull(response.getToken()); // Token should NOT be issued yet
         assertEquals("newuser", response.getUsername());
+        assertFalse(response.isEmailVerified());
 
-        // Verify user properties (Consent fields)
-        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
-        verify(userRepository, times(1)).save(userCaptor.capture());
-        User savedUser = userCaptor.getValue();
-        assertTrue(savedUser.isConsentAccepted());
-        assertNotNull(savedUser.getConsentTimestamp());
+        // Primary users table is NEVER touched during initial registration!
+        verify(userRepository, never()).save(any(User.class));
 
-        // Verify OTP is generated and saved
-        verify(otpVerificationRepository, times(1)).save(any(OtpVerification.class));
+        // Verify registration was staged into pending_registrations
+        ArgumentCaptor<PendingRegistration> pendingCaptor = ArgumentCaptor.forClass(PendingRegistration.class);
+        verify(pendingRegistrationRepository, times(1)).save(pendingCaptor.capture());
+        PendingRegistration staged = pendingCaptor.getValue();
+        assertEquals("newuser", staged.getUsername());
+        assertEquals("new@example.com", staged.getEmail());
+        assertEquals("PENDING", staged.getStatus());
+        assertEquals(5, staged.getAttemptsRemaining());
+        assertNotNull(staged.getOtpHash());
+
         // Verify email is sent
         verify(otpEmailSender, times(1)).sendOtpEmail(eq("new@example.com"), eq("newuser"), anyString(), eq(10));
+    }
+
+    @Test
+    void register_retriesForUnverifiedUser_refreshesCredentialsAndIssuesOtp() {
+        AuthRequest retryReq = AuthRequest.builder()
+                .username("pendinguser")
+                .email("pending@example.com")
+                .phoneNumber("9999999999")
+                .password("new_password123")
+                .fullName("Pending User Retried")
+                .build();
+
+        when(passwordEncoder.encode("new_password123")).thenReturn("new_hashed_pass");
+
+        AuthResponse response = authService.register(retryReq);
+
+        assertNotNull(response);
+        assertEquals("pendinguser", response.getUsername());
+        assertFalse(response.isEmailVerified());
+
+        // Users table remains untouched
+        verify(userRepository, never()).save(any(User.class));
+
+        // Prior pending attempts are expired and fresh record saved
+        verify(pendingRegistrationRepository).expireActiveRegistrationsForEmail("pending@example.com");
+        verify(pendingRegistrationRepository).save(any(PendingRegistration.class));
+        verify(otpEmailSender).sendOtpEmail(eq("pending@example.com"), eq("pendinguser"), anyString(), eq(10));
+    }
+
+    @Test
+    void verifyEmail_fromStaging_promotesToUserAndAuthenticates() {
+        VerifyEmailRequest req = new VerifyEmailRequest("staged@example.com", "123456");
+
+        PendingRegistration staged = PendingRegistration.builder()
+                .id(100L)
+                .username("stageduser")
+                .email("staged@example.com")
+                .fullName("Staged User")
+                .phoneNumber("1234567890")
+                .passwordHash("hashed_password")
+                .otpHash(hashOtp("123456"))
+                .status("PENDING")
+                .attemptsRemaining(5)
+                .expiresAt(LocalDateTime.now().plusMinutes(10))
+                .build();
+
+        when(pendingRegistrationRepository.findFirstByEmailIgnoreCaseAndStatusOrderByCreatedAtDesc("staged@example.com", "PENDING"))
+                .thenReturn(Optional.of(staged));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+            User u = invocation.getArgument(0);
+            u.setId(50L);
+            return u;
+        });
+        when(jwtService.generateToken(any(), any())).thenReturn("mocked_jwt_token");
+
+        AuthResponse response = authService.verifyEmail(req);
+
+        assertNotNull(response);
+        assertEquals("mocked_jwt_token", response.getToken());
+        assertEquals("stageduser", response.getUsername());
+        assertEquals("VERIFIED", staged.getStatus());
+
+        // User is now promoted into users table
+        verify(userRepository, times(1)).save(any(User.class));
     }
 
     @Test

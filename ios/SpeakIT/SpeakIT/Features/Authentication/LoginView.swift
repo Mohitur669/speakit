@@ -19,6 +19,8 @@ struct LoginView: View {
     @State private var showSignUp: Bool = false
     @State private var showForgotPasswordSheet: Bool = false
     @State private var showOAuthNotice: Bool = false
+    @State private var showEmailVerificationSheet: Bool = false
+    @State private var verificationEmail: String = ""
     
     var body: some View {
         NavigationStack {
@@ -53,6 +55,11 @@ struct LoginView: View {
                 ForgotPasswordSheet(onSuccess: {
                     self.successMessage = "Password reset successfully! You can now sign in with your new password."
                 })
+            }
+            .sheet(isPresented: $showEmailVerificationSheet) {
+                EmailVerificationSheet(email: verificationEmail) {
+                    self.successMessage = "Account verified successfully! Welcome to SpeakIT."
+                }
             }
             .alert("Social Sign-In", isPresented: $showOAuthNotice) {
                 Button("OK", role: .cancel) {}
@@ -272,7 +279,11 @@ struct LoginView: View {
             } catch {
                 await MainActor.run {
                     self.isLoading = false
-                    if case APIError.unauthorized = error {
+                    if case APIError.emailNotVerified(let email) = error {
+                        HapticManager.shared.warning()
+                        self.verificationEmail = email.isEmpty ? (normalizedLogin.contains("@") ? normalizedLogin : "") : email
+                        self.showEmailVerificationSheet = true
+                    } else if case APIError.unauthorized = error {
                         HapticManager.shared.error()
                         self.errorMessage = "Invalid username or password. Please try again."
                     } else if case APIError.networkError = error {
