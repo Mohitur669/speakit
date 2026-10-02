@@ -35,11 +35,14 @@ struct ContentView: View {
                 case "stt":
                     MainTabView()
                         .onAppear { state.selectedTab = 1 }
+                case "live":
+                    MainTabView()
+                        .onAppear { state.selectedTab = 2 }
                 case "transcription_result":
                     TranscriptionResultSheet(result: TranscriptionResult.sample)
                 case "activity":
                     MainTabView()
-                        .onAppear { state.selectedTab = 2 }
+                        .onAppear { state.selectedTab = 3 }
                 case "profile":
                     NavigationStack {
                         ProfileSettingsView()

@@ -64,7 +64,7 @@ struct ActivityView: View {
                         
                         Button(action: {
                             HapticManager.shared.selection()
-                            appState.selectedTab = 3
+                            appState.selectedTab = 4
                         }) {
                             Image(systemName: "gearshape")
                                 .font(.system(size: 20, weight: .semibold))

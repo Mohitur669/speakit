@@ -32,23 +32,32 @@ struct MainTabView: View {
             }
             .tag(1)
             
-            // Tab 3: Activity (History & Usage)
+            // Tab 3: Live (Real-Time Live Transcription & Translation)
+            NavigationStack {
+                LiveTranscriptionView()
+            }
+            .tabItem {
+                Label("Live", systemImage: "waveform.badge.mic")
+            }
+            .tag(2)
+            
+            // Tab 4: Activity (History & Usage)
             NavigationStack {
                 ActivityView()
             }
             .tabItem {
                 Label("Activity", systemImage: "clock.arrow.circlepath")
             }
-            .tag(2)
+            .tag(3)
             
-            // Tab 4: Profile (Settings & Account)
+            // Tab 5: Profile (Settings & Account)
             NavigationStack {
                 ProfileSettingsView()
             }
             .tabItem {
                 Label("Profile", systemImage: "person.crop.circle.fill")
             }
-            .tag(3)
+            .tag(4)
         }
         .tint(Color.speakitPrimary)
         .onChange(of: state.selectedTab) { _, _ in

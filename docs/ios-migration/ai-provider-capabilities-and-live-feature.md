@@ -1,9 +1,9 @@
 # SpeakIT — ElevenLabs & Sarvam AI API Capabilities & Live Feature Blueprint
 
-**Document Version:** 1.1.0  
+**Document Version:** 1.2.0  
 **File Location:** `docs/ios-migration/ai-provider-capabilities-and-live-feature.md`  
-**Status:** Research & Feature Planning — Active Engineering Reference  
-**Last Updated:** October 2026 — v1.1: Added Section 10 — Combined Maximum Power (complete API catalogue + all integration opportunities)  
+**Status:** Active Engineering Blueprint — Phases 1, 2, and Core Phase 3 Implemented & Verified  
+**Last Updated:** October 2026 — v1.2: Marked completed features for Phase 1, Phase 2 (Live Studio & Face-to-Face with Quota Deduction), and Phase 3 (Audio Isolation, Voice Changer STS, Sound Effects)  
 
 ---
 
@@ -445,20 +445,24 @@ try audioEngine.start()
 | Feature | ElevenLabs | Sarvam AI | AWS Polly | Notes |
 |---|---|---|---|---|
 | Standard TTS | ✅ Flash/Turbo | ✅ Bulbul v3 | ✅ Neural/Standard | All implemented |
-| Streaming TTS (WebSocket) | ✅ ~75ms | ❌ (batch only) | ❌ | ElevenLabs only |
-| Live STT (WebSocket) | ❌ | ✅ Saaras v3-realtime | ❌ | Sarvam only |
-| Batch File STT | ❌ | ✅ Saaras v4 | ❌ | Implemented |
-| Live Transcription Display | ❌ | ✅ partial events | ❌ | New feature |
-| Live Translation (Speech → English) | ❌ | ✅ `translate` mode | ❌ | New feature |
-| Live Codemix (Hinglish) | ❌ | ✅ `codemix` mode | ❌ | New feature |
-| Live Voice Bridge (STT → TTS) | ✅ (TTS side) | ✅ (STT side) | ❌ | Flagship feature |
-| Voice Cloning | ✅ IVC/PVC | ✅ Bulbul clone | ❌ | Future |
+| Streaming TTS (WebSocket) | ✅ ~75ms | ❌ (batch only) | ❌ | ElevenLabs only (Phase 4) |
+| Live STT (WebSocket) | ❌ | ✅ Saaras v3-realtime | ❌ | ✅ Implemented via `/ws/live-stt` proxy |
+| Batch File STT | ❌ | ✅ Saaras v4 | ❌ | ✅ Implemented |
+| Live Transcription Display | ❌ | ✅ partial events | ❌ | ✅ Implemented (`LiveTranscriptionView.swift`) |
+| Live Translation (Speech → English) | ❌ | ✅ `translate` mode | ❌ | ✅ Implemented (`SarvamLiveSTTService.swift`) |
+| Live Codemix (Hinglish) | ❌ | ✅ `codemix` mode | ❌ | ✅ Implemented |
+| Audio Isolation / Noise Cleaner | ✅ Audio Isolation | ❌ | ❌ | ✅ Implemented (`POST /api/tts/audio-isolation`) |
+| Voice Changer / Speech-to-Speech | ✅ STS | ❌ | ❌ | ✅ Implemented (`POST /api/tts/speech-to-speech`) |
+| Sound Effects Generator | ✅ Sound Effects | ❌ | ❌ | ✅ Implemented (`POST /api/tts/sound-effects`) |
+| Face-to-Face Live Conversation | ❌ | ✅ Saaras + Translate | ❌ | ✅ Implemented (`LiveTranscriptionView.swift`) |
+| Live Voice Bridge (STT → TTS) | ✅ (TTS side) | ✅ (STT side) | ❌ | Flagship feature (Phase 4) |
+| Voice Cloning | ✅ IVC/PVC | ✅ Bulbul clone | ❌ | Future (Phase 5) |
 | Speaker Diarization | ❌ | ✅ Saaras v4 | ❌ | Future (Pro Plus) |
-| Transliteration | ❌ | ✅ `translit` mode | ❌ | New feature |
+| Transliteration | ❌ | ✅ `translit` mode | ❌ | ✅ Implemented (Dropdown + preview) |
 | 90+ Language TTS | ✅ Multilingual v2 | ❌ (Indic only) | ✅ (limited) | Different targets |
-| Text Translation | ❌ | ✅ Sarvam-Translate | ❌ | New feature |
-| Conversational AI Agent | ✅ ElevenAgents | ❌ | ❌ | Future / Enterprise |
-| Emotional Voice Control | ✅ v4 model | ❌ | ❌ | Future |
+| Text Translation | ❌ | ✅ Sarvam-Translate | ❌ | ✅ Implemented (`/api/stt/translate`) |
+| Conversational AI Agent | ✅ ElevenAgents | ❌ | ❌ | Future / Enterprise (Phase 6) |
+| Emotional Voice Control | ✅ v4 model | ❌ | ❌ | Future (Phase 3) |
 
 ---
 
@@ -467,37 +471,49 @@ try audioEngine.start()
 These features can be implemented without any new infrastructure — just new API calls to existing providers:
 
 1. **Transliteration Display** — Show romanized text alongside Indic output (Sarvam `translit` mode)  
-   *Effort: 1 day. Add `mode: "translit"` to STT response and display alongside transcript.*
+   *Status: ✅ IMPLEMENTED. Added `mode: "translit"` support, display alongside transcript & `/api/stt/transliterate`.*
 
 2. **Codemix STT Mode** — Better accuracy for Hinglish speakers (most urban Indian users)  
-   *Effort: 0.5 day. Add `mode` selector to STT settings screen.*
+   *Status: ✅ IMPLEMENTED. Added `mode: "codemix"` selector in iOS STT settings & backend validation.*
 
 3. **Text-to-Text Translation** — Type in Hindi, see the English translation before synthesising  
-   *Effort: 2 days. New `POST /translate` call on the TTS input screen before synthesis.*
+   *Status: ✅ IMPLEMENTED. Powered by Sarvam-Translate via `/api/stt/translate`.*
 
-4. **Speaker Gender Selection for Sarvam** — Let user choose `ritu`, `priya`, `aditya`, `rahul`, etc.  
-   *Effort: 1 day. Add voice picker for Sarvam voices in the iOS voice selector.*
+4. **Speaker Voice Selection for Sarvam** — Choose from all 37 Bulbul:v3 voices (`ritu`, `priya`, `aditya`, `shubh`, etc.)  
+   *Status: ✅ IMPLEMENTED. Full voice catalog populated in iOS Voice Catalog.*
 
 5. **Upgrade to Saaras v4 for File STT** — Better accuracy for batch uploads  
-   *Effort: 0.5 day. Change model ID in backend STT service.*
+   *Status: ✅ IMPLEMENTED. Integrated into backend `SttService` with fallback resilience.*
 
 ---
 
 ### 4.3 Tier 2: Medium Effort — High Value
 
 6. **Live Transcription Mode** — User speaks, text appears live on screen (Sarvam WebSocket STT)  
-   *Effort: 1 week. New LiveTranscriptionService (iOS) + WebSocket proxy endpoint (backend).*
+   *Status: ✅ IMPLEMENTED. Built `SarvamLiveSTTService.swift` + `/ws/live-stt` proxy + `LiveTranscriptionView.swift`.*
 
 7. **Live Translation Mode** — User speaks in Hindi/Tamil/etc., English text appears live  
-   *Effort: 1 week (builds on #6). Pass `mode: "translate"` to Sarvam WebSocket.*
+   *Status: ✅ IMPLEMENTED. Integrated `mode: "translate"` in live streaming pipeline.*
 
 8. **Live Caption Export** — Save the final transcript from a live session as a text file  
-   *Effort: 0.5 day (builds on #6). Add export button to Live Transcription view.*
+   *Status: ✅ IMPLEMENTED. Export menu added with Copy, Share Sheet, and Clear.*
 
-9. **Multi-Language TTS via ElevenLabs Multilingual v2** — Single voice speaks 90+ languages  
-   *Effort: 3 days. Model ID parameter + language auto-detection UI.*
+9. **Face-to-Face Interpreter Mode** — Two speakers with separate languages conversing in real-time  
+   *Status: ✅ IMPLEMENTED. Dual speaker language selectors, editable names, and automatic bidirectional translation & speech synthesis.*
 
-10. **Voice Cloning (Instant)** — User records 30 seconds, gets a personalised voice  
+10. **Audio Isolation (Noise Cleaner)** — Remove background noise from speech audio  
+    *Status: ✅ IMPLEMENTED. Powered by ElevenLabs Audio Isolation via `POST /api/tts/audio-isolation` (Pro tier).*
+
+11. **Voice Changer / Speech-to-Speech** — Transform voice timber and tone while keeping cadence  
+    *Status: ✅ IMPLEMENTED. Powered by ElevenLabs STS via `POST /api/tts/speech-to-speech` (Pro Plus tier).*
+
+12. **Sound Effects Generator** — Generate ambient SFX and Foley sounds from natural text prompts  
+    *Status: ✅ IMPLEMENTED. Powered by ElevenLabs SFX via `POST /api/tts/sound-effects` (Pro Plus tier).*
+
+13. **Multi-Language TTS via ElevenLabs Multilingual v2** — Single voice speaks 90+ languages  
+    *Effort: 3 days. Model ID parameter + language auto-detection UI.*
+
+14. **Voice Cloning (Instant)** — User records 30 seconds, gets a personalised voice  
     *Effort: 1 week. Audio recording UI + `POST /v1/voices/add` backend call.*
 
 ---
@@ -754,27 +770,35 @@ Target: **< 800ms** from user stopping speaking to hearing synthesised output.
 ## 7. Implementation Roadmap
 
 ```
-Sprint 1 (Week 1–2): Foundation
-────────────────────────────────
-□ Upgrade Saarika → Saaras v4 in backend STT service
-□ Add codemix + translit mode selector to iOS STT settings
-□ Add Sarvam text translation endpoint to backend
-□ Add translation preview on iOS TTS input screen
-
-Sprint 2 (Week 3–4): Live Transcription
+Sprint 1 (Week 1–2): Foundation [DONE]
 ────────────────────────────────────────
-□ Build SarvamLiveSTTService.swift (WebSocket + AVAudioEngine)
-□ Build LiveTranscriptionView.swift (SwiftUI view with real-time text)
-□ Build /ws/live-stt WebSocket proxy in Spring Boot
-□ Wire quota deduction (per minute) to live STT sessions
-□ Add Live Transcription to Pro tier
+[x] Upgrade Saarika → Saaras v4 in backend STT service
+[x] Add codemix + translit mode selector to iOS STT settings
+[x] Add Sarvam text translation endpoint to backend (/api/stt/translate)
+[x] Add translation preview on iOS TTS input screen
 
-Sprint 3 (Week 5–6): Live Translation
+Sprint 2 (Week 3–4): Live Transcription [DONE]
 ────────────────────────────────────────
-□ Add translate mode to SarvamLiveSTTService
-□ Add language selector to LiveTranscriptionView
-□ Add session transcript export (text file)
-□ Gate behind Pro Plus
+[x] Build SarvamLiveSTTService.swift (WebSocket + AVAudioEngine)
+[x] Build LiveTranscriptionView.swift (SwiftUI view with real-time text)
+[x] Build /ws/live-stt WebSocket proxy in Spring Boot
+[x] Wire quota deduction & activity logging to live STT sessions
+[x] Integrate Live Mode into iOS Navigation (MainTabView Tab 2 - 3rd option)
+[x] Add Live Transcription to Pro tier (plan gating enforced)
+
+Sprint 3 (Week 5–6): Live Translation & Conversation [DONE]
+────────────────────────────────────────
+[x] Add translate mode to SarvamLiveSTTService
+[x] Add Face-to-Face Two-Person Live Conversation (Interpreter Mode)
+[x] Add language selector to LiveTranscriptionView (22 Indian languages)
+[x] Add session transcript export (text file / share sheet / copy)
+[x] Gate Live Translation & Conversation behind Pro Plus
+[x] Bidirectional Face-to-Face automatic speech translation & native audio playback
+[x] Real-time live character quota tracking & remaining credit deduction
+[x] Premium Live Studio UI polish matching SpeakIT design language
+[x] Backend Audio Isolation endpoint (POST /api/tts/audio-isolation) [Pro tier]
+[x] Backend Voice Changer / STS endpoint (POST /api/tts/speech-to-speech) [Pro Plus tier]
+[x] Backend Sound Effects generator endpoint (POST /api/tts/sound-effects) [Pro Plus tier]
 
 Sprint 4 (Week 7–10): Live Voice Bridge
 ────────────────────────────────────────
@@ -1024,33 +1048,33 @@ This section documents **every API capability** available from ElevenLabs and Sa
 
 This is the **master map of what becomes possible** when ElevenLabs and Sarvam are used together. Every row is a real product feature SpeakIT can build.
 
-| # | Feature Name | ElevenLabs Role | Sarvam Role | Complexity | Plan Gate |
-|---|---|---|---|---|---|
-| 1 | **Live Transcription** | — | Saaras v3-realtime (STT) | Medium | Pro |
-| 2 | **Live Translation Display** | — | Saaras `translate` mode | Medium | Pro Plus |
-| 3 | **Live Voice Bridge** | Flash TTS (output) | Saaras STT + translate | High | Pro Plus |
-| 4 | **Indic → Indic Live Bridge** | — | Saaras STT + Bulbul TTS | High | Pro Plus |
-| 5 | **Voice Changer Studio** | STS: swap voice post-record | Saaras: clean transcript first | Medium | Pro Plus |
-| 6 | **AI Dubbing** | Dubbing v2 (video/audio) | Saaras: source transcript | High | Enterprise |
-| 7 | **Podcast/Video Noise Cleaner** | Audio Isolation | — | Low | Pro |
-| 8 | **Meeting Transcription** | Scribe v2 (if English meeting) | Saaras + Diarization (Indian) | Medium | Enterprise |
-| 9 | **Smart Subtitles / Captions** | Scribe v2 word timestamps | Saaras word timestamps | Medium | Pro Plus |
-| 10 | **Voice Clone Creator** | IVC: record & clone | — | Medium | Pro Plus |
-| 11 | **Indic Voice Clone** | — | Bulbul clone | Medium | Pro Plus |
-| 12 | **Bilingual Voice Clone** | IVC clone speaks EN | Bulbul clone speaks Indian | High | Enterprise |
-| 13 | **AI Audiobook Generator** | Projects API long-form | Saaras: input transcript | High | Enterprise |
-| 14 | **SFX Layer on Speech** | Sound Effects generation | — | Low | Pro Plus |
-| 15 | **Interview Transcription** | Scribe v2 + diarization | Saaras + diarization | Medium | Pro |
-| 16 | **Codemix Smart Keyboard** | — | Saaras codemix mode | Low | Pro |
-| 17 | **Inter-Indic Text Translator** | — | Sarvam-Translate (22 langs) | Low | Pro |
-| 18 | **Document → Speech (OCR + TTS)** | TTS narration | Sarvam Vision OCR + Saaras | High | Enterprise |
-| 19 | **Real-Time Medical Transcription** | Scribe v2 Medical | — | High | Enterprise |
-| 20 | **Conversational AI Voice Assistant** | ElevenAgents (LLM + TTS) | Saaras (Indian STT input) | Very High | Enterprise |
-| 21 | **Hindi → English Audiobook** | Flash TTS in EN voice | Saaras: source Hindi audio | High | Enterprise |
-| 22 | **Emotion-Directed TTS** | v4 `<excited>` / `<sad>` tags | — | Low | Pro Plus |
-| 23 | **Transliteration Display** | — | `/transliterate` endpoint | Low | Pro |
-| 24 | **Background Music + Voice** | Music generation | Bulbul TTS | Medium | Pro Plus |
-| 25 | **Field Recording Cleaner** | Audio Isolation | — | Low | Pro |
+| # | Feature Name | ElevenLabs Role | Sarvam Role | Complexity | Plan Gate | Status |
+|---|---|---|---|---|---|---|
+| 1 | **Live Transcription** | — | Saaras v3-realtime (STT) | Medium | Pro | ✅ Implemented |
+| 2 | **Live Translation Display** | — | Saaras `translate` mode | Medium | Pro Plus | ✅ Implemented |
+| 3 | **Live Voice Bridge** | Flash TTS (output) | Saaras STT + translate | High | Pro Plus | □ Planned (Phase 4) |
+| 4 | **Indic → Indic Live Bridge** | — | Saaras STT + Bulbul TTS | High | Pro Plus | □ Planned (Phase 4) |
+| 5 | **Voice Changer Studio** | STS: swap voice post-record | Saaras: clean transcript first | Medium | Pro Plus | ✅ Implemented |
+| 6 | **AI Dubbing** | Dubbing v2 (video/audio) | Saaras: source transcript | High | Enterprise | □ Planned (Phase 5) |
+| 7 | **Podcast/Video Noise Cleaner** | Audio Isolation | — | Low | Pro | ✅ Implemented |
+| 8 | **Meeting Transcription** | Scribe v2 (if English meeting) | Saaras + Diarization (Indian) | Medium | Enterprise | □ Planned (Phase 6) |
+| 9 | **Smart Subtitles / Captions** | Scribe v2 word timestamps | Saaras word timestamps | Medium | Pro Plus | □ Planned |
+| 10 | **Voice Clone Creator** | IVC: record & clone | — | Medium | Pro Plus | □ Planned (Phase 5) |
+| 11 | **Indic Voice Clone** | — | Bulbul clone | Medium | Pro Plus | □ Planned (Phase 5) |
+| 12 | **Bilingual Voice Clone** | IVC clone speaks EN | Bulbul clone speaks Indian | High | Enterprise | □ Planned (Phase 5) |
+| 13 | **AI Audiobook Generator** | Projects API long-form | Saaras: input transcript | High | Enterprise | □ Planned (Phase 6) |
+| 14 | **SFX Layer on Speech** | Sound Effects generation | — | Low | Pro Plus | ✅ Implemented |
+| 15 | **Interview Transcription** | Scribe v2 + diarization | Saaras + diarization | Medium | Pro | □ Planned |
+| 16 | **Codemix Smart Keyboard** | — | Saaras codemix mode | Low | Pro | ✅ Implemented |
+| 17 | **Inter-Indic Text Translator** | — | Sarvam-Translate (22 langs) | Low | Pro | ✅ Implemented |
+| 18 | **Document → Speech (OCR + TTS)** | TTS narration | Sarvam Vision OCR + Saaras | High | Enterprise | □ Planned (Phase 5) |
+| 19 | **Real-Time Medical Transcription** | Scribe v2 Medical | — | High | Enterprise | □ Planned |
+| 20 | **Conversational AI Voice Assistant** | ElevenAgents (LLM + TTS) | Saaras (Indian STT input) | Very High | Enterprise | □ Planned (Phase 6) |
+| 21 | **Hindi → English Audiobook** | Flash TTS in EN voice | Saaras: source Hindi audio | High | Enterprise | □ Planned |
+| 22 | **Emotion-Directed TTS** | v4 `<excited>` / `<sad>` tags | — | Low | Pro Plus | □ Planned |
+| 23 | **Transliteration Display** | — | `/transliterate` endpoint | Low | Pro | ✅ Implemented |
+| 24 | **Background Music + Voice** | Music generation | Bulbul TTS | Medium | Pro Plus | □ Planned |
+| 25 | **Field Recording Cleaner** | Audio Isolation | — | Low | Pro | ✅ Implemented |
 
 ---
 
@@ -1146,35 +1170,38 @@ Sarvam Saaras v3-realtime (mode: translate)  →  ElevenLabs Flash v2.5 WebSocke
 ### 10.5 SpeakIT Product Roadmap: What to Build & When
 
 ```
-PHASE 1 — FOUNDATION (Weeks 1–4)  [Sarvam-only]
+PHASE 1 — FOUNDATION (Weeks 1–4)  [Sarvam-only] [COMPLETED]
 ──────────────────────────────────────────────────
 ✅ Already done:  Standard Sarvam Bulbul TTS (Indic voices)
 ✅ Already done:  Sarvam Saaras batch file STT
-□ Migrate:        Saarika → Saaras v4 for batch STT
-□ New:            Codemix mode toggle in STT settings
-□ New:            Transliteration display alongside transcript
-□ New:            Inter-Indic text translation (Sarvam-Translate)
-□ New:            Sarvam voice picker (all 30+ Bulbul voices)
+✅ Implemented:   Saarika → Saaras v4 for batch STT
+✅ Implemented:   Codemix mode toggle in STT settings
+✅ Implemented:   Transliteration display alongside transcript & on-demand
+✅ Implemented:   Inter-Indic text translation (Sarvam-Translate)
+✅ Implemented:   Sarvam voice picker (all 37 Bulbul:v3 voices)
 
-PHASE 2 — LIVE TRANSCRIPTION (Weeks 5–8)  [Sarvam Live]
-─────────────────────────────────────────────────────────
-□ Build:  SarvamLiveSTTService.swift (WebSocket, VAD, partial events)
-□ Build:  LiveTranscriptionView.swift (real-time caption display)
-□ Build:  Backend /ws/live-stt WebSocket proxy (Spring WebFlux)
-□ Build:  Live Translation mode (mode: "translate")
-□ Build:  Session transcript export (.txt / .pdf)
-□ Gate:   Live Transcription → Pro (10 min/mo)
-□ Gate:   Live Translation → Pro Plus (30 min/mo)
+PHASE 2 — LIVE TRANSCRIPTION & CONVERSATION (Weeks 5–8)  [Sarvam Live] [COMPLETED]
+─────────────────────────────────────────────────────────────────────────────────
+✅ Implemented:   SarvamLiveSTTService.swift (WebSocket, VAD, partial events)
+✅ Implemented:   LiveTranscriptionView.swift (real-time caption display)
+✅ Implemented:   Backend /ws/live-stt WebSocket proxy (Spring WebSocket)
+✅ Implemented:   Live Translation mode (mode: "translate")
+✅ Implemented:   Face-to-Face Live Conversation (Interpreter Mode with dual speaker languages)
+✅ Implemented:   Session transcript export (.txt / ShareSheet / clipboard)
+✅ Implemented:   Live Mode as 3rd Option in iOS Bottom Tab Bar (Tab 2)
+✅ Implemented:   Plan Gate: Live Transcription → Pro (10 min/mo)
+✅ Implemented:   Plan Gate: Live Translation & Face-to-Face Conversation → Pro Plus (30 min/mo)
+✅ Implemented:   Bidirectional Face-to-Face automatic speech translation & native audio playback
+✅ Implemented:   Live STT & Translation character usage deduction from remaining credit quota
+✅ Implemented:   Live Studio UI Polish (SpeakIT design system parity, SpeakITQuotaBadge, dual speaker cards)
 
-PHASE 3 — ELEVENLABS ADVANCED (Weeks 9–12)  [ElevenLabs Power]
-────────────────────────────────────────────────────────────────
-□ Build:  Audio Isolation endpoint (noise cleaner feature)
-□ Build:  Voice Changer (STS: record in your voice → hear in another)
-□ Build:  Sound Effects generator (text → SFX for content creators)
-□ Build:  Emotion-directed TTS (v4 voice direction tags)
-□ Gate:   Voice Changer → Pro Plus
-□ Gate:   Audio Isolation → Pro (field recording cleaner)
-□ Gate:   Sound Effects → Pro Plus
+PHASE 3 — ELEVENLABS ADVANCED (Weeks 9–12)  [ElevenLabs Power] [COMPLETED]
+──────────────────────────────────────────────────────────────────────────
+✅ Implemented:   Audio Isolation endpoint (POST /api/tts/audio-isolation) [Gated: Pro]
+✅ Implemented:   Voice Changer / Speech-to-Speech (POST /api/tts/speech-to-speech) [Gated: Pro Plus]
+✅ Implemented:   Sound Effects generator (POST /api/tts/sound-effects) [Gated: Pro Plus]
+□ Build:          Emotion-directed TTS (v4 voice direction tags)
+✅ Implemented:   Plan Gating: Audio Isolation (Pro), Voice Changer & SFX (Pro Plus)
 
 PHASE 4 — LIVE VOICE BRIDGE (Weeks 13–16)  [Combined: Flagship]
 ──────────────────────────────────────────────────────────────────

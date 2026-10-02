@@ -81,6 +81,9 @@ class AuthServiceOtpTest {
     private TtsHistoryRepository ttsHistoryRepository;
 
     @Mock
+    private com.speakit.stt.repository.SpeechToTextRequestRepository speechToTextRequestRepository;
+
+    @Mock
     private SubscriptionService subscriptionService;
 
     @Mock
