@@ -192,10 +192,15 @@ export class LoginComponent implements OnInit {
   private route = inject(ActivatedRoute);
 
   ngOnInit(): void {
-    if (this.authService.isLoggedIn()) {
-      this.router.navigate(['/tts']);
-    }
     this.pendingRedirect = this.route.snapshot.queryParams['redirect'] || '';
+    if (this.authService.isLoggedIn()) {
+      if (this.pendingRedirect) {
+        this.router.navigateByUrl(this.pendingRedirect);
+      } else {
+        this.router.navigate(['/tts']);
+      }
+      return;
+    }
   }
 
   togglePassword(): void {
@@ -208,7 +213,7 @@ export class LoginComponent implements OnInit {
     this.authService.login({ username: this.username, password: this.password }).subscribe({
       next: () => {
         if (this.pendingRedirect) {
-          this.router.navigate([this.pendingRedirect]);
+          this.router.navigateByUrl(this.pendingRedirect);
         } else {
           this.router.navigate(['/tts']);
         }

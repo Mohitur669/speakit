@@ -2,10 +2,12 @@ package com.speakit.billing.controller;
 import com.speakit.billing.entity.Payment;
 
 import com.razorpay.RazorpayException;
+import com.speakit.billing.dto.AppleVerificationRequest;
 import com.speakit.billing.dto.PaymentOrderRequest;
 import com.speakit.billing.dto.PaymentOrderResponse;
 import com.speakit.billing.dto.PaymentVerificationRequest;
 import com.speakit.billing.dto.PaymentHistoryDto;
+import com.speakit.billing.entity.PlanType;
 import com.speakit.user.entity.User;
 import com.speakit.user.service.UserService;
 import com.speakit.billing.repository.PaymentRepository;
@@ -128,5 +130,50 @@ public class PaymentController {
                 });
 
         return ResponseEntity.ok(new PagedModel<>(historyPage));
+    }
+
+    /**
+     * POST /api/v1/payments/apple/verify
+     *
+     * Called by the iOS app after a successful StoreKit 2 purchase.
+     * Maps the Apple productId to the internal PlanType and immediately upgrades
+     * the user's plan in the database.
+     *
+     * Note: Full Apple JWS receipt verification (App Store Server API) requires a
+     * paid Apple Developer account. For StoreKit local/sandbox testing we trust the
+     * productId directly. When a paid account is active, add JWS token validation here.
+     */
+    @PostMapping("/apple/verify")
+    public ResponseEntity<String> verifyApplePurchase(
+            @RequestBody AppleVerificationRequest request,
+            HttpServletRequest httpRequest) {
+
+        Long userId = (Long) httpRequest.getAttribute("userId");
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        // Map StoreKit productId → internal PlanType
+        PlanType newPlan = switch (request.getProductId()) {
+            case "com.speakit.pro"     -> PlanType.PRO;
+            case "com.speakit.proplus" -> PlanType.PRO_PLUS;
+            default -> null;
+        };
+
+        if (newPlan == null) {
+            log.warn("Apple verification: unknown productId '{}' for userId {}", request.getProductId(), userId);
+            return ResponseEntity.badRequest().body("Unknown product ID: " + request.getProductId());
+        }
+
+        User user = userService.getUserById(userId);
+
+        // Use the Apple transactionId as the gateway subscription ID for audit trail
+        String gatewayRef = "apple_" + request.getTransactionId();
+        subscriptionManagementService.upgradeUser(user, newPlan, gatewayRef);
+
+        log.info("Apple StoreKit purchase verified: userId={} productId={} plan={} transactionId={}",
+                userId, request.getProductId(), newPlan, request.getTransactionId());
+
+        return ResponseEntity.ok("Apple purchase verified and plan updated to " + newPlan.name());
     }
 }

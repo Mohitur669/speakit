@@ -19,7 +19,7 @@ struct MainTabView: View {
                 TTSStudioView()
             }
             .tabItem {
-                Label("Studio", systemImage: "waveform")
+                Label("Translate", systemImage: "waveform")
             }
             .tag(0)
             

@@ -312,7 +312,7 @@ struct ProfileSettingsView: View {
                 menuDivider
                 
                 menuItem(
-                    title: "Change Plan",
+                    title: "Manage Plan",
                     subtitle: "Upgrade or modify your subscription tier",
                     icon: "sparkles",
                     action: { activeSheet = .paywall }

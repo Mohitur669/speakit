@@ -189,6 +189,7 @@ INSERT INTO system_parameters (parameter_name, parameter_value, description) VAL
 ('PRO_PLAN_FEATURES', '200 chars / request;Indian Voices;Indian Language; Everything From Free', 'Features list for pro tier'),
 ('PRO_PLUS_PLAN_FEATURES', '500 chars / request;ElevenLabs AI Voices; Priority Support; Everything From Pro', 'Features list for pro plus tier'),
 ('ENTERPRISE_PLAN_FEATURES', 'Custom Character Limits; API Access; Custom Feature Requests', 'Features list for enterprise tier'),
+('MANAGE_PLAN_URL_WEB', 'https://speakit.mohitur.com', 'Web host URL for web app navigation and billing'),
 ('STT_ENABLED', 'true', 'Global toggle for Speech-to-Text feature'),
 ('ELEVENLABS_ENABLED', 'true', 'Global toggle for ElevenLabs Natural AI voices'),
 ('SARVAM_ENABLED', 'true', 'Global toggle for Sarvam AI Indian regional voices'),

@@ -336,7 +336,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
                         Chat History
                       </a>
                       <a
-                        routerLink="/settings/payments"
+                        routerLink="/settings/plan"
                         (click)="showUserMenu.set(false)"
                         class="flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-semibold text-primary-700 dark:text-primary-200 hover:bg-primary-50 dark:hover:bg-primary-900/60 transition-all hover:translate-x-0.5"
                       >

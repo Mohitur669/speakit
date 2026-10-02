@@ -29,7 +29,7 @@ struct SubscriptionPaywallView: View {
             VStack(spacing: 20) {
                 // Header Bar with Close Button
                 HStack {
-                    Text("Change Plan")
+                    Text("Manage Plan")
                         .font(.system(size: 26, weight: .bold))
                         .foregroundColor(Color.speakitTextPrimary)
                     
@@ -192,7 +192,7 @@ struct SubscriptionPaywallView: View {
                 SpeakITButton(
                     title: buttonTitle,
                     icon: selectedPlan == .enterprise ? "envelope.fill" : (selectedPlan < currentPlan ? nil : "sparkles"),
-                    style: selectedPlan < currentPlan ? .secondary : .primary,
+                    style: .primary,
                     isLoading: isPurchasing,
                     isEnabled: canChangePlan
                 ) {
@@ -200,6 +200,32 @@ struct SubscriptionPaywallView: View {
                 }
                 .accessibilityIdentifier("subscription.purchase")
                 .padding(.top, 12)
+                
+                // Secondary Option: Manage on Web — hidden for Enterprise (uses Contact Us flow instead)
+                // Passes selected plan as query param so Angular can auto-trigger the correct checkout.
+                if selectedPlan != .enterprise {
+                    Button(action: {
+                        HapticManager.shared.light()
+                        let planParam = selectedPlan.rawValue.uppercased() // e.g. "PRO", "PRO_PLUS", "FREE"
+                        let urlString = "\(appState.managePlanUrlWeb)?plan=\(planParam)"
+                        if let url = URL(string: urlString) {
+                            openURL(url)
+                        }
+                    }) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "globe")
+                                .font(.system(size: 14, weight: .semibold))
+                            Text("Prefer Web Checkout? Manage on Web")
+                                .font(.system(size: 14, weight: .semibold))
+                        }
+                        .foregroundColor(Color.speakitPrimary)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 44)
+                        .background(Color.speakitBadgeBackground)
+                        .cornerRadius(SpeakITSpacing.buttonRadius)
+                    }
+                    .accessibilityIdentifier("subscription.manageOnWeb")
+                }
                 
                 // Restore Purchases
                 Button(action: {
@@ -280,6 +306,7 @@ struct SubscriptionPaywallView: View {
                 self.selectedPlan = activePlan
             }
             await appState.loadPlanPricing()
+            await StoreKitService.shared.loadProducts()
         }
         .speakITToast(message: $errorMessage, style: .error, bottomPadding: 20)
     }
@@ -300,37 +327,51 @@ struct SubscriptionPaywallView: View {
             return
         }
         
-        // Upgrade flow: Create order on backend first
-        executeCreateOrder()
+        // Primary: In-App Purchase via StoreKit 2
+        executeStoreKitPurchase(for: selectedPlan)
     }
     
-    private func executeCreateOrder() {
+    private func executeStoreKitPurchase(for plan: PlanType) {
         isPurchasing = true
         errorMessage = nil
         
         Task {
             do {
-                let amount: Double
-                switch selectedPlan {
-                case .pro: amount = appState.proAmountINR
-                case .proPlus: amount = appState.proPlusAmountINR
-                case .enterprise: amount = 2999.0
-                case .free: amount = 0.0
+                if let product = StoreKitService.shared.product(for: plan) {
+                    _ = try await StoreKitService.shared.purchase(product)
+                    await appState.loadCurrentUser()
+                    await MainActor.run {
+                        self.isPurchasing = false
+                        HapticManager.shared.success()
+                        self.dismiss()
+                    }
+                } else {
+                    // Try to reload products once
+                    await StoreKitService.shared.loadProducts()
+                    if let product = StoreKitService.shared.product(for: plan) {
+                        _ = try await StoreKitService.shared.purchase(product)
+                        await appState.loadCurrentUser()
+                        await MainActor.run {
+                            self.isPurchasing = false
+                            HapticManager.shared.success()
+                            self.dismiss()
+                        }
+                    } else {
+                        await MainActor.run {
+                            self.isPurchasing = false
+                            self.errorMessage = "StoreKit product not found. You can also manage your plan on the web."
+                            HapticManager.shared.error()
+                        }
+                    }
                 }
-                let orderResponse = try await PaymentService.shared.createOrder(
-                    plan: selectedPlan,
-                    amount: amount,
-                    currency: "INR"
-                )
-                
+            } catch StoreKitError.userCancelled {
                 await MainActor.run {
                     self.isPurchasing = false
-                    self.activeOrder = orderResponse
                 }
             } catch {
                 await MainActor.run {
                     self.isPurchasing = false
-                    self.errorMessage = (error as? APIError)?.errorDescription ?? "Failed to initialize payment order. Please try again."
+                    self.errorMessage = error.localizedDescription
                     HapticManager.shared.error()
                 }
             }
@@ -363,10 +404,18 @@ struct SubscriptionPaywallView: View {
     
     private func restorePurchases() {
         Task {
-            await appState.loadCurrentUser()
-            await MainActor.run {
-                self.showRestoreSuccess = true
-                HapticManager.shared.success()
+            do {
+                try await StoreKitService.shared.restorePurchases()
+                await appState.loadCurrentUser()
+                await MainActor.run {
+                    self.showRestoreSuccess = true
+                    HapticManager.shared.success()
+                }
+            } catch {
+                await MainActor.run {
+                    self.errorMessage = "Failed to restore StoreKit purchases."
+                    HapticManager.shared.error()
+                }
             }
         }
     }

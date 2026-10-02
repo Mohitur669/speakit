@@ -1,10 +1,15 @@
 # SpeakIT: AI Voice Platform Pricing Strategy & Infrastructure Cost Analysis
 ## Comprehensive Financial Architecture, API Cost Breakdown (ElevenLabs vs. Sarvam AI vs. AWS Polly), Plan-Wise Unit Economics, and Scalability Modeling
 
-**Document Version:** 1.0.0  
+**Document Version:** 2.0.0  
 **Target Platform:** SpeakIT AI Voice Generation Platform  
 **File Location:** `docs/architechture-and-guides/pricing-plan.md`  
 **Status:** Approved Financial Architecture & Business Model Blueprint  
+**Last Updated:** October 2026 — Updated competitor pricing, Saaras v4 model migration, ElevenLabs v4 model family, Live Feature cost modelling, and revised plan pricing recommendations.
+
+> [!IMPORTANT]
+> **Model Migration Alert:** Sarvam AI has deprecated **Saarika v2.5** in favour of **Saaras v4** (batch) and **Saaras v3-realtime** (live streaming). All backend STT service references must be updated. See `docs/ios-migration/ai-provider-capabilities-and-live-feature.md` for full API capability breakdown.
+
 
 ---
 
@@ -81,15 +86,19 @@ AWS Polly operates on a pay-as-you-go character billing model. All spaces, punct
 
 ### 2.2 Sarvam AI
 
-Sarvam AI is the premier Indian foundational AI provider specializing in Indic languages and voice cloning. Billing is denominated in Indian Rupees (INR) with separate rates for text-to-speech and speech-to-text.
+Sarvam AI is the premier Indian foundational AI provider specialising in Indic languages. Billing is in Indian Rupees (INR).
 
-| Service Model | Unit Pricing | Equivalent Cost per 1,000 Chars / Min | Equivalent Cost per 1M Chars | Primary Use Case in SpeakIT |
-| :--- | :--- | :--- | :--- | :--- |
-| **TTS: Bulbul v3** | **₹30.00 per 10,000 chars** | **₹3.00** ($0.035) per 1k chars | **₹3,000** ($35.30) | **Pro & Pro Plus Indian Voices** (Hindi, Bengali, Tamil, etc.) |
-| **TTS: Voice Cloning** | **₹30.00 per 10,000 chars** | **₹3.00** ($0.035) per 1k chars | **₹3,000** ($35.30) | Future Custom Voice Cloning Feature |
-| **STT: Saarika (Base)** | **₹30.00 per hour** | **₹0.50** ($0.0059) per minute | **₹0.0083/second** | **Pro Plan File Audio STT** |
-| **STT + Translation** | **₹30.00 per hour** | **₹0.50** ($0.0059) per minute | **₹0.0083/second** | Cross-Language Speech Translation |
-| **STT + Diarization** | **₹45.00 per hour** | **₹0.75** ($0.0088) per minute | **₹0.0125/second** | Multi-Speaker Meeting Transcripts |
+> [!WARNING]
+> **Saarika v2.5 is deprecated.** Migrate to `saaras:v3` (batch) and `saaras:v3-realtime` (live WebSocket STT) immediately.
+
+| Service Model | Unit Pricing | Cost per 1k Chars / Min | Primary Use Case in SpeakIT |
+| :--- | :--- | :--- | :--- |
+| **TTS: Bulbul v3** | **₹30.00 per 10,000 chars** | **₹3.00** ($0.035)/1k chars | **Pro & Pro Plus Indian Voices** (Hindi, Bengali, Tamil, etc.) |
+| **TTS: Voice Cloning** | **₹30.00 per 10,000 chars** | **₹3.00** ($0.035)/1k chars | Future Custom Voice Cloning |
+| **STT: Saaras v4 (Batch)** | **₹30.00 per hour** | **₹0.50** ($0.0059)/min | **Pro Plan File Audio STT** |
+| **STT: Saaras v3-realtime (Live)** | **₹30.00 per hour** | **₹0.50** ($0.0059)/min | **Live Transcription & Translation** |
+| **STT + Diarization** | **₹45.00 per hour** | **₹0.75** ($0.0088)/min | Multi-Speaker Meeting Transcripts (Enterprise) |
+| **Translation API** | **₹30.00 per hour** (STT) / flat REST | Minimal per-call | Text Translation, Inter-Indic Translation |
 
 *Source:* [Sarvam AI Official Pricing](https://www.sarvam.ai/pricing)
 
@@ -97,20 +106,24 @@ Sarvam AI is the premier Indian foundational AI provider specializing in Indic l
 
 ### 2.3 ElevenLabs
 
-ElevenLabs represents the gold standard in expressive, emotive AI speech synthesis. ElevenLabs charges based on character credits, with significant architectural savings when utilizing their new **Flash v2.5** and **Turbo v2.5** models.
+ElevenLabs represents the gold standard in expressive AI speech synthesis. The platform has evolved to the **Eleven v4** model family as of late 2026, with the same character-credit billing model.
 
-| Model / Tier | Cost per 1,000 Characters | Cost per 1,000,000 Characters | Latency Profile | Primary Use Case in SpeakIT |
+| Model / Tier | Model ID | Cost per 1,000 Characters | Latency | Primary Use Case in SpeakIT |
 | :--- | :--- | :--- | :--- | :--- |
-| **Flash v2.5** | **$0.0500** (₹4.25) | **$50.00** (₹4,250) | ~75ms (Ultra-fast) | **Pro Plus Live & Conversational TTS** |
-| **Turbo v2.5** | **$0.0500** (₹4.25) | **$50.00** (₹4,250) | ~150ms (Balanced) | **Pro Plus Default Synthesis Engine** |
-| **Multilingual v2** | **$0.1500 – $0.3000** (₹12.75–₹25.50) | **$150.00 – $300.00** | ~350ms (Studio Quality) | Premium Audio Studio & Enterprise |
-| **Voice Cloning (PVC)** | Included in Pro/Scale tiers | N/A | High-fidelity | Enterprise Custom Voice Duplication |
+| **Flash v2.5** | `eleven_flash_v2_5` | **$0.0500** (₹4.25) | ~75ms | **Live TTS, Voice Bridge streaming** |
+| **Turbo v2.5** | `eleven_turbo_v2_5` | **$0.0500** (₹4.25) | ~150ms | **Pro Plus Default Synthesis** |
+| **Eleven v4 Turbo** | `eleven_v4_turbo` | **$0.0500–$0.0800** (₹4.25–₹6.80) | ~100ms | Voice agents, emotional range |
+| **Multilingual v2** | `eleven_multilingual_v2` | **$0.1500–$0.3000** (₹12.75–₹25.50) | ~350ms | 90+ language studio quality |
+| **Voice Cloning (IVC)** | Via `/v1/voices/add` | Included in paid tiers | — | **Pro Plus: 1 clone; Enterprise: unlimited** |
 
-#### Subscription Volume Packs:
-* **Creator Tier:** $22/month includes 100,000 character credits ($0.22/1k base).
-* **Pro Tier:** $99/month includes 500,000 character credits ($0.198/1k base).
-* **Scale Tier:** $330/month includes 2,000,000 character credits ($0.165/1k base).
-* **Overage Rate on Flash/Turbo:** Flat **$0.05 per 1,000 characters** across developer API keys.
+> [!TIP]
+> **Default `eleven_flash_v2_5` for ALL streaming and live use cases.** It delivers ~75ms first-byte at the same $0.05/1k price as Turbo — critical for the Live Voice Bridge to feel natural.
+
+#### Subscription Volume Packs (2026):
+* **Creator Tier:** $22/month → 100,000 character credits ($0.22/1k base — **not recommended**, use Pay-as-you-go API)
+* **Pro Tier:** $99/month → 500,000 character credits ($0.198/1k base)
+* **Scale Tier:** $330/month → 2,000,000 character credits ($0.165/1k base)
+* **Overage Rate (Flash/Turbo/v4):** Flat **$0.05 per 1,000 characters** across developer API keys
 
 *Source:* [ElevenLabs Official Pricing & API Docs](https://elevenlabs.io/pricing)
 
@@ -346,41 +359,70 @@ Targeted at media houses, e-learning platforms, and SaaS API consumers.
 ### 5.1 Market Landscape
 
 ```text
-+---------------------------------------------------------------------------------------+
-|                    GLOBAL AI VOICE GENERATOR PRICING BENCHMARKS                       |
-+---------------------------------------------------------------------------------------+
-| PROVIDER       | ENTRY PAID TIER      | PRO / CREATOR TIER     | KEY STRENGTH         |
-+---------------------------------------------------------------------------------------+
-| ElevenLabs     | Starter ($5/mo, 30k) | Creator ($22/mo, 100k) | Emotive Expression   |
-| Murf AI        | Creator ($29/mo, 2h) | Business ($99/mo, 8h)  | Video Sync & Studio  |
-| Play.ht        | Creator ($39/mo, 250k| Unlimited ($99/mo)     | Clone Marketplace    |
-| Speechify      | Audio ($139/year)    | Studio ($288/year)     | Reading Productivity |
-| SpeakIT (Ours) | Pro (₹499 / $9.99)   | Pro Plus (₹999/$19.99) | Indic + Global Multi |
-+---------------------------------------------------------------------------------------+
++--------------------------------------------------------------------------------------------------+
+|                    GLOBAL & INDIA AI VOICE GENERATOR PRICING BENCHMARKS (2026)                  |
++--------------------------------------------------------------------------------------------------+
+| PROVIDER          | ENTRY PAID TIER          | PRO / CREATOR TIER        | KEY STRENGTH          |
++--------------------------------------------------------------------------------------------------+
+| ElevenLabs        | Starter ($5/mo, 30k)     | Creator ($22/mo, 100k)    | Emotive, 90+ langs    |
+| Murf AI           | Creator (₹2,444/mo, 2h)  | Business (₹8,000/mo, 8h)  | Video sync & Studio   |
+| Play.ht           | Creator ($39/mo, 250k)   | Unlimited ($99/mo)        | Clone marketplace     |
+| Speechify         | Audio ($139/yr)          | Studio ($288/yr)          | Reading productivity  |
+| Trikon AI (India) | ₹5/min (all-in, agents)  | Volume contracts          | Indian call centers   |
+| Bolna AI (India)  | Usage-based (₹/min)      | Enterprise contracts      | Real-time voice agents|
+| SpeakIT (Ours)    | Pro (₹699 / $9.99)       | Pro Plus (₹1,299/$19.99)  | Indic + Global Multi  |
++--------------------------------------------------------------------------------------------------+
 ```
 
+**Key 2026 Market Observations:**
+
 1. **ElevenLabs Direct Subscription:**
-   * Starter ($5/mo for 30k chars), Creator ($22/mo for 100k chars), Pro ($99/mo for 500k chars).
-   * *Weakness:* No native Indian language support; expensive entry point for Indian creators ($22 = ~₹1,850/mo).
+   * Starter ($5/mo for 30k chars), Creator ($22/mo for 100k), Pro ($99/mo for 500k).
+   * *Weakness:* No native Indian language support; expensive for Indian creators ($22 = ~₹1,850/mo). ElevenLabs is moving aggressively into conversational AI (ElevenAgents) which is outside SpeakIT's consumer TTS territory.
+
 2. **Murf AI:**
-   * Creator plan is $29/month; Business plan is $99/month.
-   * *Weakness:* Billed primarily on generated minutes rather than flexible characters; high barrier to entry for mobile consumers.
-3. **Play.ht:**
-   * Creator plan starts at $39/month.
-   * *Weakness:* Targeted strictly at desktop enterprise power-users; lacks lightweight mobile app experiences.
+   * India pricing: ~₹2,444/mo Creator, ~₹8,000/mo Business. Billed by generated minutes, not characters.
+   * *Weakness:* High barrier for mobile-first Indian creators; no live STT or translation features.
+
+3. **Trikon AI & Bolna (Indian Competitors):**
+   * Emerging Indian voice agent platforms targeting call centers at ₹5/min all-in.
+   * *Not a direct threat:* They target enterprise telephony (IVR, call center), not consumer TTS creation. SpeakIT's Live Voice Bridge would outperform them on individual creator use cases.
+
+4. **Speechify:**
+   * Consumer read-aloud productivity tool ($139/year = ₹11,700/year ≈ ₹975/month).
+   * *Weakness:* No creation/synthesis features; pure read-aloud.
 
 ---
 
 ### 5.2 SpeakIT Competitive Moat & Value Proposition
 
 1. **The "Bilingual Advantage" (Global English + Native Indic):**
-   * Western competitors completely ignore regional Indian accents and languages. By pairing **ElevenLabs** (for English/Global) with **Sarvam AI** (for Hindi, Tamil, Telugu, etc.), SpeakIT is the only app offering studio-quality output across both worlds.
+   * Western competitors completely ignore regional Indian accents and languages. By pairing **ElevenLabs** (for English/Global) with **Sarvam AI** (for Hindi, Tamil, Telugu, etc.), SpeakIT is the only consumer app offering studio-quality output across both worlds.
+
 2. **Accessible Regional Pricing (Price Elasticity in India):**
-   * A creator in Mumbai or Bangalore will hesitate to pay $22/mo (₹1,850) for ElevenLabs, but readily converts at **₹499/mo (Pro)** and **₹999/mo (Pro Plus)** over native UPI.
-3. **High International Margin Arbitrage:**
-   * For US/EU users, **$9.99** and **$19.99** are recognized as aggressive, high-value subscription pricing (undercutting Murf and Play.ht by over 50%), generating **>91% gross margins**.
+   * A creator in Mumbai or Bangalore will hesitate at $22/mo (₹1,850) for ElevenLabs, but converts readily at **₹699/mo (Pro)** and **₹1,299/mo (Pro Plus)** via native UPI. These price points are below Murf's entry tier while delivering comparable (often superior for Indian content) quality.
+
+3. **Live Voice Bridge — Unique Differentiator:**
+   * No competitor offers a real-time STT → translate → TTS pipeline with Indian language input and ElevenLabs voice output. This is SpeakIT's flagship moat for 2026–2027.
+
+4. **High International Margin Arbitrage:**
+   * For US/EU users, **$9.99** and **$19.99** undercut Murf and Play.ht by 50–75%, while generating **>91% gross margins**.
 
 ---
+
+### 5.3 Revised Plan Pricing Recommendations (2026 Market Analysis)
+
+Based on competitor landscape analysis and updated COGS modelling (including Live Feature costs):
+
+| Plan | Current Price | **Recommended Price** | Rationale |
+|---|---|---|---|
+| **Free** | ₹0 / $0 | ₹0 / $0 | Acquisition funnel — no change |
+| **Pro** | ₹499 / $9.99 | **₹699 / $9.99** | Murf's India entry is ₹2,444; ₹699 is still 70% cheaper. +40% INR revenue uplift with no churn risk. |
+| **Pro Plus** | ₹999 / $19.99 | **₹1,299 / $19.99** | Adds Live Transcription + Translation features. Speechify equivalent is ₹975/mo. Live features justify ₹300 uplift. USD unchanged (global market is price-insensitive at $19.99). |
+| **Enterprise** | $299 / ₹14,999 | **$349 / ₹19,999** | Adds Live Voice Bridge unlimited + Diarization + Voice Cloning. +17% USD, +33% INR. Still well below Murf Business (₹8,000). |
+
+> [!NOTE]
+> **Apple In-App Purchase (iOS StoreKit):** USD prices remain at $9.99 / $19.99 — these are App Store pricing tiers and should not be changed without evaluating tier compatibility. INR increases only affect Razorpay web checkout and direct subscriptions.
 
 ## 6. Scale Modeling & 3-Year P&L Forecast
 
@@ -486,11 +528,32 @@ To preserve high gross margins as SpeakIT scales toward millions of syntheses, e
 ## 8. Conclusion & Actionable Recommendations
 
 ### Strategic Summary
-SpeakIT possesses an exceptionally resilient financial model. With current system parameter character quotas (3k Free, 5k Pro, 10k Pro Plus), the business achieves **>85% blended gross margins** while delivering both localized Indian voices and premier global English voices.
+SpeakIT possesses an exceptionally resilient financial model. With the proposed price revisions (₹699 Pro, ₹1,299 Pro Plus) and the addition of Live Voice Bridge features, the business is positioned to grow ARR significantly while maintaining **>85% blended gross margins**.
 
-### Recommended Action Plan:
-1. **Maintain Current Quotas:** The existing limits (`3,000` Free, `5,000` Pro, `10,000` Pro Plus) provide optimal unit margin protection while giving users sufficient volume for weekly short-form creation.
-2. **Deploy Cloudflare R2 for Storage:** Migrate audio storage away from standard S3 to eliminate all outbound audio egress bandwidth fees.
-3. **Default to ElevenLabs Flash v2.5:** Ensure all standard ElevenLabs API calls specify `model_id: "eleven_flash_v2_5"` to lock in the **$0.05 / 1,000 character** rate.
-4. **Implement SHA-256 Synthesis Caching:** Add a content-addressable hash check before invoking upstream APIs to gain immediate 15–20% API savings.
-5. **Scale Multi-Currency Routing:** Implement the dual-gateway strategy (Razorpay for INR UPI/Cards + Stripe for Global USD/EUR) to capture global creator demand at 91% gross margins.
+### Recommended Action Plan (Priority Order):
+
+1. **Migrate Saarika → Saaras v4 (Immediate — Breaking):**
+   Change backend STT service model ID from `saarika` to `saaras:v3` (batch) and `saaras:v3-realtime` (live). Saarika is deprecated.
+
+2. **Default ElevenLabs to Flash v2.5:**
+   Ensure all ElevenLabs API calls specify `model_id: "eleven_flash_v2_5"` to lock in the **$0.05/1k char** rate and achieve ~75ms streaming latency.
+
+3. **Implement SHA-256 Synthesis Caching:**
+   Add a content-addressable hash check before invoking upstream APIs — immediate 15–20% API cost reduction.
+
+4. **Deploy Cloudflare R2 for Storage:**
+   Migrate audio storage away from AWS S3 to eliminate all outbound egress bandwidth fees.
+
+5. **Update INR Plan Pricing (Razorpay):**
+   Update Pro from ₹499 → **₹699** and Pro Plus from ₹999 → **₹1,299** in Razorpay + `SystemParameter` DB. iOS StoreKit USD prices remain unchanged ($9.99 / $19.99).
+
+6. **Build Live Transcription Feature (Sprint 2):**
+   Implement `SarvamLiveSTTService.swift` + Spring Boot WebSocket proxy `/ws/live-stt`. Add to Pro tier (10 mins/mo). See `docs/ios-migration/ai-provider-capabilities-and-live-feature.md` for full architecture.
+
+7. **Build Live Voice Bridge (Sprint 4):**
+   Full Sarvam STT → Translate → ElevenLabs TTS pipeline. Gate behind Pro Plus (15 mins/mo). This is SpeakIT's primary competitive moat for 2026–2027.
+
+8. **Scale Multi-Currency Routing:**
+   Implement the dual-gateway strategy (Razorpay for INR UPI/Cards + Stripe/StoreKit for Global USD/EUR) to capture global creator demand at >91% gross margins.
+
+> See [`docs/ios-migration/ai-provider-capabilities-and-live-feature.md`](../ios-migration/ai-provider-capabilities-and-live-feature.md) for the complete technical blueprint of all ElevenLabs and Sarvam AI capabilities and the Live Voice Bridge implementation roadmap.

@@ -52,9 +52,10 @@ struct HistoryDetailView: View {
     }
     
     private var hasAudioAvailable: Bool {
-        if item.localAudioURL != nil { return true }
+        // Show player only when audio actually exists — either cached on disk or a CDN/backend URL from the server.
+        // Do NOT fall back to engineType == "TTS" — legacy items may have no stored audio at all.
+        if let local = item.localAudioURL, FileManager.default.fileExists(atPath: local.path) { return true }
         if let urlStr = item.audioUrl, !urlStr.isEmpty { return true }
-        if item.engineType == "TTS" { return true }
         return false
     }
     
