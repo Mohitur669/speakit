@@ -38,10 +38,12 @@ class SarvamServiceTest {
     }
 
     @Test
-    void resolveSpeaker_MapsAditiToRitu() {
+    void resolveSpeaker_MapsAliasesCorrectly() {
         assertEquals("ritu", sarvamService.resolveSpeaker("aditi"));
         assertEquals("ritu", sarvamService.resolveSpeaker("Aditi"));
         assertEquals("ritu", sarvamService.resolveSpeaker("ADITI"));
+        assertEquals("priya", sarvamService.resolveSpeaker("meera"));
+        assertEquals("rahul", sarvamService.resolveSpeaker("arvind"));
     }
 
     @Test

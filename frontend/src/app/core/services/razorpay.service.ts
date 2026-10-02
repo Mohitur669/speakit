@@ -14,6 +14,10 @@ export interface PaymentHistoryDto {
   currency: string;
   status: string;
   razorpayOrderId: string;
+  paymentProvider?: string;
+  paymentMethod?: string;
+  transactionId?: string;
+  invoiceNote?: string;
   createdAt: string;
 }
 

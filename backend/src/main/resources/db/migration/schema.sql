@@ -485,6 +485,32 @@ BEGIN
         WHERE p.subscription_id = s.id AND p.plan_type IS NULL;
     END IF;
 
+    -- Ensure payment_provider and payment_method exist on payments table
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='payments' AND column_name='payment_provider') THEN
+        ALTER TABLE payments ADD COLUMN payment_provider VARCHAR(30) DEFAULT 'RAZORPAY';
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='payments' AND column_name='payment_method') THEN
+        ALTER TABLE payments ADD COLUMN payment_method VARCHAR(50);
+    END IF;
+
+    -- Ensure STT transcript and metadata columns exist on speech_to_text_requests table
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='speech_to_text_requests' AND column_name='transcript') THEN
+        ALTER TABLE speech_to_text_requests ADD COLUMN transcript TEXT;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='speech_to_text_requests' AND column_name='transliteration') THEN
+        ALTER TABLE speech_to_text_requests ADD COLUMN transliteration TEXT;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='speech_to_text_requests' AND column_name='processing_mode') THEN
+        ALTER TABLE speech_to_text_requests ADD COLUMN processing_mode VARCHAR(30);
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='speech_to_text_requests' AND column_name='original_filename') THEN
+        ALTER TABLE speech_to_text_requests ADD COLUMN original_filename VARCHAR(255);
+    END IF;
+
     -- Ensure iOS plan price parameters exist
     INSERT INTO system_parameters (parameter_name, parameter_value, description)
     VALUES

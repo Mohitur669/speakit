@@ -23,6 +23,9 @@ public class SarvamSpeechToTextProvider implements SpeechToTextProvider {
     @Value("${sarvam.apiKey:}")
     private String apiKey;
 
+    @Value("${sarvam.stt.model:saaras:v4}")
+    private String sttModel;
+
     private final RestClient restClient;
 
     public SarvamSpeechToTextProvider() {
@@ -36,16 +39,24 @@ public class SarvamSpeechToTextProvider implements SpeechToTextProvider {
 
     @Override
     public SpeechToTextResult transcribe(File audioFile, String language) {
+        return transcribe(audioFile, language, null);
+    }
+
+    @Override
+    public SpeechToTextResult transcribe(File audioFile, String language, String mode) {
         if (apiKey == null || apiKey.isEmpty()) {
             throw new SttException("Sarvam API Key is missing.");
         }
 
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
         body.add("file", new FileSystemResource(audioFile));
-        body.add("model", "saarika:v2.5"); // Updated from deprecated v1
+        body.add("model", (sttModel != null && !sttModel.isBlank()) ? sttModel : "saaras:v4");
         if (language != null) {
             String mappedLang = "auto".equalsIgnoreCase(language) ? "unknown" : language;
             body.add("language_code", mappedLang);
+        }
+        if (mode != null && !mode.isBlank()) {
+            body.add("mode", mode.toLowerCase().trim());
         }
 
         try {
@@ -62,11 +73,19 @@ public class SarvamSpeechToTextProvider implements SpeechToTextProvider {
                 if (detectedLang == null) {
                     detectedLang = language;
                 }
+                String transliteration = null;
+                if (response.containsKey("transliteration")) {
+                    transliteration = (String) response.get("transliteration");
+                } else if ("translit".equalsIgnoreCase(mode)) {
+                    transliteration = (String) response.get("transcript");
+                }
                 return SpeechToTextResult.builder()
                         .transcript((String) response.get("transcript"))
                         .language(detectedLang)
                         .provider(getName())
                         .duration(parseDuration(response.get("duration")))
+                        .transliteration(transliteration)
+                        .mode(mode != null ? mode.toLowerCase().trim() : "transcribe")
                         .build();
             }
             throw new SttException("Unexpected response from Sarvam AI");

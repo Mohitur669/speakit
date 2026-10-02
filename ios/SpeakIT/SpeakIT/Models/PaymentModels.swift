@@ -37,6 +37,32 @@ struct PaymentHistoryItem: Codable, Identifiable {
     let status: String
     let razorpayOrderId: String?
     let createdAt: String?
+    let paymentProvider: String?
+    let paymentMethod: String?
+    let transactionId: String?
+    let invoiceNote: String?
+    
+    var isAppleStoreKit: Bool {
+        (paymentProvider?.uppercased() == "APPLE_STOREKIT") ||
+        (razorpayOrderId?.hasPrefix("apple_") == true)
+    }
+    
+    var displayPaymentMethod: String {
+        if isAppleStoreKit {
+            return "In-App Purchase (Apple ID)"
+        }
+        return paymentMethod ?? "Secure Payment Gateway"
+    }
+    
+    var displayTransactionId: String {
+        if let tx = transactionId, !tx.isEmpty {
+            return tx
+        }
+        if let order = razorpayOrderId {
+            return order.replacingOccurrences(of: "apple_", with: "")
+        }
+        return "N/A"
+    }
     
     var displayPlanName: String {
         switch planName.uppercased() {

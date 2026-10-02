@@ -14,5 +14,9 @@ public class PaymentHistoryDto {
     private String currency;
     private String status;
     private String razorpayOrderId;
+    private String paymentProvider;
+    private String paymentMethod;
+    private String transactionId;
+    private String invoiceNote;
     private LocalDateTime createdAt;
 }

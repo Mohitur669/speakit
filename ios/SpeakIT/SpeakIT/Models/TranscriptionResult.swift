@@ -15,6 +15,8 @@ struct TranscriptionResult: Codable, Identifiable {
     var wordCount: Int
     var timestamp: String
     var translatedText: String?
+    var transliteration: String?
+    var mode: String?
     var originalAudioURL: URL?
     
     var displayLanguage: String {

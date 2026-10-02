@@ -1,5 +1,7 @@
 package com.speakit.tts.controller;
 
+import com.speakit.stt.entity.SpeechToTextRequest;
+import com.speakit.stt.repository.SpeechToTextRequestRepository;
 import com.speakit.tts.dto.TtsHistoryDto;
 import com.speakit.tts.repository.TtsHistoryRepository;
 import com.speakit.tts.service.AudioStorageService;
@@ -12,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.data.web.PagedModel;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -21,6 +24,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.InputStream;
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -33,6 +38,7 @@ import java.util.List;
 public class HistoryController {
 
     private final TtsHistoryRepository ttsHistoryRepository;
+    private final SpeechToTextRequestRepository speechToTextRequestRepository;
     private final AudioStorageService audioStorageService;
     private final PollyService pollyService;
     private final ElevenLabsService elevenLabsService;
@@ -42,36 +48,117 @@ public class HistoryController {
     public ResponseEntity<PagedModel<TtsHistoryDto>> getHistory(
             HttpServletRequest request,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "ALL") String type
     ) {
         Long userId = (Long) request.getAttribute("userId");
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        Page<TtsHistoryDto> historyPage = ttsHistoryRepository
-                .findRecentHistoryByUserId(userId, PageRequest.of(page, size))
-                .map(history -> {
-                    // Dynamically resolve canonical CDN URL from storageKey to shield against old/mismatched domains
-                    String resolvedAudioUrl = history.getAudioUrl();
-                    if (history.getStorageKey() != null) {
-                        resolvedAudioUrl = audioStorageService.buildPublicUrl(history.getStorageKey());
-                    }
-                    return TtsHistoryDto.builder()
-                            .id(history.getId())
-                            .voiceId(history.getVoiceId())
-                            .voiceName(history.getVoiceName())
-                            .voiceType(history.getVoiceType())
-                            .outputFormat(history.getOutputFormat())
-                            .characterCount(history.getCharacterCount())
-                            .textSnippet(history.getTextSnippet())
-                            .fullText(history.getFullText() != null ? history.getFullText() : history.getTextSnippet())
-                            .audioUrl(resolvedAudioUrl)
-                            .createdAt(history.getCreatedAt())
-                            .build();
-                });
+        String filterType = (type != null) ? type.trim().toUpperCase() : "ALL";
 
-        return ResponseEntity.ok(new PagedModel<>(historyPage));
+        if ("TTS".equals(filterType)) {
+            Page<TtsHistoryDto> historyPage = ttsHistoryRepository
+                    .findRecentHistoryByUserId(userId, PageRequest.of(page, size))
+                    .map(this::mapTtsToDto);
+            return ResponseEntity.ok(new PagedModel<>(historyPage));
+        }
+
+        if ("STT".equals(filterType)) {
+            Page<TtsHistoryDto> sttPage = speechToTextRequestRepository
+                    .findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(page, size))
+                    .map(this::mapSttToDto);
+            return ResponseEntity.ok(new PagedModel<>(sttPage));
+        }
+
+        // "ALL": Merge both TTS and STT records sorted by createdAt DESC
+        int fetchLimit = (page + 1) * size;
+        Page<com.speakit.tts.entity.TtsHistory> ttsRecent = ttsHistoryRepository
+                .findRecentHistoryByUserId(userId, PageRequest.of(0, fetchLimit));
+        Page<SpeechToTextRequest> sttRecent = speechToTextRequestRepository
+                .findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(0, fetchLimit));
+
+        List<TtsHistoryDto> combined = new ArrayList<>();
+        ttsRecent.forEach(history -> combined.add(mapTtsToDto(history)));
+        sttRecent.forEach(stt -> combined.add(mapSttToDto(stt)));
+
+        combined.sort((a, b) -> {
+            if (a.getCreatedAt() == null && b.getCreatedAt() == null) return 0;
+            if (a.getCreatedAt() == null) return 1;
+            if (b.getCreatedAt() == null) return -1;
+            return b.getCreatedAt().compareTo(a.getCreatedAt());
+        });
+
+        int start = Math.min(page * size, combined.size());
+        int end = Math.min(start + size, combined.size());
+        List<TtsHistoryDto> pagedItems = (start < end) ? combined.subList(start, end) : Collections.emptyList();
+
+        long totalElements = ttsRecent.getTotalElements() + sttRecent.getTotalElements();
+        Page<TtsHistoryDto> unifiedPage = new PageImpl<>(pagedItems, PageRequest.of(page, size), totalElements);
+
+        return ResponseEntity.ok(new PagedModel<>(unifiedPage));
+    }
+
+    private TtsHistoryDto mapTtsToDto(com.speakit.tts.entity.TtsHistory history) {
+        String resolvedAudioUrl = history.getAudioUrl();
+        if (history.getStorageKey() != null) {
+            resolvedAudioUrl = audioStorageService.buildPublicUrl(history.getStorageKey());
+        }
+        return TtsHistoryDto.builder()
+                .id(history.getId())
+                .voiceId(history.getVoiceId())
+                .voiceName(history.getVoiceName())
+                .voiceType(history.getVoiceType())
+                .outputFormat(history.getOutputFormat())
+                .characterCount(history.getCharacterCount())
+                .textSnippet(history.getTextSnippet())
+                .fullText(history.getFullText() != null ? history.getFullText() : history.getTextSnippet())
+                .audioUrl(resolvedAudioUrl)
+                .createdAt(history.getCreatedAt())
+                .engineType("TTS")
+                .status("SUCCESS")
+                .build();
+    }
+
+    private TtsHistoryDto mapSttToDto(SpeechToTextRequest stt) {
+        String transcript = stt.getTranscript() != null ? stt.getTranscript() : "";
+        String snippet = transcript;
+        if (snippet.length() > 60) {
+            snippet = snippet.substring(0, 60) + "...";
+        }
+        if (snippet.isEmpty()) {
+            snippet = stt.getOriginalFilename() != null ? stt.getOriginalFilename() : "Audio Transcription";
+        }
+
+        String providerName = "Sarvam Saaras";
+        if (stt.getProvider() != null) {
+            if ("SARVAM".equalsIgnoreCase(stt.getProvider())) {
+                providerName = "Sarvam Saaras";
+            } else {
+                providerName = stt.getProvider();
+            }
+        }
+
+        int charCount = stt.getTranscriptLength() != null ? stt.getTranscriptLength() : transcript.length();
+
+        return TtsHistoryDto.builder()
+                .id(stt.getId())
+                .voiceId(stt.getLanguage() != null ? stt.getLanguage() : "hi-IN")
+                .voiceName(providerName)
+                .voiceType("STT")
+                .outputFormat("wav")
+                .characterCount(charCount)
+                .textSnippet(snippet)
+                .fullText(transcript)
+                .audioUrl(null)
+                .createdAt(stt.getCreatedAt())
+                .engineType("STT")
+                .transliteration(stt.getTransliteration())
+                .mode(stt.getProcessingMode() != null ? stt.getProcessingMode() : "transcribe")
+                .filename(stt.getOriginalFilename())
+                .status(stt.getStatus() != null ? stt.getStatus() : "SUCCESS")
+                .build();
     }
 
     /**
@@ -181,35 +268,55 @@ public class HistoryController {
     @DeleteMapping("/delete")
     public ResponseEntity<Void> deleteSelected(
             HttpServletRequest request,
-            @RequestBody @jakarta.validation.constraints.Size(max = 100, message = "Maximum 100 items can be deleted at once") List<Long> ids
+            @RequestBody @jakarta.validation.constraints.Size(max = 100, message = "Maximum 100 items can be deleted at once") List<Long> ids,
+            @RequestParam(required = false, defaultValue = "ALL") String type
     ) {
         Long userId = (Long) request.getAttribute("userId");
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        
-        List<com.speakit.tts.entity.TtsHistory> items = ttsHistoryRepository.findAllByIdInAndUserId(ids, userId);
-        for (var item : items) {
-            audioStorageService.deleteAudio(item.getStorageKey(), item.getAudioUrl());
+
+        String filterType = (type != null) ? type.trim().toUpperCase() : "ALL";
+
+        if (!"STT".equals(filterType)) {
+            List<com.speakit.tts.entity.TtsHistory> items = ttsHistoryRepository.findAllByIdInAndUserId(ids, userId);
+            for (var item : items) {
+                audioStorageService.deleteAudio(item.getStorageKey(), item.getAudioUrl());
+            }
+            ttsHistoryRepository.deleteAllByIdInAndUserId(ids, userId);
         }
 
-        ttsHistoryRepository.deleteAllByIdInAndUserId(ids, userId);
+        if (!"TTS".equals(filterType)) {
+            speechToTextRequestRepository.deleteAllByIdInAndUserId(ids, userId);
+        }
+
         return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/clear-all")
-    public ResponseEntity<Void> clearAll(HttpServletRequest request) {
+    public ResponseEntity<Void> clearAll(
+            HttpServletRequest request,
+            @RequestParam(required = false, defaultValue = "ALL") String type
+    ) {
         Long userId = (Long) request.getAttribute("userId");
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        List<com.speakit.tts.entity.TtsHistory> items = ttsHistoryRepository.findAllByUserId(userId);
-        for (var item : items) {
-            audioStorageService.deleteAudio(item.getStorageKey(), item.getAudioUrl());
+        String filterType = (type != null) ? type.trim().toUpperCase() : "ALL";
+
+        if (!"STT".equals(filterType)) {
+            List<com.speakit.tts.entity.TtsHistory> items = ttsHistoryRepository.findAllByUserId(userId);
+            for (var item : items) {
+                audioStorageService.deleteAudio(item.getStorageKey(), item.getAudioUrl());
+            }
+            ttsHistoryRepository.deleteAllByUserId(userId);
         }
 
-        ttsHistoryRepository.deleteAllByUserId(userId);
+        if (!"TTS".equals(filterType)) {
+            speechToTextRequestRepository.deleteAllByUserId(userId);
+        }
+
         return ResponseEntity.noContent().build();
     }
 

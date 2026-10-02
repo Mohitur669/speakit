@@ -123,7 +123,16 @@ struct BillingHistorySheet: View {
                         .font(.system(size: 11))
                         .foregroundColor(Color.speakitTextSecondary)
                     
-                    if let orderId = item.razorpayOrderId {
+                    if item.isAppleStoreKit {
+                        HStack(spacing: 3) {
+                            Image(systemName: "applelogo")
+                                .font(.system(size: 9))
+                            Text("Apple StoreKit • \(item.displayTransactionId)")
+                                .font(.system(size: 10, design: .monospaced))
+                                .lineLimit(1)
+                        }
+                        .foregroundColor(Color.speakitTextTertiary)
+                    } else if let orderId = item.razorpayOrderId {
                         Text(orderId)
                             .font(.system(size: 10, design: .monospaced))
                             .foregroundColor(Color.speakitTextTertiary)

@@ -63,6 +63,13 @@ public class Payment extends BaseEntity {
     @Column(name = "invoice_number", length = 50)
     private String invoiceNumber;
 
+    @Column(name = "payment_provider", length = 30)
+    @Builder.Default
+    private String paymentProvider = "RAZORPAY";
+
+    @Column(name = "payment_method", length = 50)
+    private String paymentMethod;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private PaymentStatus status;

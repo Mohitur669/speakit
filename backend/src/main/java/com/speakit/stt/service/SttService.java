@@ -47,6 +47,10 @@ public class SttService {
      * Orchestrates the STT process with plan-aware provider selection and failover.
      */
     public SpeechToTextResult transcribe(MultipartFile multipartFile, String language, Long userId, String preferredProvider) {
+        return transcribe(multipartFile, language, userId, preferredProvider, null);
+    }
+
+    public SpeechToTextResult transcribe(MultipartFile multipartFile, String language, Long userId, String preferredProvider, String mode) {
         Path tempFilePath = null;
         LocalDateTime startTime = LocalDateTime.now();
         
@@ -80,16 +84,17 @@ public class SttService {
 
             SpeechToTextResult result = null;
             try {
-                log.info("Attempting STT with primary choice: {} for user {}", firstChoice, userId);
-                result = attemptTranscription(firstChoice, audioFile, language);
+                log.info("Attempting STT with primary choice: {} for user {} mode: {}", firstChoice, userId, mode);
+                result = attemptTranscription(firstChoice, audioFile, language, mode);
             } catch (Exception e) {
                 String fallback = firstChoice.equals("SARVAM") ? "ELEVEN_LABS" : "SARVAM";
                 log.warn("{} failed, attempting fallback to {}: {}", firstChoice, fallback, e.getMessage());
-                result = attemptTranscription(fallback, audioFile, language);
+                result = attemptTranscription(fallback, audioFile, language, mode);
             }
 
-            // 4. Persistence (Metadata only)
-            saveMetadata(userId, result, multipartFile.getSize(), "SUCCESS", null, startTime);
+            // 4. Persistence (Full History & Audit)
+            String filename = multipartFile != null ? multipartFile.getOriginalFilename() : "audio_memo";
+            saveMetadata(userId, result, multipartFile.getSize(), "SUCCESS", null, startTime, mode, filename);
             
             return result;
 
@@ -98,7 +103,8 @@ public class SttService {
             throw new SttException("Failed to process audio file internally.");
         } catch (Exception e) {
             log.error("STT processing failed for user {}", userId, e);
-            saveMetadata(userId, null, multipartFile.getSize(), "FAILED", e.getMessage(), startTime);
+            String filename = multipartFile != null ? multipartFile.getOriginalFilename() : "audio_memo";
+            saveMetadata(userId, null, multipartFile.getSize(), "FAILED", e.getMessage(), startTime, mode, filename);
             throw new SttException("Speech transcription failed: " + e.getMessage());
         } finally {
             // 5. Guaranteed deletion
@@ -113,9 +119,12 @@ public class SttService {
         }
     }
 
-    private SpeechToTextResult attemptTranscription(String providerName, File file, String language) {
+    private SpeechToTextResult attemptTranscription(String providerName, File file, String language, String mode) {
         if ("ELEVEN_LABS".equals(providerName)) {
             return elevenLabsProvider.transcribe(file, language);
+        }
+        if (mode != null && !mode.isBlank()) {
+            return sarvamProvider.transcribe(file, language, mode);
         }
         return sarvamProvider.transcribe(file, language);
     }
@@ -138,7 +147,7 @@ public class SttService {
         }
     }
 
-    private void saveMetadata(Long userId, SpeechToTextResult result, long sizeBytes, String status, String failureReason, LocalDateTime startTime) {
+    private void saveMetadata(Long userId, SpeechToTextResult result, long sizeBytes, String status, String failureReason, LocalDateTime startTime, String mode, String filename) {
         try {
             User user = userRepository.getReferenceById(userId);
             SpeechToTextRequest request = SpeechToTextRequest.builder()
@@ -148,11 +157,17 @@ public class SttService {
                     .audioDurationSeconds(result != null && result.getDuration() != null ? result.getDuration().intValue() : 0)
                     .language(result != null ? result.getLanguage() : null)
                     .transcriptLength(result != null && result.getTranscript() != null ? result.getTranscript().length() : 0)
+                    .transcript(result != null ? result.getTranscript() : null)
+                    .transliteration(result != null ? result.getTransliteration() : null)
+                    .processingMode(mode != null ? mode : "transcribe")
+                    .originalFilename(filename)
                     .status(status)
                     .failureReason(failureReason)
                     .completedAt(LocalDateTime.now())
                     .build();
             sttRepository.save(request);
+            log.info("Saved STT history record: user={} provider={} mode={} length={}",
+                    userId, request.getProvider(), request.getProcessingMode(), request.getTranscriptLength());
         } catch (Exception e) {
             log.warn("Failed to save STT metadata audit log", e);
         }
