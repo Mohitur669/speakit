@@ -114,10 +114,12 @@ final class StoreKitService {
         struct AppleVerifyBody: Encodable {
             let transactionId: String
             let productId: String
+            let originalTransactionId: String
         }
         let body = try JSONEncoder().encode(AppleVerifyBody(
             transactionId: String(transaction.id),
-            productId: productId
+            productId: productId,
+            originalTransactionId: String(transaction.originalID)
         ))
         let _: String = try await HTTPClient.shared.requestString(
             .appleVerifyPurchase,

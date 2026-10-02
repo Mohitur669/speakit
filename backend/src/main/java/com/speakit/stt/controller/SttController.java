@@ -13,6 +13,8 @@ import com.speakit.stt.service.SttService;
 import com.speakit.stt.validator.AudioFileValidator;
 import com.speakit.stt.dto.TranslationRequest;
 import com.speakit.stt.dto.TranslationResponse;
+import com.speakit.stt.dto.TransliterationRequest;
+import com.speakit.stt.dto.TransliterationResponse;
 import com.speakit.stt.service.TranslationService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -48,6 +50,7 @@ public class SttController {
             @RequestPart("file") MultipartFile file,
             @RequestPart(value = "language", required = false) String language,
             @RequestPart(value = "provider", required = false) String preferredProvider,
+            @RequestPart(value = "mode", required = false) String mode,
             HttpServletRequest httpRequest
     ) {
         // 1. Sanitize & validate request parts
@@ -55,6 +58,9 @@ public class SttController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
         if (preferredProvider != null && !preferredProvider.isEmpty() && !preferredProvider.matches("^[a-zA-Z0-9_]+$")) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+        if (mode != null && !mode.isEmpty() && !mode.matches("^[a-zA-Z0-9_\\-]+$")) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
 
@@ -97,7 +103,7 @@ public class SttController {
         }
 
         // 8. Orchestrate Transcription
-        SpeechToTextResult result = sttService.transcribe(file, language, userId, authorizedProvider);
+        SpeechToTextResult result = sttService.transcribe(file, language, userId, authorizedProvider, mode);
         
         return ResponseEntity.ok(result);
     }
@@ -112,6 +118,7 @@ public class SttController {
             @RequestPart("file") MultipartFile file,
             @RequestPart(value = "language", required = false) String language,
             @RequestPart(value = "provider", required = false) String preferredProvider,
+            @RequestPart(value = "mode", required = false) String mode,
             HttpServletRequest httpRequest
     ) {
         // 1. Sanitize & validate request parts
@@ -119,6 +126,9 @@ public class SttController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
         if (preferredProvider != null && !preferredProvider.isEmpty() && !preferredProvider.matches("^[a-zA-Z0-9_]+$")) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+        if (mode != null && !mode.isEmpty() && !mode.matches("^[a-zA-Z0-9_\\-]+$")) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
 
@@ -159,7 +169,7 @@ public class SttController {
         }
 
         // 8. Orchestrate Transcription
-        SpeechToTextResult result = sttService.transcribe(file, language, userId, authorizedProvider);
+        SpeechToTextResult result = sttService.transcribe(file, language, userId, authorizedProvider, mode);
         
         return ResponseEntity.ok(result);
     }
@@ -193,6 +203,38 @@ public class SttController {
 
         // 3. Translate
         TranslationResponse result = translationService.translate(request);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+      * Dedicated transliteration endpoint for converting text across Indian language scripts and Roman/Latin.
+      */
+    @RateLimited(action = RateLimitAction.STT)
+    @PostMapping("/transliterate")
+    public ResponseEntity<TransliterationResponse> transliterate(
+            @Valid @RequestBody TransliterationRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        // 1. Global Feature Flag Check (Governed Parameter)
+        boolean sttEnabled = systemParameterService.isFeatureEnabled("STT_ENABLED", true);
+        if (!sttEnabled) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+        }
+
+        // 2. Extract and authorize plan with database fallback
+        UserSecurityContext context = resolveSecurityContext(httpRequest);
+        PlanType planType = context.planType();
+        SubscriptionStatus status = context.status();
+        LocalDateTime expiry = context.expiry();
+
+        if (!subscriptionService.hasSpeechToText(planType, status, expiry)) {
+            log.warn("Access denied for transliteration: userId={}, planType={}, status={}, expiry={}",
+                    context.userId(), planType, status, expiry);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        // 3. Transliterate
+        TransliterationResponse result = translationService.transliterate(request);
         return ResponseEntity.ok(result);
     }
 

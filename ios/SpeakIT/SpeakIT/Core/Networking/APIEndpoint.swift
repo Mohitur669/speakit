@@ -105,12 +105,17 @@ enum APIEndpoint {
     case transcribeLive
     case transcribeFile
     case translate
+    case transliterate
     
     // History
-    case history(page: Int, size: Int)
+    case history(page: Int, size: Int, type: String?)
     case historyAudio(id: Int64)
     case deleteHistory
     case clearAllHistory
+
+    static func history(page: Int, size: Int) -> APIEndpoint {
+        .history(page: page, size: size, type: nil)
+    }
     
     // System Parameters
     case systemParametersBulk(names: [String])
@@ -176,7 +181,12 @@ enum APIEndpoint {
             return "/api/stt/transcribe"
         case .translate:
             return "/api/stt/translate"
-        case .history(let page, let size):
+        case .transliterate:
+            return "/api/stt/transliterate"
+        case .history(let page, let size, let type):
+            if let type = type, !type.isEmpty {
+                return "/api/history?page=\(page)&size=\(size)&type=\(type)"
+            }
             return "/api/history?page=\(page)&size=\(size)"
         case .historyAudio(let id):
             return "/api/history/\(id)/audio"

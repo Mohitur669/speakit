@@ -136,6 +136,21 @@ import { getSpeakersForLanguage, DEFAULT_SPEAKERS } from '../../models/sarvam-vo
                       >
                       </app-custom-dropdown>
                     </div>
+                    <div>
+                      <label
+                        class="block text-xs font-semibold text-primary-500 mb-2 tracking-widest"
+                        >Processing Mode</label
+                      >
+                      <app-custom-dropdown
+                        [options]="modes"
+                        [value]="selectedMode"
+                        (valueChange)="selectedMode = $event"
+                        [disabled]="isRecording()"
+                        placeholder="Standard (Transcribe)"
+                        direction="up"
+                      >
+                      </app-custom-dropdown>
+                    </div>
                     @if (isSarvamSupported()) {
                       <div class="col-span-2 lg:col-span-1 animate-slide-up">
                         <label
@@ -463,6 +478,19 @@ import { getSpeakersForLanguage, DEFAULT_SPEAKERS } from '../../models/sarvam-vo
                     </app-custom-dropdown>
                   </div>
 
+                  <div>
+                    <label class="block text-xs font-bold text-primary-500 mb-2 tracking-wider">PROCESSING MODE</label>
+                    <app-custom-dropdown
+                      [options]="modes"
+                      [value]="selectedMode"
+                      (valueChange)="selectedMode = $event"
+                      [disabled]="isRecording()"
+                      placeholder="Standard (Transcribe)"
+                      direction="down"
+                    >
+                    </app-custom-dropdown>
+                  </div>
+
                   @if (isSarvamSupported()) {
                     <div class="animate-slide-up">
                       <label class="block text-xs font-bold text-primary-500 mb-2 tracking-wider">NARRATOR VOICE</label>
@@ -548,6 +576,14 @@ export class SttPageComponent implements OnInit, OnDestroy {
     { value: 'SARVAM', label: 'Indian' },
     { value: 'ELEVEN_LABS', label: 'International' },
   ];
+
+  modes: DropdownOption[] = [
+    { value: 'transcribe', label: 'Standard (Transcribe)' },
+    { value: 'translate', label: 'Translate to English' },
+    { value: 'codemix', label: 'Code-mixed (Hinglish)' },
+    { value: 'translit', label: 'Transliterate' },
+  ];
+  selectedMode = 'transcribe';
 
   languages: DropdownOption[] = [
     { value: 'auto', label: 'Auto-Detect' },
@@ -793,7 +829,7 @@ export class SttPageComponent implements OnInit, OnDestroy {
     this.error.set('');
     this.result.set(null);
 
-    this.sttService.transcribeLive(blob, this.selectedLanguage, this.selectedProvider).subscribe({
+    this.sttService.transcribeLive(blob, this.selectedLanguage, this.selectedProvider, this.selectedMode).subscribe({
       next: (res) => {
         this.stopProgressSimulation();
         this.result.set(res);
@@ -829,7 +865,7 @@ export class SttPageComponent implements OnInit, OnDestroy {
     this.error.set('');
     this.result.set(null);
 
-    this.sttService.transcribe(file, this.selectedLanguage, this.selectedProvider).subscribe({
+    this.sttService.transcribe(file, this.selectedLanguage, this.selectedProvider, this.selectedMode).subscribe({
       next: (res) => {
         this.stopProgressSimulation();
         this.result.set(res);

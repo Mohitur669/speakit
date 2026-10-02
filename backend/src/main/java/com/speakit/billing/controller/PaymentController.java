@@ -11,6 +11,7 @@ import com.speakit.billing.entity.PlanType;
 import com.speakit.user.entity.User;
 import com.speakit.user.service.UserService;
 import com.speakit.billing.repository.PaymentRepository;
+import com.speakit.billing.repository.SubscriptionRepository;
 import com.speakit.billing.service.RazorpayService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,7 @@ public class PaymentController {
     private final RazorpayService razorpayService;
     private final UserService userService;
     private final PaymentRepository paymentRepository;
+    private final SubscriptionRepository subscriptionRepository;
     private final SubscriptionManagementService subscriptionManagementService;
 
     @PostMapping("/create-order")
@@ -118,6 +120,15 @@ public class PaymentController {
                         case "FREE" -> "Free";
                         default -> rawPlan;
                     };
+                    boolean isApple = "APPLE_STOREKIT".equalsIgnoreCase(payment.getPaymentProvider())
+                            || (payment.getRazorpayOrderId() != null && payment.getRazorpayOrderId().startsWith("apple_"));
+                    String provider = isApple ? "APPLE_STOREKIT" : (payment.getPaymentProvider() != null ? payment.getPaymentProvider() : "RAZORPAY");
+                    String method = isApple ? "In-App Purchase (Apple ID)" : (payment.getPaymentMethod() != null ? payment.getPaymentMethod() : "Razorpay");
+                    String txId = isApple
+                            ? (payment.getRazorpayPaymentId() != null ? payment.getRazorpayPaymentId() : payment.getRazorpayOrderId().replace("apple_", ""))
+                            : (payment.getRazorpayPaymentId() != null ? payment.getRazorpayPaymentId() : payment.getRazorpayOrderId());
+                    String note = isApple ? "Invoices for App Store purchases are sent to your Apple ID email. You can view your purchase history in your Apple account settings." : null;
+
                     return PaymentHistoryDto.builder()
                             .id(payment.getId())
                             .planName(normalPlan)
@@ -125,6 +136,10 @@ public class PaymentController {
                             .currency(payment.getCurrency())
                             .status(payment.getStatus().name())
                             .razorpayOrderId(payment.getRazorpayOrderId())
+                            .paymentProvider(provider)
+                            .paymentMethod(method)
+                            .transactionId(txId)
+                            .invoiceNote(note)
                             .createdAt(payment.getCreatedAt())
                             .build();
                 });
@@ -138,6 +153,7 @@ public class PaymentController {
      * Called by the iOS app after a successful StoreKit 2 purchase.
      * Maps the Apple productId to the internal PlanType and immediately upgrades
      * the user's plan in the database.
+     * Also records an informational transaction in the payments table for Billing History audit.
      *
      * Note: Full Apple JWS receipt verification (App Store Server API) requires a
      * paid Apple Developer account. For StoreKit local/sandbox testing we trust the
@@ -170,6 +186,42 @@ public class PaymentController {
         // Use the Apple transactionId as the gateway subscription ID for audit trail
         String gatewayRef = "apple_" + request.getTransactionId();
         subscriptionManagementService.upgradeUser(user, newPlan, gatewayRef);
+
+        // Record informational payment history record for Apple StoreKit purchase
+        try {
+            String appleOrderId = "apple_" + request.getTransactionId();
+            java.util.Optional<Payment> existingPayment = paymentRepository.findByRazorpayOrderId(appleOrderId);
+            if (existingPayment.isEmpty()) {
+                java.math.BigDecimal amount = request.getAmount();
+                if (amount == null || amount.compareTo(java.math.BigDecimal.ZERO) <= 0) {
+                    amount = newPlan == PlanType.PRO_PLUS ? java.math.BigDecimal.valueOf(1499.00) : java.math.BigDecimal.valueOf(799.00);
+                }
+                String currency = (request.getCurrency() != null && !request.getCurrency().isBlank()) ? request.getCurrency() : "INR";
+
+                com.speakit.billing.entity.Subscription activeSub = subscriptionRepository
+                        .findFirstByUserAndStatusOrderByIdDesc(user, com.speakit.billing.entity.SubscriptionStatus.ACTIVE)
+                        .orElse(null);
+
+                Payment applePayment = Payment.builder()
+                        .user(user)
+                        .subscription(activeSub)
+                        .planType(newPlan)
+                        .razorpayOrderId(appleOrderId)
+                        .razorpayPaymentId(request.getTransactionId())
+                        .amount(amount)
+                        .currency(currency)
+                        .paymentProvider("APPLE_STOREKIT")
+                        .paymentMethod("In-App Purchase (Apple ID)")
+                        .status(com.speakit.billing.entity.PaymentStatus.SUCCESS)
+                        .build();
+
+                paymentRepository.save(applePayment);
+                log.info("Recorded Apple StoreKit payment in billing history: userId={} txId={} amount={} {}",
+                        userId, request.getTransactionId(), amount, currency);
+            }
+        } catch (Exception e) {
+            log.error("Failed to record Apple StoreKit payment history for userId={}: {}", userId, e.getMessage(), e);
+        }
 
         log.info("Apple StoreKit purchase verified: userId={} productId={} plan={} transactionId={}",
                 userId, request.getProductId(), newPlan, request.getTransactionId());

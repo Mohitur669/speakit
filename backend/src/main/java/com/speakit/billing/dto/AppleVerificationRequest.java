@@ -28,4 +28,19 @@ public class AppleVerificationRequest {
      */
     @NotBlank
     private String productId;
+
+    /**
+     * Optional plan amount passed from device / StoreKit product.
+     */
+    private java.math.BigDecimal amount;
+
+    /**
+     * Currency code (e.g. INR, USD). Defaults to INR if omitted.
+     */
+    private String currency;
+
+    /**
+     * The Apple originalTransactionId across renewals.
+     */
+    private String originalTransactionId;
 }

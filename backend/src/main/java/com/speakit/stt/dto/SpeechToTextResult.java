@@ -14,4 +14,6 @@ public class SpeechToTextResult {
     private String language;
     private Double duration;
     private String provider;
+    private String transliteration;
+    private String mode;
 }

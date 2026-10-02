@@ -49,7 +49,9 @@ struct PaymentReceiptSheet: View {
                 }
             }
             .task {
-                preparePDF()
+                if !item.isAppleStoreKit {
+                    preparePDF()
+                }
             }
             .sheet(isPresented: $showPDFPreview) {
                 if let url = pdfURL {
@@ -156,14 +158,16 @@ struct PaymentReceiptSheet: View {
                 
                 receiptRow(title: "Billing Cycle", value: "1 Month (Auto-Renewable)")
                 
-                if let orderId = item.razorpayOrderId {
+                if let _ = item.razorpayOrderId {
+                    let orderTitle = item.isAppleStoreKit ? "Apple Transaction ID" : "Order Reference"
+                    let displayId = item.displayTransactionId
                     HStack(alignment: .top) {
-                        Text("Order Reference")
+                        Text(orderTitle)
                             .font(.system(size: 13))
                             .foregroundColor(Color.speakitTextSecondary)
                         Spacer()
                         Button(action: {
-                            UIPasteboard.general.string = orderId
+                            UIPasteboard.general.string = displayId
                             HapticManager.shared.success()
                             copiedOrderId = true
                             DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
@@ -171,7 +175,7 @@ struct PaymentReceiptSheet: View {
                             }
                         }) {
                             HStack(spacing: 4) {
-                                Text(orderId)
+                                Text(displayId)
                                     .font(.system(size: 12, weight: .medium, design: .monospaced))
                                     .foregroundColor(Color.speakitTextPrimary)
                                     .lineLimit(1)
@@ -184,7 +188,7 @@ struct PaymentReceiptSheet: View {
                     }
                 }
                 
-                receiptRow(title: "Payment Method", value: "Secure Payment Gateway")
+                receiptRow(title: "Payment Method", value: item.displayPaymentMethod)
             }
             
             Divider()
@@ -237,56 +241,105 @@ struct PaymentReceiptSheet: View {
         .shadow(color: Color.black.opacity(0.04), radius: 10, y: 4)
     }
     
-    // MARK: - Share Section (Single PDF Export)
+    // MARK: - Share Section (Single PDF Export or Apple StoreKit Notice)
     @ViewBuilder
     private var shareSection: some View {
-        VStack(spacing: 12) {
-            if let url = pdfURL {
-                ShareLink(
-                    item: url,
-                    preview: SharePreview("SpeakIT Receipt \(item.receiptNumber)", image: Image(systemName: "doc.text.fill"))
-                ) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "arrow.down.doc.fill")
-                            .font(.system(size: 15, weight: .semibold))
-                        Text("Export PDF Receipt")
-                            .font(.system(size: 15, weight: .semibold))
+        if item.isAppleStoreKit {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: "applelogo")
+                        .font(.system(size: 22))
+                        .foregroundColor(Color.speakitTextPrimary)
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Apple In-App Purchase")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(Color.speakitTextPrimary)
+                        
+                        Text(item.invoiceNote ?? "Invoices for App Store purchases are sent to your Apple ID email. You can view your purchase history in your Apple account settings.")
+                            .font(.system(size: 13))
+                            .foregroundColor(Color.speakitTextSecondary)
+                            .lineSpacing(2)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 50)
-                    .background(Color.speakitPrimary)
-                    .cornerRadius(14)
-                    .shadow(color: Color.speakitPrimary.opacity(0.3), radius: 8, y: 3)
                 }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.speakitCardSurface)
+                .cornerRadius(14)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(Color.speakitBorder, lineWidth: 1)
+                )
                 
                 Button(action: {
                     HapticManager.shared.selection()
-                    showPDFPreview = true
+                    if let url = URL(string: "https://apps.apple.com/account/subscriptions") {
+                        UIApplication.shared.open(url)
+                    }
                 }) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "eye.fill")
-                            .font(.system(size: 13, weight: .semibold))
-                        Text("Preview PDF Document")
+                    HStack(spacing: 8) {
+                        Image(systemName: "arrow.up.forward.app.fill")
+                            .font(.system(size: 14, weight: .semibold))
+                        Text("Manage in Apple Account")
                             .font(.system(size: 14, weight: .semibold))
                     }
                     .foregroundColor(Color.speakitPrimary)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 44)
-                    .background(Color.speakitBadgeBackground)
+                    .frame(height: 48)
+                    .background(Color.speakitPrimary.opacity(0.1))
                     .cornerRadius(12)
                 }
-            } else {
-                ProgressView("Generating PDF...")
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 50)
             }
-            
-            Text("Exports a single, official vector PDF invoice document matching your transaction details.")
-                .font(.system(size: 11))
-                .foregroundColor(Color.speakitTextTertiary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 16)
+        } else {
+            VStack(spacing: 12) {
+                if let url = pdfURL {
+                    ShareLink(
+                        item: url,
+                        preview: SharePreview("SpeakIT Receipt \(item.receiptNumber)", image: Image(systemName: "doc.text.fill"))
+                    ) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "arrow.down.doc.fill")
+                                .font(.system(size: 15, weight: .semibold))
+                            Text("Export PDF Receipt")
+                                .font(.system(size: 15, weight: .semibold))
+                        }
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                        .background(Color.speakitPrimary)
+                        .cornerRadius(14)
+                        .shadow(color: Color.speakitPrimary.opacity(0.3), radius: 8, y: 3)
+                    }
+                    
+                    Button(action: {
+                        HapticManager.shared.selection()
+                        showPDFPreview = true
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "eye.fill")
+                                .font(.system(size: 13, weight: .semibold))
+                            Text("Preview PDF Document")
+                                .font(.system(size: 14, weight: .semibold))
+                        }
+                        .foregroundColor(Color.speakitPrimary)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 44)
+                        .background(Color.speakitBadgeBackground)
+                        .cornerRadius(12)
+                    }
+                } else {
+                    ProgressView("Generating PDF...")
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                }
+                
+                Text("Exports a single, official vector PDF invoice document matching your transaction details.")
+                    .font(.system(size: 11))
+                    .foregroundColor(Color.speakitTextTertiary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 16)
+            }
         }
     }
     

@@ -81,12 +81,22 @@ import { NavbarComponent } from '../../../shared/components/navbar/navbar.compon
                   <th
                     class="px-4 py-4 text-[10px] sm:text-xs font-bold text-primary-500 tracking-wider border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap"
                   >
+                    Method
+                  </th>
+                  <th
+                    class="px-4 py-4 text-[10px] sm:text-xs font-bold text-primary-500 tracking-wider border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap"
+                  >
                     Status
+                  </th>
+                  <th
+                    class="px-4 py-4 text-[10px] sm:text-xs font-bold text-primary-500 tracking-wider border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap"
+                  >
+                    Date & Time
                   </th>
                   <th
                     class="px-4 py-4 text-[10px] sm:text-xs font-bold text-primary-500 tracking-wider border-b border-primary-100 dark:border-primary-800 whitespace-nowrap"
                   >
-                    Date & Time
+                    Invoice / Receipt
                   </th>
                 </tr>
               </thead>
@@ -114,6 +124,23 @@ import { NavbarComponent } from '../../../shared/components/navbar/navbar.compon
                       <td
                         class="px-4 py-2.5 md:py-5 border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap"
                       >
+                        @if (item.paymentProvider === 'APPLE_STOREKIT' || item.razorpayOrderId.startsWith('apple_')) {
+                          <div class="flex items-center gap-1.5" title="Purchased via Apple App Store In-App Purchase">
+                            <span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-primary-100 dark:bg-primary-800 text-primary-800 dark:text-primary-200">
+                              Apple StoreKit
+                            </span>
+                          </div>
+                        } @else {
+                          <div class="flex items-center gap-1.5">
+                            <span class="text-xs text-primary-700 dark:text-primary-300">
+                              {{ item.paymentMethod || 'Razorpay Gateway' }}
+                            </span>
+                          </div>
+                        }
+                      </td>
+                      <td
+                        class="px-4 py-2.5 md:py-5 border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap"
+                      >
                         <span
                           class="px-2 py-1 rounded text-[10px] sm:text-xs font-bold capitalize"
                           [ngClass]="{
@@ -130,7 +157,7 @@ import { NavbarComponent } from '../../../shared/components/navbar/navbar.compon
                         </span>
                       </td>
                       <td
-                        class="px-4 py-2.5 md:py-5 border-b border-primary-100 dark:border-primary-800 whitespace-nowrap"
+                        class="px-4 py-2.5 md:py-5 border-b border-r border-primary-100 dark:border-primary-800 whitespace-nowrap"
                       >
                         <div class="flex items-baseline gap-2">
                           <span
@@ -142,12 +169,31 @@ import { NavbarComponent } from '../../../shared/components/navbar/navbar.compon
                           }}</span>
                         </div>
                       </td>
+                      <td
+                        class="px-4 py-2.5 md:py-5 border-b border-primary-100 dark:border-primary-800 whitespace-nowrap"
+                      >
+                        @if (item.paymentProvider === 'APPLE_STOREKIT' || item.razorpayOrderId.startsWith('apple_')) {
+                          <div class="group/tip relative inline-flex items-center gap-1 text-[11px] font-medium text-primary-600 dark:text-primary-300 bg-primary-100 dark:bg-primary-800/80 px-2 py-1 rounded-md cursor-help">
+                            <svg class="w-3.5 h-3.5 text-primary-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <span>Apple ID Receipt</span>
+                            <div class="hidden group-hover/tip:block absolute right-0 top-full mt-1.5 w-64 p-2.5 bg-primary-900 text-white text-[11px] leading-relaxed rounded-lg shadow-xl z-20 pointer-events-none">
+                              {{ item.invoiceNote || 'Invoices for App Store purchases are sent to your Apple ID email. You can view your purchase history in your Apple account settings.' }}
+                            </div>
+                          </div>
+                        } @else {
+                          <span class="text-[11px] font-mono text-primary-500" [title]="item.razorpayOrderId">
+                            {{ item.transactionId || item.razorpayOrderId }}
+                          </span>
+                        }
+                      </td>
                     </tr>
                   }
                   <!-- Empty State -->
                   @if (history().length === 0) {
                     <tr>
-                      <td colspan="4" class="p-20 text-center">
+                      <td colspan="6" class="p-20 text-center">
                         <div class="flex flex-col items-center gap-4">
                           <div
                             class="w-16 h-16 rounded-full bg-primary-100 dark:bg-primary-800 flex items-center justify-center text-primary-400"
@@ -194,10 +240,18 @@ import { NavbarComponent } from '../../../shared/components/navbar/navbar.compon
                       <td
                         class="px-4 py-5 border-b border-r border-primary-100 dark:border-primary-800"
                       >
+                        <div class="w-16 h-4 bg-primary-100 dark:bg-primary-800 rounded"></div>
+                      </td>
+                      <td
+                        class="px-4 py-5 border-b border-r border-primary-100 dark:border-primary-800"
+                      >
                         <div class="w-12 h-4 bg-primary-100 dark:bg-primary-800 rounded"></div>
                       </td>
-                      <td class="px-4 py-5 border-b border-primary-100 dark:border-primary-800">
+                      <td class="px-4 py-5 border-b border-r border-primary-100 dark:border-primary-800">
                         <div class="w-32 h-4 bg-primary-100 dark:bg-primary-800 rounded"></div>
+                      </td>
+                      <td class="px-4 py-5 border-b border-primary-100 dark:border-primary-800">
+                        <div class="w-24 h-4 bg-primary-100 dark:bg-primary-800 rounded"></div>
                       </td>
                     </tr>
                   }

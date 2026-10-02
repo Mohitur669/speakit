@@ -338,7 +338,7 @@ POST https://api.sarvam.ai/text-to-speech
 {
   "inputs": ["नमस्ते, मेरा नाम सीता है"],
   "target_language_code": "hi-IN",
-  "speaker": "meera",
+  "speaker": "ritu",
   "pitch": 0,
   "pace": 1.0,
   "loudness": 1.0,
@@ -348,10 +348,10 @@ POST https://api.sarvam.ai/text-to-speech
 }
 ```
 
-**Available voices (30+):**
-- Female: `meera`, `pavithra`, `maitreyi`, `diya`, `anushka`, `manisha`, `vidya`, `arya`
-- Male: `arvind`, `amartya`, `neel`, `vian`, `amol`, `mohan`, `suresh`
-- Languages: `hi-IN`, `ta-IN`, `te-IN`, `bn-IN`, `mr-IN`, `gu-IN`, `kn-IN`, `ml-IN`, `pa-IN`
+**Available voices (37 official bulbul:v3 speakers):**
+- Female: `ritu`, `priya`, `neha`, `pooja`, `simran`, `kavya`, `ishita`, `shreya`, `roopa`, `tanya`, `shruti`, `suhani`, `kavitha`, `rupali`
+- Male: `aditya`, `ashutosh`, `rahul`, `rohan`, `amit`, `dev`, `ratan`, `varun`, `manan`, `sumit`, `kabir`, `aayan`, `shubh`, `advait`, `anand`, `tarun`, `sunny`, `mani`, `gokul`, `vijay`, `mohit`, `rehan`, `soham`
+- Languages: `hi-IN`, `ta-IN`, `te-IN`, `bn-IN`, `mr-IN`, `gu-IN`, `kn-IN`, `ml-IN`, `pa-IN`, `od-IN`, `en-IN`
 
 **Voice Cloning (Bulbul):**
 - Clone a voice from audio sample at same API cost (₹30/10k chars)
@@ -475,7 +475,7 @@ These features can be implemented without any new infrastructure — just new AP
 3. **Text-to-Text Translation** — Type in Hindi, see the English translation before synthesising  
    *Effort: 2 days. New `POST /translate` call on the TTS input screen before synthesis.*
 
-4. **Speaker Gender Selection for Sarvam** — Let user choose `meera`, `pavithra`, `arvind`, etc.  
+4. **Speaker Gender Selection for Sarvam** — Let user choose `ritu`, `priya`, `aditya`, `rahul`, etc.  
    *Effort: 1 day. Add voice picker for Sarvam voices in the iOS voice selector.*
 
 5. **Upgrade to Saaras v4 for File STT** — Better accuracy for batch uploads  
@@ -960,7 +960,7 @@ This section documents **every API capability** available from ElevenLabs and Sa
 |---|---|---|
 | Indic TTS | `POST /text-to-speech` | 11+ Indian languages, 30+ voices |
 | Streaming TTS | Supported | Real-time audio generation |
-| Voice selection | `speaker: "meera"` / `"arvind"` / etc. | 30+ male & female voices |
+| Voice selection | `speaker: "ritu"` / `"aditya"` / etc. | 37 male & female voices |
 | Pitch control | `pitch: -10 to +10` | Fine-tune voice tone |
 | Pace control | `pace: 0.5–2.0` | Speed of speech |
 | Loudness control | `loudness: 0.5–2.0` | Volume normalization |

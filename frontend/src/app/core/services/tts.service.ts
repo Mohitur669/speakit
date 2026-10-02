@@ -56,12 +56,18 @@ export interface TtsHistoryDto {
   id: number;
   voiceId: string;
   voiceName: string;
-  voiceType: 'STANDARD' | 'NEURAL' | 'NATURAL' | 'INDIAN';
+  voiceType: 'STANDARD' | 'NEURAL' | 'NATURAL' | 'INDIAN' | 'STT';
   outputFormat: string;
   characterCount: number;
   textSnippet: string;
+  fullText?: string;
   audioUrl?: string;
   createdAt: string;
+  engineType?: 'TTS' | 'STT';
+  transliteration?: string;
+  mode?: string;
+  filename?: string;
+  status?: string;
 }
 
 export interface PaginatedHistory {
@@ -89,18 +95,23 @@ export class TtsService {
     this.loadCachedVoices();
   }
 
-  getHistory(page = 0, size = 20): Observable<PaginatedHistory> {
+  getHistory(page = 0, size = 20, type = 'ALL'): Observable<PaginatedHistory> {
     return this.http.get<PaginatedHistory>(this.historyUrl, {
-      params: { page: page.toString(), size: size.toString() }
+      params: { page: page.toString(), size: size.toString(), type }
     });
   }
 
-  deleteHistoryEntries(ids: number[]): Observable<void> {
-    return this.http.delete<void>(`${this.historyUrl}/delete`, { body: ids });
+  deleteHistoryEntries(ids: number[], type = 'ALL'): Observable<void> {
+    return this.http.delete<void>(`${this.historyUrl}/delete`, {
+      params: { type },
+      body: ids
+    });
   }
 
-  clearAllHistory(): Observable<void> {
-    return this.http.delete<void>(`${this.historyUrl}/clear-all`);
+  clearAllHistory(type = 'ALL'): Observable<void> {
+    return this.http.delete<void>(`${this.historyUrl}/clear-all`, {
+      params: { type }
+    });
   }
 
   /**

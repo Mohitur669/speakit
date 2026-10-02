@@ -74,6 +74,11 @@ struct HistoryDetailView: View {
                     // Full Text Transcript Card
                     fullTextCard
                     
+                    // Transliteration Card (Only if present)
+                    if let transliteration = item.transliteration, !transliteration.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        transliterationCard(transliteration)
+                    }
+                    
                     // Delete Action Button
                     deleteButton
                 }
@@ -282,6 +287,60 @@ struct HistoryDetailView: View {
                 .font(.system(size: 15, weight: .regular))
                 .foregroundColor(Color.speakitTextPrimary)
                 .lineSpacing(5)
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(14)
+                .background(Color.speakitCard)
+                .cornerRadius(12)
+        }
+        .padding(16)
+        .background(Color.speakitCardSurface)
+        .cornerRadius(16)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.speakitBorder, lineWidth: 1)
+        )
+    }
+    
+    // MARK: - 3b. Transliteration Card
+    private func transliterationCard(_ text: String) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                HStack(spacing: 6) {
+                    Image(systemName: "character.book.closed.fill")
+                        .font(.system(size: 12))
+                        .foregroundColor(Color.speakitPrimary)
+                    Text("TRANSLITERATION")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(Color.speakitTextTertiary)
+                }
+                
+                Spacer()
+                
+                Button(action: {
+                    UIPasteboard.general.string = text
+                    HapticManager.shared.medium()
+                    bannerMessage = "Transliteration copied to clipboard."
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "doc.on.doc")
+                            .font(.system(size: 11, weight: .semibold))
+                        Text("Copy")
+                            .font(.system(size: 11, weight: .semibold))
+                    }
+                    .foregroundColor(Color.speakitPrimary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Color.speakitBadgeBackground)
+                    .clipShape(Capsule())
+                }
+            }
+            
+            Text(text)
+                .font(.system(size: 14, weight: .regular, design: .serif))
+                .italic()
+                .foregroundColor(Color.speakitTextPrimary)
+                .lineSpacing(4)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(14)
