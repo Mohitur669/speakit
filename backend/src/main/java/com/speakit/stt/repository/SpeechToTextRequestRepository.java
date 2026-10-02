@@ -33,4 +33,7 @@ public interface SpeechToTextRequestRepository extends JpaRepository<SpeechToTex
     @Transactional
     @Query("DELETE FROM SpeechToTextRequest r WHERE r.user.id = :userId")
     void deleteAllByUserId(@Param("userId") Long userId);
+
+    @Query("SELECT COALESCE(SUM(r.transcriptLength), 0) FROM SpeechToTextRequest r WHERE r.user.id = :userId AND r.createdAt >= :since")
+    long sumCharactersUsedSince(@Param("userId") Long userId, @Param("since") java.time.LocalDateTime since);
 }

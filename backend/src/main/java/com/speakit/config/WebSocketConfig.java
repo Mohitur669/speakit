@@ -27,11 +27,15 @@ public class WebSocketConfig implements WebSocketConfigurer {
     private final JwtService jwtService;
     private final UserRepository userRepository;
     private final WSTicketService wsTicketService;
+    private final com.speakit.stt.websocket.LiveSttWebSocketHandler liveSttWebSocketHandler;
     private final Map<String, Set<WebSocketSession>> userSessions = new ConcurrentHashMap<>();
 
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         registry.addHandler(new LogoutWebSocketHandler(), "/ws/logout")
+                .setAllowedOriginPatterns("*");
+
+        registry.addHandler(liveSttWebSocketHandler, "/ws/live-stt")
                 .setAllowedOriginPatterns("*");
     }
 

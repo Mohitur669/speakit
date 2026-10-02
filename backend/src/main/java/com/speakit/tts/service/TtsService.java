@@ -7,6 +7,7 @@ import com.speakit.billing.entity.SubscriptionStatus;
 import com.speakit.tts.entity.TtsHistory;
 import com.speakit.tts.repository.TtsHistoryRepository;
 import com.speakit.user.repository.UserRepository;
+import com.speakit.stt.repository.SpeechToTextRequestRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,7 @@ public class TtsService {
 
     private final SubscriptionService subscriptionService;
     private final TtsHistoryRepository ttsHistoryRepository;
+    private final SpeechToTextRequestRepository speechToTextRequestRepository;
     private final UserRepository userRepository;
 
     @Transactional
@@ -70,6 +72,8 @@ public class TtsService {
     }
 
     public long sumCharactersUsed(Long userId, LocalDateTime since) {
-        return ttsHistoryRepository.sumCharactersUsedSince(userId, since);
+        long ttsChars = ttsHistoryRepository.sumCharactersUsedSince(userId, since);
+        long sttChars = speechToTextRequestRepository != null ? speechToTextRequestRepository.sumCharactersUsedSince(userId, since) : 0L;
+        return ttsChars + sttChars;
     }
 }

@@ -5,6 +5,7 @@ import com.speakit.tts.dto.TtsRequest;
 import com.speakit.billing.entity.PlanType;
 import com.speakit.billing.entity.SubscriptionStatus;
 import com.speakit.user.entity.User;
+import com.speakit.stt.repository.SpeechToTextRequestRepository;
 import com.speakit.tts.repository.TtsHistoryRepository;
 import com.speakit.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,6 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -28,6 +30,8 @@ class TtsServiceTest {
     private SubscriptionService subscriptionService;
     @Mock
     private TtsHistoryRepository ttsHistoryRepository;
+    @Mock
+    private SpeechToTextRequestRepository speechToTextRequestRepository;
     @Mock
     private UserRepository userRepository;
 
@@ -72,5 +76,18 @@ class TtsServiceTest {
         assertDoesNotThrow(() -> 
             ttsService.validatePlanAccess(PlanType.FREE, SubscriptionStatus.ACTIVE, LocalDateTime.now(), request, 1L)
         );
+    }
+
+    @Test
+    void sumCharactersUsed_CombinesTtsAndStt() {
+        LocalDateTime since = LocalDateTime.now().minusDays(30);
+        when(ttsHistoryRepository.sumCharactersUsedSince(1L, since)).thenReturn(250L);
+        when(speechToTextRequestRepository.sumCharactersUsedSince(1L, since)).thenReturn(150L);
+
+        long total = ttsService.sumCharactersUsed(1L, since);
+
+        assertEquals(400L, total);
+        verify(ttsHistoryRepository, times(1)).sumCharactersUsedSince(1L, since);
+        verify(speechToTextRequestRepository, times(1)).sumCharactersUsedSince(1L, since);
     }
 }

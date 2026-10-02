@@ -46,6 +46,7 @@ import com.speakit.user.dto.AvatarResponse;
 import com.speakit.user.entity.UserAvatarHistory;
 import com.speakit.user.repository.UserAvatarHistoryRepository;
 import com.speakit.tts.repository.TtsHistoryRepository;
+import com.speakit.stt.repository.SpeechToTextRequestRepository;
 import com.speakit.billing.service.SubscriptionService;
 import java.time.temporal.ChronoUnit;
 import java.time.LocalDateTime;
@@ -68,6 +69,7 @@ public class AuthService {
     private final WSTicketService wsTicketService;
     private final WebSocketConfig webSocketConfig;
     private final TtsHistoryRepository ttsHistoryRepository;
+    private final SpeechToTextRequestRepository speechToTextRequestRepository;
     private final SubscriptionService subscriptionService;
     private final AvatarStorageService avatarStorageService;
     private final UserAvatarHistoryRepository userAvatarHistoryRepository;
@@ -950,7 +952,9 @@ public class AuthService {
                 dailyLimit = subscriptionService.getDailySynthesisLimit(user.getPlanType(), user.getSubscriptionStatus(), user.getPlanExpiry());
 
                 LocalDateTime monthStart = LocalDateTime.now().withDayOfMonth(1).truncatedTo(ChronoUnit.DAYS);
-                charactersUsed = (int) ttsHistoryRepository.sumCharactersUsedSince(user.getId(), monthStart);
+                long ttsChars = ttsHistoryRepository.sumCharactersUsedSince(user.getId(), monthStart);
+                long sttChars = speechToTextRequestRepository != null ? speechToTextRequestRepository.sumCharactersUsedSince(user.getId(), monthStart) : 0L;
+                charactersUsed = (int) (ttsChars + sttChars);
                 characterLimit = subscriptionService.getMonthlyCharacterLimit(user.getPlanType());
             } catch (Exception e) {
                 log.warn("Failed to compute user usage stats for auth response", e);
