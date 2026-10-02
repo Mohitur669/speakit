@@ -121,6 +121,7 @@ enum APIEndpoint {
     // Billing & Payments
     case createPaymentOrder
     case verifyPayment
+    case appleVerifyPurchase
     case downgradeToFree
     case cancelSubscription
     case paymentHistory(page: Int, size: Int)
@@ -192,6 +193,8 @@ enum APIEndpoint {
             return "/api/v1/payments/create-order"
         case .verifyPayment:
             return "/api/v1/payments/verify"
+        case .appleVerifyPurchase:
+            return "/api/v1/payments/apple/verify"
         case .downgradeToFree:
             return "/api/v1/payments/downgrade-free"
         case .cancelSubscription:

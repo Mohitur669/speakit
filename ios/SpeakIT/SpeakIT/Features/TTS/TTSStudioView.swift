@@ -26,7 +26,7 @@ struct TTSStudioView: View {
             VStack(alignment: .leading, spacing: 18) {
                 // Header Row
                 HStack(alignment: .center) {
-                    Text("Studio")
+                    Text("Translate")
                         .font(.system(size: 30, weight: .bold))
                         .foregroundColor(Color.speakitTextPrimary)
                     

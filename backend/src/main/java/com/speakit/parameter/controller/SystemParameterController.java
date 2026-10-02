@@ -42,7 +42,8 @@ public class SystemParameterController {
         "FREE_PLAN_FEATURES",
         "PRO_PLAN_FEATURES",
         "PRO_PLUS_PLAN_FEATURES",
-        "ENTERPRISE_PLAN_FEATURES"
+        "ENTERPRISE_PLAN_FEATURES",
+        "MANAGE_PLAN_URL_WEB"
     );
 
     @RateLimited(action = RateLimitAction.LIVE_PARAM)

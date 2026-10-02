@@ -42,6 +42,22 @@ import { NavbarComponent } from '../../../shared/components/navbar/navbar.compon
           </button>
         </div>
 
+        <!-- Navigation Tabs -->
+        <div class="flex border-b border-primary-200 dark:border-primary-800 gap-6 mb-4">
+          <a
+            routerLink="/settings/plan"
+            class="pb-3 text-sm font-medium text-primary-500 hover:text-primary-800 dark:text-primary-400 dark:hover:text-white transition-colors"
+          >
+            Plan & Tiers
+          </a>
+          <a
+            routerLink="/settings/payments"
+            class="pb-3 text-sm font-bold border-b-2 border-brand-blue text-brand-blue transition-colors"
+          >
+            Payment History
+          </a>
+        </div>
+
         <!-- History Table -->
         <div
           class="bg-white dark:bg-primary-900 rounded-xl border border-primary-200 dark:border-primary-700 shadow-xl overflow-hidden animate-slide-up"

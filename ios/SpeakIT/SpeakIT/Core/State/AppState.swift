@@ -40,6 +40,35 @@ final class AppState {
     var maxProPlusCharacters: Int = 500
     var maxEnterpriseCharacters: Int = 2000
     
+    // Web host URL for plan management & billing.
+    // - Simulator: always http://localhost:4200 (Angular dev server)
+    // - Physical device: reads WEB_HOST_URL from xcconfig → Info.plist,
+    //   falls back to https://speakit.mohitur.com if unresolved.
+    // Override per build target in Local.xcconfig: WEB_HOST_URL = https://your-host.com
+    var webHostUrl: String = {
+        #if targetEnvironment(simulator)
+        return "http://localhost:4200"
+        #else
+        if let url = Bundle.main.object(forInfoDictionaryKey: "WEB_HOST_URL") as? String,
+           !url.isEmpty,
+           url != "$(WEB_HOST_URL)" {
+            return url.trimmingCharacters(in: CharacterSet(charactersIn: "/ "))
+        }
+        return "https://speakit.mohitur.com"
+        #endif
+    }()
+    
+    // Manage Plan URL constructed with /settings/plan in code
+    var managePlanUrlWeb: String {
+        let base = webHostUrl
+            .replacingOccurrences(of: "/settings/plan", with: "")
+            .trimmingCharacters(in: CharacterSet(charactersIn: "/ "))
+        if base.isEmpty {
+            return "http://localhost:4200/settings/plan"
+        }
+        return "\(base)/settings/plan"
+    }
+    
     private init() {
         // Support UI test / automation argument
         if ProcessInfo.processInfo.arguments.contains("-mockAuth") ||
@@ -214,9 +243,19 @@ final class AppState {
                     "MAX_FREE_CHARACTERS",
                     "MAX_PRO_CHARACTERS",
                     "MAX_PRO_PLUS_CHARACTERS",
-                    "MAX_ENTERPRISE_CHARACTERS"
+                    "MAX_ENTERPRISE_CHARACTERS",
+                    "MANAGE_PLAN_URL_WEB"
                 ])
             )
+            
+            if let hostParam = params["MANAGE_PLAN_URL_WEB"], !hostParam.trimmingCharacters(in: .whitespaces).isEmpty {
+                let cleanHost = hostParam
+                    .replacingOccurrences(of: "/settings/plan", with: "")
+                    .trimmingCharacters(in: CharacterSet(charactersIn: "/ "))
+                if !cleanHost.isEmpty {
+                    self.webHostUrl = cleanHost
+                }
+            }
             
             if let freePrice = params["IOS_FREE_PLAN_PRICE"], !freePrice.trimmingCharacters(in: .whitespaces).isEmpty {
                 self.freePriceDisplay = formatPrice(freePrice)
