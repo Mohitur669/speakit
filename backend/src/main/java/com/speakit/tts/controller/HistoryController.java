@@ -58,22 +58,45 @@ public class HistoryController {
 
         String filterType = (type != null) ? type.trim().toUpperCase() : "ALL";
 
-        if ("TTS".equals(filterType)) {
+        if ("TTS".equals(filterType) || "TRANSLATE".equals(filterType)) {
             Page<TtsHistoryDto> historyPage = ttsHistoryRepository
                     .findRecentHistoryByUserId(userId, PageRequest.of(page, size))
                     .map(this::mapTtsToDto);
             return ResponseEntity.ok(new PagedModel<>(historyPage));
         }
 
-        if ("STT".equals(filterType)) {
-            Page<TtsHistoryDto> sttPage = speechToTextRequestRepository
-                    .findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(page, size))
-                    .map(this::mapSttToDto);
+        if ("LIVE".equals(filterType) || "LIVE_CHAT".equals(filterType)) {
+            int fetchLimit = (page + 1) * size * 2;
+            Page<SpeechToTextRequest> sttRecent = speechToTextRequestRepository
+                    .findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(0, Math.max(fetchLimit, 50)));
+            List<TtsHistoryDto> liveList = sttRecent.getContent().stream()
+                    .filter(this::isLiveSession)
+                    .map(this::mapSttToDto)
+                    .toList();
+            int start = Math.min(page * size, liveList.size());
+            int end = Math.min(start + size, liveList.size());
+            List<TtsHistoryDto> pagedItems = (start < end) ? liveList.subList(start, end) : Collections.emptyList();
+            Page<TtsHistoryDto> livePage = new PageImpl<>(pagedItems, PageRequest.of(page, size), liveList.size());
+            return ResponseEntity.ok(new PagedModel<>(livePage));
+        }
+
+        if ("STT".equals(filterType) || "TRANSCRIBE".equals(filterType)) {
+            int fetchLimit = (page + 1) * size * 2;
+            Page<SpeechToTextRequest> sttRecent = speechToTextRequestRepository
+                    .findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(0, Math.max(fetchLimit, 50)));
+            List<TtsHistoryDto> sttList = sttRecent.getContent().stream()
+                    .filter(s -> !isLiveSession(s))
+                    .map(this::mapSttToDto)
+                    .toList();
+            int start = Math.min(page * size, sttList.size());
+            int end = Math.min(start + size, sttList.size());
+            List<TtsHistoryDto> pagedItems = (start < end) ? sttList.subList(start, end) : Collections.emptyList();
+            Page<TtsHistoryDto> sttPage = new PageImpl<>(pagedItems, PageRequest.of(page, size), sttList.size());
             return ResponseEntity.ok(new PagedModel<>(sttPage));
         }
 
         // "ALL": Merge both TTS and STT records sorted by createdAt DESC
-        int fetchLimit = (page + 1) * size;
+        int fetchLimit = Math.max((page + 1) * size * 2, 50);
         Page<com.speakit.tts.entity.TtsHistory> ttsRecent = ttsHistoryRepository
                 .findRecentHistoryByUserId(userId, PageRequest.of(0, fetchLimit));
         Page<SpeechToTextRequest> sttRecent = speechToTextRequestRepository
@@ -98,6 +121,21 @@ public class HistoryController {
         Page<TtsHistoryDto> unifiedPage = new PageImpl<>(pagedItems, PageRequest.of(page, size), totalElements);
 
         return ResponseEntity.ok(new PagedModel<>(unifiedPage));
+    }
+
+    private boolean isLiveSession(SpeechToTextRequest stt) {
+        if (stt == null) return false;
+        if ("conversation".equalsIgnoreCase(stt.getProcessingMode())) return true;
+        if ("LIVE".equalsIgnoreCase(stt.getProvider())) return true;
+        String title = stt.getOriginalFilename();
+        if (title != null && (title.toLowerCase().contains("live conversation") || title.toLowerCase().contains("live session"))) {
+            return true;
+        }
+        String transcript = stt.getTranscript();
+        if (transcript != null && (transcript.contains("↳ [") || transcript.contains("[Speaker") || transcript.contains("[Person"))) {
+            return true;
+        }
+        return false;
     }
 
     private TtsHistoryDto mapTtsToDto(com.speakit.tts.entity.TtsHistory history) {
@@ -133,8 +171,9 @@ public class HistoryController {
             snippet = title;
         }
 
+        boolean live = isLiveSession(stt);
         String displayName = title;
-        if (!title.contains("Live") && !"Live Session".equalsIgnoreCase(title)) {
+        if (!live) {
             if ("SARVAM".equalsIgnoreCase(stt.getProvider())) {
                 displayName = "Sarvam Saaras";
             } else if (stt.getProvider() != null) {
@@ -150,14 +189,14 @@ public class HistoryController {
                 .id(stt.getId())
                 .voiceId(stt.getLanguage() != null ? stt.getLanguage() : "hi-IN")
                 .voiceName(displayName)
-                .voiceType("STT")
+                .voiceType(live ? "LIVE" : "STT")
                 .outputFormat("wav")
                 .characterCount(charCount)
                 .textSnippet(snippet)
                 .fullText(transcript)
                 .audioUrl(null)
                 .createdAt(stt.getCreatedAt())
-                .engineType("STT")
+                .engineType(live ? "LIVE" : "STT")
                 .transliteration(stt.getTransliteration())
                 .mode(stt.getProcessingMode() != null ? stt.getProcessingMode() : "transcribe")
                 .filename(title)

@@ -22,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -178,6 +179,7 @@ public class SttController {
     /**
       * Dedicated translation endpoint for transcribing Speech-to-Text results.
       */
+    @Transactional
     @RateLimited(action = RateLimitAction.STT)
     @PostMapping("/translate")
     public ResponseEntity<TranslationResponse> translate(
@@ -204,6 +206,12 @@ public class SttController {
 
         // 3. Translate
         TranslationResponse result = translationService.translate(request);
+
+        // 4. Atomically record translated character usage in user ledger
+        if (result != null && result.getTranslatedText() != null && !result.getTranslatedText().isBlank()) {
+            userRepository.incrementSttCharsUsed(context.userId(), result.getTranslatedText().length(), java.time.LocalDate.now().withDayOfMonth(1));
+        }
+
         return ResponseEntity.ok(result);
     }
 
@@ -243,6 +251,7 @@ public class SttController {
       * Saves a complete live session history record (Solo dictation or Face-to-Face conversation)
       * containing all speaker turns, original transcripts, and translations under a single cohesive session.
       */
+    @Transactional
     @PostMapping("/live/session")
     public ResponseEntity<?> saveLiveSession(
             @Valid @RequestBody com.speakit.stt.dto.SaveLiveSessionRequest sessionRequest,
@@ -272,22 +281,57 @@ public class SttController {
                 ? sessionRequest.getCharacterCount()
                 : transcript.length();
 
-        com.speakit.stt.entity.SpeechToTextRequest record = com.speakit.stt.entity.SpeechToTextRequest.builder()
-                .user(user)
-                .provider("SARVAM")
-                .audioDurationSeconds(sessionRequest.getDurationSeconds() != null ? sessionRequest.getDurationSeconds() : 0)
-                .language(sessionRequest.getLanguage() != null ? sessionRequest.getLanguage() : "auto")
-                .processingMode(sessionRequest.getMode() != null ? sessionRequest.getMode() : "transcribe")
-                .transcript(transcript)
-                .transcriptLength(charCount)
-                .originalFilename(title)
-                .status("SUCCESS")
-                .completedAt(LocalDateTime.now())
-                .build();
+        String lang = sessionRequest.getLanguage() != null ? sessionRequest.getLanguage().trim() : "auto";
+        if (lang.length() > 50) {
+            lang = lang.substring(0, 50);
+        }
 
-        speechToTextRequestRepository.save(record);
-        log.info("Saved complete Live Session in history: user={}, title={}, chars={}",
-                userId, title, charCount);
+        com.speakit.stt.entity.SpeechToTextRequest record = null;
+        LocalDateTime now = LocalDateTime.now();
+
+        // Edge case: If same session continues from history, update the existing entry in-place
+        if (sessionRequest.getId() != null) {
+            var existingOpt = speechToTextRequestRepository.findById(sessionRequest.getId());
+            if (existingOpt.isPresent() && existingOpt.get().getUser().getId().equals(userId)) {
+                record = existingOpt.get();
+                record.setTranscript(transcript);
+                record.setTranscriptLength(charCount);
+                if (sessionRequest.getDurationSeconds() != null && sessionRequest.getDurationSeconds() > 0) {
+                    record.setAudioDurationSeconds(sessionRequest.getDurationSeconds());
+                }
+                record.setOriginalFilename(title);
+                record.setLanguage(lang);
+                if (sessionRequest.getMode() != null) {
+                    record.setProcessingMode(sessionRequest.getMode());
+                }
+                // Update timestamps so this continued session ranks at the top of activity history
+                record.setCreatedAt(now);
+                record.setUpdatedAt(now);
+                record.setCompletedAt(now);
+                speechToTextRequestRepository.save(record);
+                log.info("Updated existing Live Session in history: id={}, user={}, title={}, chars={}",
+                        record.getId(), userId, title, charCount);
+            }
+        }
+
+        if (record == null) {
+            record = com.speakit.stt.entity.SpeechToTextRequest.builder()
+                    .user(user)
+                    .provider("SARVAM")
+                    .audioDurationSeconds(sessionRequest.getDurationSeconds() != null ? sessionRequest.getDurationSeconds() : 0)
+                    .language(lang)
+                    .processingMode(sessionRequest.getMode() != null ? sessionRequest.getMode() : "transcribe")
+                    .transcript(transcript)
+                    .transcriptLength(charCount)
+                    .originalFilename(title)
+                    .status("SUCCESS")
+                    .completedAt(now)
+                    .build();
+
+            speechToTextRequestRepository.save(record);
+            log.info("Saved new Live Session in history: id={}, user={}, title={}, chars={}",
+                    record.getId(), userId, title, charCount);
+        }
 
         return ResponseEntity.ok(java.util.Map.of("id", record.getId(), "message", "Session saved successfully"));
     }

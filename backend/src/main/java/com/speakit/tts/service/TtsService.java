@@ -7,12 +7,14 @@ import com.speakit.billing.entity.SubscriptionStatus;
 import com.speakit.tts.entity.TtsHistory;
 import com.speakit.tts.repository.TtsHistoryRepository;
 import com.speakit.user.repository.UserRepository;
+import com.speakit.user.repository.UsageLedgerProjection;
 import com.speakit.stt.repository.SpeechToTextRequestRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Service
@@ -47,7 +49,16 @@ public class TtsService {
                         .audioUrl(audioUrl)
                         .storageKey(storageKey)
                         .build();
-                return ttsHistoryRepository.save(history);
+                TtsHistory saved = ttsHistoryRepository.save(history);
+
+                // Atomically increment the usage ledger — this is the source-of-truth
+                // for billing. History rows are display-only; deleting them must never
+                // affect the reported character count.
+                if (charCount > 0) {
+                    userRepository.incrementTtsCharsUsed(userId, charCount, LocalDate.now().withDayOfMonth(1));
+                }
+
+                return saved;
             }
         } catch (Exception e) {
             log.warn("Failed to record TTS history, proceeding anyway", e);
@@ -71,9 +82,25 @@ public class TtsService {
         return ttsHistoryRepository.countRecentByUserId(userId, since);
     }
 
+    /**
+     * Returns the total characters consumed by the user this billing month.
+     *
+     * <p>Reads from the write-forward usage ledger columns on the users table —
+     * NOT from history rows — so deleting history entries never affects this value.
+     * Auto-resets to 0 when a new calendar month is detected (via usageMonth comparison).
+     */
     public long sumCharactersUsed(Long userId, LocalDateTime since) {
-        long ttsChars = ttsHistoryRepository.sumCharactersUsedSince(userId, since);
-        long sttChars = speechToTextRequestRepository != null ? speechToTextRequestRepository.sumCharactersUsedSince(userId, since) : 0L;
-        return ttsChars + sttChars;
+        LocalDate currentMonth = LocalDate.now().withDayOfMonth(1);
+
+        return userRepository.findUsageLedgerById(userId)
+                .map(ledger -> {
+                    // If the stored month is behind the current month, the counters
+                    // belong to the previous month — treat them as 0 for this month.
+                    if (ledger.getUsageMonth().isBefore(currentMonth)) {
+                        return 0L;
+                    }
+                    return ledger.getTtsChars() + ledger.getSttChars();
+                })
+                .orElse(0L);
     }
 }
