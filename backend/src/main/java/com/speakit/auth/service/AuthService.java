@@ -958,6 +958,19 @@ public class AuthService {
                 CompletableFuture<Integer> dailyCountFuture = CompletableFuture.supplyAsync(() ->
                         (int) ttsHistoryRepository.countRecentByUserId(finalUserId, todayStart));
 
+                java.time.LocalDate currentMonth = java.time.LocalDate.now().withDayOfMonth(1);
+                CompletableFuture<Long> ledgerCharsFuture = CompletableFuture.supplyAsync(() -> {
+                    if (userRepository == null) return 0L;
+                    return userRepository.findUsageLedgerById(finalUserId)
+                            .map(ledger -> {
+                                if (ledger.getUsageMonth() != null && ledger.getUsageMonth().isBefore(currentMonth)) {
+                                    return 0L;
+                                }
+                                return ledger.getTtsChars() + ledger.getSttChars();
+                            })
+                            .orElse(0L);
+                });
+
                 CompletableFuture<Long> ttsCharsFuture = CompletableFuture.supplyAsync(() ->
                         ttsHistoryRepository.sumCharactersUsedSince(finalUserId, monthStart));
 
@@ -970,13 +983,14 @@ public class AuthService {
                             finalUserId, "UPLOAD", startOfTodayUtc);
                 });
 
-                CompletableFuture.allOf(dailyCountFuture, ttsCharsFuture, sttCharsFuture, avatarFuture).join();
+                CompletableFuture.allOf(dailyCountFuture, ledgerCharsFuture, ttsCharsFuture, sttCharsFuture, avatarFuture).join();
 
                 dailyCount = dailyCountFuture.join();
+                long ledgerChars = ledgerCharsFuture.join();
                 long ttsChars = ttsCharsFuture.join();
                 long sttChars = sttCharsFuture.join();
                 avatarChangesToday = avatarFuture.join();
-                charactersUsed = (int) (ttsChars + sttChars);
+                charactersUsed = (int) Math.max(ledgerChars, ttsChars + sttChars);
 
                 log.info("Auth stats timing: limits={}ms, parallelDbQueries={}ms",
                         tLimits, (System.currentTimeMillis() - tDb0));

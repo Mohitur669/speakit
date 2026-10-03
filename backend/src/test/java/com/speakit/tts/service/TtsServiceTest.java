@@ -80,14 +80,16 @@ class TtsServiceTest {
 
     @Test
     void sumCharactersUsed_CombinesTtsAndStt() {
-        LocalDateTime since = LocalDateTime.now().minusDays(30);
-        when(ttsHistoryRepository.sumCharactersUsedSince(1L, since)).thenReturn(250L);
-        when(speechToTextRequestRepository.sumCharactersUsedSince(1L, since)).thenReturn(150L);
+        java.time.LocalDate currentMonth = java.time.LocalDate.now().withDayOfMonth(1);
+        com.speakit.user.repository.UsageLedgerProjection ledger = mock(com.speakit.user.repository.UsageLedgerProjection.class);
+        when(ledger.getUsageMonth()).thenReturn(currentMonth);
+        when(ledger.getTtsChars()).thenReturn(250L);
+        when(ledger.getSttChars()).thenReturn(150L);
+        when(userRepository.findUsageLedgerById(1L)).thenReturn(java.util.Optional.of(ledger));
 
-        long total = ttsService.sumCharactersUsed(1L, since);
+        long total = ttsService.sumCharactersUsed(1L, LocalDateTime.now().minusDays(30));
 
         assertEquals(400L, total);
-        verify(ttsHistoryRepository, times(1)).sumCharactersUsedSince(1L, since);
-        verify(speechToTextRequestRepository, times(1)).sumCharactersUsedSince(1L, since);
+        verify(userRepository, times(1)).findUsageLedgerById(1L);
     }
 }

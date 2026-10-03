@@ -225,33 +225,16 @@ public class LiveSttWebSocketHandler extends AbstractWebSocketHandler {
                 } catch (IOException ignored) {}
             }
 
-            // Record completed live session in history only if audio was transmitted AND actual text was captured
-            String finalTranscript = ctx.finalTranscripts.toString().trim();
-            if (ctx.totalAudioBytes > 0 && !finalTranscript.isEmpty()) {
-                int durationSeconds = (int) (ctx.totalAudioBytes / (16000 * 2));
-                if (durationSeconds < 1) durationSeconds = 1;
-
-                SpeechToTextRequest record = SpeechToTextRequest.builder()
-                        .user(ctx.user)
-                        .provider("SARVAM")
-                        .audioDurationSeconds(durationSeconds)
-                        .audioSizeBytes(ctx.totalAudioBytes)
-                        .language(ctx.language)
-                        .processingMode(ctx.mode)
-                        .transcript(finalTranscript)
-                        .transcriptLength(finalTranscript.length())
-                        .originalFilename("Live Session")
-                        .status("SUCCESS")
-                        .completedAt(LocalDateTime.now())
-                        .build();
-
-                try {
-                    speechToTextRequestRepository.save(record);
-                    log.info("Saved Live STT session record in history for user {}", ctx.user.getId());
-                } catch (Exception e) {
-                    log.warn("Failed to persist live STT session history: {}", e.getMessage());
-                }
+            // Atomically increment the STT usage ledger immediately after each turn
+            int turnChars = ctx.finalTranscripts.length();
+            if (turnChars > 0 && ctx.user != null) {
+                userRepository.incrementSttCharsUsed(ctx.user.getId(), turnChars, java.time.LocalDate.now().withDayOfMonth(1));
+                log.info("Incremented STT usage ledger immediately after turn: user={}, chars={}", ctx.user.getUsername(), turnChars);
             }
+
+            // Note: Full session history persistence is handled by POST /api/stt/live/session
+            // once the user finishes their session, keeping a single cohesive history entry.
+            log.debug("Live STT session closed for user {}: totalBytes={}", ctx.user.getUsername(), ctx.totalAudioBytes);
         }
     }
 

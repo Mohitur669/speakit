@@ -22,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -40,6 +41,7 @@ public class SttController {
     private final TranslationService translationService;
     private final UserRepository userRepository;
     private final com.speakit.stt.repository.SpeechToTextRequestRepository speechToTextRequestRepository;
+    private final com.speakit.stt.repository.LiveSessionTurnRepository liveSessionTurnRepository;
 
     /**
       * Secure endpoint for audio transcription.
@@ -178,6 +180,7 @@ public class SttController {
     /**
       * Dedicated translation endpoint for transcribing Speech-to-Text results.
       */
+    @Transactional
     @RateLimited(action = RateLimitAction.STT)
     @PostMapping("/translate")
     public ResponseEntity<TranslationResponse> translate(
@@ -204,6 +207,12 @@ public class SttController {
 
         // 3. Translate
         TranslationResponse result = translationService.translate(request);
+
+        // 4. Atomically record translated character usage in user ledger
+        if (result != null && result.getTranslatedText() != null && !result.getTranslatedText().isBlank()) {
+            userRepository.incrementSttCharsUsed(context.userId(), result.getTranslatedText().length(), java.time.LocalDate.now().withDayOfMonth(1));
+        }
+
         return ResponseEntity.ok(result);
     }
 
@@ -243,6 +252,7 @@ public class SttController {
       * Saves a complete live session history record (Solo dictation or Face-to-Face conversation)
       * containing all speaker turns, original transcripts, and translations under a single cohesive session.
       */
+    @Transactional
     @PostMapping("/live/session")
     public ResponseEntity<?> saveLiveSession(
             @Valid @RequestBody com.speakit.stt.dto.SaveLiveSessionRequest sessionRequest,
@@ -253,6 +263,9 @@ public class SttController {
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
+
+        log.info("saveLiveSession incoming payload: id={}, sessionId={}, sessionType={}, title={}, chars={}",
+                sessionRequest.getId(), sessionRequest.getSessionId(), sessionRequest.getSessionType(), sessionRequest.getTitle(), sessionRequest.getCharacterCount());
 
         String transcript = sessionRequest.getTranscript() != null ? sessionRequest.getTranscript().trim() : "";
         if (transcript.isEmpty()) {
@@ -272,24 +285,134 @@ public class SttController {
                 ? sessionRequest.getCharacterCount()
                 : transcript.length();
 
-        com.speakit.stt.entity.SpeechToTextRequest record = com.speakit.stt.entity.SpeechToTextRequest.builder()
-                .user(user)
-                .provider("SARVAM")
-                .audioDurationSeconds(sessionRequest.getDurationSeconds() != null ? sessionRequest.getDurationSeconds() : 0)
-                .language(sessionRequest.getLanguage() != null ? sessionRequest.getLanguage() : "auto")
-                .processingMode(sessionRequest.getMode() != null ? sessionRequest.getMode() : "transcribe")
-                .transcript(transcript)
-                .transcriptLength(charCount)
-                .originalFilename(title)
-                .status("SUCCESS")
-                .completedAt(LocalDateTime.now())
-                .build();
+        String lang = sessionRequest.getLanguage() != null ? sessionRequest.getLanguage().trim() : "auto";
+        if (lang.length() > 50) {
+            lang = lang.substring(0, 50);
+        }
 
-        speechToTextRequestRepository.save(record);
-        log.info("Saved complete Live Session in history: user={}, title={}, chars={}",
-                userId, title, charCount);
+        com.speakit.stt.entity.SpeechToTextRequest record = null;
+        LocalDateTime now = LocalDateTime.now();
 
-        return ResponseEntity.ok(java.util.Map.of("id", record.getId(), "message", "Session saved successfully"));
+        // 1. Primary Idempotency Key: Lookup by client-generated session UUID
+        if (sessionRequest.getSessionId() != null && !sessionRequest.getSessionId().isBlank()) {
+            var existingByUuid = speechToTextRequestRepository.findBySessionIdAndUserId(sessionRequest.getSessionId().trim(), userId);
+            if (existingByUuid.isPresent()) {
+                record = existingByUuid.get();
+            }
+        }
+
+        // 2. Secondary fallback: Lookup by numeric ID (for legacy sessions)
+        if (record == null && sessionRequest.getId() != null) {
+            var existingOpt = speechToTextRequestRepository.findByIdAndUserId(sessionRequest.getId(), userId);
+            if (existingOpt.isPresent()) {
+                record = existingOpt.get();
+            }
+        }
+
+        if (record != null) {
+            record.setTranscript(transcript);
+            record.setTranscriptLength(charCount);
+            if (sessionRequest.getDurationSeconds() != null && sessionRequest.getDurationSeconds() > 0) {
+                record.setAudioDurationSeconds(sessionRequest.getDurationSeconds());
+            }
+            record.setOriginalFilename(title);
+            record.setLanguage(lang);
+            if (sessionRequest.getMode() != null) {
+                record.setProcessingMode(sessionRequest.getMode());
+            }
+            if (sessionRequest.getSessionId() != null && !sessionRequest.getSessionId().isBlank()) {
+                record.setSessionId(sessionRequest.getSessionId().trim());
+            }
+            // Update timestamps so this continued session ranks at the top of activity history
+            record.setCreatedAt(now);
+            record.setUpdatedAt(now);
+            record.setCompletedAt(now);
+            speechToTextRequestRepository.save(record);
+            log.info("Updated existing Live Session in history: id={}, sessionId={}, user={}, title={}, chars={}",
+                    record.getId(), record.getSessionId(), userId, title, charCount);
+        } else {
+            record = com.speakit.stt.entity.SpeechToTextRequest.builder()
+                    .user(user)
+                    .sessionId(sessionRequest.getSessionId() != null && !sessionRequest.getSessionId().isBlank() ? sessionRequest.getSessionId().trim() : null)
+                    .provider("SARVAM")
+                    .audioDurationSeconds(sessionRequest.getDurationSeconds() != null ? sessionRequest.getDurationSeconds() : 0)
+                    .language(lang)
+                    .processingMode(sessionRequest.getMode() != null ? sessionRequest.getMode() : "transcribe")
+                    .transcript(transcript)
+                    .transcriptLength(charCount)
+                    .originalFilename(title)
+                    .status("SUCCESS")
+                    .completedAt(now)
+                    .build();
+
+            speechToTextRequestRepository.save(record);
+            log.info("Saved new Live Session in history: id={}, sessionId={}, user={}, title={}, chars={}",
+                    record.getId(), record.getSessionId(), userId, title, charCount);
+        }
+
+        // 3. Persist Structured Dialogue Turns (Parent-Child Model)
+        final com.speakit.stt.entity.SpeechToTextRequest savedRecord = record;
+        if (sessionRequest.getTurns() != null && !sessionRequest.getTurns().isEmpty()) {
+            liveSessionTurnRepository.deleteByRequestId(savedRecord.getId());
+            var entities = sessionRequest.getTurns().stream().map(dto ->
+                com.speakit.stt.entity.LiveSessionTurn.builder()
+                        .request(savedRecord)
+                        .turnIndex(dto.getTurnIndex() != null ? dto.getTurnIndex() : 0)
+                        .speakerRole(dto.getSpeakerRole() != null ? dto.getSpeakerRole() : "SOLO")
+                        .speakerName(dto.getSpeakerName() != null ? dto.getSpeakerName() : "Speaker")
+                        .sourceLanguage(dto.getSourceLanguage() != null ? dto.getSourceLanguage() : "auto")
+                        .originalText(dto.getOriginalText() != null ? dto.getOriginalText() : "")
+                        .targetLanguage(dto.getTargetLanguage())
+                        .translatedText(dto.getTranslatedText())
+                        .characterCount(dto.getCharacterCount() != null ? dto.getCharacterCount() : 0)
+                        .build()
+            ).toList();
+            liveSessionTurnRepository.saveAll(entities);
+            log.info("Persisted {} structured turns for live session id={}", entities.size(), savedRecord.getId());
+        }
+
+        java.util.Map<String, Object> respMap = new java.util.HashMap<>();
+        respMap.put("id", record.getId());
+        if (record.getSessionId() != null) {
+            respMap.put("sessionId", record.getSessionId());
+        }
+        respMap.put("message", "Session saved successfully");
+        return ResponseEntity.ok(respMap);
+    }
+
+    /**
+      * Retrieves ordered, structured dialogue turns for a specific live session.
+      */
+    @GetMapping("/live/session/{id}/turns")
+    public ResponseEntity<java.util.List<com.speakit.stt.dto.LiveSessionTurnDto>> getSessionTurns(
+            @PathVariable("id") Long id,
+            HttpServletRequest httpRequest
+    ) {
+        UserSecurityContext context = resolveSecurityContext(httpRequest);
+        Long userId = context.userId();
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        var opt = speechToTextRequestRepository.findByIdAndUserId(id, userId);
+        if (opt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+
+        var turns = liveSessionTurnRepository.findByRequestIdOrderByTurnIndexAsc(id).stream()
+                .map(t -> com.speakit.stt.dto.LiveSessionTurnDto.builder()
+                        .turnIndex(t.getTurnIndex())
+                        .speakerRole(t.getSpeakerRole())
+                        .speakerName(t.getSpeakerName())
+                        .sourceLanguage(t.getSourceLanguage())
+                        .originalText(t.getOriginalText())
+                        .targetLanguage(t.getTargetLanguage())
+                        .translatedText(t.getTranslatedText())
+                        .characterCount(t.getCharacterCount())
+                        .build()
+                ).toList();
+
+        return ResponseEntity.ok(turns);
     }
 
     private UserSecurityContext resolveSecurityContext(HttpServletRequest request) {

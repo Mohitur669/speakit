@@ -37,6 +37,12 @@ CREATE TABLE IF NOT EXISTS users (
     avatar_change_count INTEGER NOT NULL DEFAULT 0,
     last_avatar_change_date DATE,
 
+    -- Usage Ledger (write-forward accumulators — NEVER decremented by history deletes)
+    -- These are the source-of-truth for billing/quota; history rows are display-only.
+    monthly_tts_chars_used BIGINT NOT NULL DEFAULT 0,
+    monthly_stt_chars_used BIGINT NOT NULL DEFAULT 0,
+    usage_month            DATE    NOT NULL DEFAULT DATE_TRUNC('month', CURRENT_DATE),
+
     -- Audit Fields
     consent_accepted BOOLEAN NOT NULL DEFAULT FALSE,
     consent_timestamp TIMESTAMP WITH TIME ZONE,
@@ -249,7 +255,7 @@ CREATE TABLE IF NOT EXISTS speech_to_text_requests (
     provider VARCHAR(20) NOT NULL,
     audio_duration_seconds INTEGER,
     audio_size_bytes BIGINT,
-    language VARCHAR(10),
+    language VARCHAR(50),
     transcript_length INTEGER,
     status VARCHAR(20) NOT NULL,
     failure_reason VARCHAR(255),
@@ -375,10 +381,6 @@ BEGIN
 
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='auth_provider') THEN
         ALTER TABLE users DROP COLUMN auth_provider;
-    END IF;
-
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='avatar_url') THEN
-        ALTER TABLE users DROP COLUMN avatar_url;
     END IF;
 
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='display_name') THEN
@@ -548,3 +550,51 @@ CREATE TABLE IF NOT EXISTS user_avatar_history (
 );
 
 CREATE INDEX IF NOT EXISTS idx_avatar_history_user_date ON user_avatar_history(user_id, action, created_at);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Usage Ledger Migration (idempotent — safe to re-run on existing databases)
+-- Adds write-forward accumulators to users table. These columns are NEVER
+-- decremented by history deletes; they are the billing source-of-truth.
+-- ─────────────────────────────────────────────────────────────────────────────
+ALTER TABLE users ADD COLUMN IF NOT EXISTS monthly_tts_chars_used BIGINT NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS monthly_stt_chars_used BIGINT NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS usage_month DATE NOT NULL DEFAULT DATE_TRUNC('month', CURRENT_DATE);
+
+COMMENT ON COLUMN users.monthly_tts_chars_used IS 'Write-forward TTS character accumulator for current billing month. Never decremented on history deletes.';
+COMMENT ON COLUMN users.monthly_stt_chars_used IS 'Write-forward STT character accumulator for current billing month. Never decremented on history deletes.';
+COMMENT ON COLUMN users.usage_month            IS 'Billing month this accumulator covers. When month rolls over, both counters reset to 0.';
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Multi-language Live Conversation support for speech_to_text_requests
+-- Allows language column to store multiple codes (e.g. 'hi-IN, en-IN') up to 50 chars
+-- ─────────────────────────────────────────────────────────────────────────────
+ALTER TABLE speech_to_text_requests ALTER COLUMN language TYPE VARCHAR(50);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Client-Generated Unique Session UUID (Idempotency Key for Live Sessions)
+-- ─────────────────────────────────────────────────────────────────────────────
+ALTER TABLE speech_to_text_requests ADD COLUMN IF NOT EXISTS session_id VARCHAR(64);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_stt_user_session_id ON speech_to_text_requests(user_id, session_id) WHERE session_id IS NOT NULL;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Structured Live Session Dialogue Turns (Parent-Child Audit-Friendly Model)
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE SEQUENCE IF NOT EXISTS live_session_turn_seq START WITH 1 INCREMENT BY 50;
+
+CREATE TABLE IF NOT EXISTS live_session_turns (
+    id                  BIGINT PRIMARY KEY,
+    request_id          BIGINT NOT NULL REFERENCES speech_to_text_requests(id) ON DELETE CASCADE,
+    turn_index          INTEGER NOT NULL,
+    speaker_role        VARCHAR(16) NOT NULL,
+    speaker_name        VARCHAR(64) NOT NULL,
+    source_language     VARCHAR(16) NOT NULL,
+    original_text       TEXT NOT NULL,
+    target_language     VARCHAR(16),
+    translated_text     TEXT,
+    character_count     INTEGER NOT NULL DEFAULT 0,
+    created_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    version             BIGINT NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_live_turn_request_id ON live_session_turns(request_id, turn_index);

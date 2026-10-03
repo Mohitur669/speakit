@@ -36,7 +36,26 @@ public class DatabaseMigrationConfig implements BeanFactoryPostProcessor, Enviro
             if (url != null && !url.isBlank()) {
                 try (Connection conn = DriverManager.getConnection(url, user, pass);
                      Statement stmt = conn.createStatement()) {
-                    stmt.execute("ALTER TABLE payments ADD COLUMN IF NOT EXISTS notes VARCHAR(500);");
+                    stmt.execute("ALTER TABLE speech_to_text_requests ADD COLUMN IF NOT EXISTS session_id VARCHAR(64);");
+                    stmt.execute("CREATE SEQUENCE IF NOT EXISTS live_session_turn_seq START WITH 1 INCREMENT BY 50;");
+                    stmt.execute("""
+                        CREATE TABLE IF NOT EXISTS live_session_turns (
+                            id BIGINT PRIMARY KEY,
+                            request_id BIGINT NOT NULL REFERENCES speech_to_text_requests(id) ON DELETE CASCADE,
+                            turn_index INTEGER NOT NULL,
+                            speaker_role VARCHAR(16) NOT NULL,
+                            speaker_name VARCHAR(64) NOT NULL,
+                            source_language VARCHAR(16) NOT NULL,
+                            original_text TEXT NOT NULL,
+                            target_language VARCHAR(16),
+                            translated_text TEXT,
+                            character_count INTEGER NOT NULL DEFAULT 0,
+                            created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                            version BIGINT NOT NULL DEFAULT 0
+                        );
+                    """);
+                    stmt.execute("CREATE INDEX IF NOT EXISTS idx_live_turn_request_id ON live_session_turns(request_id, turn_index);");
                     stmt.execute("CREATE INDEX IF NOT EXISTS idx_tts_history_user_created ON tts_history(user_id, created_at);");
                     stmt.execute("CREATE INDEX IF NOT EXISTS idx_stt_user_created ON speech_to_text_requests(user_id, created_at);");
                     stmt.execute("CREATE INDEX IF NOT EXISTS idx_payments_user_created ON payments(user_id, created_at DESC);");
