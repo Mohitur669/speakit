@@ -575,3 +575,26 @@ ALTER TABLE speech_to_text_requests ALTER COLUMN language TYPE VARCHAR(50);
 -- ─────────────────────────────────────────────────────────────────────────────
 ALTER TABLE speech_to_text_requests ADD COLUMN IF NOT EXISTS session_id VARCHAR(64);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_stt_user_session_id ON speech_to_text_requests(user_id, session_id) WHERE session_id IS NOT NULL;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Structured Live Session Dialogue Turns (Parent-Child Audit-Friendly Model)
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE SEQUENCE IF NOT EXISTS live_session_turn_seq START WITH 1 INCREMENT BY 50;
+
+CREATE TABLE IF NOT EXISTS live_session_turns (
+    id                  BIGINT PRIMARY KEY,
+    request_id          BIGINT NOT NULL REFERENCES speech_to_text_requests(id) ON DELETE CASCADE,
+    turn_index          INTEGER NOT NULL,
+    speaker_role        VARCHAR(16) NOT NULL,
+    speaker_name        VARCHAR(64) NOT NULL,
+    source_language     VARCHAR(16) NOT NULL,
+    original_text       TEXT NOT NULL,
+    target_language     VARCHAR(16),
+    translated_text     TEXT,
+    character_count     INTEGER NOT NULL DEFAULT 0,
+    created_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    version             BIGINT NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_live_turn_request_id ON live_session_turns(request_id, turn_index);

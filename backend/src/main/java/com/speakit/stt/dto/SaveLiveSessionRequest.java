@@ -42,4 +42,7 @@ public class SaveLiveSessionRequest {
     @com.fasterxml.jackson.annotation.JsonProperty("characterCount")
     @com.fasterxml.jackson.annotation.JsonAlias({"character_count", "characterCount"})
     private Integer characterCount;
+
+    @com.fasterxml.jackson.annotation.JsonProperty("turns")
+    private java.util.List<LiveSessionTurnDto> turns;
 }
