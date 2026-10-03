@@ -136,6 +136,23 @@ struct TranscriptionResultSheet: View {
                             .lineSpacing(5)
                             .textSelection(.enabled)
                         
+                        if let translit = result.transliteration, !translit.isEmpty, translit != result.text {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("TRANSLITERATION (ROMANIZED)")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundColor(Color.speakitTextTertiary)
+                                Text(translit)
+                                    .font(.system(size: 13, weight: .regular))
+                                    .italic()
+                                    .foregroundColor(Color.speakitTextSecondary)
+                                    .textSelection(.enabled)
+                            }
+                            .padding(10)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.speakitBadgeBackground.opacity(0.4))
+                            .cornerRadius(8)
+                        }
+                        
                         HStack {
                             Text(result.timestamp)
                                 .font(.system(size: 11, weight: .medium))

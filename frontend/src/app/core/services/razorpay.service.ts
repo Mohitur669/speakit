@@ -14,6 +14,10 @@ export interface PaymentHistoryDto {
   currency: string;
   status: string;
   razorpayOrderId: string;
+  paymentProvider?: string;
+  paymentMethod?: string;
+  transactionId?: string;
+  invoiceNote?: string;
   createdAt: string;
 }
 
@@ -179,5 +183,17 @@ export class RazorpayService {
     return this.http.get<PaginatedPaymentHistory>(`${apiRoot}/api/v1/payments/history`, {
       params: { page: page.toString(), size: size.toString() }
     });
+  }
+
+  downgradeToFree(): Observable<string> {
+    const env = (window as { __env?: { API_URL?: string } }).__env;
+    const apiRoot = (env?.API_URL || environment.apiUrl || 'http://localhost:8080').replace(/\/$/, '');
+    return this.http.post(`${apiRoot}/api/v1/payments/downgrade-free`, {}, { responseType: 'text' });
+  }
+
+  cancelSubscription(): Observable<string> {
+    const env = (window as { __env?: { API_URL?: string } }).__env;
+    const apiRoot = (env?.API_URL || environment.apiUrl || 'http://localhost:8080').replace(/\/$/, '');
+    return this.http.post(`${apiRoot}/api/v1/payments/cancel`, {}, { responseType: 'text' });
   }
 }

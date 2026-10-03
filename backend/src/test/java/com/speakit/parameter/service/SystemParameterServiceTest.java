@@ -153,4 +153,19 @@ class SystemParameterServiceTest {
 
         verify(repository, times(1)).save(any(SystemParameter.class));
     }
+
+    @Test
+    @DisplayName("isVoiceBridgeEnabled: Returns true for Y and false for N")
+    void isVoiceBridgeEnabled_flagEvaluation() {
+        when(repository.findById("DYNAMIC_PLAN_FEATURES_LIVE"))
+                .thenReturn(Optional.of(SystemParameter.builder().parameterName("DYNAMIC_PLAN_FEATURES_LIVE").parameterValue("Y").build()));
+
+        when(repository.findById("VOICE_BRIDGE_FLAG"))
+                .thenReturn(Optional.of(SystemParameter.builder().parameterName("VOICE_BRIDGE_FLAG").parameterValue("N").build()));
+        assertFalse(service.isVoiceBridgeEnabled());
+
+        when(repository.findById("VOICE_BRIDGE_FLAG"))
+                .thenReturn(Optional.of(SystemParameter.builder().parameterName("VOICE_BRIDGE_FLAG").parameterValue("Y").build()));
+        assertTrue(service.isVoiceBridgeEnabled());
+    }
 }

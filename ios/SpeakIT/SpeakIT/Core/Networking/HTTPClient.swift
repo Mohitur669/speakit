@@ -241,7 +241,14 @@ final class HTTPClient {
     }
     
     // MARK: - Multipart Form Data Upload (for STT and Avatars)
-    func uploadMultipart<T: Decodable>(_ endpoint: APIEndpoint, fileData: Data, fileName: String, mimeType: String, fieldName: String = "file") async throws -> T {
+    func uploadMultipart<T: Decodable>(
+        _ endpoint: APIEndpoint,
+        fileData: Data,
+        fileName: String,
+        mimeType: String,
+        fieldName: String = "file",
+        additionalFields: [String: String]? = nil
+    ) async throws -> T {
         guard let url = endpoint.url else { throw APIError.invalidURL }
         
         let boundary = "Boundary-\(UUID().uuidString)"
@@ -266,6 +273,13 @@ final class HTTPClient {
         }
         
         var body = Data()
+        if let fields = additionalFields {
+            for (key, val) in fields {
+                body.append("--\(boundary)\r\n".data(using: .utf8)!)
+                body.append("Content-Disposition: form-data; name=\"\(key)\"\r\n\r\n".data(using: .utf8)!)
+                body.append("\(val)\r\n".data(using: .utf8)!)
+            }
+        }
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
         body.append("Content-Disposition: form-data; name=\"\(fieldName)\"; filename=\"\(safeFileName)\"\r\n".data(using: .utf8)!)
         body.append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)

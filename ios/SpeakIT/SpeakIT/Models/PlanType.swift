@@ -41,7 +41,24 @@ enum PlanType: String, Codable, CaseIterable, Comparable {
     }
     
     var allowsLiveSTT: Bool {
+        self >= .pro
+    }
+    
+    var allowsLiveTranscription: Bool {
+        self >= .pro
+    }
+    
+    var allowsLiveTranslation: Bool {
         self >= .proPlus
+    }
+    
+    var liveMinutesMonthlyQuota: Int {
+        switch self {
+        case .free: return 0
+        case .pro: return 10
+        case .proPlus: return 30
+        case .enterprise: return 120
+        }
     }
     
     var allowsFileSTT: Bool {

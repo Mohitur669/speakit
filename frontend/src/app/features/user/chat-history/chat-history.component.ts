@@ -27,9 +27,9 @@ import {
         <!-- Page Header -->
         <div class="mb-4 flex items-start justify-between">
           <div>
-            <h1 class="text-3xl font-bold text-primary-900 dark:text-white mb-2">Chat History</h1>
+            <h1 class="text-3xl font-bold text-primary-900 dark:text-white mb-2">Activity History</h1>
             <p class="text-base text-primary-500 dark:text-primary-400">
-              View and manage your past generations
+              View and manage your past Text-to-Speech and Speech-to-Text generations
             </p>
           </div>
           <button
@@ -45,6 +45,37 @@ import {
                 d="M6 18L18 6M6 6l12 12"
               ></path>
             </svg>
+          </button>
+        </div>
+
+        <!-- Filter Tabs -->
+        <div class="flex items-center gap-2 mb-1">
+          <button
+            (click)="setFilter('ALL')"
+            [ngClass]="filterType() === 'ALL' ? 'bg-brand-blue text-white shadow-md' : 'bg-white dark:bg-primary-900 text-primary-600 dark:text-primary-400 border border-primary-200 dark:border-primary-700 hover:bg-primary-50 dark:hover:bg-primary-800'"
+            class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer"
+          >
+            All Activity
+          </button>
+          <button
+            (click)="setFilter('TTS')"
+            [ngClass]="filterType() === 'TTS' ? 'bg-brand-blue text-white shadow-md' : 'bg-white dark:bg-primary-900 text-primary-600 dark:text-primary-400 border border-primary-200 dark:border-primary-700 hover:bg-primary-50 dark:hover:bg-primary-800'"
+            class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z" />
+            </svg>
+            Text-to-Speech
+          </button>
+          <button
+            (click)="setFilter('STT')"
+            [ngClass]="filterType() === 'STT' ? 'bg-brand-blue text-white shadow-md' : 'bg-white dark:bg-primary-900 text-primary-600 dark:text-primary-400 border border-primary-200 dark:border-primary-700 hover:bg-primary-50 dark:hover:bg-primary-800'"
+            class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z" />
+            </svg>
+            Speech-to-Text
           </button>
         </div>
 
@@ -121,24 +152,32 @@ import {
                         class="px-4 py-2.5 md:py-5 border-b border-r border-primary-100 dark:border-primary-800 min-w-37.5 max-w-xs align-top"
                       >
                         <div class="flex items-start justify-between gap-2 group/text">
-                          <p
-                            class="text-xs sm:text-sm text-primary-600 dark:text-primary-400 md:line-clamp-2 md:whitespace-normal leading-relaxed"
-                            [title]="item.textSnippet"
-                          >
-                            <span class="md:hidden"
-                              >"{{ formatMobileSnippet(item.textSnippet) }}"</span
+                          <div class="flex-1 min-w-0">
+                            <p
+                              class="text-xs sm:text-sm text-primary-600 dark:text-primary-400 md:line-clamp-2 md:whitespace-normal leading-relaxed"
+                              [title]="item.fullText || item.textSnippet"
                             >
-                            <span class="hidden md:inline"
-                              >"{{
-                                item.textSnippet.length > 60
-                                  ? (item.textSnippet | slice: 0 : 60) + '...'
-                                  : item.textSnippet
-                              }}"</span
-                            >
-                          </p>
+                              <span class="md:hidden"
+                                >"{{ formatMobileSnippet(item.textSnippet) }}"</span
+                              >
+                              <span class="hidden md:inline"
+                                >"{{
+                                  item.textSnippet.length > 60
+                                    ? (item.textSnippet | slice: 0 : 60) + '...'
+                                    : item.textSnippet
+                                }}"</span
+                              >
+                            </p>
+                            @if (item.transliteration) {
+                              <div class="mt-1 flex items-center gap-1.5 text-[11px] text-primary-500 dark:text-primary-400 italic">
+                                <span class="text-[9px] uppercase tracking-wider font-semibold not-italic px-1 py-0.5 rounded bg-primary-100 dark:bg-primary-800 text-primary-600 dark:text-primary-300">Translit</span>
+                                <span class="truncate">"{{ item.transliteration.length > 45 ? (item.transliteration | slice: 0 : 45) + '...' : item.transliteration }}"</span>
+                              </div>
+                            }
+                          </div>
                           <button
-                            (click)="copyToClipboard(item.textSnippet)"
-                            class="p-1.5 rounded-lg bg-primary-50 dark:bg-primary-800 text-primary-400 hover:text-brand-blue opacity-0 group-hover/text:opacity-100 transition-all shadow-sm shrink-0"
+                            (click)="copyToClipboard(item.fullText || item.textSnippet)"
+                            class="p-1.5 rounded-lg bg-primary-50 dark:bg-primary-800 text-primary-400 hover:text-brand-blue opacity-0 group-hover/text:opacity-100 transition-all shadow-sm shrink-0 cursor-pointer"
                             title="Copy to Clipboard"
                           >
                             <svg
@@ -203,17 +242,17 @@ import {
                           </div>
                           <div>
                             <h3 class="text-lg font-bold text-primary-900 dark:text-white">
-                              No history yet
+                              No {{ filterType() === 'ALL' ? 'activity' : (filterType() === 'TTS' ? 'TTS' : 'STT') }} history yet
                             </h3>
                             <p class="text-sm text-primary-500">
-                              Generations will appear here once you start using the studio.
+                              {{ filterType() === 'STT' ? 'Transcriptions will appear here once you record or upload audio in STT Studio.' : 'Generations will appear here once you start using the studio.' }}
                             </p>
                           </div>
                           <button
-                            routerLink="/tts"
-                            class="mt-2 px-6 py-2 bg-brand-blue text-white font-bold rounded-xl shadow-lg hover:bg-blue-600 transition-all"
+                            [routerLink]="filterType() === 'STT' ? '/stt' : '/tts'"
+                            class="mt-2 px-6 py-2 bg-brand-blue text-white font-bold rounded-xl shadow-lg hover:bg-blue-600 transition-all cursor-pointer"
                           >
-                            Go to Studio
+                            {{ filterType() === 'STT' ? 'Go to STT Studio' : 'Go to Studio' }}
                           </button>
                         </div>
                       </td>
@@ -386,6 +425,7 @@ export class ChatHistoryComponent implements OnInit {
 
   history = signal<TtsHistoryDto[]>([]);
   loading = signal(false);
+  filterType = signal<'ALL' | 'TTS' | 'STT'>('ALL');
 
   currentPage = signal(0);
   totalPages = signal(0);
@@ -411,11 +451,25 @@ export class ChatHistoryComponent implements OnInit {
     this.loadHistory();
   }
 
+  setFilter(type: 'ALL' | 'TTS' | 'STT'): void {
+    if (this.filterType() === type) return;
+    this.filterType.set(type);
+    this.currentPage.set(0);
+    this.selectedIds.set(new Set());
+    this.loadHistory();
+  }
+
   getVoiceLabel(item: TtsHistoryDto): string {
+    if (item.engineType === 'STT' || item.voiceType === 'STT') {
+      return 'STT';
+    }
     return getVoiceLabelFromType(item.voiceType);
   }
 
   getVoiceClass(item: TtsHistoryDto): string {
+    if (item.engineType === 'STT' || item.voiceType === 'STT') {
+      return 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800';
+    }
     return getVoiceClassFromType(item.voiceType);
   }
 
@@ -426,7 +480,7 @@ export class ChatHistoryComponent implements OnInit {
 
   loadHistory(): void {
     this.loading.set(true);
-    this.ttsService.getHistory(this.currentPage(), this.pageSize).subscribe({
+    this.ttsService.getHistory(this.currentPage(), this.pageSize, this.filterType()).subscribe({
       next: (res) => {
         this.history.set(res.content || []);
         this.totalPages.set(res.page.totalPages);
@@ -498,7 +552,7 @@ export class ChatHistoryComponent implements OnInit {
 
     if (this.pendingAction === 'DELETE') {
       const ids = Array.from(this.selectedIds());
-      this.ttsService.deleteHistoryEntries(ids).subscribe({
+      this.ttsService.deleteHistoryEntries(ids, this.filterType()).subscribe({
         next: () => {
           this.toast.show(`Deleted ${ids.length} entries`, 'success');
           this.selectedIds.set(new Set());
@@ -507,7 +561,7 @@ export class ChatHistoryComponent implements OnInit {
         error: () => this.toast.show('Failed to delete entries', 'error'),
       });
     } else if (this.pendingAction === 'CLEAR') {
-      this.ttsService.clearAllHistory().subscribe({
+      this.ttsService.clearAllHistory(this.filterType()).subscribe({
         next: () => {
           this.toast.show('History cleared successfully', 'success');
           this.history.set([]);

@@ -3,4 +3,6 @@ export interface SttResult {
   language: string;
   duration: number;
   provider: string;
+  transliteration?: string;
+  mode?: string;
 }

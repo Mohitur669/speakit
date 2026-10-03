@@ -102,7 +102,7 @@ struct LoginView: View {
                 icon: "person.fill",
                 keyboardType: .emailAddress,
                 autoCapitalization: .never,
-                textContentType: isSubmitting ? .username : nil
+                textContentType: .username
             )
             .accessibilityIdentifier("login.username")
             
@@ -111,7 +111,7 @@ struct LoginView: View {
                 text: $password,
                 icon: "lock.fill",
                 isSecure: true,
-                textContentType: isSubmitting ? .password : .oneTimeCode
+                textContentType: .password
             )
             .accessibilityIdentifier("login.password")
         }
@@ -250,8 +250,10 @@ struct LoginView: View {
                 struct LoginResponse: Codable {
                     let token: String
                     let username: String?
+                    let fullName: String?
                     let email: String?
                     let phoneNumber: String?
+                    let avatarUrl: String?
                     let role: String?
                     let planType: String?
                     let characterLimit: Int?
@@ -267,11 +269,13 @@ struct LoginView: View {
                     let user = User(
                         username: response.username ?? normalizedLogin,
                         email: response.email ?? "",
+                        fullName: response.fullName,
                         role: response.role ?? "ROLE_USER",
                         planType: resolvedPlan,
                         characterLimit: response.characterLimit,
                         charactersUsed: response.charactersUsed ?? 0,
-                        phoneNumber: response.phoneNumber
+                        phoneNumber: response.phoneNumber,
+                        avatarUrl: response.avatarUrl
                     )
                     HapticManager.shared.success()
                     self.appState.login(token: response.token, user: user)

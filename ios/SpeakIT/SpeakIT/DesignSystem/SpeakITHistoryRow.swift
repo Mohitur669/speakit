@@ -32,6 +32,24 @@ struct SpeakITHistoryRow: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(isSelected ? "Selected" : "Not selected")
+            } else if item.engineType == "STT" && item.audioUrl == nil {
+                // Microphone icon for STT items without audio URL
+                Button(action: {
+                    HapticManager.shared.light()
+                    onTap?()
+                }) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.speakitBadgeBackground)
+                            .frame(width: 36, height: 36)
+                        
+                        Image(systemName: "mic.fill")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(Color.speakitPrimary)
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("View transcription for \(item.textSnippet)")
             } else {
                 // Play / Pause Button with On-Demand Loading State
                 Button(action: {

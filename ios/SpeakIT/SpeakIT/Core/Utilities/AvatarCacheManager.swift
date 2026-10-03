@@ -124,8 +124,11 @@ final class AvatarCacheManager {
     
     /// Resolves relative URLs (e.g. /uploads/avatars/...) against the API baseURL.
     private func resolveValidURLString(_ urlString: String) -> String? {
-        let trimmed = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
+        var trimmed = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty { return nil }
+        if trimmed.contains("cdn-speakit-avatars.mohitur.com") {
+            trimmed = trimmed.replacingOccurrences(of: "cdn-speakit-avatars.mohitur.com", with: "cdn-speakit-avatar.mohitur.com")
+        }
         if trimmed.hasPrefix("http://") || trimmed.hasPrefix("https://") {
             return trimmed
         }

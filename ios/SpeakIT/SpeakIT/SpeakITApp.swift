@@ -13,7 +13,9 @@ struct SpeakITApp: App {
     
     init() {
         if ProcessInfo.processInfo.arguments.contains("-runTests") {
-            _ = SpeakITLogicTests.runAllTests()
+            Task { @MainActor in
+                _ = await SpeakITLogicTests.runAllTests()
+            }
         }
     }
     

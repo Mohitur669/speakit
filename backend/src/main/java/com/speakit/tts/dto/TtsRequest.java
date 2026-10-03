@@ -40,4 +40,16 @@ public class TtsRequest {
     private Double pace = 1.0;
 
     private Integer samplingRate;
+
+    /**
+     * Optional ElevenLabs v4 voice style direction tag.
+     * When set, text is wrapped with <voiceStyle>text</voiceStyle> before synthesis.
+     * Supported values: excited, sad, calm, angry, cheerful, terrified, unfriendly.
+     * Only applied when isElevenLabs=true and the voice model supports v4 direction tags.
+     */
+    @Pattern(
+        regexp = "^(excited|sad|calm|angry|cheerful|terrified|unfriendly)?$",
+        message = "Invalid voiceStyle. Must be one of: excited, sad, calm, angry, cheerful, terrified, unfriendly"
+    )
+    private String voiceStyle;
 }

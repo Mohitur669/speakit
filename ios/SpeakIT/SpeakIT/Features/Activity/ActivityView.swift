@@ -20,6 +20,24 @@ struct ActivityView: View {
     @State private var pageSize: Int = 5
     private let pageSizeOptions: [Int] = [5, 10, 20]
     
+    enum ActivityFilter: String, CaseIterable, Identifiable {
+        case all = "ALL"
+        case tts = "TTS"
+        case stt = "STT"
+        
+        var id: String { rawValue }
+        
+        var displayName: String {
+            switch self {
+            case .all: return "All"
+            case .tts: return "TTS"
+            case .stt: return "STT"
+            }
+        }
+    }
+    
+    @State private var selectedFilter: ActivityFilter = .all
+    
     @State private var selectedHistoryItem: HistoryItem? = nil
     @State private var isSelectionMode: Bool = false
     @State private var selectedItemIds: Set<Int64> = []
@@ -46,7 +64,7 @@ struct ActivityView: View {
                         
                         Button(action: {
                             HapticManager.shared.selection()
-                            appState.selectedTab = 3
+                            appState.selectedTab = 4
                         }) {
                             Image(systemName: "gearshape")
                                 .font(.system(size: 20, weight: .semibold))
@@ -170,6 +188,21 @@ struct ActivityView: View {
                     }
                     .padding(.top, 8)
                     
+                    // Filter Segmented Control: [All, TTS, STT]
+                    Picker("Filter Activity", selection: $selectedFilter) {
+                        ForEach(ActivityFilter.allCases) { filter in
+                            Text(filter.displayName).tag(filter)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .onChange(of: selectedFilter) { _, _ in
+                        HapticManager.shared.selection()
+                        historyItems.removeAll()
+                        Task {
+                            await loadInitialHistory()
+                        }
+                    }
+                    
                     // History List with Paginated LazyVStack
                     if isLoadingInitial && historyItems.isEmpty {
                         HStack {
@@ -182,9 +215,11 @@ struct ActivityView: View {
                         }
                     } else if historyItems.isEmpty {
                         SpeakITEmptyState(
-                            icon: "clock.arrow.circlepath",
-                            title: "No Generations Yet",
-                            description: "Your recent Text-to-Speech audio and transcriptions will appear here."
+                            icon: selectedFilter == .stt ? "mic.slash" : "clock.arrow.circlepath",
+                            title: selectedFilter == .stt ? "No STT Transcriptions" : (selectedFilter == .tts ? "No TTS Audio" : "No Generations Yet"),
+                            description: selectedFilter == .stt
+                                ? "Your Speech-to-Text audio transcriptions will appear here once you record or upload audio in STT Studio."
+                                : "Your recent Text-to-Speech audio and transcriptions will appear here."
                         )
                     } else {
                         LazyVStack(spacing: 10) {
@@ -301,12 +336,18 @@ struct ActivityView: View {
             } message: {
                 Text("Are you sure you want to clear your generation logs?")
             }
-            .task {
-                // Event-Driven Invalidation: Only fetch if initial list is empty or marked dirty by a new synthesis
-                if historyItems.isEmpty || appState.isHistoryDirty {
-                    await loadInitialHistory()
-                    await appState.loadCurrentUser()
-                    appState.isHistoryDirty = false
+            .task(id: selectedFilter) {
+                await loadInitialHistory()
+                await appState.loadCurrentUser()
+                appState.isHistoryDirty = false
+            }
+            .onAppear {
+                if appState.isHistoryDirty {
+                    Task {
+                        await loadInitialHistory()
+                        await appState.loadCurrentUser()
+                        appState.isHistoryDirty = false
+                    }
                 }
             }
             .speakITToast(message: $errorMessage, style: .error, bottomPadding: 20)
@@ -531,29 +572,24 @@ struct ActivityView: View {
         
         do {
             let response: HistoryPageResponse = try await HTTPClient.shared.request(
-                .history(page: 0, size: pageSize)
+                .history(page: 0, size: pageSize, type: selectedFilter.rawValue)
             )
             await MainActor.run {
                 self.isLoadingInitial = false
-                if let items = response.content, !items.isEmpty {
+                if let items = response.content {
                     self.historyItems = items
                     self.hasMorePages = !response.isLastPage && (items.count == self.pageSize)
                 } else {
-                    // Fall back to sample items in preview/offline mode (first page of 5 items)
-                    self.historyItems = Array(HistoryItem.samples.prefix(self.pageSize))
-                    self.hasMorePages = HistoryItem.samples.count > self.pageSize
+                    self.historyItems = []
+                    self.hasMorePages = false
                 }
             }
         } catch {
             await MainActor.run {
                 self.isLoadingInitial = false
-                print("Failed to fetch history from backend: \(error). Using fallback.")
-                if self.historyItems.isEmpty {
-                    self.historyItems = Array(HistoryItem.samples.prefix(self.pageSize))
-                    self.hasMorePages = HistoryItem.samples.count > self.pageSize
-                } else {
-                    self.hasMorePages = false
-                }
+                print("Failed to fetch history from backend: \(error)")
+                self.historyItems = []
+                self.hasMorePages = false
             }
         }
     }
@@ -569,7 +605,7 @@ struct ActivityView: View {
         
         do {
             let response: HistoryPageResponse = try await HTTPClient.shared.request(
-                .history(page: nextPage, size: pageSize)
+                .history(page: nextPage, size: pageSize, type: selectedFilter.rawValue)
             )
             await MainActor.run {
                 self.isLoadingMore = false
@@ -587,20 +623,8 @@ struct ActivityView: View {
         } catch {
             await MainActor.run {
                 self.isLoadingMore = false
-                // Check if offline/sample pagination applies
-                let startIndex = nextPage * self.pageSize
-                if startIndex < HistoryItem.samples.count {
-                    let endIndex = min(startIndex + self.pageSize, HistoryItem.samples.count)
-                    let newItems = Array(HistoryItem.samples[startIndex..<endIndex])
-                    let existingIds = Set(self.historyItems.map { $0.id })
-                    let uniqueNewItems = newItems.filter { !existingIds.contains($0.id) }
-                    self.historyItems.append(contentsOf: uniqueNewItems)
-                    self.currentPage = nextPage
-                    self.hasMorePages = endIndex < HistoryItem.samples.count
-                } else {
-                    self.hasMorePages = false
-                }
-                print("Failed to fetch next history page from network: \(error). Used local pagination if available.")
+                self.hasMorePages = false
+                print("Failed to fetch next history page from network: \(error)")
             }
         }
     }

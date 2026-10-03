@@ -2,6 +2,8 @@ package com.speakit.stt.service;
 
 import com.speakit.stt.dto.TranslationRequest;
 import com.speakit.stt.dto.TranslationResponse;
+import com.speakit.stt.dto.TransliterationRequest;
+import com.speakit.stt.dto.TransliterationResponse;
 import com.speakit.stt.exception.SttException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -66,6 +68,9 @@ public class TranslationService {
         body.put("source_language_code", sourceLanguage);
         body.put("target_language_code", targetLanguage);
         body.put("model", model);
+        if (request.getMode() != null && !request.getMode().isBlank()) {
+            body.put("mode", request.getMode().toLowerCase().trim());
+        }
 
         try {
             Map<String, Object> response = restClient.post()
@@ -115,6 +120,54 @@ public class TranslationService {
             }
 
             throw new SttException("Translation failed: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Transliterates text across Indian language scripts and Roman/English script.
+     * Uses Sarvam AI transliteration API.
+     */
+    public TransliterationResponse transliterate(TransliterationRequest request) {
+        if (apiKey == null || apiKey.isEmpty()) {
+            throw new SttException("Sarvam API Key is missing. Transliteration is unavailable.");
+        }
+
+        if (request.getText() == null || request.getText().trim().isEmpty()) {
+            return TransliterationResponse.builder()
+                    .transliteratedText("")
+                    .sourceLanguage(request.getSourceLanguage())
+                    .targetLanguage(request.getTargetLanguage())
+                    .build();
+        }
+
+        String sourceLanguage = normalizeLanguageCode(request.getSourceLanguage(), "hi-IN");
+        String targetLanguage = normalizeLanguageCode(request.getTargetLanguage(), "en-IN");
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("input", request.getText());
+        body.put("source_language_code", sourceLanguage);
+        body.put("target_language_code", targetLanguage);
+
+        try {
+            Map<String, Object> response = restClient.post()
+                    .uri("/transliterate")
+                    .header("api-subscription-key", apiKey)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body)
+                    .retrieve()
+                    .body(new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {});
+
+            if (response != null && response.containsKey("transliterated_text")) {
+                return TransliterationResponse.builder()
+                        .transliteratedText((String) response.get("transliterated_text"))
+                        .sourceLanguage((String) response.getOrDefault("source_language_code", sourceLanguage))
+                        .targetLanguage((String) response.getOrDefault("target_language_code", targetLanguage))
+                        .build();
+            }
+            throw new SttException("Unexpected response from Sarvam transliteration API.");
+        } catch (Exception e) {
+            log.error("Sarvam transliteration failed: {}", e.getMessage());
+            throw new SttException("Transliteration failed: " + e.getMessage());
         }
     }
 

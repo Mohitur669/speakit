@@ -14,10 +14,27 @@ enum STTMode: String, CaseIterable {
     case file = "Import File"
 }
 
+enum STTProcessingMode: String, CaseIterable {
+    case transcribe = "Standard (Transcribe)"
+    case translate = "Translate to English"
+    case codemix = "Code-mixed (Hinglish)"
+    case translit = "Transliterate"
+    
+    var apiValue: String {
+        switch self {
+        case .transcribe: return "transcribe"
+        case .translate: return "translate"
+        case .codemix: return "codemix"
+        case .translit: return "translit"
+        }
+    }
+}
+
 struct STTStudioView: View {
     @Environment(AppState.self) private var appState
     
     @State private var selectedMode: STTMode = .live
+    @State private var processingMode: STTProcessingMode = .transcribe
     @State private var selectedLanguage: String = "Auto detect"
     @State private var isProcessing: Bool = false
     @State private var showResultSheet: Bool = false
@@ -112,6 +129,40 @@ struct STTStudioView: View {
                                 Text(selectedLanguage)
                                     .font(.system(size: 16, weight: .semibold))
                                     .foregroundColor(Color.speakitTextPrimary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(Color.speakitTextTertiary)
+                        }
+                        .padding(16)
+                        .background(Color.speakitCardSurface)
+                        .cornerRadius(SpeakITSpacing.cardRadius)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: SpeakITSpacing.cardRadius)
+                                .stroke(Color.speakitBorder, lineWidth: 1)
+                        )
+                    }
+                    
+                    // Processing Mode Selection Card
+                    Menu {
+                        ForEach(STTProcessingMode.allCases, id: \.self) { mode in
+                            Button(mode.rawValue) {
+                                HapticManager.shared.selection()
+                                processingMode = mode
+                            }
+                        }
+                    } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Processing Mode")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(Color.speakitTextSecondary)
+                                Text(processingMode.rawValue)
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(Color.speakitTextPrimary)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.85)
                             }
                             Spacer()
                             Image(systemName: "chevron.down")
@@ -337,6 +388,16 @@ struct STTStudioView: View {
         }
     }
     
+    private var apiLanguageCode: String {
+        switch selectedLanguage {
+        case "English (US)", "English (IN)": return "en-IN"
+        case "Hindi": return "hi-IN"
+        case "Tamil": return "ta-IN"
+        case "Spanish": return "es-ES"
+        default: return "auto"
+        }
+    }
+
     private func stopAndTranscribe() {
         let fallbackDuration = recordingManager.elapsedTime
         guard let fileURL = recordingManager.stopRecording() else { return }
@@ -355,6 +416,8 @@ struct STTStudioView: View {
                     let language: String?
                     let duration: Double?
                     let provider: String?
+                    let transliteration: String?
+                    let mode: String?
                     
                     var outputText: String {
                         transcript ?? text ?? "Innovation happens when people can speak freely, share ideas easily, and turn thoughts into action."
@@ -366,7 +429,11 @@ struct STTStudioView: View {
                     fileData: audioData,
                     fileName: "recording.m4a",
                     mimeType: "audio/m4a",
-                    fieldName: "file"
+                    fieldName: "file",
+                    additionalFields: [
+                        "language": apiLanguageCode,
+                        "mode": processingMode.apiValue
+                    ]
                 )
                 
                 let resultText = response.outputText
@@ -385,6 +452,9 @@ struct STTStudioView: View {
                         durationSeconds: finalSeconds,
                         wordCount: words,
                         timestamp: "Today, \(Date().formatted(date: .omitted, time: .shortened))",
+                        translatedText: nil,
+                        transliteration: response.transliteration,
+                        mode: response.mode ?? self.processingMode.apiValue,
                         originalAudioURL: fileURL
                     )
                     HapticManager.shared.success()
@@ -427,6 +497,8 @@ struct STTStudioView: View {
                     let language: String?
                     let duration: Double?
                     let provider: String?
+                    let transliteration: String?
+                    let mode: String?
                     
                     var outputText: String {
                         transcript ?? text ?? "Imported audio successfully transcribed into text."
@@ -448,7 +520,11 @@ struct STTStudioView: View {
                     fileData: audioData,
                     fileName: fileURL.lastPathComponent,
                     mimeType: uploadMimeType,
-                    fieldName: "file"
+                    fieldName: "file",
+                    additionalFields: [
+                        "language": apiLanguageCode,
+                        "mode": processingMode.apiValue
+                    ]
                 )
                 
                 let resultText = response.outputText
@@ -466,6 +542,9 @@ struct STTStudioView: View {
                         durationSeconds: finalSeconds,
                         wordCount: words,
                         timestamp: "Today, \(Date().formatted(date: .omitted, time: .shortened))",
+                        translatedText: nil,
+                        transliteration: response.transliteration,
+                        mode: response.mode ?? self.processingMode.apiValue,
                         originalAudioURL: fileURL
                     )
                     HapticManager.shared.success()

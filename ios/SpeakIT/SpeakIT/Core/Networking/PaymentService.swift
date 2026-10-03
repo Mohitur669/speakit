@@ -41,6 +41,25 @@ final class PaymentService {
         return try await client.requestString(.verifyPayment, method: "POST", body: body)
     }
     
+    // MARK: - Proration Quotation
+    func getProrationQuote(targetPlan: PlanType, currency: String = "INR") async throws -> ProrationQuoteResponse {
+        return try await client.request(
+            .prorationQuote(targetPlan: targetPlan.rawValue.uppercased(), currency: currency),
+            method: "GET"
+        )
+    }
+    
+    // MARK: - Downgrade Plan
+    func downgrade(to targetPlan: PlanType) async throws -> String {
+        if targetPlan == .free {
+            return try await downgradeToFree()
+        }
+        return try await client.requestString(
+            .downgradePlan(targetPlan: targetPlan.rawValue.uppercased()),
+            method: "POST"
+        )
+    }
+    
     // MARK: - Downgrade to Free
     func downgradeToFree() async throws -> String {
         return try await client.requestString(.downgradeToFree, method: "POST")

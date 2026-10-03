@@ -81,6 +81,9 @@ class AuthServiceOtpTest {
     private TtsHistoryRepository ttsHistoryRepository;
 
     @Mock
+    private com.speakit.stt.repository.SpeechToTextRequestRepository speechToTextRequestRepository;
+
+    @Mock
     private SubscriptionService subscriptionService;
 
     @Mock
@@ -242,13 +245,13 @@ class AuthServiceOtpTest {
                 .build();
 
         when(userRepository.findByUsername("activeuser")).thenReturn(Optional.of(activeUser));
+        when(passwordEncoder.matches("password123", "encoded_pass")).thenReturn(true);
         when(jwtService.generateToken(any(), any())).thenReturn("mocked_jwt_token");
 
         AuthResponse response = authService.login(req);
 
         assertNotNull(response);
         assertEquals("mocked_jwt_token", response.getToken());
-        verify(authenticationManager, times(1)).authenticate(any());
     }
 
     @Test

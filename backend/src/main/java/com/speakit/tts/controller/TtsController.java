@@ -20,6 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.services.polly.model.Engine;
 
 import java.io.InputStream;
@@ -112,7 +113,8 @@ public class TtsController {
             String effectiveVoiceType;
             if (request.isElevenLabs()) {
                 // noinspection TaintFlow
-                audioStream = elevenLabsService.synthesizeSpeech(sanitizedText, sanitizedVoiceId);
+                // Pass voiceStyle for optional v4 emotion-directed synthesis
+                audioStream = elevenLabsService.synthesizeSpeech(sanitizedText, sanitizedVoiceId, request.getVoiceStyle());
                 effectiveVoiceType = "NATURAL";
             } else if (request.isSarvam()) {
                 String speaker = sanitizedVoiceId;
@@ -301,6 +303,114 @@ public class TtsController {
         }
 
         return ResponseEntity.ok(allVoices);
+    }
+
+    @RateLimited
+    @PostMapping(value = "/audio-isolation", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> isolateAudio(
+            @RequestParam("file") MultipartFile file,
+            HttpServletRequest httpRequest,
+            Principal principal
+    ) {
+        Long userId = resolveUserId(httpRequest, principal);
+        PlanType planType = (PlanType) httpRequest.getAttribute("planType");
+        if (planType == null || planType == PlanType.FREE) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Audio Isolation requires Pro plan or higher"));
+        }
+
+        if (file == null || file.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Audio file must not be empty"));
+        }
+
+        try {
+            byte[] cleanBytes = elevenLabsService.isolateAudio(file.getBytes(), file.getOriginalFilename());
+            var stored = audioStorageService.storeAudio(userId, cleanBytes, "mp3");
+            return ResponseEntity.ok(Map.of(
+                    "status", "SUCCESS",
+                    "audioUrl", stored.url(),
+                    "sizeBytes", cleanBytes.length
+            ));
+        } catch (Exception e) {
+            log.error("Failed to isolate audio for user {}", userId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Audio isolation failed: " + e.getMessage()));
+        }
+    }
+
+    @RateLimited
+    @PostMapping(value = "/speech-to-speech", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> speechToSpeech(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("voiceId") String voiceId,
+            HttpServletRequest httpRequest,
+            Principal principal
+    ) {
+        Long userId = resolveUserId(httpRequest, principal);
+        PlanType planType = (PlanType) httpRequest.getAttribute("planType");
+        if (planType == null || planType.getRank() < PlanType.PRO_PLUS.getRank()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Voice Changer / Speech-to-Speech requires Pro Plus or Enterprise plan"));
+        }
+
+        if (file == null || file.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Audio file must not be empty"));
+        }
+
+        try {
+            byte[] revoicedBytes = elevenLabsService.speechToSpeech(file.getBytes(), file.getOriginalFilename(), voiceId);
+            var stored = audioStorageService.storeAudio(userId, revoicedBytes, "mp3");
+            return ResponseEntity.ok(Map.of(
+                    "status", "SUCCESS",
+                    "audioUrl", stored.url(),
+                    "voiceId", voiceId,
+                    "sizeBytes", revoicedBytes.length
+            ));
+        } catch (Exception e) {
+            log.error("Failed to convert speech-to-speech for user {}", userId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Speech-to-Speech conversion failed: " + e.getMessage()));
+        }
+    }
+
+    @RateLimited
+    @PostMapping("/sound-effects")
+    public ResponseEntity<?> generateSoundEffect(
+            @RequestBody Map<String, Object> payload,
+            HttpServletRequest httpRequest,
+            Principal principal
+    ) {
+        Long userId = resolveUserId(httpRequest, principal);
+        PlanType planType = (PlanType) httpRequest.getAttribute("planType");
+        if (planType == null || planType.getRank() < PlanType.PRO_PLUS.getRank()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Sound Effects Generator requires Pro Plus or Enterprise plan"));
+        }
+
+        String prompt = (String) payload.get("prompt");
+        if (prompt == null || prompt.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Prompt is required"));
+        }
+
+        Double duration = null;
+        if (payload.get("durationSeconds") instanceof Number n) {
+            duration = n.doubleValue();
+        }
+
+        try {
+            byte[] sfxBytes = elevenLabsService.generateSoundEffect(prompt, duration);
+            var stored = audioStorageService.storeAudio(userId, sfxBytes, "mp3");
+            return ResponseEntity.ok(Map.of(
+                    "status", "SUCCESS",
+                    "audioUrl", stored.url(),
+                    "prompt", prompt,
+                    "sizeBytes", sfxBytes.length
+            ));
+        } catch (Exception e) {
+            log.error("Failed to generate sound effects for user {}", userId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Sound Effects generation failed: " + e.getMessage()));
+        }
     }
 
     private MediaType getMediaType(String format) {

@@ -105,12 +105,18 @@ enum APIEndpoint {
     case transcribeLive
     case transcribeFile
     case translate
+    case transliterate
+    case saveLiveSession
     
     // History
-    case history(page: Int, size: Int)
+    case history(page: Int, size: Int, type: String?)
     case historyAudio(id: Int64)
     case deleteHistory
     case clearAllHistory
+
+    static func history(page: Int, size: Int) -> APIEndpoint {
+        .history(page: page, size: size, type: nil)
+    }
     
     // System Parameters
     case systemParametersBulk(names: [String])
@@ -121,8 +127,11 @@ enum APIEndpoint {
     // Billing & Payments
     case createPaymentOrder
     case verifyPayment
+    case appleVerifyPurchase
     case downgradeToFree
+    case downgradePlan(targetPlan: String)
     case cancelSubscription
+    case prorationQuote(targetPlan: String, currency: String)
     case paymentHistory(page: Int, size: Int)
     
     var path: String {
@@ -175,7 +184,14 @@ enum APIEndpoint {
             return "/api/stt/transcribe"
         case .translate:
             return "/api/stt/translate"
-        case .history(let page, let size):
+        case .transliterate:
+            return "/api/stt/transliterate"
+        case .saveLiveSession:
+            return "/api/stt/live/session"
+        case .history(let page, let size, let type):
+            if let type = type, !type.isEmpty {
+                return "/api/history?page=\(page)&size=\(size)&type=\(type)"
+            }
             return "/api/history?page=\(page)&size=\(size)"
         case .historyAudio(let id):
             return "/api/history/\(id)/audio"
@@ -192,10 +208,16 @@ enum APIEndpoint {
             return "/api/v1/payments/create-order"
         case .verifyPayment:
             return "/api/v1/payments/verify"
+        case .appleVerifyPurchase:
+            return "/api/v1/payments/apple/verify"
         case .downgradeToFree:
             return "/api/v1/payments/downgrade-free"
+        case .downgradePlan(let targetPlan):
+            return "/api/v1/payments/downgrade?targetPlan=\(targetPlan)"
         case .cancelSubscription:
             return "/api/v1/payments/cancel"
+        case .prorationQuote(let targetPlan, let currency):
+            return "/api/v1/payments/proration-quote?targetPlan=\(targetPlan)&currency=\(currency)"
         case .paymentHistory(let page, let size):
             return "/api/v1/payments/history?page=\(page)&size=\(size)"
         }
