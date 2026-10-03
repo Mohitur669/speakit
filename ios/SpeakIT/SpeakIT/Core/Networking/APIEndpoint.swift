@@ -106,6 +106,7 @@ enum APIEndpoint {
     case transcribeFile
     case translate
     case transliterate
+    case saveLiveSession
     
     // History
     case history(page: Int, size: Int, type: String?)
@@ -128,7 +129,9 @@ enum APIEndpoint {
     case verifyPayment
     case appleVerifyPurchase
     case downgradeToFree
+    case downgradePlan(targetPlan: String)
     case cancelSubscription
+    case prorationQuote(targetPlan: String, currency: String)
     case paymentHistory(page: Int, size: Int)
     
     var path: String {
@@ -183,6 +186,8 @@ enum APIEndpoint {
             return "/api/stt/translate"
         case .transliterate:
             return "/api/stt/transliterate"
+        case .saveLiveSession:
+            return "/api/stt/live/session"
         case .history(let page, let size, let type):
             if let type = type, !type.isEmpty {
                 return "/api/history?page=\(page)&size=\(size)&type=\(type)"
@@ -207,8 +212,12 @@ enum APIEndpoint {
             return "/api/v1/payments/apple/verify"
         case .downgradeToFree:
             return "/api/v1/payments/downgrade-free"
+        case .downgradePlan(let targetPlan):
+            return "/api/v1/payments/downgrade?targetPlan=\(targetPlan)"
         case .cancelSubscription:
             return "/api/v1/payments/cancel"
+        case .prorationQuote(let targetPlan, let currency):
+            return "/api/v1/payments/proration-quote?targetPlan=\(targetPlan)&currency=\(currency)"
         case .paymentHistory(let page, let size):
             return "/api/v1/payments/history?page=\(page)&size=\(size)"
         }

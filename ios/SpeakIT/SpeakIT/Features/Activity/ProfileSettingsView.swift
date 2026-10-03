@@ -312,8 +312,8 @@ struct ProfileSettingsView: View {
                 menuDivider
                 
                 menuItem(
-                    title: "Manage Plan",
-                    subtitle: "Upgrade or modify your subscription tier",
+                    title: "Manage Subscription",
+                    subtitle: "Upgrade, downgrade, or cancel your plan",
                     icon: "sparkles",
                     action: { activeSheet = .paywall }
                 )
@@ -541,6 +541,7 @@ struct ProfileSettingsView: View {
         title: String,
         subtitle: String,
         icon: String,
+        iconColor: Color = Color.speakitPrimary,
         badgeText: String? = nil,
         trailingIcon: String = "chevron.right",
         action: @escaping () -> Void
@@ -552,7 +553,7 @@ struct ProfileSettingsView: View {
             HStack(spacing: 12) {
                 Image(systemName: icon)
                     .font(.system(size: 15))
-                    .foregroundColor(Color.speakitPrimary)
+                    .foregroundColor(iconColor)
                     .frame(width: 24)
                 
                 VStack(alignment: .leading, spacing: 2) {

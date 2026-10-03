@@ -122,30 +122,34 @@ public class HistoryController {
     }
 
     private TtsHistoryDto mapSttToDto(SpeechToTextRequest stt) {
-        String transcript = stt.getTranscript() != null ? stt.getTranscript() : "";
+        String transcript = stt.getTranscript() != null ? stt.getTranscript().trim() : "";
+        String title = stt.getOriginalFilename() != null ? stt.getOriginalFilename() : "Audio Transcription";
+
         String snippet = transcript;
-        if (snippet.length() > 60) {
-            snippet = snippet.substring(0, 60) + "...";
+        if (snippet.length() > 75) {
+            snippet = snippet.substring(0, 75) + "...";
         }
         if (snippet.isEmpty()) {
-            snippet = stt.getOriginalFilename() != null ? stt.getOriginalFilename() : "Audio Transcription";
+            snippet = title;
         }
 
-        String providerName = "Sarvam Saaras";
-        if (stt.getProvider() != null) {
+        String displayName = title;
+        if (!title.contains("Live") && !"Live Session".equalsIgnoreCase(title)) {
             if ("SARVAM".equalsIgnoreCase(stt.getProvider())) {
-                providerName = "Sarvam Saaras";
-            } else {
-                providerName = stt.getProvider();
+                displayName = "Sarvam Saaras";
+            } else if (stt.getProvider() != null) {
+                displayName = stt.getProvider();
             }
         }
 
-        int charCount = stt.getTranscriptLength() != null ? stt.getTranscriptLength() : transcript.length();
+        int charCount = stt.getTranscriptLength() != null && stt.getTranscriptLength() > 0
+                ? stt.getTranscriptLength()
+                : transcript.length();
 
         return TtsHistoryDto.builder()
                 .id(stt.getId())
                 .voiceId(stt.getLanguage() != null ? stt.getLanguage() : "hi-IN")
-                .voiceName(providerName)
+                .voiceName(displayName)
                 .voiceType("STT")
                 .outputFormat("wav")
                 .characterCount(charCount)
@@ -156,7 +160,7 @@ public class HistoryController {
                 .engineType("STT")
                 .transliteration(stt.getTransliteration())
                 .mode(stt.getProcessingMode() != null ? stt.getProcessingMode() : "transcribe")
-                .filename(stt.getOriginalFilename())
+                .filename(title)
                 .status(stt.getStatus() != null ? stt.getStatus() : "SUCCESS")
                 .build();
     }

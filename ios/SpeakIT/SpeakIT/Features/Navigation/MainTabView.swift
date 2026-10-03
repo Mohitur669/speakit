@@ -9,6 +9,7 @@ import SwiftUI
 
 struct MainTabView: View {
     @Environment(AppState.self) private var appState
+    @State private var profileTabImage: UIImage? = nil
     
     var body: some View {
         @Bindable var state = appState
@@ -55,17 +56,47 @@ struct MainTabView: View {
                 ProfileSettingsView()
             }
             .tabItem {
-                Label("Profile", systemImage: "person.crop.circle.fill")
+                if let customImg = profileTabImage {
+                    Image(uiImage: customImg)
+                } else {
+                    Image(systemName: "person.crop.circle.fill")
+                }
+                Text("Profile")
             }
             .tag(4)
         }
         .tint(Color.speakitPrimary)
         .onChange(of: state.selectedTab) { _, _ in
             HapticManager.shared.selection()
+            Task {
+                await updateProfileTabIcon()
+            }
+        }
+        .task(id: "\(state.currentUser?.avatarUrl ?? "")-\(state.currentUser?.initials ?? "")-\(state.selectedTab)") {
+            await updateProfileTabIcon()
         }
         .sheet(isPresented: $state.showPaywallSheet) {
             SubscriptionPaywallView()
         }
+    }
+    
+    private func updateProfileTabIcon() async {
+        let user = appState.currentUser
+        let initials = user?.initials ?? "U"
+        let isSelected = appState.selectedTab == 4
+        
+        if let avatarUrl = user?.avatarUrl, !avatarUrl.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            if let img = AvatarCacheManager.shared.memoryImage(for: avatarUrl) {
+                self.profileTabImage = TabBarAvatarRenderer.render(image: img, initials: initials, isSelected: isSelected)
+                return
+            }
+            if let img = await AvatarCacheManager.shared.loadImage(from: avatarUrl) {
+                self.profileTabImage = TabBarAvatarRenderer.render(image: img, initials: initials, isSelected: isSelected)
+                return
+            }
+        }
+        
+        self.profileTabImage = TabBarAvatarRenderer.render(image: nil, initials: initials, isSelected: isSelected)
     }
 }
 

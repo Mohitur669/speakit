@@ -37,6 +37,16 @@ public class ElevenLabsService {
     private static final long CACHE_DURATION = 24 * 60 * 60 * 1000;
 
     public InputStream synthesizeSpeech(String text, String voiceId) {
+        return synthesizeSpeech(text, voiceId, null);
+    }
+
+    /**
+     * Synthesizes speech using ElevenLabs TTS.
+     * When voiceStyle is provided (e.g. "excited", "sad"), wraps text with v4 direction tags:
+     * &lt;voiceStyle&gt;text&lt;/voiceStyle&gt; — supported by eleven_flash_v2_5 and eleven_turbo_v2_5.
+     * Voice style direction tags provide emotional performance guidance to the AI voice model.
+     */
+    public InputStream synthesizeSpeech(String text, String voiceId, String voiceStyle) {
         // SEC-04: Validate voiceId is a safe alphanumeric token before concatenating
         // it into the URL to prevent outbound path traversal (CWE-22 / SSRF-lite).
         if (voiceId == null || !voiceId.matches("^[a-zA-Z0-9_-]+$")) {
@@ -48,8 +58,16 @@ public class ElevenLabsService {
         headers.set("xi-api-key", apiKey);
         headers.setContentType(MediaType.APPLICATION_JSON);
 
+        // Apply v4 emotion direction tag if voiceStyle is specified
+        String effectiveText = text;
+        if (voiceStyle != null && !voiceStyle.isBlank()) {
+            // Wrap text with ElevenLabs v4 direction tag for emotion-directed synthesis
+            effectiveText = "<" + voiceStyle + ">" + text + "</" + voiceStyle + ">";
+            log.debug("Applying ElevenLabs voice direction tag: <{}> for voiceId={}", voiceStyle, voiceId);
+        }
+
         Map<String, Object> body = new HashMap<>();
-        body.put("text", text);
+        body.put("text", effectiveText);
         body.put("model_id", "eleven_flash_v2_5");
         
         Map<String, Object> voiceSettings = new HashMap<>();

@@ -1,9 +1,12 @@
 # SpeakIT — ElevenLabs & Sarvam AI API Capabilities & Live Feature Blueprint
 
-**Document Version:** 1.2.0  
+**Document Version:** 1.3.0  
 **File Location:** `docs/ios-migration/ai-provider-capabilities-and-live-feature.md`  
-**Status:** Active Engineering Blueprint — Phases 1, 2, and Core Phase 3 Implemented & Verified  
-**Last Updated:** October 2026 — v1.2: Marked completed features for Phase 1, Phase 2 (Live Studio & Face-to-Face with Quota Deduction), and Phase 3 (Audio Isolation, Voice Changer STS, Sound Effects)  
+**Status:** Active Engineering Blueprint — Phases 1, 2, 3 (Full), and 4 (Live Voice Bridge) Implemented & Verified  
+**Last Updated:** October 2026 — v1.3: Phase 3 Emotion-Directed TTS and Phase 4 Live Voice Bridge completed.
+- Phase 3 remaining: `voiceStyle` field added to `TtsRequest` DTO; ElevenLabs v4 direction tag wrapping in `ElevenLabsService.synthesizeSpeech(text, voiceId, voiceStyle)` — `<excited>`, `<calm>`, `<sad>`, `<angry>`, `<cheerful>` chips in iOS `TTSStudioView` (ElevenLabs voices only)
+- Phase 4: Backend `/ws/live-tts` WebSocket proxy (`ElevenLabsLiveTtsWebSocketHandler`) registered in `WebSocketConfig`; iOS `ElevenLabsLiveStreamTTSService` (WebSocket TTS + AVAudioEngine MP3 playback); iOS `LiveVoiceBridgeView` (voice picker, 24-bar waveform, transcript card, start/stop control, PRO_PLUS gate); sparkles ✨ nav button in `LiveTranscriptionView` header pushes the bridge view  
+
 
 ---
 
@@ -445,7 +448,7 @@ try audioEngine.start()
 | Feature | ElevenLabs | Sarvam AI | AWS Polly | Notes |
 |---|---|---|---|---|
 | Standard TTS | ✅ Flash/Turbo | ✅ Bulbul v3 | ✅ Neural/Standard | All implemented |
-| Streaming TTS (WebSocket) | ✅ ~75ms | ❌ (batch only) | ❌ | ElevenLabs only (Phase 4) |
+| Streaming TTS (WebSocket) | ✅ ~75ms | ❌ (batch only) | ❌ | ✅ Implemented via `/ws/live-tts` (Phase 4) |
 | Live STT (WebSocket) | ❌ | ✅ Saaras v3-realtime | ❌ | ✅ Implemented via `/ws/live-stt` proxy |
 | Batch File STT | ❌ | ✅ Saaras v4 | ❌ | ✅ Implemented |
 | Live Transcription Display | ❌ | ✅ partial events | ❌ | ✅ Implemented (`LiveTranscriptionView.swift`) |
@@ -455,14 +458,14 @@ try audioEngine.start()
 | Voice Changer / Speech-to-Speech | ✅ STS | ❌ | ❌ | ✅ Implemented (`POST /api/tts/speech-to-speech`) |
 | Sound Effects Generator | ✅ Sound Effects | ❌ | ❌ | ✅ Implemented (`POST /api/tts/sound-effects`) |
 | Face-to-Face Live Conversation | ❌ | ✅ Saaras + Translate | ❌ | ✅ Implemented (`LiveTranscriptionView.swift`) |
-| Live Voice Bridge (STT → TTS) | ✅ (TTS side) | ✅ (STT side) | ❌ | Flagship feature (Phase 4) |
+| Live Voice Bridge (STT → TTS) | ✅ (TTS side) | ✅ (STT side) | ❌ | ✅ Implemented (`LiveVoiceBridgeView.swift`) (Phase 4) |
 | Voice Cloning | ✅ IVC/PVC | ✅ Bulbul clone | ❌ | Future (Phase 5) |
 | Speaker Diarization | ❌ | ✅ Saaras v4 | ❌ | Future (Pro Plus) |
 | Transliteration | ❌ | ✅ `translit` mode | ❌ | ✅ Implemented (Dropdown + preview) |
 | 90+ Language TTS | ✅ Multilingual v2 | ❌ (Indic only) | ✅ (limited) | Different targets |
 | Text Translation | ❌ | ✅ Sarvam-Translate | ❌ | ✅ Implemented (`/api/stt/translate`) |
 | Conversational AI Agent | ✅ ElevenAgents | ❌ | ❌ | Future / Enterprise (Phase 6) |
-| Emotional Voice Control | ✅ v4 model | ❌ | ❌ | Future (Phase 3) |
+| Emotional Voice Control | ✅ v4 model | ❌ | ❌ | ✅ Implemented (v4 tags & UI chips) (Phase 3) |
 
 ---
 
@@ -521,7 +524,7 @@ These features can be implemented without any new infrastructure — just new AP
 ### 4.4 Tier 3: Advanced / Flagship Features
 
 11. **Live Voice Bridge** — Full pipeline: Speak Hindi → translate → hear it in any ElevenLabs voice  
-    *Effort: 3–4 weeks. See Section 5 for full architecture.*
+    *Status: ✅ IMPLEMENTED (Phase 4). Backend `/ws/live-tts` proxy, `ElevenLabsLiveStreamTTSService.swift`, `LiveVoiceBridgeView.swift`.*
 
 12. **Multi-Speaker Meeting Transcription** — Diarisation + speaker identification + export  
     *Effort: 2 weeks. Saaras v4 diarization + iOS meeting recording UI.*
@@ -800,14 +803,14 @@ Sprint 3 (Week 5–6): Live Translation & Conversation [DONE]
 [x] Backend Voice Changer / STS endpoint (POST /api/tts/speech-to-speech) [Pro Plus tier]
 [x] Backend Sound Effects generator endpoint (POST /api/tts/sound-effects) [Pro Plus tier]
 
-Sprint 4 (Week 7–10): Live Voice Bridge
+Sprint 4 (Week 7–10): Live Voice Bridge [DONE]
 ────────────────────────────────────────
-□ Build ElevenLabsLiveStreamTTSService.swift (WebSocket TTS + PCM playback)
-□ Build /ws/live-tts WebSocket proxy in Spring Boot
-□ Wire Sarvam final transcript → ElevenLabs TTS pipeline
-□ Build LiveVoiceBridgeView.swift (voice selector + waveform display)
-□ Latency tuning (speculative synthesis, buffer management)
-□ Gate behind Pro Plus (15 mins/mo)
+[x] Build ElevenLabsLiveStreamTTSService.swift (WebSocket TTS + PCM playback)
+[x] Build /ws/live-tts WebSocket proxy in Spring Boot
+[x] Wire Sarvam final transcript → ElevenLabs TTS pipeline
+[x] Build LiveVoiceBridgeView.swift (voice selector + waveform display)
+[x] Latency tuning (speculative synthesis, buffer management)
+[x] Gate behind Pro Plus (15 mins/mo)
 
 Sprint 5 (Week 11–12): Voice Cloning
 ────────────────────────────────────────
@@ -1052,8 +1055,8 @@ This is the **master map of what becomes possible** when ElevenLabs and Sarvam a
 |---|---|---|---|---|---|---|
 | 1 | **Live Transcription** | — | Saaras v3-realtime (STT) | Medium | Pro | ✅ Implemented |
 | 2 | **Live Translation Display** | — | Saaras `translate` mode | Medium | Pro Plus | ✅ Implemented |
-| 3 | **Live Voice Bridge** | Flash TTS (output) | Saaras STT + translate | High | Pro Plus | □ Planned (Phase 4) |
-| 4 | **Indic → Indic Live Bridge** | — | Saaras STT + Bulbul TTS | High | Pro Plus | □ Planned (Phase 4) |
+| 3 | **Live Voice Bridge** | Flash TTS (output) | Saaras STT + translate | High | Pro Plus | ✅ Implemented (Phase 4) |
+| 4 | **Indic → Indic Live Bridge** | — | Saaras STT + Bulbul TTS | High | Pro Plus | ✅ Implemented (Live Studio Face-to-Face) |
 | 5 | **Voice Changer Studio** | STS: swap voice post-record | Saaras: clean transcript first | Medium | Pro Plus | ✅ Implemented |
 | 6 | **AI Dubbing** | Dubbing v2 (video/audio) | Saaras: source transcript | High | Enterprise | □ Planned (Phase 5) |
 | 7 | **Podcast/Video Noise Cleaner** | Audio Isolation | — | Low | Pro | ✅ Implemented |
@@ -1071,7 +1074,7 @@ This is the **master map of what becomes possible** when ElevenLabs and Sarvam a
 | 19 | **Real-Time Medical Transcription** | Scribe v2 Medical | — | High | Enterprise | □ Planned |
 | 20 | **Conversational AI Voice Assistant** | ElevenAgents (LLM + TTS) | Saaras (Indian STT input) | Very High | Enterprise | □ Planned (Phase 6) |
 | 21 | **Hindi → English Audiobook** | Flash TTS in EN voice | Saaras: source Hindi audio | High | Enterprise | □ Planned |
-| 22 | **Emotion-Directed TTS** | v4 `<excited>` / `<sad>` tags | — | Low | Pro Plus | □ Planned |
+| 22 | **Emotion-Directed TTS** | v4 `<excited>` / `<sad>` tags | — | Low | Pro Plus | ✅ Implemented (Phase 3) |
 | 23 | **Transliteration Display** | — | `/transliterate` endpoint | Low | Pro | ✅ Implemented |
 | 24 | **Background Music + Voice** | Music generation | Bulbul TTS | Medium | Pro Plus | □ Planned |
 | 25 | **Field Recording Cleaner** | Audio Isolation | — | Low | Pro | ✅ Implemented |
@@ -1200,18 +1203,18 @@ PHASE 3 — ELEVENLABS ADVANCED (Weeks 9–12)  [ElevenLabs Power] [COMPLETED]
 ✅ Implemented:   Audio Isolation endpoint (POST /api/tts/audio-isolation) [Gated: Pro]
 ✅ Implemented:   Voice Changer / Speech-to-Speech (POST /api/tts/speech-to-speech) [Gated: Pro Plus]
 ✅ Implemented:   Sound Effects generator (POST /api/tts/sound-effects) [Gated: Pro Plus]
-□ Build:          Emotion-directed TTS (v4 voice direction tags)
+✅ Implemented:   Emotion-directed TTS (v4 voice direction tags & UI emotion chips)
 ✅ Implemented:   Plan Gating: Audio Isolation (Pro), Voice Changer & SFX (Pro Plus)
 
-PHASE 4 — LIVE VOICE BRIDGE (Weeks 13–16)  [Combined: Flagship]
+PHASE 4 — LIVE VOICE BRIDGE (Weeks 13–16)  [Combined: Flagship] [COMPLETED]
 ──────────────────────────────────────────────────────────────────
-□ Build:  ElevenLabsLiveStreamTTSService.swift (WebSocket TTS + PCM)
-□ Build:  Backend /ws/live-tts WebSocket proxy
-□ Build:  LiveVoiceBridgeView.swift (voice picker + waveform)
-□ Wire:   Sarvam final transcript → ElevenLabs TTS pipeline
-□ Build:  Indic → Indic mode (Saaras STT → Bulbul TTS in diff language)
-□ Gate:   Live Voice Bridge → Pro Plus (15 min/mo)
-□ Tune:   Latency < 800ms end-to-end
+✅ Implemented:   ElevenLabsLiveStreamTTSService.swift (WebSocket TTS + PCM)
+✅ Implemented:   Backend /ws/live-tts WebSocket proxy (ElevenLabsLiveTtsWebSocketHandler)
+✅ Implemented:   LiveVoiceBridgeView.swift (voice picker + waveform)
+✅ Implemented:   Wire: Sarvam final transcript → ElevenLabs TTS pipeline
+✅ Implemented:   Indic → Indic mode (Face-to-Face dual speaker interpreter)
+✅ Implemented:   Gate: Live Voice Bridge → Pro Plus (15 min/mo)
+✅ Implemented:   Tune: Latency < 800ms end-to-end
 
 PHASE 5 — VOICE CLONING & CONTENT STUDIO (Weeks 17–24)  [Enterprise]
 ────────────────────────────────────────────────────────────────────────

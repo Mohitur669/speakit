@@ -191,15 +191,15 @@ struct User: Codable, Identifiable {
     // Sample mockup user for previews & offline
     static var sample: User {
         User(
-            id: 1,
+            id: -1,
             username: "mohit",
             email: "mohit@example.com",
             fullName: "Mohit Sharma",
             role: "ROLE_USER",
             planType: .pro,
             status: "ACTIVE",
-            characterLimit: 25000,
-            charactersUsed: 14250
+            characterLimit: 5000,
+            charactersUsed: 0
         )
     }
 }

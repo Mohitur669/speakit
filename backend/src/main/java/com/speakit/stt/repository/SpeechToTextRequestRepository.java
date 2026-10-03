@@ -15,7 +15,7 @@ import java.util.List;
 @Repository
 public interface SpeechToTextRequestRepository extends JpaRepository<SpeechToTextRequest, Long> {
 
-    @Query("SELECT r FROM SpeechToTextRequest r WHERE r.user.id = :userId ORDER BY r.createdAt DESC")
+    @Query("SELECT r FROM SpeechToTextRequest r WHERE r.user.id = :userId AND r.transcript IS NOT NULL AND TRIM(r.transcript) != '' ORDER BY r.createdAt DESC")
     Page<SpeechToTextRequest> findByUserIdOrderByCreatedAtDesc(@Param("userId") Long userId, Pageable pageable);
 
     @Query("SELECT r FROM SpeechToTextRequest r WHERE r.id IN :ids AND r.user.id = :userId")

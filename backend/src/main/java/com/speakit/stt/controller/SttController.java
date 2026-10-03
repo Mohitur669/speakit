@@ -39,6 +39,7 @@ public class SttController {
     private final SystemParameterService systemParameterService;
     private final TranslationService translationService;
     private final UserRepository userRepository;
+    private final com.speakit.stt.repository.SpeechToTextRequestRepository speechToTextRequestRepository;
 
     /**
       * Secure endpoint for audio transcription.
@@ -236,6 +237,59 @@ public class SttController {
         // 3. Transliterate
         TransliterationResponse result = translationService.transliterate(request);
         return ResponseEntity.ok(result);
+    }
+
+    /**
+      * Saves a complete live session history record (Solo dictation or Face-to-Face conversation)
+      * containing all speaker turns, original transcripts, and translations under a single cohesive session.
+      */
+    @PostMapping("/live/session")
+    public ResponseEntity<?> saveLiveSession(
+            @Valid @RequestBody com.speakit.stt.dto.SaveLiveSessionRequest sessionRequest,
+            HttpServletRequest httpRequest
+    ) {
+        UserSecurityContext context = resolveSecurityContext(httpRequest);
+        Long userId = context.userId();
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        String transcript = sessionRequest.getTranscript() != null ? sessionRequest.getTranscript().trim() : "";
+        if (transcript.isEmpty()) {
+            return ResponseEntity.badRequest().body("Transcript cannot be empty");
+        }
+
+        User user = userRepository.getReferenceById(userId);
+
+        String title = sessionRequest.getTitle();
+        if (title == null || title.isBlank()) {
+            title = "CONVERSATION".equalsIgnoreCase(sessionRequest.getSessionType())
+                    ? "Live Conversation"
+                    : "Live Dictation";
+        }
+
+        int charCount = sessionRequest.getCharacterCount() != null && sessionRequest.getCharacterCount() > 0
+                ? sessionRequest.getCharacterCount()
+                : transcript.length();
+
+        com.speakit.stt.entity.SpeechToTextRequest record = com.speakit.stt.entity.SpeechToTextRequest.builder()
+                .user(user)
+                .provider("SARVAM")
+                .audioDurationSeconds(sessionRequest.getDurationSeconds() != null ? sessionRequest.getDurationSeconds() : 0)
+                .language(sessionRequest.getLanguage() != null ? sessionRequest.getLanguage() : "auto")
+                .processingMode(sessionRequest.getMode() != null ? sessionRequest.getMode() : "transcribe")
+                .transcript(transcript)
+                .transcriptLength(charCount)
+                .originalFilename(title)
+                .status("SUCCESS")
+                .completedAt(LocalDateTime.now())
+                .build();
+
+        speechToTextRequestRepository.save(record);
+        log.info("Saved complete Live Session in history: user={}, title={}, chars={}",
+                userId, title, charCount);
+
+        return ResponseEntity.ok(java.util.Map.of("id", record.getId(), "message", "Session saved successfully"));
     }
 
     private UserSecurityContext resolveSecurityContext(HttpServletRequest request) {

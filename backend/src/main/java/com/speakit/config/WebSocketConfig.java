@@ -28,6 +28,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
     private final UserRepository userRepository;
     private final WSTicketService wsTicketService;
     private final com.speakit.stt.websocket.LiveSttWebSocketHandler liveSttWebSocketHandler;
+    private final com.speakit.stt.websocket.ElevenLabsLiveTtsWebSocketHandler elevenLabsLiveTtsWebSocketHandler;
     private final Map<String, Set<WebSocketSession>> userSessions = new ConcurrentHashMap<>();
 
     @Override
@@ -36,6 +37,10 @@ public class WebSocketConfig implements WebSocketConfigurer {
                 .setAllowedOriginPatterns("*");
 
         registry.addHandler(liveSttWebSocketHandler, "/ws/live-stt")
+                .setAllowedOriginPatterns("*");
+
+        // Phase 4: Live Voice Bridge — ElevenLabs Streaming TTS proxy
+        registry.addHandler(elevenLabsLiveTtsWebSocketHandler, "/ws/live-tts")
                 .setAllowedOriginPatterns("*");
     }
 

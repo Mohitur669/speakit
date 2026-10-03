@@ -20,8 +20,10 @@ struct SubscriptionPaywallView: View {
     @State private var showTermsSheet: Bool = false
     @State private var showPrivacySheet: Bool = false
     @State private var showDowngradeAlert: Bool = false
+    @State private var showCancelAlert: Bool = false
     @State private var showContactSheet: Bool = false
     @State private var activeOrder: PaymentOrderResponse? = nil
+    @State private var prorationQuote: ProrationQuoteResponse? = nil
     
     var body: some View {
         let currentPlan = appState.currentUser?.planType ?? .free
@@ -29,7 +31,7 @@ struct SubscriptionPaywallView: View {
             VStack(spacing: 20) {
                 // Header Bar with Close Button
                 HStack {
-                    Text("Manage Plan")
+                    Text("Manage Subscription")
                         .font(.system(size: 26, weight: .bold))
                         .foregroundColor(Color.speakitTextPrimary)
                     
@@ -179,6 +181,10 @@ struct SubscriptionPaywallView: View {
                     } else if selectedPlan < currentPlan {
                         return "Downgrade to \(selectedPlan.displayName)"
                     } else {
+                        if let quote = prorationQuote, quote.isUpgrade, quote.unusedCredit > 0 {
+                            let currSymbol = quote.currency.uppercased() == "INR" ? "₹" : "$"
+                            return "Upgrade to \(selectedPlan.displayName) • Pay \(currSymbol)\(Int(quote.amountToPay)) today"
+                        }
                         let price: String
                         switch selectedPlan {
                         case .pro: price = appState.proPriceDisplay
@@ -188,6 +194,28 @@ struct SubscriptionPaywallView: View {
                         return price.isEmpty ? "Select \(selectedPlan.displayName)" : "Upgrade to \(selectedPlan.displayName) • \(price)"
                     }
                 }()
+                
+                // Credit adjustment banner for active upgrades
+                if let quote = prorationQuote, quote.isUpgrade, quote.unusedCredit > 0 {
+                    HStack(spacing: 8) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(Color.speakitPrimary)
+                        
+                        let currSymbol = quote.currency.uppercased() == "INR" ? "₹" : "$"
+                        Text("\(currSymbol)\(Int(quote.unusedCredit)) credit applied from your \(currentPlan.displayName) plan (\(quote.remainingDays) days remaining).")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(Color.speakitTextPrimary)
+                    }
+                    .padding(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.speakitPrimary.opacity(0.08))
+                    .cornerRadius(10)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Color.speakitPrimary.opacity(0.2), lineWidth: 1)
+                    )
+                }
                 
                 SpeakITButton(
                     title: buttonTitle,
@@ -225,6 +253,31 @@ struct SubscriptionPaywallView: View {
                         .cornerRadius(SpeakITSpacing.buttonRadius)
                     }
                     .accessibilityIdentifier("subscription.manageOnWeb")
+                }
+                
+                // Cancel Subscription Option (Inside Manage Subscription for active paid tiers)
+                if currentPlan != .free {
+                    Button(action: {
+                        HapticManager.shared.light()
+                        showCancelAlert = true
+                    }) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "xmark.circle")
+                                .font(.system(size: 14, weight: .semibold))
+                            Text("Cancel Subscription")
+                                .font(.system(size: 14, weight: .semibold))
+                        }
+                        .foregroundColor(Color.speakitError)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 44)
+                        .background(Color.speakitError.opacity(0.08))
+                        .cornerRadius(SpeakITSpacing.buttonRadius)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: SpeakITSpacing.buttonRadius)
+                                .stroke(Color.speakitError.opacity(0.25), lineWidth: 1)
+                        )
+                    }
+                    .accessibilityIdentifier("subscription.cancel")
                 }
                 
                 // Restore Purchases
@@ -293,13 +346,27 @@ struct SubscriptionPaywallView: View {
         } message: {
             Text("Your previous subscriptions and plan validity have been verified and restored from backend.")
         }
-        .alert("Downgrade to Free Tier", isPresented: $showDowngradeAlert) {
+        .alert(selectedPlan == .free ? "Downgrade to Free Tier" : "Downgrade to \(selectedPlan.displayName)", isPresented: $showDowngradeAlert) {
             Button("Cancel", role: .cancel) {}
             Button("Downgrade", role: .destructive) {
-                executeDowngrade()
+                executeDowngrade(to: selectedPlan)
             }
         } message: {
-            Text("Are you sure you want to downgrade to Free? You will lose access to neural and Indian AI voices immediately.")
+            if selectedPlan == .free {
+                Text("Are you sure you want to downgrade to Free? You will lose access to neural and Indian AI voices immediately.")
+            } else {
+                Text("Are you sure you want to downgrade to \(selectedPlan.displayName)? Your \(currentPlan.displayName) features remain active until \(appState.currentUser?.formattedExpiry ?? "the end of your billing cycle").")
+            }
+        }
+        .alert("Cancel Subscription?", isPresented: $showCancelAlert) {
+            Button("Keep Subscription", role: .cancel) {}
+            Button("Cancel Auto-Renewal", role: .destructive) {
+                executeCancelSubscription()
+            }
+        } message: {
+            let planName = currentPlan.displayName
+            let expiry = appState.currentUser?.formattedExpiry ?? "the end of your current period"
+            Text("Are you sure you want to turn off auto-renewal for your \(planName) plan? You will retain all your paid benefits until \(expiry).")
         }
         .task {
             if let activePlan = appState.currentUser?.planType {
@@ -307,6 +374,10 @@ struct SubscriptionPaywallView: View {
             }
             await appState.loadPlanPricing()
             await StoreKitService.shared.loadProducts()
+            fetchProrationQuote(for: selectedPlan)
+        }
+        .onChange(of: selectedPlan) { _, newPlan in
+            fetchProrationQuote(for: newPlan)
         }
         .speakITToast(message: $errorMessage, style: .error, bottomPadding: 20)
     }
@@ -322,13 +393,31 @@ struct SubscriptionPaywallView: View {
             return
         }
         
-        if selectedPlan == .free && currentPlan != .free {
+        if selectedPlan < currentPlan {
             showDowngradeAlert = true
             return
         }
         
         // Primary: In-App Purchase via StoreKit 2
         executeStoreKitPurchase(for: selectedPlan)
+    }
+    
+    private func fetchProrationQuote(for plan: PlanType) {
+        let currentPlan = appState.currentUser?.planType ?? .free
+        guard plan > currentPlan, currentPlan != .free else {
+            self.prorationQuote = nil
+            return
+        }
+        Task {
+            do {
+                let quote = try await PaymentService.shared.getProrationQuote(targetPlan: plan, currency: "INR")
+                await MainActor.run {
+                    self.prorationQuote = quote
+                }
+            } catch {
+                print("Notice: Could not fetch proration quote: \(error)")
+            }
+        }
     }
     
     private func executeStoreKitPurchase(for plan: PlanType) {
@@ -378,13 +467,13 @@ struct SubscriptionPaywallView: View {
         }
     }
     
-    private func executeDowngrade() {
+    private func executeDowngrade(to plan: PlanType) {
         isPurchasing = true
         errorMessage = nil
         
         Task {
             do {
-                _ = try await PaymentService.shared.downgradeToFree()
+                _ = try await PaymentService.shared.downgrade(to: plan)
                 await appState.loadCurrentUser()
                 
                 await MainActor.run {
@@ -396,6 +485,30 @@ struct SubscriptionPaywallView: View {
                 await MainActor.run {
                     self.isPurchasing = false
                     self.errorMessage = (error as? APIError)?.errorDescription ?? "Failed to downgrade plan."
+                    HapticManager.shared.error()
+                }
+            }
+        }
+    }
+    
+    private func executeCancelSubscription() {
+        isPurchasing = true
+        errorMessage = nil
+        
+        Task {
+            do {
+                _ = try await PaymentService.shared.cancelSubscription()
+                await appState.loadCurrentUser()
+                
+                await MainActor.run {
+                    self.isPurchasing = false
+                    HapticManager.shared.success()
+                    self.dismiss()
+                }
+            } catch {
+                await MainActor.run {
+                    self.isPurchasing = false
+                    self.errorMessage = (error as? APIError)?.errorDescription ?? "Failed to cancel subscription."
                     HapticManager.shared.error()
                 }
             }

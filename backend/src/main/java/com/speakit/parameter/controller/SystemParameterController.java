@@ -43,7 +43,8 @@ public class SystemParameterController {
         "PRO_PLAN_FEATURES",
         "PRO_PLUS_PLAN_FEATURES",
         "ENTERPRISE_PLAN_FEATURES",
-        "MANAGE_PLAN_URL_WEB"
+        "MANAGE_PLAN_URL_WEB",
+        "VOICE_BRIDGE_FLAG"
     );
 
     @RateLimited(action = RateLimitAction.LIVE_PARAM)

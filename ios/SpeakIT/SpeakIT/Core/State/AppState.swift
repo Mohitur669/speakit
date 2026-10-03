@@ -40,6 +40,9 @@ final class AppState {
     var maxProPlusCharacters: Int = 500
     var maxEnterpriseCharacters: Int = 2000
     
+    // Feature Flag: Voice Bridge (dynamically synced from VOICE_BRIDGE_FLAG)
+    var isVoiceBridgeEnabled: Bool = false
+    
     // Web host URL for plan management & billing.
     // - Simulator: always http://localhost:4200 (Angular dev server)
     // - Physical device: reads WEB_HOST_URL from xcconfig → Info.plist,
@@ -145,30 +148,7 @@ final class AppState {
         
         do {
             let user: User = try await HTTPClient.shared.request(.userProfile)
-            // Ensure we never regress to an older character count due to server async write latency
-            if let current = self.currentUser, current.id == user.id {
-                let resolvedCharactersUsed = max(current.charactersUsed, user.charactersUsed)
-                self.currentUser = User(
-                    id: user.id,
-                    username: user.username,
-                    email: user.email,
-                    fullName: user.fullName,
-                    role: user.role,
-                    planType: user.planType,
-                    status: user.status,
-                    subscriptionStatus: user.subscriptionStatus,
-                    planExpiry: user.planExpiry,
-                    characterLimit: user.characterLimit,
-                    charactersUsed: resolvedCharactersUsed,
-                    phoneNumber: user.phoneNumber,
-                    avatarUrl: user.avatarUrl,
-                    dailyCount: user.dailyCount,
-                    dailyLimit: user.dailyLimit,
-                    emailVerified: user.emailVerified
-                )
-            } else {
-                self.currentUser = user
-            }
+            self.currentUser = user
         } catch {
             print("Failed to load user profile: \(error)")
             // If offline, use cached or mock user so app remains functional for testing
@@ -244,7 +224,8 @@ final class AppState {
                     "MAX_PRO_CHARACTERS",
                     "MAX_PRO_PLUS_CHARACTERS",
                     "MAX_ENTERPRISE_CHARACTERS",
-                    "MANAGE_PLAN_URL_WEB"
+                    "MANAGE_PLAN_URL_WEB",
+                    "VOICE_BRIDGE_FLAG"
                 ])
             )
             
@@ -305,6 +286,10 @@ final class AppState {
             }
             if let entMax = params["MAX_ENTERPRISE_CHARACTERS"], let val = Int(entMax.trimmingCharacters(in: .whitespacesAndNewlines)) {
                 self.maxEnterpriseCharacters = val
+            }
+            if let bridgeFlag = params["VOICE_BRIDGE_FLAG"] {
+                let clean = bridgeFlag.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+                self.isVoiceBridgeEnabled = (clean == "Y" || clean == "TRUE" || clean == "1")
             }
         } catch {
             // Keep existing defaults on network error

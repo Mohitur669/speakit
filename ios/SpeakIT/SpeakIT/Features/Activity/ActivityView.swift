@@ -336,12 +336,18 @@ struct ActivityView: View {
             } message: {
                 Text("Are you sure you want to clear your generation logs?")
             }
-            .task {
-                // Event-Driven Invalidation: Only fetch if initial list is empty or marked dirty by a new synthesis
-                if historyItems.isEmpty || appState.isHistoryDirty {
-                    await loadInitialHistory()
-                    await appState.loadCurrentUser()
-                    appState.isHistoryDirty = false
+            .task(id: selectedFilter) {
+                await loadInitialHistory()
+                await appState.loadCurrentUser()
+                appState.isHistoryDirty = false
+            }
+            .onAppear {
+                if appState.isHistoryDirty {
+                    Task {
+                        await loadInitialHistory()
+                        await appState.loadCurrentUser()
+                        appState.isHistoryDirty = false
+                    }
                 }
             }
             .speakITToast(message: $errorMessage, style: .error, bottomPadding: 20)
@@ -570,39 +576,20 @@ struct ActivityView: View {
             )
             await MainActor.run {
                 self.isLoadingInitial = false
-                if let items = response.content, !items.isEmpty {
+                if let items = response.content {
                     self.historyItems = items
                     self.hasMorePages = !response.isLastPage && (items.count == self.pageSize)
                 } else {
-                    // Fall back to sample items in preview/offline mode (first page of 5 items)
-                    let filteredSamples = HistoryItem.samples.filter { sample in
-                        switch self.selectedFilter {
-                        case .all: return true
-                        case .tts: return sample.engineType == "TTS"
-                        case .stt: return sample.engineType == "STT"
-                        }
-                    }
-                    self.historyItems = Array(filteredSamples.prefix(self.pageSize))
-                    self.hasMorePages = filteredSamples.count > self.pageSize
+                    self.historyItems = []
+                    self.hasMorePages = false
                 }
             }
         } catch {
             await MainActor.run {
                 self.isLoadingInitial = false
-                print("Failed to fetch history from backend: \(error). Using fallback.")
-                if self.historyItems.isEmpty {
-                    let filteredSamples = HistoryItem.samples.filter { sample in
-                        switch self.selectedFilter {
-                        case .all: return true
-                        case .tts: return sample.engineType == "TTS"
-                        case .stt: return sample.engineType == "STT"
-                        }
-                    }
-                    self.historyItems = Array(filteredSamples.prefix(self.pageSize))
-                    self.hasMorePages = filteredSamples.count > self.pageSize
-                } else {
-                    self.hasMorePages = false
-                }
+                print("Failed to fetch history from backend: \(error)")
+                self.historyItems = []
+                self.hasMorePages = false
             }
         }
     }
@@ -636,27 +623,8 @@ struct ActivityView: View {
         } catch {
             await MainActor.run {
                 self.isLoadingMore = false
-                // Check if offline/sample pagination applies
-                let filteredSamples = HistoryItem.samples.filter { sample in
-                    switch self.selectedFilter {
-                    case .all: return true
-                    case .tts: return sample.engineType == "TTS"
-                    case .stt: return sample.engineType == "STT"
-                    }
-                }
-                let startIndex = nextPage * self.pageSize
-                if startIndex < filteredSamples.count {
-                    let endIndex = min(startIndex + self.pageSize, filteredSamples.count)
-                    let newItems = Array(filteredSamples[startIndex..<endIndex])
-                    let existingIds = Set(self.historyItems.map { $0.id })
-                    let uniqueNewItems = newItems.filter { !existingIds.contains($0.id) }
-                    self.historyItems.append(contentsOf: uniqueNewItems)
-                    self.currentPage = nextPage
-                    self.hasMorePages = endIndex < filteredSamples.count
-                } else {
-                    self.hasMorePages = false
-                }
-                print("Failed to fetch next history page from network: \(error). Used local pagination if available.")
+                self.hasMorePages = false
+                print("Failed to fetch next history page from network: \(error)")
             }
         }
     }

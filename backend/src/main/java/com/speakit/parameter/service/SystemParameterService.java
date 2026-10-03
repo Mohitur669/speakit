@@ -21,6 +21,7 @@ public class SystemParameterService {
 
     private final SystemParameterRepository repository;
     public static final String CACHE_NAME = "systemParameters";
+    private final Map<String, String> localCache = new java.util.concurrent.ConcurrentHashMap<>();
 
     // --- 1. DYNAMICALLY GOVERNED PARAMETER ACCESS (Governed by DYNAMIC_PLAN_FEATURES_LIVE flag) ---
 
@@ -34,7 +35,7 @@ public class SystemParameterService {
      * @return The parameter value
      */
     public String getParameter(String name, String defaultValue) {
-        String dynamicLiveFlag = getCachedParameter("DYNAMIC_PLAN_FEATURES_LIVE", "Y");
+        String dynamicLiveFlag = getCachedParameter("DYNAMIC_PLAN_FEATURES_LIVE", "N");
         if ("Y".equalsIgnoreCase(dynamicLiveFlag)) {
             return getLiveParameter(name, defaultValue);
         } else {
@@ -69,7 +70,17 @@ public class SystemParameterService {
 
     public boolean getBooleanParameter(String name, boolean defaultValue) {
         String val = getParameter(name, String.valueOf(defaultValue));
-        return Boolean.parseBoolean(val);
+        if (val == null) {
+            return defaultValue;
+        }
+        String trimmed = val.trim();
+        if ("Y".equalsIgnoreCase(trimmed) || "YES".equalsIgnoreCase(trimmed) || "TRUE".equalsIgnoreCase(trimmed) || "1".equals(trimmed)) {
+            return true;
+        }
+        if ("N".equalsIgnoreCase(trimmed) || "NO".equalsIgnoreCase(trimmed) || "FALSE".equalsIgnoreCase(trimmed) || "0".equals(trimmed)) {
+            return false;
+        }
+        return Boolean.parseBoolean(trimmed);
     }
 
     public boolean isFeatureEnabled(String name) {
@@ -78,6 +89,14 @@ public class SystemParameterService {
 
     public boolean isFeatureEnabled(String name, boolean defaultValue) {
         return getBooleanParameter(name, defaultValue);
+    }
+
+    /**
+     * Checks if the Voice Bridge feature is enabled via VOICE_BRIDGE_FLAG system parameter.
+     * Default is disabled (N/false).
+     */
+    public boolean isVoiceBridgeEnabled() {
+        return getBooleanParameter("VOICE_BRIDGE_FLAG", false);
     }
 
     public BigDecimal getPrice(String name, BigDecimal defaultPrice) {
@@ -94,14 +113,17 @@ public class SystemParameterService {
 
     @Cacheable(value = CACHE_NAME, key = "#name")
     public String getCachedParameter(String name, String defaultValue) {
+        String cached = localCache.get(name);
+        if (cached != null) {
+            return cached;
+        }
         log.debug("Cache-enabled fetch for: {}", name);
-        return repository.findById(name)
+        String val = repository.findById(name)
                 .map(SystemParameter::getParameterValue)
-                .filter(val -> val != null && !val.trim().isEmpty())
-                .orElseGet(() -> {
-                    log.warn("Cached parameter {} missing or empty, using default: {}", name, defaultValue);
-                    return defaultValue;
-                });
+                .filter(v -> v != null && !v.trim().isEmpty())
+                .orElse(defaultValue);
+        localCache.put(name, val);
+        return val;
     }
 
     // --- 3. NON-CACHED REPOSITORY CALLS (For Prices, Payments, Rapid Changes) ---
@@ -130,7 +152,7 @@ public class SystemParameterService {
     // --- 4. BULK FETCH (Frontend Optimization) ---
 
     public Map<String, String> getBulkParameters(List<String> names) {
-        String dynamicLiveFlag = getCachedParameter("DYNAMIC_PLAN_FEATURES_LIVE", "Y");
+        String dynamicLiveFlag = getCachedParameter("DYNAMIC_PLAN_FEATURES_LIVE", "N");
         if ("Y".equalsIgnoreCase(dynamicLiveFlag)) {
             return repository.findByParameterNameIn(names).stream()
                     .collect(Collectors.toMap(
@@ -153,6 +175,7 @@ public class SystemParameterService {
     @Transactional
     @CacheEvict(value = CACHE_NAME, key = "#name")
     public void updateParameter(String name, String value, String updatedBy) {
+        localCache.remove(name);
         SystemParameter param = repository.findById(name)
                 .orElse(SystemParameter.builder().parameterName(name).build());
         
@@ -165,6 +188,7 @@ public class SystemParameterService {
 
     @CacheEvict(value = CACHE_NAME, allEntries = true)
     public void evictCache() {
+        localCache.clear();
         log.info("SystemParameter cache cleared completely.");
     }
 }
