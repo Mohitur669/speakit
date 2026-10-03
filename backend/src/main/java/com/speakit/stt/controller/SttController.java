@@ -289,34 +289,47 @@ public class SttController {
         com.speakit.stt.entity.SpeechToTextRequest record = null;
         LocalDateTime now = LocalDateTime.now();
 
-        // Edge case: If same session continues from history, update the existing entry in-place
-        if (sessionRequest.getId() != null) {
-            var existingOpt = speechToTextRequestRepository.findById(sessionRequest.getId());
-            if (existingOpt.isPresent() && existingOpt.get().getUser().getId().equals(userId)) {
-                record = existingOpt.get();
-                record.setTranscript(transcript);
-                record.setTranscriptLength(charCount);
-                if (sessionRequest.getDurationSeconds() != null && sessionRequest.getDurationSeconds() > 0) {
-                    record.setAudioDurationSeconds(sessionRequest.getDurationSeconds());
-                }
-                record.setOriginalFilename(title);
-                record.setLanguage(lang);
-                if (sessionRequest.getMode() != null) {
-                    record.setProcessingMode(sessionRequest.getMode());
-                }
-                // Update timestamps so this continued session ranks at the top of activity history
-                record.setCreatedAt(now);
-                record.setUpdatedAt(now);
-                record.setCompletedAt(now);
-                speechToTextRequestRepository.save(record);
-                log.info("Updated existing Live Session in history: id={}, user={}, title={}, chars={}",
-                        record.getId(), userId, title, charCount);
+        // 1. Primary Idempotency Key: Lookup by client-generated session UUID
+        if (sessionRequest.getSessionId() != null && !sessionRequest.getSessionId().isBlank()) {
+            var existingByUuid = speechToTextRequestRepository.findBySessionIdAndUserId(sessionRequest.getSessionId().trim(), userId);
+            if (existingByUuid.isPresent()) {
+                record = existingByUuid.get();
             }
         }
 
-        if (record == null) {
+        // 2. Secondary fallback: Lookup by numeric ID (for legacy sessions)
+        if (record == null && sessionRequest.getId() != null) {
+            var existingOpt = speechToTextRequestRepository.findByIdAndUserId(sessionRequest.getId(), userId);
+            if (existingOpt.isPresent()) {
+                record = existingOpt.get();
+            }
+        }
+
+        if (record != null) {
+            record.setTranscript(transcript);
+            record.setTranscriptLength(charCount);
+            if (sessionRequest.getDurationSeconds() != null && sessionRequest.getDurationSeconds() > 0) {
+                record.setAudioDurationSeconds(sessionRequest.getDurationSeconds());
+            }
+            record.setOriginalFilename(title);
+            record.setLanguage(lang);
+            if (sessionRequest.getMode() != null) {
+                record.setProcessingMode(sessionRequest.getMode());
+            }
+            if (sessionRequest.getSessionId() != null && !sessionRequest.getSessionId().isBlank()) {
+                record.setSessionId(sessionRequest.getSessionId().trim());
+            }
+            // Update timestamps so this continued session ranks at the top of activity history
+            record.setCreatedAt(now);
+            record.setUpdatedAt(now);
+            record.setCompletedAt(now);
+            speechToTextRequestRepository.save(record);
+            log.info("Updated existing Live Session in history: id={}, sessionId={}, user={}, title={}, chars={}",
+                    record.getId(), record.getSessionId(), userId, title, charCount);
+        } else {
             record = com.speakit.stt.entity.SpeechToTextRequest.builder()
                     .user(user)
+                    .sessionId(sessionRequest.getSessionId() != null && !sessionRequest.getSessionId().isBlank() ? sessionRequest.getSessionId().trim() : null)
                     .provider("SARVAM")
                     .audioDurationSeconds(sessionRequest.getDurationSeconds() != null ? sessionRequest.getDurationSeconds() : 0)
                     .language(lang)
@@ -329,11 +342,17 @@ public class SttController {
                     .build();
 
             speechToTextRequestRepository.save(record);
-            log.info("Saved new Live Session in history: id={}, user={}, title={}, chars={}",
-                    record.getId(), userId, title, charCount);
+            log.info("Saved new Live Session in history: id={}, sessionId={}, user={}, title={}, chars={}",
+                    record.getId(), record.getSessionId(), userId, title, charCount);
         }
 
-        return ResponseEntity.ok(java.util.Map.of("id", record.getId(), "message", "Session saved successfully"));
+        java.util.Map<String, Object> respMap = new java.util.HashMap<>();
+        respMap.put("id", record.getId());
+        if (record.getSessionId() != null) {
+            respMap.put("sessionId", record.getSessionId());
+        }
+        respMap.put("message", "Session saved successfully");
+        return ResponseEntity.ok(respMap);
     }
 
     private UserSecurityContext resolveSecurityContext(HttpServletRequest request) {

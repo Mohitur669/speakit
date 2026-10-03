@@ -187,6 +187,7 @@ public class HistoryController {
 
         return TtsHistoryDto.builder()
                 .id(stt.getId())
+                .sessionId(stt.getSessionId())
                 .voiceId(stt.getLanguage() != null ? stt.getLanguage() : "hi-IN")
                 .voiceName(displayName)
                 .voiceType(live ? "LIVE" : "STT")
@@ -195,7 +196,7 @@ public class HistoryController {
                 .textSnippet(snippet)
                 .fullText(transcript)
                 .audioUrl(null)
-                .createdAt(stt.getCreatedAt())
+                .createdAt(stt.getUpdatedAt() != null ? stt.getUpdatedAt() : stt.getCreatedAt())
                 .engineType(live ? "LIVE" : "STT")
                 .transliteration(stt.getTransliteration())
                 .mode(stt.getProcessingMode() != null ? stt.getProcessingMode() : "transcribe")

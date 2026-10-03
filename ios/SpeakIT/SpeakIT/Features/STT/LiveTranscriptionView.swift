@@ -106,6 +106,7 @@ struct LiveTranscriptionView: View {
     @State private var previousLiveSessions: [HistoryItem] = []
     @State private var isLoadingPreviousSessions: Bool = false
     @State private var currentSessionId: Int64? = nil
+    @State private var currentSessionUuid: String = UUID().uuidString
     @State private var lastPersistedTranscript: String? = nil
     @State private var isPersistingSession: Bool = false
     
@@ -196,9 +197,18 @@ struct LiveTranscriptionView: View {
         .alert("Clear Live Session", isPresented: $showClearConfirmation) {
             Button("Cancel", role: .cancel) {}
             Button("Clear", role: .destructive) {
-                persistCurrentSessionHistory()
+                let idToSave = currentSessionId
+                let uuidToSave = currentSessionUuid
+                let historyToSave = conversationHistory
+                let titleToSave = resolvedSessionTitle
+                persistCurrentSessionHistory(sessionId: idToSave, sessionUuid: uuidToSave, bubbles: historyToSave, explicitTitle: titleToSave)
                 liveService.clearTranscript()
-                conversationHistory.removeAll()
+                withAnimation {
+                    conversationHistory.removeAll()
+                    currentSessionId = nil
+                    currentSessionUuid = UUID().uuidString
+                    lastPersistedTranscript = nil
+                }
             }
         } message: {
             Text("Are you sure you want to clear the current live session history?")
@@ -220,10 +230,17 @@ struct LiveTranscriptionView: View {
         .alert("Start New Session?", isPresented: $showNewSessionConfirmation) {
             Button("Cancel", role: .cancel) {}
             Button("Save & Start New", role: .none) {
-                persistCurrentSessionHistory()
-                conversationHistory.removeAll()
-                sessionTitle = ""
+                let idToSave = currentSessionId
+                let uuidToSave = currentSessionUuid
+                let historyToSave = conversationHistory
+                let titleToSave = resolvedSessionTitle
+                persistCurrentSessionHistory(sessionId: idToSave, sessionUuid: uuidToSave, bubbles: historyToSave, explicitTitle: titleToSave)
                 withAnimation {
+                    conversationHistory.removeAll()
+                    sessionTitle = ""
+                    currentSessionId = nil
+                    currentSessionUuid = UUID().uuidString
+                    lastPersistedTranscript = nil
                     isConversationSessionStarted = false
                 }
             }
@@ -749,12 +766,17 @@ struct LiveTranscriptionView: View {
             
             // "End & Save" button
             Button(action: {
-                persistCurrentSessionHistory()
+                let idToSave = currentSessionId
+                let uuidToSave = currentSessionUuid
+                let historyToSave = conversationHistory
+                let titleToSave = resolvedSessionTitle
+                persistCurrentSessionHistory(sessionId: idToSave, sessionUuid: uuidToSave, bubbles: historyToSave, explicitTitle: titleToSave)
                 withAnimation {
                     isConversationSessionStarted = false
                     conversationHistory.removeAll()
                     sessionTitle = ""
                     currentSessionId = nil
+                    currentSessionUuid = UUID().uuidString
                     lastPersistedTranscript = nil
                 }
             }) {
@@ -935,6 +957,7 @@ struct LiveTranscriptionView: View {
                     HapticManager.shared.success()
                     withAnimation {
                         currentSessionId = nil
+                        currentSessionUuid = UUID().uuidString
                         lastPersistedTranscript = nil
                         conversationHistory.removeAll()
                         if sessionTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -1759,12 +1782,18 @@ struct LiveTranscriptionView: View {
         return trimmed.isEmpty ? generateDefaultSessionName() : trimmed
     }
     
-    private func persistCurrentSessionHistory() {
+    private func persistCurrentSessionHistory(
+        sessionId: Int64? = nil,
+        sessionUuid: String? = nil,
+        bubbles: [ConversationBubble]? = nil,
+        explicitTitle: String? = nil
+    ) {
         if studioMode == .conversation {
-            guard !conversationHistory.isEmpty else { return }
+            let activeBubbles = bubbles ?? conversationHistory
+            guard !activeBubbles.isEmpty else { return }
             
             var lines: [String] = []
-            for bubble in conversationHistory {
+            for bubble in activeBubbles {
                 var entry = "[\(bubble.speakerName)] (\(bubble.speakerLanguage)): \(bubble.originalText)"
                 if !bubble.translatedText.isEmpty && bubble.translatedText != bubble.originalText {
                     entry += "\n  ↳ [\(bubble.targetLanguage)]: \(bubble.translatedText)"
@@ -1781,13 +1810,17 @@ struct LiveTranscriptionView: View {
             isPersistingSession = true
             lastPersistedTranscript = fullText
             
-            let totalChars = conversationHistory.reduce(0) { $0 + $1.originalText.count + $1.translatedText.count }
-            let title = resolvedSessionTitle
+            let totalChars = activeBubbles.reduce(0) { $0 + $1.originalText.count + $1.translatedText.count }
+            let title = explicitTitle ?? resolvedSessionTitle
             let languages = "\(personALang), \(personBLang)"
+            let targetSessionId = sessionId ?? currentSessionId
+            let targetSessionUuid = sessionUuid ?? currentSessionUuid
+            let duration = liveService.elapsedSeconds
             
             Task {
                 struct SaveSessionReq: Codable {
                     let id: Int64?
+                    let sessionId: String
                     let sessionType: String
                     let title: String
                     let language: String
@@ -1797,22 +1830,28 @@ struct LiveTranscriptionView: View {
                     let characterCount: Int
                 }
                 let req = SaveSessionReq(
-                    id: currentSessionId,
+                    id: targetSessionId,
+                    sessionId: targetSessionUuid,
                     sessionType: "CONVERSATION",
                     title: title,
                     language: languages,
                     mode: "conversation",
-                    durationSeconds: liveService.elapsedSeconds,
+                    durationSeconds: duration,
                     transcript: fullText,
                     characterCount: totalChars
                 )
                 if let bodyData = try? JSONEncoder().encode(req) {
-                    struct SessionResp: Codable { let id: Int64?; let message: String? }
+                    struct SessionResp: Codable { let id: Int64?; let sessionId: String?; let message: String? }
                     let resp: SessionResp? = try? await HTTPClient.shared.request(.saveLiveSession, method: "POST", body: bodyData)
                     await MainActor.run {
                         self.isPersistingSession = false
                         if let returnedId = resp?.id {
-                            self.currentSessionId = returnedId
+                            if self.isConversationSessionStarted {
+                                self.currentSessionId = returnedId
+                                if let returnedUuid = resp?.sessionId, !returnedUuid.isEmpty {
+                                    self.currentSessionUuid = returnedUuid
+                                }
+                            }
                         }
                         appState.isHistoryDirty = true
                     }
@@ -1825,6 +1864,8 @@ struct LiveTranscriptionView: View {
             }
         } else {
             // Solo Mode
+            let targetSessionId = sessionId ?? currentSessionId
+            let targetSessionUuid = sessionUuid ?? currentSessionUuid
             let fullText = liveService.fullTranscriptText.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !fullText.isEmpty else { return }
             
@@ -1834,7 +1875,7 @@ struct LiveTranscriptionView: View {
             isPersistingSession = true
             lastPersistedTranscript = fullText
             
-            let title = "Live Dictation"
+            let title = explicitTitle ?? "Live Dictation"
             let lang = liveService.languageCode
             let mode = liveService.mode
             let duration = liveService.elapsedSeconds
@@ -1843,6 +1884,7 @@ struct LiveTranscriptionView: View {
             Task {
                 struct SaveSessionReq: Codable {
                     let id: Int64?
+                    let sessionId: String
                     let sessionType: String
                     let title: String
                     let language: String
@@ -1852,7 +1894,8 @@ struct LiveTranscriptionView: View {
                     let characterCount: Int
                 }
                 let req = SaveSessionReq(
-                    id: currentSessionId,
+                    id: targetSessionId,
+                    sessionId: targetSessionUuid,
                     sessionType: "SOLO",
                     title: title,
                     language: lang,
@@ -1862,12 +1905,15 @@ struct LiveTranscriptionView: View {
                     characterCount: charCount
                 )
                 if let bodyData = try? JSONEncoder().encode(req) {
-                    struct SessionResp: Codable { let id: Int64?; let message: String? }
+                    struct SessionResp: Codable { let id: Int64?; let sessionId: String?; let message: String? }
                     let resp: SessionResp? = try? await HTTPClient.shared.request(.saveLiveSession, method: "POST", body: bodyData)
                     await MainActor.run {
                         self.isPersistingSession = false
                         if let returnedId = resp?.id {
                             self.currentSessionId = returnedId
+                            if let returnedUuid = resp?.sessionId, !returnedUuid.isEmpty {
+                                self.currentSessionUuid = returnedUuid
+                            }
                         }
                         appState.isHistoryDirty = true
                     }
@@ -1905,8 +1951,9 @@ struct LiveTranscriptionView: View {
         let turns = item.parsedLiveChatTurns
         guard !turns.isEmpty else { return }
         
-        // Track existing session ID to update in-place rather than creating duplicate entries
+        // Track existing session ID and UUID to update in-place rather than creating duplicate entries
         currentSessionId = item.id
+        currentSessionUuid = (item.sessionId != nil && !item.sessionId!.isEmpty) ? item.sessionId! : UUID().uuidString
         sessionTitle = item.liveChatTitle
         speaker1Name = turns.first?.speakerName ?? "Speaker 1"
         speaker2Name = turns.first(where: { !$0.isSpeakerA })?.speakerName ?? "Speaker 2"
