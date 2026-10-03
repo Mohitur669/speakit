@@ -41,6 +41,7 @@ public class SttController {
     private final TranslationService translationService;
     private final UserRepository userRepository;
     private final com.speakit.stt.repository.SpeechToTextRequestRepository speechToTextRequestRepository;
+    private final com.speakit.stt.repository.LiveSessionTurnRepository liveSessionTurnRepository;
 
     /**
       * Secure endpoint for audio transcription.
@@ -349,6 +350,27 @@ public class SttController {
                     record.getId(), record.getSessionId(), userId, title, charCount);
         }
 
+        // 3. Persist Structured Dialogue Turns (Parent-Child Model)
+        final com.speakit.stt.entity.SpeechToTextRequest savedRecord = record;
+        if (sessionRequest.getTurns() != null && !sessionRequest.getTurns().isEmpty()) {
+            liveSessionTurnRepository.deleteByRequestId(savedRecord.getId());
+            var entities = sessionRequest.getTurns().stream().map(dto ->
+                com.speakit.stt.entity.LiveSessionTurn.builder()
+                        .request(savedRecord)
+                        .turnIndex(dto.getTurnIndex() != null ? dto.getTurnIndex() : 0)
+                        .speakerRole(dto.getSpeakerRole() != null ? dto.getSpeakerRole() : "SOLO")
+                        .speakerName(dto.getSpeakerName() != null ? dto.getSpeakerName() : "Speaker")
+                        .sourceLanguage(dto.getSourceLanguage() != null ? dto.getSourceLanguage() : "auto")
+                        .originalText(dto.getOriginalText() != null ? dto.getOriginalText() : "")
+                        .targetLanguage(dto.getTargetLanguage())
+                        .translatedText(dto.getTranslatedText())
+                        .characterCount(dto.getCharacterCount() != null ? dto.getCharacterCount() : 0)
+                        .build()
+            ).toList();
+            liveSessionTurnRepository.saveAll(entities);
+            log.info("Persisted {} structured turns for live session id={}", entities.size(), savedRecord.getId());
+        }
+
         java.util.Map<String, Object> respMap = new java.util.HashMap<>();
         respMap.put("id", record.getId());
         if (record.getSessionId() != null) {
@@ -356,6 +378,41 @@ public class SttController {
         }
         respMap.put("message", "Session saved successfully");
         return ResponseEntity.ok(respMap);
+    }
+
+    /**
+      * Retrieves ordered, structured dialogue turns for a specific live session.
+      */
+    @GetMapping("/live/session/{id}/turns")
+    public ResponseEntity<java.util.List<com.speakit.stt.dto.LiveSessionTurnDto>> getSessionTurns(
+            @PathVariable("id") Long id,
+            HttpServletRequest httpRequest
+    ) {
+        UserSecurityContext context = resolveSecurityContext(httpRequest);
+        Long userId = context.userId();
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        var opt = speechToTextRequestRepository.findByIdAndUserId(id, userId);
+        if (opt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+
+        var turns = liveSessionTurnRepository.findByRequestIdOrderByTurnIndexAsc(id).stream()
+                .map(t -> com.speakit.stt.dto.LiveSessionTurnDto.builder()
+                        .turnIndex(t.getTurnIndex())
+                        .speakerRole(t.getSpeakerRole())
+                        .speakerName(t.getSpeakerName())
+                        .sourceLanguage(t.getSourceLanguage())
+                        .originalText(t.getOriginalText())
+                        .targetLanguage(t.getTargetLanguage())
+                        .translatedText(t.getTranslatedText())
+                        .characterCount(t.getCharacterCount())
+                        .build()
+                ).toList();
+
+        return ResponseEntity.ok(turns);
     }
 
     private UserSecurityContext resolveSecurityContext(HttpServletRequest request) {

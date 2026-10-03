@@ -1818,6 +1818,28 @@ struct LiveTranscriptionView: View {
             let duration = liveService.elapsedSeconds
             
             Task {
+                struct TurnReq: Codable {
+                    let turnIndex: Int
+                    let speakerRole: String
+                    let speakerName: String
+                    let sourceLanguage: String
+                    let originalText: String
+                    let targetLanguage: String?
+                    let translatedText: String?
+                    let characterCount: Int
+
+                    enum CodingKeys: String, CodingKey {
+                        case turnIndex
+                        case speakerRole
+                        case speakerName
+                        case sourceLanguage
+                        case originalText
+                        case targetLanguage
+                        case translatedText
+                        case characterCount
+                    }
+                }
+
                 struct SaveSessionReq: Codable {
                     let id: Int64?
                     let sessionId: String
@@ -1828,6 +1850,7 @@ struct LiveTranscriptionView: View {
                     let durationSeconds: Int
                     let transcript: String
                     let characterCount: Int
+                    let turns: [TurnReq]?
 
                     enum CodingKeys: String, CodingKey {
                         case id
@@ -1839,8 +1862,23 @@ struct LiveTranscriptionView: View {
                         case durationSeconds
                         case transcript
                         case characterCount
+                        case turns
                     }
                 }
+
+                let turnReqs = activeBubbles.enumerated().map { idx, bubble in
+                    TurnReq(
+                        turnIndex: idx,
+                        speakerRole: bubble.speakerSide == .personA ? "PERSON_A" : "PERSON_B",
+                        speakerName: bubble.speakerName,
+                        sourceLanguage: bubble.speakerLanguage,
+                        originalText: bubble.originalText,
+                        targetLanguage: bubble.targetLanguage.isEmpty ? nil : bubble.targetLanguage,
+                        translatedText: bubble.translatedText.isEmpty ? nil : bubble.translatedText,
+                        characterCount: bubble.originalText.count + bubble.translatedText.count
+                    )
+                }
+
                 let req = SaveSessionReq(
                     id: targetSessionId,
                     sessionId: targetSessionUuid,
@@ -1850,9 +1888,10 @@ struct LiveTranscriptionView: View {
                     mode: "conversation",
                     durationSeconds: duration,
                     transcript: fullText,
-                    characterCount: totalChars
+                    characterCount: totalChars,
+                    turns: turnReqs
                 )
-                print("🛰️ [LiveTranscriptionView] Persisting conversation session: id=\(String(describing: targetSessionId)), sessionId=\(targetSessionUuid), title=\(title), chars=\(totalChars)")
+                print("🛰️ [LiveTranscriptionView] Persisting conversation session: id=\(String(describing: targetSessionId)), sessionId=\(targetSessionUuid), title=\(title), chars=\(totalChars), turns=\(turnReqs.count)")
                 if let bodyData = try? JSONEncoder().encode(req) {
                     struct SessionResp: Codable { let id: Int64?; let sessionId: String?; let message: String? }
                     let resp: SessionResp? = try? await HTTPClient.shared.request(.saveLiveSession, method: "POST", body: bodyData)
@@ -1896,6 +1935,28 @@ struct LiveTranscriptionView: View {
             let charCount = fullText.count
             
             Task {
+                struct TurnReq: Codable {
+                    let turnIndex: Int
+                    let speakerRole: String
+                    let speakerName: String
+                    let sourceLanguage: String
+                    let originalText: String
+                    let targetLanguage: String?
+                    let translatedText: String?
+                    let characterCount: Int
+
+                    enum CodingKeys: String, CodingKey {
+                        case turnIndex
+                        case speakerRole
+                        case speakerName
+                        case sourceLanguage
+                        case originalText
+                        case targetLanguage
+                        case translatedText
+                        case characterCount
+                    }
+                }
+
                 struct SaveSessionReq: Codable {
                     let id: Int64?
                     let sessionId: String
@@ -1906,6 +1967,7 @@ struct LiveTranscriptionView: View {
                     let durationSeconds: Int
                     let transcript: String
                     let characterCount: Int
+                    let turns: [TurnReq]?
 
                     enum CodingKeys: String, CodingKey {
                         case id
@@ -1917,8 +1979,21 @@ struct LiveTranscriptionView: View {
                         case durationSeconds
                         case transcript
                         case characterCount
+                        case turns
                     }
                 }
+
+                let soloTurn = TurnReq(
+                    turnIndex: 0,
+                    speakerRole: "SOLO",
+                    speakerName: "Speaker",
+                    sourceLanguage: lang,
+                    originalText: fullText,
+                    targetLanguage: nil,
+                    translatedText: nil,
+                    characterCount: charCount
+                )
+
                 let req = SaveSessionReq(
                     id: targetSessionId,
                     sessionId: targetSessionUuid,
@@ -1928,7 +2003,8 @@ struct LiveTranscriptionView: View {
                     mode: mode,
                     durationSeconds: duration,
                     transcript: fullText,
-                    characterCount: charCount
+                    characterCount: charCount,
+                    turns: [soloTurn]
                 )
                 print("🛰️ [LiveTranscriptionView] Persisting solo session: id=\(String(describing: targetSessionId)), sessionId=\(targetSessionUuid), title=\(title), chars=\(charCount)")
                 if let bodyData = try? JSONEncoder().encode(req) {
