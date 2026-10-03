@@ -87,9 +87,17 @@ final class StoreKitService {
                 throw StoreKitError.unverifiedTransaction
             }
             
-            // Notify backend so it updates planType in the DB.
+            let doublePrice = Double(truncating: product.price as NSNumber)
+            let currCode = product.priceFormatStyle.currencyCode
+            
+            // Notify backend so it updates planType in the DB with accurate StoreKit pricing.
             // Must happen before finish() to ensure plan is updated atomically.
-            try await notifyBackend(transaction: transaction, productId: product.id)
+            try await notifyBackend(
+                transaction: transaction,
+                productId: product.id,
+                amount: doublePrice,
+                currency: currCode
+            )
             
             // Deliver content / finish transaction
             await transaction.finish()
@@ -110,16 +118,25 @@ final class StoreKitService {
     /// Sends the Apple transactionId + productId to the backend so it can update
     /// the user's planType in the database. This is the critical link between
     /// Apple's sandbox purchase and SpeakIT's subscription state.
-    private func notifyBackend(transaction: Transaction, productId: String) async throws {
+    private func notifyBackend(
+        transaction: Transaction,
+        productId: String,
+        amount: Double? = nil,
+        currency: String? = nil
+    ) async throws {
         struct AppleVerifyBody: Encodable {
             let transactionId: String
             let productId: String
             let originalTransactionId: String
+            let amount: Double?
+            let currency: String?
         }
         let body = try JSONEncoder().encode(AppleVerifyBody(
             transactionId: String(transaction.id),
             productId: productId,
-            originalTransactionId: String(transaction.originalID)
+            originalTransactionId: String(transaction.originalID),
+            amount: amount,
+            currency: currency
         ))
         let _: String = try await HTTPClient.shared.requestString(
             .appleVerifyPurchase,

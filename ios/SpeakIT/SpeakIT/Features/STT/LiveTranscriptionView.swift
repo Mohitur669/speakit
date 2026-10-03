@@ -11,8 +11,8 @@ import SwiftUI
 import AVFoundation
 
 enum LiveStudioMode: String, CaseIterable, Identifiable {
-    case solo = "Solo Dictation"
     case conversation = "Face-to-Face"
+    case solo = "Solo Dictation"
     
     var id: String { rawValue }
 }
@@ -54,7 +54,7 @@ struct LiveTranscriptionView: View {
     @Environment(AppState.self) private var appState
     @State private var liveService = SarvamLiveSTTService()
     
-    @State private var studioMode: LiveStudioMode = .solo
+    @State private var studioMode: LiveStudioMode = .conversation
     @State private var showClearConfirmation: Bool = false
     @State private var copiedToClipboard: Bool = false
     @State private var bannerMessage: String? = nil
@@ -70,11 +70,12 @@ struct LiveTranscriptionView: View {
     @State private var personBLang: String = "en-IN"
     @State private var activeSpeaker: SpeakerSide? = nil
     @State private var conversationHistory: [ConversationBubble] = []
+    @State private var swapRotation: Double = 0
     
     private let availableLanguages: [(code: String, name: String)] = [
         ("auto", "Auto (Detect)"),
-        ("hi-IN", "Hindi 🇮🇳"),
-        ("en-IN", "English 🇬🇧"),
+        ("hi-IN", "Hindi"),
+        ("en-IN", "English"),
         ("ta-IN", "Tamil"),
         ("te-IN", "Telugu"),
         ("bn-IN", "Bengali"),
@@ -85,6 +86,8 @@ struct LiveTranscriptionView: View {
         ("pa-IN", "Punjabi"),
         ("or-IN", "Odia")
     ]
+    
+    @State private var showVoiceBridge: Bool = false
     
     private var currentUserPlan: PlanType {
         appState.currentUser?.planType ?? .free
@@ -106,6 +109,17 @@ struct LiveTranscriptionView: View {
                     .accessibilityIdentifier("live.quota")
                     .contentTransition(.numericText())
                     .animation(.easeInOut(duration: 0.25), value: remaining)
+                
+                // Phase 4: Voice Bridge entry point — pushes LiveVoiceBridgeView (gated by VOICE_BRIDGE_FLAG)
+                if appState.isVoiceBridgeEnabled {
+                    NavigationLink(destination: LiveVoiceBridgeView()) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(Color.speakitPrimary)
+                            .padding(.leading, 6)
+                    }
+                    .accessibilityLabel("Voice Bridge")
+                }
                 
                 if canExport {
                     exportMenuButton
@@ -145,6 +159,7 @@ struct LiveTranscriptionView: View {
         .alert("Clear Live Session", isPresented: $showClearConfirmation) {
             Button("Cancel", role: .cancel) {}
             Button("Clear", role: .destructive) {
+                persistCurrentSessionHistory()
                 liveService.clearTranscript()
                 conversationHistory.removeAll()
             }
@@ -171,11 +186,22 @@ struct LiveTranscriptionView: View {
             if liveService.isRecording {
                 liveService.stopSession()
             }
+            persistCurrentSessionHistory()
         }
     }
     
     private var exportMenuButton: some View {
         Menu {
+            Button(action: {
+                persistCurrentSessionHistory()
+                withAnimation {
+                    bannerMessage = "Live session saved to Activity history."
+                }
+                HapticManager.shared.success()
+            }) {
+                Label("Save to History", systemImage: "square.and.arrow.down")
+            }
+            
             Button(action: copyAllTranscript) {
                 Label("Copy All Text", systemImage: "doc.on.doc")
             }
@@ -268,22 +294,20 @@ struct LiveTranscriptionView: View {
     // MARK: - 2. Solo Header Strip
     private var soloHeaderControlsStrip: some View {
         HStack(spacing: 10) {
-            // Mode Selector Pill: Transcribe vs Translate
-            HStack(spacing: 4) {
+            // Mode Dropdown Menu: Transcribe vs Translate
+            Menu {
                 Button(action: {
                     guard liveService.mode != "transcribe" else { return }
                     HapticManager.shared.selection()
                     liveService.mode = "transcribe"
                 }) {
-                    Text("Transcribe")
-                        .font(.system(size: 12, weight: liveService.mode == "transcribe" ? .bold : .medium))
-                        .foregroundColor(liveService.mode == "transcribe" ? .white : Color.speakitTextSecondary)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 7)
-                        .background(liveService.mode == "transcribe" ? Color.speakitPrimary : Color.clear)
-                        .clipShape(Capsule())
+                    HStack {
+                        Label("Transcribe", systemImage: "waveform")
+                        if liveService.mode == "transcribe" {
+                            Image(systemName: "checkmark")
+                        }
+                    }
                 }
-                .buttonStyle(.plain)
                 
                 Button(action: {
                     guard liveService.mode != "translate" else { return }
@@ -296,26 +320,35 @@ struct LiveTranscriptionView: View {
                     HapticManager.shared.selection()
                     liveService.mode = "translate"
                 }) {
-                    HStack(spacing: 4) {
-                        Text("Translate")
+                    HStack {
                         if !currentUserPlan.allowsLiveTranslation {
-                            Image(systemName: "lock.fill")
-                                .font(.system(size: 9))
+                            Label("Translate (Pro Plus)", systemImage: "lock.fill")
+                        } else {
+                            Label("Translate", systemImage: "character.bubble")
+                        }
+                        if liveService.mode == "translate" {
+                            Image(systemName: "checkmark")
                         }
                     }
-                    .font(.system(size: 12, weight: liveService.mode == "translate" ? .bold : .medium))
-                    .foregroundColor(liveService.mode == "translate" ? .white : Color.speakitTextSecondary)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 7)
-                    .background(liveService.mode == "translate" ? Color.speakitPrimary : Color.clear)
-                    .clipShape(Capsule())
                 }
-                .buttonStyle(.plain)
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: liveService.mode == "translate" ? "character.bubble" : "waveform")
+                        .font(.system(size: 12, weight: .semibold))
+                    Text(liveService.mode == "translate" ? "Translate" : "Transcribe")
+                        .font(.system(size: 12, weight: .semibold))
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 9, weight: .bold))
+                }
+                .foregroundColor(Color.speakitTextPrimary)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(Color.speakitCardSurface)
+                .clipShape(Capsule())
+                .overlay(Capsule().stroke(Color.speakitBorder, lineWidth: 1))
             }
-            .padding(3)
-            .background(Color.speakitCardSurface)
-            .clipShape(Capsule())
-            .overlay(Capsule().stroke(Color.speakitBorder, lineWidth: 1))
+            .buttonStyle(.plain)
+            .disabled(liveService.isRecording)
             
             Spacer()
             
@@ -556,6 +589,7 @@ struct LiveTranscriptionView: View {
                         appState.recordCharacterUsage(partial.count)
                     }
                     liveService.stopSession()
+                    persistCurrentSessionHistory()
                 } else {
                     if !currentUserPlan.allowsLiveTranscription {
                         HapticManager.shared.warning()
@@ -604,58 +638,11 @@ struct LiveTranscriptionView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 16)
-        .background(
-            Color.speakitCardSurface
-                .shadow(color: Color.black.opacity(0.05), radius: 12, y: -4)
-        )
     }
     
     // MARK: - 6. Face-to-Face Two-Person Conversation View
     private var conversationView: some View {
         VStack(spacing: 0) {
-            // Speaker Language Selectors Card
-            HStack(spacing: 12) {
-                // Speaker 1 Selector & Editable Name
-                speakerSelectorCard(
-                    side: .personA,
-                    name: speaker1Name,
-                    languageCode: personALang,
-                    color: Color.speakitPrimary,
-                    bgColor: Color.speakitBadgeBackground
-                )
-                
-                // Exchange indicator icon
-                ZStack {
-                    Circle()
-                        .fill(Color.speakitScreenBackground)
-                        .frame(width: 32, height: 32)
-                        .overlay(Circle().stroke(Color.speakitBorder, lineWidth: 1))
-                        .shadow(color: Color.black.opacity(0.04), radius: 2, y: 1)
-                    
-                    Image(systemName: "arrow.left.arrow.right")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(Color.speakitTextSecondary)
-                }
-                
-                // Speaker 2 Selector & Editable Name
-                speakerSelectorCard(
-                    side: .personB,
-                    name: speaker2Name,
-                    languageCode: personBLang,
-                    color: Color(hex: "0D9488"),
-                    bgColor: Color(hex: "0D9488").opacity(0.12)
-                )
-            }
-            .padding(12)
-            .background(Color.speakitCardSurface)
-            .cornerRadius(SpeakITSpacing.cardRadius)
-            .overlay(
-                RoundedRectangle(cornerRadius: SpeakITSpacing.cardRadius)
-                    .stroke(Color.speakitBorder, lineWidth: 1)
-            )
-            .padding(.horizontal, SpeakITSpacing.screenMargin)
-            .padding(.vertical, 8)
-            
             // Conversation Dialogue Scroll
             ScrollViewReader { proxy in
                 ScrollView {
@@ -735,232 +722,400 @@ struct LiveTranscriptionView: View {
         }
     }
     
-    private func speakerSelectorCard(side: SpeakerSide, name: String, languageCode: String, color: Color, bgColor: Color) -> some View {
-        VStack(alignment: side == .personA ? .leading : .trailing, spacing: 6) {
-            Button(action: {
-                tempSpeakerName = name
-                editingSpeaker = side
-                showRenameAlert = true
-            }) {
-                HStack(spacing: 4) {
-                    if side == .personB {
-                        Image(systemName: "pencil")
-                            .font(.system(size: 9, weight: .semibold))
-                            .foregroundColor(Color.speakitTextTertiary)
+    private func conversationTurnCard(_ bubble: ConversationBubble) -> some View {
+        let isSpeakerA = bubble.speakerSide == .personA
+        let bubbleColor: Color = isSpeakerA ? Color.speakitPrimary : Color(hex: "0D9488")
+        let bubbleBg: Color = isSpeakerA
+            ? Color.speakitPrimary.opacity(0.13)
+            : Color(hex: "0D9488").opacity(0.13)
+        let targetLangName = availableLanguages.first(where: { $0.code == bubble.targetLanguage })?.name ?? bubble.targetLanguage
+
+        // Bubble corner radii: pointed corner on the speaker's side (iMessage style)
+        // A = left → bottom-left corner is sharp; B = right → bottom-right corner is sharp
+        let tl: CGFloat = isSpeakerA ? 4  : 18
+        let tr: CGFloat = isSpeakerA ? 18 : 4
+        let bl: CGFloat = 18
+        let br: CGFloat = 18
+
+        return HStack(alignment: .bottom, spacing: 8) {
+            if isSpeakerA {
+                // Avatar — left side
+                avatarCircle(initial: String(bubble.speakerName.prefix(1)), color: bubbleColor)
+            } else {
+                Spacer(minLength: 44) // push B bubbles to the right
+            }
+
+            VStack(alignment: isSpeakerA ? .leading : .trailing, spacing: 4) {
+                // Speaker name + timestamp row
+                HStack(spacing: 6) {
+                    if !isSpeakerA { Spacer() }
+                    Text(bubble.speakerName)
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(bubbleColor)
+                    Text("·")
+                        .foregroundColor(Color.speakitTextTertiary)
+                        .font(.system(size: 10))
+                    Text(bubble.timestamp, style: .time)
+                        .font(.system(size: 10))
+                        .foregroundColor(Color.speakitTextTertiary)
+                    if isSpeakerA { Spacer() }
+                }
+
+                // Bubble body
+                VStack(alignment: isSpeakerA ? .leading : .trailing, spacing: 6) {
+                    // Original text (dimmer — what was actually said)
+                    Text(bubble.originalText)
+                        .font(.system(size: 14))
+                        .foregroundColor(isSpeakerA ? Color.speakitTextPrimary.opacity(0.75) : Color.speakitTextPrimary.opacity(0.75))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .textSelection(.enabled)
+
+                    // Translation divider + translated text
+                    if bubble.isTranslating {
+                        HStack(spacing: 5) {
+                            ProgressView()
+                                .scaleEffect(0.65)
+                                .tint(bubbleColor)
+                            Text("Translating to \(targetLangName)…")
+                                .font(.system(size: 12))
+                                .foregroundColor(Color.speakitTextTertiary)
+                                .italic()
+                        }
+                    } else if !bubble.translatedText.isEmpty && bubble.translatedText != bubble.originalText {
+                        // Divider line
+                        Rectangle()
+                            .fill(bubbleColor.opacity(0.25))
+                            .frame(height: 1)
+
+                        HStack(alignment: .top, spacing: 6) {
+                            if !isSpeakerA { Spacer() }
+                            VStack(alignment: isSpeakerA ? .leading : .trailing, spacing: 2) {
+                                // Language pill
+                                HStack(spacing: 3) {
+                                    Image(systemName: "arrow.right.circle.fill")
+                                        .font(.system(size: 9, weight: .bold))
+                                    Text(targetLangName)
+                                        .font(.system(size: 10, weight: .bold))
+                                }
+                                .foregroundColor(bubbleColor)
+
+                                // Translated text — prominent
+                                Text(bubble.translatedText)
+                                    .font(.system(size: 15, weight: .semibold))
+                                    .foregroundColor(Color.speakitTextPrimary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .textSelection(.enabled)
+                                    .multilineTextAlignment(isSpeakerA ? .leading : .trailing)
+                            }
+                            if isSpeakerA { Spacer() }
+
+                            // Play translated text button
+                            Button(action: {
+                                HapticManager.shared.light()
+                                LocalSpeechSpeaker.shared.speak(
+                                    text: bubble.translatedText,
+                                    languageCode: bubble.targetLanguage
+                                )
+                            }) {
+                                Image(systemName: "speaker.wave.2.fill")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundColor(bubbleColor)
+                                    .frame(width: 30, height: 30)
+                                    .background(bubbleColor.opacity(0.15))
+                                    .clipShape(Circle())
+                            }
+                            .buttonStyle(.plain)
+                            .padding(.top, 2)
+                        }
                     }
-                    Text(name)
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(color)
-                        .lineLimit(1)
-                    if side == .personA {
-                        Image(systemName: "pencil")
-                            .font(.system(size: 9, weight: .semibold))
-                            .foregroundColor(Color.speakitTextTertiary)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(bubbleBg)
+                .clipShape(
+                    RoundedCornerShape(tl: tl, tr: tr, bl: bl, br: br)
+                )
+                .overlay(
+                    RoundedCornerShape(tl: tl, tr: tr, bl: bl, br: br)
+                        .stroke(bubbleColor.opacity(0.2), lineWidth: 1)
+                )
+            }
+            .frame(maxWidth: UIScreen.main.bounds.width * 0.76, alignment: isSpeakerA ? .leading : .trailing)
+
+            if !isSpeakerA {
+                // Avatar — right side
+                avatarCircle(initial: String(bubble.speakerName.prefix(1)), color: bubbleColor)
+            } else {
+                Spacer(minLength: 44)
+            }
+        }
+        .id(bubble.id)
+        .transition(.asymmetric(
+            insertion: .move(edge: isSpeakerA ? .leading : .trailing).combined(with: .opacity),
+            removal: .opacity
+        ))
+    }
+
+    /// Small avatar circle showing the speaker's initial letter.
+    private func avatarCircle(initial: String, color: Color) -> some View {
+        ZStack {
+            Circle()
+                .fill(color.opacity(0.18))
+                .frame(width: 32, height: 32)
+            Text(initial.uppercased())
+                .font(.system(size: 14, weight: .bold))
+                .foregroundColor(color)
+        }
+    }
+
+    // MARK: - Face-to-Face Minimal Animated Mic Button
+
+    private struct FaceToFaceMicButton: View {
+        let side: SpeakerSide
+        let accentColor: Color
+        let isActive: Bool
+        let action: () -> Void
+
+        @State private var isPulsing: Bool = false
+
+        var body: some View {
+            Button(action: {
+                action()
+            }) {
+                ZStack {
+                    // Minimal Voice Recorder Ambient Aura (iOS premium breathing ring)
+                    if isActive {
+                        Circle()
+                            .stroke(Color.red.opacity(isPulsing ? 0.2 : 0.55), lineWidth: 2.5)
+                            .frame(width: 76, height: 76)
+                            .scaleEffect(isPulsing ? 1.16 : 0.98)
+
+                        Circle()
+                            .fill(Color.red.opacity(isPulsing ? 0.1 : 0.2))
+                            .frame(width: 70, height: 70)
+                            .scaleEffect(isPulsing ? 1.08 : 0.96)
+                    }
+
+                    // Main Mic Circle
+                    Circle()
+                        .fill(
+                            isActive
+                                ? LinearGradient(
+                                    colors: [Color.red, Color(hex: "DC2626")],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                                : LinearGradient(
+                                    colors: [accentColor, accentColor.opacity(0.88)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                        )
+                        .frame(width: 62, height: 62)
+                        .shadow(
+                            color: (isActive ? Color.red : accentColor).opacity(0.35),
+                            radius: isActive ? 10 : 6,
+                            y: 3
+                        )
+
+                    // Voice Recorder Icon / Minimal Waveform
+                    if isActive {
+                        // Minimal 3-bar voice recorder waveform
+                        HStack(spacing: 3.5) {
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(.white)
+                                .frame(width: 3.5, height: isPulsing ? 20 : 8)
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(.white)
+                                .frame(width: 3.5, height: isPulsing ? 10 : 24)
+                            RoundedRectangle(cornerRadius: 2)
+                                .fill(.white)
+                                .frame(width: 3.5, height: isPulsing ? 22 : 12)
+                        }
+                        .frame(height: 26)
+                    } else {
+                        Image(systemName: "mic.fill")
+                            .font(.system(size: 24, weight: .semibold))
+                            .foregroundColor(.white)
+                    }
+                }
+                .frame(width: 82, height: 82)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(isActive ? "Stop Recording" : "Record \(side == .personA ? "Speaker 1" : "Speaker 2")")
+            .onChange(of: isActive) { _, active in
+                if active {
+                    withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
+                        isPulsing = true
+                    }
+                } else {
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        isPulsing = false
                     }
                 }
             }
-            .buttonStyle(.plain)
-            
-            Menu {
-                ForEach(availableLanguages, id: \.code) { item in
-                    Button(action: {
-                        HapticManager.shared.selection()
-                        if side == .personA {
+            .onAppear {
+                if isActive {
+                    withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
+                        isPulsing = true
+                    }
+                }
+            }
+        }
+    }
+
+    private var dualConversationDock: some View {
+        HStack(alignment: .bottom, spacing: 8) {
+            // Speaker 1 Column: Mic, Speaker Name, Language Selector (all centered along the same vertical axis)
+            VStack(spacing: 8) {
+                FaceToFaceMicButton(
+                    side: .personA,
+                    accentColor: Color.speakitPrimary,
+                    isActive: liveService.isRecording && activeSpeaker == .personA
+                ) {
+                    handleSpeakerTurn(.personA, lang: personALang)
+                }
+
+                Button(action: {
+                    tempSpeakerName = speaker1Name
+                    editingSpeaker = .personA
+                    showRenameAlert = true
+                }) {
+                    Text(speaker1Name)
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(Color.speakitPrimary)
+                        .lineLimit(1)
+                        .frame(height: 20)
+                }
+                .buttonStyle(.plain)
+
+                Menu {
+                    ForEach(availableLanguages, id: \.code) { item in
+                        Button(action: {
+                            HapticManager.shared.selection()
                             personALang = item.code
-                        } else {
-                            personBLang = item.code
-                        }
-                    }) {
-                        HStack {
-                            Text(item.name)
-                            if (side == .personA ? personALang : personBLang) == item.code {
-                                Image(systemName: "checkmark")
+                        }) {
+                            HStack {
+                                Text(item.name)
+                                if personALang == item.code {
+                                    Image(systemName: "checkmark")
+                                }
                             }
                         }
                     }
-                }
-            } label: {
-                HStack(spacing: 4) {
-                    Text(availableLanguages.first(where: { $0.code == languageCode })?.name ?? "Language")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(Color.speakitTextPrimary)
-                        .lineLimit(1)
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 8, weight: .bold))
-                        .foregroundColor(Color.speakitTextSecondary)
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(bgColor)
-                .clipShape(Capsule())
-            }
-            .buttonStyle(.plain)
-            .disabled(liveService.isRecording)
-        }
-        .frame(maxWidth: .infinity, alignment: side == .personA ? .leading : .trailing)
-    }
-    
-    private func conversationTurnCard(_ bubble: ConversationBubble) -> some View {
-        let isSpeakerA = bubble.speakerSide == .personA
-        let targetLangName = availableLanguages.first(where: { $0.code == bubble.targetLanguage })?.name ?? bubble.targetLanguage
-        return HStack {
-            if !isSpeakerA { Spacer(minLength: 24) }
-            VStack(alignment: isSpeakerA ? .leading : .trailing, spacing: 6) {
-                HStack(spacing: 6) {
-                    Text(bubble.speakerName)
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(isSpeakerA ? Color.speakitPrimary : Color(hex: "0D9488"))
-                    
-                    Text("(\(bubble.speakerLanguage))")
-                        .font(.system(size: 10))
-                        .foregroundColor(Color.speakitTextTertiary)
-                    
-                    Spacer()
-                    
-                    if !bubble.translatedText.isEmpty {
-                        Button(action: {
-                            HapticManager.shared.light()
-                            LocalSpeechSpeaker.shared.speak(text: bubble.translatedText, languageCode: bubble.targetLanguage)
-                        }) {
-                            Image(systemName: "speaker.wave.2.fill")
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundColor(isSpeakerA ? Color.speakitPrimary : Color(hex: "0D9488"))
-                                .frame(width: 28, height: 28)
-                                .background(isSpeakerA ? Color.speakitPrimary.opacity(0.12) : Color(hex: "0D9488").opacity(0.15))
-                                .clipShape(Circle())
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                
-                // Original spoken speech
-                Text(bubble.originalText)
-                    .font(.system(size: 14))
-                    .foregroundColor(Color.speakitTextSecondary)
-                
-                // Translated speech in the other speaker's language
-                if bubble.isTranslating {
-                    HStack(spacing: 6) {
-                        ProgressView().scaleEffect(0.7)
-                        Text("Translating to \(targetLangName)...")
-                            .font(.system(size: 12))
-                            .foregroundColor(Color.speakitTextTertiary)
-                            .italic()
-                    }
-                    .padding(.top, 2)
-                } else if !bubble.translatedText.isEmpty && bubble.translatedText != bubble.originalText {
-                    VStack(alignment: isSpeakerA ? .leading : .trailing, spacing: 2) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "arrow.right")
-                                .font(.system(size: 9, weight: .bold))
-                            Text(targetLangName)
-                                .font(.system(size: 10, weight: .bold))
-                        }
-                        .foregroundColor(isSpeakerA ? Color.speakitPrimary : Color(hex: "0D9488"))
-                        .opacity(0.85)
-                        
-                        Text(bubble.translatedText)
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(Color.speakitTextPrimary)
-                            .textSelection(.enabled)
-                    }
-                    .padding(.top, 2)
-                }
-            }
-            .padding(14)
-            .background(isSpeakerA ? Color.speakitBadgeBackground.opacity(0.5) : Color(hex: "0D9488").opacity(0.1))
-            .cornerRadius(SpeakITSpacing.cardRadius)
-            .overlay(
-                RoundedRectangle(cornerRadius: SpeakITSpacing.cardRadius)
-                    .stroke(isSpeakerA ? Color.speakitPrimary.opacity(0.25) : Color(hex: "0D9488").opacity(0.25), lineWidth: 1)
-            )
-            .id(bubble.id)
-            if isSpeakerA { Spacer(minLength: 24) }
-        }
-    }
-    
-    private var dualConversationDock: some View {
-        HStack(spacing: 14) {
-            // Speaker 1 Mic Button
-            Button(action: {
-                handleSpeakerTurn(.personA, lang: personALang)
-            }) {
-                HStack(spacing: 8) {
-                    Image(systemName: (liveService.isRecording && activeSpeaker == .personA) ? "stop.fill" : "mic.fill")
-                        .font(.system(size: 16, weight: .semibold))
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(activeSpeaker == .personA && liveService.isRecording ? "Listening..." : speaker1Name)
-                            .font(.system(size: 12, weight: .bold))
-                            .lineLimit(1)
+                } label: {
+                    HStack(spacing: 4) {
                         Text(availableLanguages.first(where: { $0.code == personALang })?.name ?? "Hindi")
-                            .font(.system(size: 10))
-                            .opacity(0.85)
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(Color.speakitTextPrimary)
                             .lineLimit(1)
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundColor(Color.speakitTextSecondary)
                     }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color.speakitBadgeBackground)
+                    .clipShape(Capsule())
+                    .overlay(
+                        Capsule().stroke(Color.speakitBorder.opacity(0.6), lineWidth: 0.5)
+                    )
                 }
-                .foregroundColor(.white)
-                .padding(.horizontal, 16)
-                .frame(maxWidth: .infinity)
-                .frame(height: 52)
-                .background(
-                    (liveService.isRecording && activeSpeaker == .personA)
-                        ? Color.red
-                        : Color.speakitPrimary
-                )
-                .clipShape(Capsule())
-                .shadow(
-                    color: (liveService.isRecording && activeSpeaker == .personA)
-                        ? Color.red.opacity(0.35)
-                        : Color.speakitPrimary.opacity(0.3),
-                    radius: 8,
-                    y: 3
-                )
+                .buttonStyle(.plain)
+                .disabled(liveService.isRecording)
             }
-            .buttonStyle(.plain)
-            
-            // Speaker 2 Mic Button
+            .frame(maxWidth: .infinity)
+
+            // Center Interactive Language Swap Button (aligned precisely on the language pill row)
             Button(action: {
-                handleSpeakerTurn(.personB, lang: personBLang)
-            }) {
-                HStack(spacing: 8) {
-                    Image(systemName: (liveService.isRecording && activeSpeaker == .personB) ? "stop.fill" : "mic.fill")
-                        .font(.system(size: 16, weight: .semibold))
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(activeSpeaker == .personB && liveService.isRecording ? "Listening..." : speaker2Name)
-                            .font(.system(size: 12, weight: .bold))
-                            .lineLimit(1)
-                        Text(availableLanguages.first(where: { $0.code == personBLang })?.name ?? "English")
-                            .font(.system(size: 10))
-                            .opacity(0.85)
-                            .lineLimit(1)
-                    }
+                HapticManager.shared.medium()
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.72)) {
+                    swapRotation += 180
+                    let tempLang = personALang
+                    personALang = personBLang
+                    personBLang = tempLang
                 }
-                .foregroundColor(.white)
-                .padding(.horizontal, 16)
-                .frame(maxWidth: .infinity)
-                .frame(height: 52)
-                .background(
-                    (liveService.isRecording && activeSpeaker == .personB)
-                        ? Color.red
-                        : Color(hex: "0D9488")
-                )
-                .clipShape(Capsule())
-                .shadow(
-                    color: (liveService.isRecording && activeSpeaker == .personB)
-                        ? Color.red.opacity(0.35)
-                        : Color(hex: "0D9488").opacity(0.3),
-                    radius: 8,
-                    y: 3
-                )
+            }) {
+                ZStack {
+                    Circle()
+                        .fill(Color.speakitCardSurface)
+                        .frame(width: 32, height: 32)
+                        .overlay(Circle().stroke(Color.speakitBorder, lineWidth: 1))
+                        .shadow(color: Color.black.opacity(0.04), radius: 2, y: 1)
+
+                    Image(systemName: "arrow.left.arrow.right")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(Color.speakitPrimary)
+                        .rotationEffect(.degrees(swapRotation))
+                }
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Swap Speaker Languages")
+            .padding(.bottom, 2)
+
+            // Speaker 2 Column: Mic, Speaker Name, Language Selector (all centered along the same vertical axis)
+            VStack(spacing: 8) {
+                FaceToFaceMicButton(
+                    side: .personB,
+                    accentColor: Color(hex: "0D9488"),
+                    isActive: liveService.isRecording && activeSpeaker == .personB
+                ) {
+                    handleSpeakerTurn(.personB, lang: personBLang)
+                }
+
+                Button(action: {
+                    tempSpeakerName = speaker2Name
+                    editingSpeaker = .personB
+                    showRenameAlert = true
+                }) {
+                    Text(speaker2Name)
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(Color(hex: "0D9488"))
+                        .lineLimit(1)
+                        .frame(height: 20)
+                }
+                .buttonStyle(.plain)
+
+                Menu {
+                    ForEach(availableLanguages, id: \.code) { item in
+                        Button(action: {
+                            HapticManager.shared.selection()
+                            personBLang = item.code
+                        }) {
+                            HStack {
+                                Text(item.name)
+                                if personBLang == item.code {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(availableLanguages.first(where: { $0.code == personBLang })?.name ?? "English")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(Color.speakitTextPrimary)
+                            .lineLimit(1)
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundColor(Color.speakitTextSecondary)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color(hex: "0D9488").opacity(0.12))
+                    .clipShape(Capsule())
+                    .overlay(
+                        Capsule().stroke(Color(hex: "0D9488").opacity(0.25), lineWidth: 0.5)
+                    )
+                }
+                .buttonStyle(.plain)
+                .disabled(liveService.isRecording)
+            }
+            .frame(maxWidth: .infinity)
         }
         .padding(.horizontal, SpeakITSpacing.screenMargin)
-        .padding(.vertical, 14)
-        .background(
-            Color.speakitCardSurface
-                .shadow(color: Color.black.opacity(0.06), radius: 10, y: -4)
-        )
+        .padding(.top, 4)
+        .padding(.bottom, 12)
     }
     
     private func handleSpeakerTurn(_ speaker: SpeakerSide, lang: String) {
@@ -983,7 +1138,9 @@ struct LiveTranscriptionView: View {
                     translatedText: "",
                     isTranslating: sourceLang != targetLang
                 )
-                conversationHistory.append(bubble)
+                withAnimation(.spring(response: 0.38, dampingFraction: 0.78)) {
+                    conversationHistory.append(bubble)
+                }
                 
                 // Automatically translate to the other speaker's language!
                 translateBubble(bubbleId: bubble.id, text: lastText, from: sourceLang, to: targetLang)
@@ -1050,15 +1207,17 @@ struct LiveTranscriptionView: View {
                 let resp: TranslationResponse = try await HTTPClient.shared.request(.translate, method: "POST", body: reqBody)
                 
                 await MainActor.run {
-                    if let idx = conversationHistory.firstIndex(where: { $0.id == bubbleId }) {
-                        conversationHistory[idx].translatedText = resp.translatedText
-                        conversationHistory[idx].isTranslating = false
-                        
-                        // Deduct remaining character credit for translated text
-                        appState.recordCharacterUsage(resp.translatedText.count)
-                        
-                        // Automatically speak translated text in the listener's language!
-                        LocalSpeechSpeaker.shared.speak(text: resp.translatedText, languageCode: targetLang)
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        if let idx = conversationHistory.firstIndex(where: { $0.id == bubbleId }) {
+                            conversationHistory[idx].translatedText = resp.translatedText
+                            conversationHistory[idx].isTranslating = false
+                            
+                            // Deduct remaining character credit for translated text
+                            appState.recordCharacterUsage(resp.translatedText.count)
+                            
+                            // Automatically speak translated text in the listener's language!
+                            LocalSpeechSpeaker.shared.speak(text: resp.translatedText, languageCode: targetLang)
+                        }
                     }
                 }
             } catch {
@@ -1090,6 +1249,93 @@ struct LiveTranscriptionView: View {
         }
     }
     
+    private func persistCurrentSessionHistory() {
+        if studioMode == .conversation {
+            guard !conversationHistory.isEmpty else { return }
+            
+            var lines: [String] = []
+            for bubble in conversationHistory {
+                var entry = "[\(bubble.speakerName)] (\(bubble.speakerLanguage)): \(bubble.originalText)"
+                if !bubble.translatedText.isEmpty && bubble.translatedText != bubble.originalText {
+                    entry += "\n  ↳ [\(bubble.targetLanguage)]: \(bubble.translatedText)"
+                }
+                lines.append(entry)
+            }
+            let fullText = lines.joined(separator: "\n\n")
+            guard !fullText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+            
+            let totalChars = conversationHistory.reduce(0) { $0 + $1.originalText.count + $1.translatedText.count }
+            let title = "Live Conversation (\(conversationHistory.count) turns)"
+            let languages = "\(personALang), \(personBLang)"
+            
+            Task {
+                struct SaveSessionReq: Codable {
+                    let sessionType: String
+                    let title: String
+                    let language: String
+                    let mode: String
+                    let durationSeconds: Int
+                    let transcript: String
+                    let characterCount: Int
+                }
+                let req = SaveSessionReq(
+                    sessionType: "CONVERSATION",
+                    title: title,
+                    language: languages,
+                    mode: "conversation",
+                    durationSeconds: liveService.elapsedSeconds,
+                    transcript: fullText,
+                    characterCount: totalChars
+                )
+                if let bodyData = try? JSONEncoder().encode(req) {
+                    struct SessionResp: Codable { let id: Int64?; let message: String? }
+                    let _: SessionResp? = try? await HTTPClient.shared.request(.saveLiveSession, method: "POST", body: bodyData)
+                    await MainActor.run {
+                        appState.isHistoryDirty = true
+                    }
+                }
+            }
+        } else {
+            // Solo Mode
+            let fullText = liveService.fullTranscriptText.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !fullText.isEmpty else { return }
+            
+            let title = "Live Dictation"
+            let lang = liveService.languageCode
+            let mode = liveService.mode
+            let duration = liveService.elapsedSeconds
+            let charCount = fullText.count
+            
+            Task {
+                struct SaveSessionReq: Codable {
+                    let sessionType: String
+                    let title: String
+                    let language: String
+                    let mode: String
+                    let durationSeconds: Int
+                    let transcript: String
+                    let characterCount: Int
+                }
+                let req = SaveSessionReq(
+                    sessionType: "SOLO",
+                    title: title,
+                    language: lang,
+                    mode: mode,
+                    durationSeconds: duration,
+                    transcript: fullText,
+                    characterCount: charCount
+                )
+                if let bodyData = try? JSONEncoder().encode(req) {
+                    struct SessionResp: Codable { let id: Int64?; let message: String? }
+                    let _: SessionResp? = try? await HTTPClient.shared.request(.saveLiveSession, method: "POST", body: bodyData)
+                    await MainActor.run {
+                        appState.isHistoryDirty = true
+                    }
+                }
+            }
+        }
+    }
+    
     private func formatSeconds(_ seconds: Int) -> String {
         let mins = seconds / 60
         let secs = seconds % 60
@@ -1100,4 +1346,47 @@ struct LiveTranscriptionView: View {
 #Preview {
     LiveTranscriptionView()
         .environment(AppState.shared)
+}
+
+// MARK: - RoundedCornerShape
+// Custom Shape used by chat bubbles to apply individual corner radii.
+// Speaker A (left): top-left corner is sharp (4pt) to create the "tail" pointing left.
+// Speaker B (right): top-right corner is sharp (4pt) to create the "tail" pointing right.
+struct RoundedCornerShape: Shape {
+    var tl: CGFloat // top-left radius
+    var tr: CGFloat // top-right radius
+    var bl: CGFloat // bottom-left radius
+    var br: CGFloat // bottom-right radius
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let w = rect.size.width
+        let h = rect.size.height
+
+        // Clamp radii to half the dimension to avoid overlap
+        let tl = min(tl, min(w, h) / 2)
+        let tr = min(tr, min(w, h) / 2)
+        let bl = min(bl, min(w, h) / 2)
+        let br = min(br, min(w, h) / 2)
+
+        path.move(to: CGPoint(x: tl, y: 0))
+        path.addLine(to: CGPoint(x: w - tr, y: 0))
+        path.addArc(center: CGPoint(x: w - tr, y: tr),
+                    radius: tr, startAngle: Angle(degrees: -90),
+                    endAngle: Angle(degrees: 0), clockwise: false)
+        path.addLine(to: CGPoint(x: w, y: h - br))
+        path.addArc(center: CGPoint(x: w - br, y: h - br),
+                    radius: br, startAngle: Angle(degrees: 0),
+                    endAngle: Angle(degrees: 90), clockwise: false)
+        path.addLine(to: CGPoint(x: bl, y: h))
+        path.addArc(center: CGPoint(x: bl, y: h - bl),
+                    radius: bl, startAngle: Angle(degrees: 90),
+                    endAngle: Angle(degrees: 180), clockwise: false)
+        path.addLine(to: CGPoint(x: 0, y: tl))
+        path.addArc(center: CGPoint(x: tl, y: tl),
+                    radius: tl, startAngle: Angle(degrees: 180),
+                    endAngle: Angle(degrees: 270), clockwise: false)
+        path.closeSubpath()
+        return path
+    }
 }

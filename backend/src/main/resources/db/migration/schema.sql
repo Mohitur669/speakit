@@ -129,6 +129,9 @@ CREATE TABLE IF NOT EXISTS payments (
     currency VARCHAR(10) NOT NULL DEFAULT 'INR',
     tax_amount DECIMAL(19, 4) DEFAULT 0,
     invoice_number VARCHAR(50),
+    payment_provider VARCHAR(30) DEFAULT 'RAZORPAY',
+    payment_method VARCHAR(50),
+    notes VARCHAR(500),
     status VARCHAR(20) NOT NULL, -- SUCCESS, FAILED, PENDING, REFUNDED, etc.
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -207,7 +210,8 @@ INSERT INTO system_parameters (parameter_name, parameter_value, description) VAL
 ('STT_DEDUPE_WINDOW_MS', '60000', 'Time window to block duplicate STT requests'),
 ('SELF_PING_URL', '', 'Dynamic external URL for system self-ping to prevent spin-down'),
 ('KEEP_ALIVE_ENABLED', 'true', 'Toggle to enable or disable the system self-ping dynamically'),
-('LIVE_RECORDING_ENABLED', 'true', 'Global toggle for Speech-to-Text Live Recording feature')
+('LIVE_RECORDING_ENABLED', 'true', 'Global toggle for Speech-to-Text Live Recording feature'),
+('VOICE_BRIDGE_FLAG', 'N', 'Feature flag to enable or disable Voice Bridge feature (Y/N)')
 ON CONFLICT (parameter_name) DO NOTHING;
 
 -- Accepted values for SYSTEM_STATUS
@@ -494,6 +498,10 @@ BEGIN
         ALTER TABLE payments ADD COLUMN payment_method VARCHAR(50);
     END IF;
 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='payments' AND column_name='notes') THEN
+        ALTER TABLE payments ADD COLUMN notes VARCHAR(500);
+    END IF;
+
     -- Ensure STT transcript and metadata columns exist on speech_to_text_requests table
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='speech_to_text_requests' AND column_name='transcript') THEN
         ALTER TABLE speech_to_text_requests ADD COLUMN transcript TEXT;
@@ -511,11 +519,12 @@ BEGIN
         ALTER TABLE speech_to_text_requests ADD COLUMN original_filename VARCHAR(255);
     END IF;
 
-    -- Ensure iOS plan price parameters exist
+    -- Ensure iOS plan price parameters & feature flags exist
     INSERT INTO system_parameters (parameter_name, parameter_value, description)
     VALUES
         ('IOS_PRO_PLAN_PRICE', '9.99', 'Dollar price for Pro monthly subscription on iOS App Store'),
-        ('IOS_PRO_PLUS_PLAN_PRICE', '19.99', 'Dollar price for Pro Plus subscription on iOS App Store')
+        ('IOS_PRO_PLUS_PLAN_PRICE', '19.99', 'Dollar price for Pro Plus subscription on iOS App Store'),
+        ('VOICE_BRIDGE_FLAG', 'N', 'Feature flag to enable or disable Voice Bridge feature (Y/N)')
     ON CONFLICT (parameter_name) DO NOTHING;
 END $$;
 

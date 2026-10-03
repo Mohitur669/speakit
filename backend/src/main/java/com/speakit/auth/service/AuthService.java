@@ -53,6 +53,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 @RequiredArgsConstructor
@@ -182,15 +183,10 @@ public class AuthService {
             throw new RuntimeException("EMAIL_NOT_VERIFIED:" + user.getEmail());
         }
 
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        user.getUsername(),
-                        request.getPassword()
-                )
-        );
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new org.springframework.security.authentication.BadCredentialsException("Bad credentials");
+        }
 
-        userRepository.save(user);
-        
         log.info("User {} logged in successfully", user.getUsername());
         return authenticate(user, user.getSessionVersion());
     }
@@ -944,34 +940,48 @@ public class AuthService {
         Integer dailyLimit = null;
         Integer charactersUsed = null;
         Integer characterLimit = null;
+        int avatarChangesToday = 0;
 
         if (user.getId() != null && ttsHistoryRepository != null && subscriptionService != null) {
             try {
-                LocalDateTime todayStart = LocalDateTime.now().truncatedTo(ChronoUnit.DAYS);
-                dailyCount = (int) ttsHistoryRepository.countRecentByUserId(user.getId(), todayStart);
+                long t0 = System.currentTimeMillis();
                 dailyLimit = subscriptionService.getDailySynthesisLimit(user.getPlanType(), user.getSubscriptionStatus(), user.getPlanExpiry());
-
-                LocalDateTime monthStart = LocalDateTime.now().withDayOfMonth(1).truncatedTo(ChronoUnit.DAYS);
-                long ttsChars = ttsHistoryRepository.sumCharactersUsedSince(user.getId(), monthStart);
-                long sttChars = speechToTextRequestRepository != null ? speechToTextRequestRepository.sumCharactersUsedSince(user.getId(), monthStart) : 0L;
-                charactersUsed = (int) (ttsChars + sttChars);
                 characterLimit = subscriptionService.getMonthlyCharacterLimit(user.getPlanType());
+                long tLimits = System.currentTimeMillis() - t0;
+
+                LocalDateTime todayStart = LocalDateTime.now().truncatedTo(ChronoUnit.DAYS);
+                LocalDateTime monthStart = LocalDateTime.now().withDayOfMonth(1).truncatedTo(ChronoUnit.DAYS);
+                LocalDateTime startOfTodayUtc = java.time.LocalDate.now(java.time.ZoneOffset.UTC).atStartOfDay();
+                final Long finalUserId = user.getId();
+
+                long tDb0 = System.currentTimeMillis();
+                CompletableFuture<Integer> dailyCountFuture = CompletableFuture.supplyAsync(() ->
+                        (int) ttsHistoryRepository.countRecentByUserId(finalUserId, todayStart));
+
+                CompletableFuture<Long> ttsCharsFuture = CompletableFuture.supplyAsync(() ->
+                        ttsHistoryRepository.sumCharactersUsedSince(finalUserId, monthStart));
+
+                CompletableFuture<Long> sttCharsFuture = CompletableFuture.supplyAsync(() ->
+                        speechToTextRequestRepository != null ? speechToTextRequestRepository.sumCharactersUsedSince(finalUserId, monthStart) : 0L);
+
+                CompletableFuture<Integer> avatarFuture = CompletableFuture.supplyAsync(() -> {
+                    if (userAvatarHistoryRepository == null) return 0;
+                    return (int) userAvatarHistoryRepository.countByUserIdAndActionAndCreatedAtGreaterThanEqual(
+                            finalUserId, "UPLOAD", startOfTodayUtc);
+                });
+
+                CompletableFuture.allOf(dailyCountFuture, ttsCharsFuture, sttCharsFuture, avatarFuture).join();
+
+                dailyCount = dailyCountFuture.join();
+                long ttsChars = ttsCharsFuture.join();
+                long sttChars = sttCharsFuture.join();
+                avatarChangesToday = avatarFuture.join();
+                charactersUsed = (int) (ttsChars + sttChars);
+
+                log.info("Auth stats timing: limits={}ms, parallelDbQueries={}ms",
+                        tLimits, (System.currentTimeMillis() - tDb0));
             } catch (Exception e) {
                 log.warn("Failed to compute user usage stats for auth response", e);
-            }
-        }
-
-        int avatarChangesToday = 0;
-        if (userAvatarHistoryRepository != null && user.getId() != null) {
-            try {
-                LocalDateTime startOfTodayUtc = java.time.LocalDate.now(java.time.ZoneOffset.UTC).atStartOfDay();
-                avatarChangesToday = (int) userAvatarHistoryRepository.countByUserIdAndActionAndCreatedAtGreaterThanEqual(
-                        user.getId(),
-                        "UPLOAD",
-                        startOfTodayUtc
-                );
-            } catch (Exception e) {
-                log.warn("Failed to query user avatar change count", e);
             }
         }
 

@@ -46,11 +46,12 @@ public class RazorpayService {
      */
     @Transactional
     public PaymentOrderResponse createOrder(PaymentOrderRequest request, User user) throws RazorpayException {
-        // Fetch LIVE price from system parameters to ensure accuracy
-        BigDecimal planPrice = systemParameterService.getLivePrice(
-                request.getPlanType().toUpperCase() + "_PLAN_PRICE_INR",
-                request.getAmount());
+        PlanType requestedPlan = PlanType.valueOf(request.getPlanType().toUpperCase());
+        com.speakit.billing.dto.ProrationQuoteResponse quote = subscriptionManagementService.calculateProrationQuote(
+                user, requestedPlan, request.getCurrency());
 
+        // Use prorated live price when upgrading, or standard plan price otherwise
+        BigDecimal planPrice = quote.getAmountToPay();
         int amountInPaise = planPrice.multiply(new BigDecimal("100")).intValue();
 
         // Retrieve subscription Plan ID from system parameters
@@ -84,8 +85,6 @@ public class RazorpayService {
             subscriptionId = razorpaySubscription.get("id");
         }
 
-        PlanType requestedPlan = PlanType.valueOf(request.getPlanType().toUpperCase());
-
         // FIX: Each checkout order creates a dedicated Subscription intent for this specific plan and gateway ID.
         // Never mutate or overwrite previous pending subscriptions, ensuring historical payment audits remain intact.
         Subscription subscription = Subscription.builder()
@@ -104,6 +103,7 @@ public class RazorpayService {
                 .razorpayOrderId(subscriptionId)
                 .amount(planPrice)
                 .currency(request.getCurrency())
+                .notes(quote.getDescription())
                 .status(PaymentStatus.PENDING)
                 .build();
 

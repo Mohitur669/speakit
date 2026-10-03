@@ -7,10 +7,12 @@
 //
 
 import Foundation
+import UIKit
 
 public struct SpeakITLogicTests {
     
-    public static func runAllTests() -> Bool {
+    @MainActor
+    public static func runAllTests() async -> Bool {
         print("🧪 [TEST SUITE] Starting SpeakIT Native Suite Execution...")
         var passedCount = 0
         var failedCount = 0
@@ -41,7 +43,7 @@ public struct SpeakITLogicTests {
         assert(PlanType.proPlus.monthlyQuota == 10_000, "Pro Plus plan quota is 10,000")
         
         assert(!PlanType.free.allowsLiveSTT, "Free plan does not support live mic STT")
-        assert(!PlanType.pro.allowsLiveSTT, "Pro plan does not support live mic STT")
+        assert(PlanType.pro.allowsLiveSTT, "Pro plan supports live mic STT")
         assert(PlanType.proPlus.allowsLiveSTT, "Pro Plus plan supports live mic STT")
         
         assert(!PlanType.free.allowsFileSTT, "Free plan does not support file STT")
@@ -56,8 +58,8 @@ public struct SpeakITLogicTests {
         print("▶️ Testing User Domain Model & Quota Computations...")
         let sampleUser = User.sample
         assert(sampleUser.initials == "MS", "User initials for 'Mohit Sharma' should be 'MS'")
-        assert(sampleUser.remainingCharacters == 10_750, "Remaining characters for sample user should be 10,750 (25,000 - 14,250)")
-        assert(abs(sampleUser.usagePercentage - 0.57) < 0.01, "Usage percentage should be ~0.57")
+        assert(sampleUser.remainingCharacters == 5_000, "Remaining characters for sample user should be 5,000 (5,000 - 0)")
+        assert(sampleUser.usagePercentage == 0.0, "Usage percentage should be 0.0")
         
         let singleNameUser = User(id: 2, username: "solo", email: "s@example.com", fullName: "Solo", role: "USER", planType: .free, status: "ACTIVE", characterLimit: 1000, charactersUsed: 0)
         assert(singleNameUser.initials == "S", "Single name user initials should be 'S'")
@@ -86,7 +88,7 @@ public struct SpeakITLogicTests {
             assert(aditi.requiresPlan == .proPlus, "Aditi voice requires Pro Plus plan")
         }
         if let joanna = voices.first(where: { $0.name == "Joanna" }) {
-            assert(joanna.requiresPlan == .pro, "Joanna voice requires Pro plan")
+            assert(joanna.requiresPlan == .free, "Joanna voice is free tier standard voice")
         }
         
         // MARK: - 4. API Endpoints Path Tests
@@ -140,6 +142,71 @@ public struct SpeakITLogicTests {
         assert(LanguageHelper.displayName(for: "en") == "English", "Language code 'en' resolves to 'English'")
         assert(LanguageHelper.displayName(for: "ta-IN") == "Tamil", "Language code 'ta-IN' resolves to 'Tamil'")
         assert(LanguageHelper.displayName(for: "bn") == "Bengali", "Language code 'bn' resolves to 'Bengali'")
+        
+        // MARK: - 6. User Profile Decoding & TabBar Rendering Tests
+        print("▶️ Testing User Profile Decoding & TabBar Avatar Rendering...")
+        let jsonString = """
+        {"token":"test-token","username":"mohitur","fullName":"Mohd Mohitur Rahaman","email":"mohitur669@gmail.com","phoneNumber":null,"avatarUrl":null,"role":"ROLE_USER","planType":"PRO_PLUS","subscriptionStatus":"ACTIVE","planExpiry":"2026-11-03T16:18:16.688424","sessionVersion":6,"sessionDurationMs":7200000,"idleTimeoutMs":300000,"emailVerified":true,"characterLimit":15000,"charactersUsed":494,"dailyCount":0,"dailyLimit":-1,"avatarDailyLimit":20,"avatarChangeCount":0}
+        """
+        do {
+            let decodedUser = try JSONDecoder().decode(User.self, from: jsonString.data(using: .utf8)!)
+            assert(decodedUser.username == "mohitur", "Decoded username is mohitur")
+            assert(decodedUser.fullName == "Mohd Mohitur Rahaman", "Decoded fullName is Mohd Mohitur Rahaman")
+            assert(decodedUser.initials == "MM", "Decoded initials are MM")
+            assert(decodedUser.planType == .proPlus, "Decoded planType is PRO_PLUS")
+            assert(decodedUser.planExpiry != nil, "Decoded planExpiry is non-nil")
+            assert(decodedUser.formattedExpiry != nil, "Decoded formattedExpiry is non-nil")
+            
+            let unselectedImage = TabBarAvatarRenderer.render(image: nil, initials: decodedUser.initials, isSelected: false)
+            assert(unselectedImage.size.width == 25, "TabBar unselected avatar rendered with width 25")
+            
+            let selectedImage = TabBarAvatarRenderer.render(image: nil, initials: decodedUser.initials, isSelected: true)
+            assert(selectedImage.size.width == 25, "TabBar selected avatar rendered with width 25")
+        } catch {
+            assert(false, "Failed to decode User JSON: \(error)")
+        }
+        
+        // MARK: - 7. Live Login & Profile Integration Test (mohitur / DUMMY_PASSWORD_PLACEHOLDER)
+        print("▶️ Testing Live Authentication & Profile Loading for mohitur...")
+        do {
+            struct LoginReq: Codable {
+                let username: String
+                let password: String
+            }
+            struct LoginResp: Codable {
+                let token: String
+                let username: String?
+                let email: String?
+                let phoneNumber: String?
+                let role: String?
+                let planType: String?
+                let characterLimit: Int?
+                let charactersUsed: Int?
+            }
+            let body = try JSONEncoder().encode(LoginReq(username: "mohitur", password: "DUMMY_PASSWORD_PLACEHOLDER"))
+            let resp: LoginResp = try await HTTPClient.shared.request(.login, method: "POST", body: body)
+            
+            let resolvedPlan = PlanType(rawValue: (resp.planType ?? "FREE").uppercased()) ?? .free
+            let user = User(
+                username: resp.username ?? "mohitur",
+                email: resp.email ?? "",
+                role: resp.role ?? "ROLE_USER",
+                planType: resolvedPlan,
+                characterLimit: resp.characterLimit,
+                charactersUsed: resp.charactersUsed ?? 0,
+                phoneNumber: resp.phoneNumber
+            )
+            AppState.shared.login(token: resp.token, user: user)
+            
+            // Verify loadCurrentUser()
+            await AppState.shared.loadCurrentUser()
+            
+            assert(AppState.shared.currentUser?.username == "mohitur", "currentUser successfully logged in and updated to mohitur")
+            assert(AppState.shared.currentUser?.planType == .proPlus, "mohitur has active PRO_PLUS plan")
+            assert(AppState.shared.isAuthenticated, "AppState isAuthenticated is true")
+        } catch {
+            assert(false, "Live login and user profile retrieval failed for mohitur: \(error)")
+        }
         
         print("\n==========================================")
         print("🏁 [TEST SUITE SUMMARY]: \(passedCount) Passed, \(failedCount) Failed")

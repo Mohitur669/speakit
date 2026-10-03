@@ -17,6 +17,9 @@ struct TTSStudioView: View {
     @State private var showShareSheet: Bool = false
     @State private var synthesizedAudioURL: URL? = nil
     @State private var errorMessage: String? = nil
+    /// Selected emotion style for ElevenLabs v4 direction tags.
+    /// nil = Neutral (no tag). Valid values: excited, sad, calm, angry, cheerful, terrified, unfriendly.
+    @State private var selectedVoiceStyle: String? = nil
     @AppStorage("autoPlayPreview") private var autoPlayPreview: Bool = true
     
     private var playerManager = AudioPlayerManager.shared
@@ -84,6 +87,11 @@ struct TTSStudioView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("tts.voiceSelector")
+                
+                // ElevenLabs v4 Emotion Style Chips — only visible when ElevenLabs voice is selected
+                if selectedVoice.engine.lowercased() == "elevenlabs" {
+                    emotionChipRow
+                }
                 
                 // Multiline Text Editor Card
                 VStack(spacing: 8) {
@@ -319,6 +327,55 @@ struct TTSStudioView: View {
         .speakITToast(message: $errorMessage, style: .error, bottomPadding: 16)
     }
     
+    // MARK: - Emotion Style Chip Row (ElevenLabs v4 Direction Tags)
+    
+    /// Chip row for selecting voice emotion direction tag.
+    /// Only shown when an ElevenLabs voice is selected.
+    /// Selecting a chip sets the voiceStyle field passed to the backend,
+    /// which wraps the text with <voiceStyle>text</voiceStyle> before ElevenLabs synthesis.
+    private var emotionChipRow: some View {
+        // Emotion chips: nil = Neutral (no tag)
+        let emotions: [(label: String, icon: String, value: String?)] = [
+            ("Neutral", "waveform", nil),
+            ("Excited", "bolt.fill", "excited"),
+            ("Calm", "leaf.fill", "calm"),
+            ("Sad", "cloud.rain.fill", "sad"),
+            ("Angry", "flame.fill", "angry"),
+            ("Cheerful", "sun.max.fill", "cheerful")
+        ]
+        
+        return ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(emotions, id: \.label) { emotion in
+                    let isSelected = selectedVoiceStyle == emotion.value
+                    Button(action: {
+                        HapticManager.shared.selection()
+                        selectedVoiceStyle = emotion.value
+                    }) {
+                        HStack(spacing: 5) {
+                            Image(systemName: emotion.icon)
+                                .font(.system(size: 11, weight: .bold))
+                            Text(emotion.label)
+                                .font(.system(size: 12, weight: .semibold))
+                        }
+                        .foregroundColor(isSelected ? .white : Color.speakitTextSecondary)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .background(isSelected ? Color.speakitPrimary : Color.speakitCardSurface)
+                        .cornerRadius(20)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20)
+                                .stroke(isSelected ? Color.clear : Color.speakitBorder, lineWidth: 1)
+                        )
+                        .animation(.easeInOut(duration: 0.15), value: isSelected)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.vertical, 2)
+        }
+    }
+    
     // MARK: - Synthesis Logic
     private func generateSpeech() {
         errorMessage = nil
@@ -335,6 +392,9 @@ struct TTSStudioView: View {
                     let isElevenLabs: Bool
                     let isSarvam: Bool
                     let languageCode: String?
+                    /// ElevenLabs v4 emotion direction tag (excited, sad, calm, angry, cheerful).
+                    /// nil = Neutral (no tag injected). Only applied for ElevenLabs voices.
+                    let voiceStyle: String?
                 }
                 
                 let isElevenLabs = selectedVoice.engine.lowercased() == "elevenlabs"
@@ -349,7 +409,9 @@ struct TTSStudioView: View {
                     outputFormat: "mp3",
                     isElevenLabs: isElevenLabs,
                     isSarvam: isSarvam,
-                    languageCode: selectedVoice.languageCode
+                    languageCode: selectedVoice.languageCode,
+                    // Pass voiceStyle only for ElevenLabs voices (backend ignores it for Polly/Sarvam)
+                    voiceStyle: isElevenLabs ? selectedVoiceStyle : nil
                 )
                 
                 let reqBody = try JSONEncoder().encode(req)

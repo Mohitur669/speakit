@@ -225,8 +225,9 @@ public class LiveSttWebSocketHandler extends AbstractWebSocketHandler {
                 } catch (IOException ignored) {}
             }
 
-            // Record completed live session in history if audio was transmitted
-            if (ctx.totalAudioBytes > 0) {
+            // Record completed live session in history only if audio was transmitted AND actual text was captured
+            String finalTranscript = ctx.finalTranscripts.toString().trim();
+            if (ctx.totalAudioBytes > 0 && !finalTranscript.isEmpty()) {
                 int durationSeconds = (int) (ctx.totalAudioBytes / (16000 * 2));
                 if (durationSeconds < 1) durationSeconds = 1;
 
@@ -237,8 +238,8 @@ public class LiveSttWebSocketHandler extends AbstractWebSocketHandler {
                         .audioSizeBytes(ctx.totalAudioBytes)
                         .language(ctx.language)
                         .processingMode(ctx.mode)
-                        .transcript(ctx.finalTranscripts.toString().trim())
-                        .transcriptLength(ctx.finalTranscripts.length())
+                        .transcript(finalTranscript)
+                        .transcriptLength(finalTranscript.length())
                         .originalFilename("Live Session")
                         .status("SUCCESS")
                         .completedAt(LocalDateTime.now())

@@ -2,6 +2,7 @@ package com.speakit.billing.controller;
 
 import com.speakit.billing.dto.AppleVerificationRequest;
 import com.speakit.billing.dto.PaymentHistoryDto;
+import com.speakit.billing.dto.ProrationQuoteResponse;
 import com.speakit.billing.entity.Payment;
 import com.speakit.billing.entity.PaymentStatus;
 import com.speakit.billing.entity.PlanType;
@@ -145,5 +146,59 @@ class PaymentControllerTest {
         assertEquals("tx_12345", dto.getTransactionId());
         assertNotNull(dto.getInvoiceNote());
         assertTrue(dto.getInvoiceNote().contains("Apple ID email"));
+    }
+
+    @Test
+    void getProrationQuote_returnsCalculatedQuote() {
+        when(httpRequest.getAttribute("userId")).thenReturn(100L);
+        when(userService.getUserById(100L)).thenReturn(testUser);
+
+        ProrationQuoteResponse mockQuote = ProrationQuoteResponse.builder()
+                .currentPlan(PlanType.FREE)
+                .targetPlan(PlanType.PRO_PLUS)
+                .amountToPay(BigDecimal.valueOf(1499.00))
+                .unusedCredit(BigDecimal.ZERO)
+                .currency("INR")
+                .isUpgrade(true)
+                .description("Upgrade to PRO_PLUS")
+                .build();
+
+        when(subscriptionManagementService.calculateProrationQuote(eq(testUser), eq(PlanType.PRO_PLUS), eq("INR")))
+                .thenReturn(mockQuote);
+
+        ResponseEntity<ProrationQuoteResponse> response = paymentController.getProrationQuote("PRO_PLUS", "INR", httpRequest);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(BigDecimal.valueOf(1499.00), response.getBody().getAmountToPay());
+        assertTrue(response.getBody().isUpgrade());
+    }
+
+    @Test
+    void downgradePlan_toFree_recordsAudit() {
+        testUser.setPlanType(PlanType.PRO);
+        when(httpRequest.getAttribute("userId")).thenReturn(100L);
+        when(userService.getUserById(100L)).thenReturn(testUser);
+
+        ResponseEntity<String> response = paymentController.downgradePlan(PlanType.FREE, null, httpRequest);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertTrue(response.getBody().contains("Free tier"));
+        verify(subscriptionManagementService).demoteUserToFree(testUser);
+        verify(subscriptionManagementService).recordDowngradeAudit(testUser, PlanType.PRO, PlanType.FREE, "INTERNAL");
+    }
+
+    @Test
+    void cancelSubscription_schedulesCancellationAndRecordsAudit() {
+        testUser.setPlanType(PlanType.PRO);
+        when(httpRequest.getAttribute("userId")).thenReturn(100L);
+        when(userService.getUserById(100L)).thenReturn(testUser);
+
+        ResponseEntity<String> response = paymentController.cancelSubscription(httpRequest);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertTrue(response.getBody().contains("cancellation"));
+        verify(subscriptionManagementService).cancelSubscription(testUser);
+        verify(subscriptionManagementService).recordCancellationAudit(testUser, null);
     }
 }

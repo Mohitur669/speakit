@@ -113,7 +113,8 @@ public class TtsController {
             String effectiveVoiceType;
             if (request.isElevenLabs()) {
                 // noinspection TaintFlow
-                audioStream = elevenLabsService.synthesizeSpeech(sanitizedText, sanitizedVoiceId);
+                // Pass voiceStyle for optional v4 emotion-directed synthesis
+                audioStream = elevenLabsService.synthesizeSpeech(sanitizedText, sanitizedVoiceId, request.getVoiceStyle());
                 effectiveVoiceType = "NATURAL";
             } else if (request.isSarvam()) {
                 String speaker = sanitizedVoiceId;

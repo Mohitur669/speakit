@@ -18,5 +18,6 @@ public class PaymentHistoryDto {
     private String paymentMethod;
     private String transactionId;
     private String invoiceNote;
+    @com.fasterxml.jackson.annotation.JsonFormat(shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime createdAt;
 }

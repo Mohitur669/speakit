@@ -104,18 +104,38 @@ struct BillingHistorySheet: View {
         }) {
             HStack(spacing: 14) {
                 ZStack {
-                    let circleColor: Color = item.isSuccess ? Color.speakitSuccess : (item.isPending ? Color.speakitWarning : Color.speakitError)
+                    let circleColor: Color = {
+                        if item.isCancellation { return Color.speakitWarning }
+                        if item.isDowngrade { return Color.speakitWarning }
+                        if item.isUpgrade { return Color.speakitPrimary }
+                        return item.isSuccess ? Color.speakitSuccess : (item.isPending ? Color.speakitWarning : Color.speakitError)
+                    }()
+                    
+                    let iconName: String = {
+                        if item.isCancellation { return "xmark.circle.fill" }
+                        if item.isDowngrade { return "arrow.down.circle.fill" }
+                        if item.isUpgrade { return "sparkles" }
+                        return item.isSuccess ? "checkmark" : (item.isPending ? "clock" : "xmark")
+                    }()
+                    
                     Circle()
                         .fill(circleColor.opacity(0.12))
                         .frame(width: 40, height: 40)
                     
-                    Image(systemName: item.isSuccess ? "checkmark" : (item.isPending ? "clock" : "xmark"))
+                    Image(systemName: iconName)
                         .font(.system(size: 14, weight: .bold))
                         .foregroundColor(circleColor)
                 }
                 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("\(item.displayPlanName) Subscription")
+                    let rowTitle: String = {
+                        if item.isCancellation { return "Auto-Renewal Cancelled" }
+                        if item.isDowngrade { return "Downgraded to \(item.displayPlanName)" }
+                        if item.isUpgrade { return "Upgraded to \(item.displayPlanName)" }
+                        return "\(item.displayPlanName) Subscription"
+                    }()
+                    
+                    Text(rowTitle)
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(Color.speakitTextPrimary)
                     
@@ -123,7 +143,13 @@ struct BillingHistorySheet: View {
                         .font(.system(size: 11))
                         .foregroundColor(Color.speakitTextSecondary)
                     
-                    if item.isAppleStoreKit {
+                    if let note = item.invoiceNote, (item.isUpgrade || item.isDowngrade || item.isCancellation) {
+                        Text(note)
+                            .font(.system(size: 10))
+                            .foregroundColor(Color.speakitTextTertiary)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                    } else if item.isAppleStoreKit {
                         HStack(spacing: 3) {
                             Image(systemName: "applelogo")
                                 .font(.system(size: 9))
@@ -148,8 +174,21 @@ struct BillingHistorySheet: View {
                         .foregroundColor(Color.speakitTextPrimary)
                     
                     HStack(spacing: 4) {
-                        let statusColor: Color = item.isSuccess ? Color.speakitSuccess : (item.isPending ? Color.speakitWarning : Color.speakitError)
-                        Text(item.status)
+                        let statusText: String = {
+                            if item.isCancellation { return "CANCELLED" }
+                            if item.isDowngrade { return "DOWNGRADE" }
+                            if item.isUpgrade { return "UPGRADED" }
+                            return item.status
+                        }()
+                        
+                        let statusColor: Color = {
+                            if item.isCancellation { return Color.speakitWarning }
+                            if item.isDowngrade { return Color.speakitWarning }
+                            if item.isUpgrade { return Color.speakitPrimary }
+                            return item.isSuccess ? Color.speakitSuccess : (item.isPending ? Color.speakitWarning : Color.speakitError)
+                        }()
+                        
+                        Text(statusText)
                             .font(.system(size: 10, weight: .bold))
                             .foregroundColor(statusColor)
                         
