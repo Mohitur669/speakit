@@ -18,6 +18,10 @@ struct HistoryItem: Codable, Identifiable {
     let createdAt: String
     let audioUrl: String?
     var localAudioURL: URL? = nil
+    let transliteration: String?
+    let mode: String?
+    let filename: String?
+    let status: String?
     
     init(
         id: Int64,
@@ -29,7 +33,11 @@ struct HistoryItem: Codable, Identifiable {
         engineType: String = "TTS",
         createdAt: String = "Just now",
         audioUrl: String? = nil,
-        localAudioURL: URL? = nil
+        localAudioURL: URL? = nil,
+        transliteration: String? = nil,
+        mode: String? = nil,
+        filename: String? = nil,
+        status: String? = nil
     ) {
         self.id = id
         self.textSnippet = textSnippet
@@ -41,10 +49,14 @@ struct HistoryItem: Codable, Identifiable {
         self.createdAt = createdAt
         self.audioUrl = audioUrl
         self.localAudioURL = localAudioURL
+        self.transliteration = transliteration
+        self.mode = mode
+        self.filename = filename
+        self.status = status
     }
     
     enum CodingKeys: String, CodingKey {
-        case id, textSnippet, fullText, characterCount, voiceId, voiceName, engineType, voiceType, createdAt, audioUrl
+        case id, textSnippet, fullText, characterCount, voiceId, voiceName, engineType, voiceType, createdAt, audioUrl, transliteration, mode, filename, status
     }
     
     init(from decoder: Decoder) throws {
@@ -67,6 +79,10 @@ struct HistoryItem: Codable, Identifiable {
         self.createdAt = (try? container.decode(String.self, forKey: .createdAt)) ?? "Recent"
         self.audioUrl = try? container.decode(String.self, forKey: .audioUrl)
         self.localAudioURL = nil
+        self.transliteration = try? container.decode(String.self, forKey: .transliteration)
+        self.mode = try? container.decode(String.self, forKey: .mode)
+        self.filename = try? container.decode(String.self, forKey: .filename)
+        self.status = try? container.decode(String.self, forKey: .status)
     }
     
     func encode(to encoder: Encoder) throws {
@@ -80,6 +96,10 @@ struct HistoryItem: Codable, Identifiable {
         try container.encode(engineType, forKey: .engineType)
         try container.encode(createdAt, forKey: .createdAt)
         try container.encodeIfPresent(audioUrl, forKey: .audioUrl)
+        try container.encodeIfPresent(transliteration, forKey: .transliteration)
+        try container.encodeIfPresent(mode, forKey: .mode)
+        try container.encodeIfPresent(filename, forKey: .filename)
+        try container.encodeIfPresent(status, forKey: .status)
     }
     
     var displayText: String {

@@ -32,10 +32,25 @@ public class SarvamService {
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    private static final Map<String, String> SPEAKER_ALIASES = Map.of(
-            "aditi", "ritu",
-            "ananya", "priya",
-            "niharika", "rupali"
+    private static final Map<String, String> SPEAKER_ALIASES = Map.ofEntries(
+            Map.entry("aditi", "ritu"),
+            Map.entry("ananya", "priya"),
+            Map.entry("niharika", "rupali"),
+            Map.entry("meera", "priya"),
+            Map.entry("pavithra", "ritu"),
+            Map.entry("maitreyi", "pooja"),
+            Map.entry("diya", "shreya"),
+            Map.entry("anushka", "kavya"),
+            Map.entry("manisha", "neha"),
+            Map.entry("vidya", "ishita"),
+            Map.entry("arya", "simran"),
+            Map.entry("arvind", "rahul"),
+            Map.entry("amartya", "aditya"),
+            Map.entry("neel", "rohan"),
+            Map.entry("vian", "dev"),
+            Map.entry("amol", "amit"),
+            Map.entry("mohan", "ashutosh"),
+            Map.entry("suresh", "shubh")
     );
 
     private SarvamConfig config;

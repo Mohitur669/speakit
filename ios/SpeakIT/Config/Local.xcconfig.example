@@ -19,3 +19,9 @@ IOS_API_BASE_BACKUP_URL = https:/$()/backup-api.yourdomain.com
 // Optional: Override for iOS Simulator (default is http://localhost:8080)
 // Set this if you want the Simulator to test against a custom domain instead of localhost:
 // IOS_SIMULATOR_BASE_URL = https:/$()/api.staging.com
+
+// Web host URL for plan management & billing (the Angular frontend host, no trailing slash).
+// - Simulator builds automatically use http://localhost:4200 (no entry needed here).
+// - Device builds use WEB_HOST_URL from Config.xcconfig (https://speakit.mohitur.com by default).
+// Uncomment below ONLY to override the device URL for staging/testing:
+// WEB_HOST_URL = https:/$()/staging.speakit.mohitur.com

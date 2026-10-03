@@ -17,7 +17,7 @@ def load_env(env_path):
     env_vars = {}
     if not os.path.exists(env_path):
         # Fall back to alternative paths if not found directly
-        paths_to_try = [env_path, "backend/.env", ".env"]
+        paths_to_try = [env_path, "../../backend/.env", ".env"]
         found = False
         for p in paths_to_try:
             if os.path.exists(p):
@@ -27,7 +27,7 @@ def load_env(env_path):
         if not found:
             print(f"Error: Environment file not found at {env_path}")
             sys.exit(1)
-            
+
     with open(env_path, 'r') as f:
         for line in f:
             line = line.strip()
@@ -65,7 +65,7 @@ def execute_sql(env, query, params=None):
 
     # Construct psql command
     cmd = ['psql', '-h', host, '-p', port, '-U', user, '-d', dbname, '-Atc', query]
-    
+
     if params:
         escaped_params = []
         for p in params:
@@ -98,7 +98,7 @@ def find_user(env, identifier):
         return None
     if not output:
         return None
-    
+
     parts = output.split('|')
     if len(parts) < 6:
          return None
@@ -133,10 +133,10 @@ def create_user(env, username, email, phone, raw_password, plan="FREE", role="US
     seq_output, err = execute_sql(env, seq_query)
     if err or not seq_output:
         return None, f"Failed to generate sequence ID: {err}"
-    
+
     user_id = int(seq_output)
     hashed = hash_password(raw_password)
-    
+
     insert_query = (
         "INSERT INTO users (id, username, email, phone_number, password, plan_type, "
         "subscription_status, role, is_active, email_verified, account_status, "
@@ -159,7 +159,7 @@ def run_create_flow(env, username=None, email=None, phone=None, password=None, p
         phone = input("Enter Phone Number: ").strip()
     if not password:
         password = input("Enter Password: ").strip()
-        
+
     if not plan:
         print("\nSelect Plan:")
         print("1) FREE (Default)")
@@ -168,7 +168,7 @@ def run_create_flow(env, username=None, email=None, phone=None, password=None, p
         print("4) ENTERPRISE")
         p_choice = input("Choice (1-4): ").strip()
         plan = {'1': 'FREE', '2': 'PRO', '3': 'PRO_PLUS', '4': 'ENTERPRISE'}.get(p_choice, 'FREE')
-        
+
     if not role:
         print("\nSelect Role:")
         print("1) USER (Default)")
@@ -202,7 +202,7 @@ def main():
     parser.add_argument("--delete", action="store_true", help="Delete a user")
     parser.add_argument("--reset-password", metavar="NEW_PASSWORD", help="Reset password for the user")
     parser.add_argument("--set-plan", choices=["FREE", "PRO", "PRO_PLUS", "ENTERPRISE"], help="Upgrade/Downgrade the user plan")
-    
+
     args = parser.parse_args()
 
     # Load environment configuration
@@ -296,7 +296,7 @@ def main():
 
         print("\n[*] Hashing password with BCrypt...")
         hashed = hash_password(new_password)
-        
+
         print("[*] Updating database...")
         query = "UPDATE users SET password = %s, session_version = session_version + 1 WHERE id = %s"
         _, err = execute_sql(env, query, (hashed, user_data['id']))

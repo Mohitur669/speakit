@@ -13,6 +13,8 @@ import com.speakit.stt.service.SttService;
 import com.speakit.stt.validator.AudioFileValidator;
 import com.speakit.stt.dto.TranslationRequest;
 import com.speakit.stt.dto.TranslationResponse;
+import com.speakit.stt.dto.TransliterationRequest;
+import com.speakit.stt.dto.TransliterationResponse;
 import com.speakit.stt.service.TranslationService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -37,6 +39,7 @@ public class SttController {
     private final SystemParameterService systemParameterService;
     private final TranslationService translationService;
     private final UserRepository userRepository;
+    private final com.speakit.stt.repository.SpeechToTextRequestRepository speechToTextRequestRepository;
 
     /**
       * Secure endpoint for audio transcription.
@@ -48,6 +51,7 @@ public class SttController {
             @RequestPart("file") MultipartFile file,
             @RequestPart(value = "language", required = false) String language,
             @RequestPart(value = "provider", required = false) String preferredProvider,
+            @RequestPart(value = "mode", required = false) String mode,
             HttpServletRequest httpRequest
     ) {
         // 1. Sanitize & validate request parts
@@ -55,6 +59,9 @@ public class SttController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
         if (preferredProvider != null && !preferredProvider.isEmpty() && !preferredProvider.matches("^[a-zA-Z0-9_]+$")) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+        if (mode != null && !mode.isEmpty() && !mode.matches("^[a-zA-Z0-9_\\-]+$")) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
 
@@ -97,7 +104,7 @@ public class SttController {
         }
 
         // 8. Orchestrate Transcription
-        SpeechToTextResult result = sttService.transcribe(file, language, userId, authorizedProvider);
+        SpeechToTextResult result = sttService.transcribe(file, language, userId, authorizedProvider, mode);
         
         return ResponseEntity.ok(result);
     }
@@ -112,6 +119,7 @@ public class SttController {
             @RequestPart("file") MultipartFile file,
             @RequestPart(value = "language", required = false) String language,
             @RequestPart(value = "provider", required = false) String preferredProvider,
+            @RequestPart(value = "mode", required = false) String mode,
             HttpServletRequest httpRequest
     ) {
         // 1. Sanitize & validate request parts
@@ -119,6 +127,9 @@ public class SttController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
         if (preferredProvider != null && !preferredProvider.isEmpty() && !preferredProvider.matches("^[a-zA-Z0-9_]+$")) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+        if (mode != null && !mode.isEmpty() && !mode.matches("^[a-zA-Z0-9_\\-]+$")) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
 
@@ -159,7 +170,7 @@ public class SttController {
         }
 
         // 8. Orchestrate Transcription
-        SpeechToTextResult result = sttService.transcribe(file, language, userId, authorizedProvider);
+        SpeechToTextResult result = sttService.transcribe(file, language, userId, authorizedProvider, mode);
         
         return ResponseEntity.ok(result);
     }
@@ -194,6 +205,91 @@ public class SttController {
         // 3. Translate
         TranslationResponse result = translationService.translate(request);
         return ResponseEntity.ok(result);
+    }
+
+    /**
+      * Dedicated transliteration endpoint for converting text across Indian language scripts and Roman/Latin.
+      */
+    @RateLimited(action = RateLimitAction.STT)
+    @PostMapping("/transliterate")
+    public ResponseEntity<TransliterationResponse> transliterate(
+            @Valid @RequestBody TransliterationRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        // 1. Global Feature Flag Check (Governed Parameter)
+        boolean sttEnabled = systemParameterService.isFeatureEnabled("STT_ENABLED", true);
+        if (!sttEnabled) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+        }
+
+        // 2. Extract and authorize plan with database fallback
+        UserSecurityContext context = resolveSecurityContext(httpRequest);
+        PlanType planType = context.planType();
+        SubscriptionStatus status = context.status();
+        LocalDateTime expiry = context.expiry();
+
+        if (!subscriptionService.hasSpeechToText(planType, status, expiry)) {
+            log.warn("Access denied for transliteration: userId={}, planType={}, status={}, expiry={}",
+                    context.userId(), planType, status, expiry);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        // 3. Transliterate
+        TransliterationResponse result = translationService.transliterate(request);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+      * Saves a complete live session history record (Solo dictation or Face-to-Face conversation)
+      * containing all speaker turns, original transcripts, and translations under a single cohesive session.
+      */
+    @PostMapping("/live/session")
+    public ResponseEntity<?> saveLiveSession(
+            @Valid @RequestBody com.speakit.stt.dto.SaveLiveSessionRequest sessionRequest,
+            HttpServletRequest httpRequest
+    ) {
+        UserSecurityContext context = resolveSecurityContext(httpRequest);
+        Long userId = context.userId();
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        String transcript = sessionRequest.getTranscript() != null ? sessionRequest.getTranscript().trim() : "";
+        if (transcript.isEmpty()) {
+            return ResponseEntity.badRequest().body("Transcript cannot be empty");
+        }
+
+        User user = userRepository.getReferenceById(userId);
+
+        String title = sessionRequest.getTitle();
+        if (title == null || title.isBlank()) {
+            title = "CONVERSATION".equalsIgnoreCase(sessionRequest.getSessionType())
+                    ? "Live Conversation"
+                    : "Live Dictation";
+        }
+
+        int charCount = sessionRequest.getCharacterCount() != null && sessionRequest.getCharacterCount() > 0
+                ? sessionRequest.getCharacterCount()
+                : transcript.length();
+
+        com.speakit.stt.entity.SpeechToTextRequest record = com.speakit.stt.entity.SpeechToTextRequest.builder()
+                .user(user)
+                .provider("SARVAM")
+                .audioDurationSeconds(sessionRequest.getDurationSeconds() != null ? sessionRequest.getDurationSeconds() : 0)
+                .language(sessionRequest.getLanguage() != null ? sessionRequest.getLanguage() : "auto")
+                .processingMode(sessionRequest.getMode() != null ? sessionRequest.getMode() : "transcribe")
+                .transcript(transcript)
+                .transcriptLength(charCount)
+                .originalFilename(title)
+                .status("SUCCESS")
+                .completedAt(LocalDateTime.now())
+                .build();
+
+        speechToTextRequestRepository.save(record);
+        log.info("Saved complete Live Session in history: user={}, title={}, chars={}",
+                userId, title, charCount);
+
+        return ResponseEntity.ok(java.util.Map.of("id", record.getId(), "message", "Session saved successfully"));
     }
 
     private UserSecurityContext resolveSecurityContext(HttpServletRequest request) {

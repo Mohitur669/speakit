@@ -40,6 +40,38 @@ final class AppState {
     var maxProPlusCharacters: Int = 500
     var maxEnterpriseCharacters: Int = 2000
     
+    // Feature Flag: Voice Bridge (dynamically synced from VOICE_BRIDGE_FLAG)
+    var isVoiceBridgeEnabled: Bool = false
+    
+    // Web host URL for plan management & billing.
+    // - Simulator: always http://localhost:4200 (Angular dev server)
+    // - Physical device: reads WEB_HOST_URL from xcconfig → Info.plist,
+    //   falls back to https://speakit.mohitur.com if unresolved.
+    // Override per build target in Local.xcconfig: WEB_HOST_URL = https://your-host.com
+    var webHostUrl: String = {
+        #if targetEnvironment(simulator)
+        return "http://localhost:4200"
+        #else
+        if let url = Bundle.main.object(forInfoDictionaryKey: "WEB_HOST_URL") as? String,
+           !url.isEmpty,
+           url != "$(WEB_HOST_URL)" {
+            return url.trimmingCharacters(in: CharacterSet(charactersIn: "/ "))
+        }
+        return "https://speakit.mohitur.com"
+        #endif
+    }()
+    
+    // Manage Plan URL constructed with /settings/plan in code
+    var managePlanUrlWeb: String {
+        let base = webHostUrl
+            .replacingOccurrences(of: "/settings/plan", with: "")
+            .trimmingCharacters(in: CharacterSet(charactersIn: "/ "))
+        if base.isEmpty {
+            return "http://localhost:4200/settings/plan"
+        }
+        return "\(base)/settings/plan"
+    }
+    
     private init() {
         // Support UI test / automation argument
         if ProcessInfo.processInfo.arguments.contains("-mockAuth") ||
@@ -116,30 +148,7 @@ final class AppState {
         
         do {
             let user: User = try await HTTPClient.shared.request(.userProfile)
-            // Ensure we never regress to an older character count due to server async write latency
-            if let current = self.currentUser, current.id == user.id {
-                let resolvedCharactersUsed = max(current.charactersUsed, user.charactersUsed)
-                self.currentUser = User(
-                    id: user.id,
-                    username: user.username,
-                    email: user.email,
-                    fullName: user.fullName,
-                    role: user.role,
-                    planType: user.planType,
-                    status: user.status,
-                    subscriptionStatus: user.subscriptionStatus,
-                    planExpiry: user.planExpiry,
-                    characterLimit: user.characterLimit,
-                    charactersUsed: resolvedCharactersUsed,
-                    phoneNumber: user.phoneNumber,
-                    avatarUrl: user.avatarUrl,
-                    dailyCount: user.dailyCount,
-                    dailyLimit: user.dailyLimit,
-                    emailVerified: user.emailVerified
-                )
-            } else {
-                self.currentUser = user
-            }
+            self.currentUser = user
         } catch {
             print("Failed to load user profile: \(error)")
             // If offline, use cached or mock user so app remains functional for testing
@@ -214,9 +223,20 @@ final class AppState {
                     "MAX_FREE_CHARACTERS",
                     "MAX_PRO_CHARACTERS",
                     "MAX_PRO_PLUS_CHARACTERS",
-                    "MAX_ENTERPRISE_CHARACTERS"
+                    "MAX_ENTERPRISE_CHARACTERS",
+                    "MANAGE_PLAN_URL_WEB",
+                    "VOICE_BRIDGE_FLAG"
                 ])
             )
+            
+            if let hostParam = params["MANAGE_PLAN_URL_WEB"], !hostParam.trimmingCharacters(in: .whitespaces).isEmpty {
+                let cleanHost = hostParam
+                    .replacingOccurrences(of: "/settings/plan", with: "")
+                    .trimmingCharacters(in: CharacterSet(charactersIn: "/ "))
+                if !cleanHost.isEmpty {
+                    self.webHostUrl = cleanHost
+                }
+            }
             
             if let freePrice = params["IOS_FREE_PLAN_PRICE"], !freePrice.trimmingCharacters(in: .whitespaces).isEmpty {
                 self.freePriceDisplay = formatPrice(freePrice)
@@ -266,6 +286,10 @@ final class AppState {
             }
             if let entMax = params["MAX_ENTERPRISE_CHARACTERS"], let val = Int(entMax.trimmingCharacters(in: .whitespacesAndNewlines)) {
                 self.maxEnterpriseCharacters = val
+            }
+            if let bridgeFlag = params["VOICE_BRIDGE_FLAG"] {
+                let clean = bridgeFlag.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+                self.isVoiceBridgeEnabled = (clean == "Y" || clean == "TRUE" || clean == "1")
             }
         } catch {
             // Keep existing defaults on network error

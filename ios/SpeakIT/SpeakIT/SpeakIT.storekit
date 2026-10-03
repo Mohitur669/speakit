@@ -1,0 +1,130 @@
+{
+  "identifier" : "E2B7A091",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+
+  ],
+  "settings" : {
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Load Products"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Purchase"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Verification"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Store Sync"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Subscription Status"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Transaction"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Manage Subscriptions Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Refund Request Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Offer Code Redeem Sheet"
+      }
+    ]
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "7E4A8F90",
+      "localizations" : [
+        {
+          "description" : "SpeakIT Subscriptions",
+          "displayName" : "SpeakIT Subscriptions",
+          "locale" : "en_US"
+        }
+      ],
+      "name" : "SpeakIT Tiers",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "9.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "4F62A123",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Access to Neural Voices and 5,000 monthly character quota",
+              "displayName" : "SpeakIT Pro",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.speakit.pro",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "SpeakIT Pro",
+          "subscriptionGroupID" : "7E4A8F90",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "19.99",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "5A73B456",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "ElevenLabs Indian AI voices and 10,000 monthly character quota",
+              "displayName" : "SpeakIT Pro Plus",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.speakit.proplus",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "SpeakIT Pro Plus",
+          "subscriptionGroupID" : "7E4A8F90",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

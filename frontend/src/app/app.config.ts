@@ -99,6 +99,11 @@ const routes = [
     canActivate: [authGuard]
   },
   {
+    path: 'settings/plan',
+    loadComponent: () => import('./features/user/manage-plan/manage-plan.component').then(m => m.ManagePlanComponent),
+    canActivate: [authGuard]
+  },
+  {
     path: 'settings/payments',
     loadComponent: () => import('./features/user/payment-history/payment-history.component').then(m => m.PaymentHistoryComponent),
     canActivate: [authGuard]

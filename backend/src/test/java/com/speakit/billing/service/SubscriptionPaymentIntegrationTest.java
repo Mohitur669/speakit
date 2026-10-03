@@ -53,7 +53,9 @@ class SubscriptionPaymentIntegrationTest {
         subscriptionManagementService = new SubscriptionManagementService(
                 userRepository,
                 subscriptionRepository,
-                null
+                null,
+                paymentRepository,
+                systemParameterService
         );
 
         razorpayService = new RazorpayService(

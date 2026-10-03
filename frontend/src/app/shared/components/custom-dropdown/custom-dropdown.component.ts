@@ -59,7 +59,7 @@ export interface DropdownOption {
               <button
                 type="button"
                 (click)="select(option)"
-                class="w-full flex items-center gap-3 px-4 py-3 text-sm text-left transition-colors"
+                class="w-full flex items-center gap-3 px-4 py-3 text-sm text-left transition-colors whitespace-nowrap truncate"
                 [class.bg-primary-50]="option.value === value"
                 [class.dark:bg-primary-800]="option.value === value"
                 [class.text-brand-blue]="option.value === value"
@@ -69,7 +69,7 @@ export interface DropdownOption {
                 [class.hover:bg-primary-50]="option.value !== value"
                 [class.dark:hover:bg-primary-800]="option.value !== value"
               >
-                {{ option.label }}
+                <span class="truncate">{{ option.label }}</span>
               </button>
             }
           </div>
