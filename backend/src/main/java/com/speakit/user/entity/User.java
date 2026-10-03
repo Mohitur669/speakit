@@ -92,4 +92,22 @@ public class User extends BaseEntity {
 
     @Column(name = "consent_timestamp")
     private java.time.LocalDateTime consentTimestamp;
+
+    // ── Usage Ledger ──────────────────────────────────────────────────────────
+    // Write-forward accumulators: only ever incremented when a synthesis is
+    // completed. NEVER decremented by history deletes. usageMonth tracks which
+    // billing month these counters belong to; the service resets them to 0 when
+    // a new calendar month begins.
+
+    @Column(name = "monthly_tts_chars_used", nullable = false)
+    @Builder.Default
+    private long monthlyTtsCharsUsed = 0L;
+
+    @Column(name = "monthly_stt_chars_used", nullable = false)
+    @Builder.Default
+    private long monthlySttCharsUsed = 0L;
+
+    @Column(name = "usage_month", nullable = false)
+    @Builder.Default
+    private java.time.LocalDate usageMonth = java.time.LocalDate.now().withDayOfMonth(1);
 }

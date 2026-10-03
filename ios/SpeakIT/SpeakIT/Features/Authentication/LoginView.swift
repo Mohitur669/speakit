@@ -167,26 +167,6 @@ struct LoginView: View {
                 showOAuthNotice = true
             }) {
                 HStack(spacing: 8) {
-                    Image(systemName: "apple.logo")
-                        .font(.system(size: 16, weight: .semibold))
-                    Text("Continue with Apple")
-                        .font(.system(size: 15, weight: .semibold))
-                }
-                .frame(maxWidth: .infinity)
-                .frame(height: SpeakITSpacing.inputHeight)
-                .background(Color.speakitCardSurface)
-                .foregroundColor(Color.speakitTextPrimary)
-                .cornerRadius(SpeakITSpacing.inputRadius)
-                .overlay(
-                    RoundedRectangle(cornerRadius: SpeakITSpacing.inputRadius)
-                        .stroke(Color.speakitBorder, lineWidth: 1)
-                )
-            }
-            
-            Button(action: {
-                showOAuthNotice = true
-            }) {
-                HStack(spacing: 8) {
                     Text("G")
                         .font(.system(size: 16, weight: .bold))
                         .foregroundColor(.blue)

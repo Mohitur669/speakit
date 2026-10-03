@@ -104,11 +104,17 @@ struct SpeakITHistoryRow: View {
             
             Spacer()
             
-            // Timestamp and optional chevron
+            // Timestamp (Date and Time in AM/PM directly stamped) and optional chevron
             HStack(spacing: 6) {
-                Text(item.timeAgoFormatted)
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(Color.speakitTextTertiary)
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(item.formattedDate)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(Color.speakitTextSecondary)
+                    
+                    Text(item.formattedTime)
+                        .font(.system(size: 10, weight: .regular))
+                        .foregroundColor(Color.speakitTextTertiary)
+                }
                 
                 if !isSelectionMode {
                     Image(systemName: "chevron.right")

@@ -50,12 +50,20 @@ struct STTStudioView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
-                // Title
-                HStack {
+                // Title & Quota Header Row
+                HStack(alignment: .center) {
                     Text("Transcribe")
                         .font(.system(size: 30, weight: .bold))
                         .foregroundColor(Color.speakitTextPrimary)
+                    
                     Spacer()
+                    
+                    // Quota Badge
+                    let remaining = appState.currentUser?.remainingCharacters ?? 1450
+                    SpeakITQuotaBadge(text: "\(remaining.formatted()) left")
+                        .accessibilityIdentifier("stt.quota")
+                        .contentTransition(.numericText())
+                        .animation(.easeInOut(duration: 0.25), value: remaining)
                 }
                 .padding(.top, 8)
                 

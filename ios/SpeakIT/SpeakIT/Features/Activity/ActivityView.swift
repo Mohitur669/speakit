@@ -22,21 +22,24 @@ struct ActivityView: View {
     
     enum ActivityFilter: String, CaseIterable, Identifiable {
         case all = "ALL"
-        case tts = "TTS"
-        case stt = "STT"
+        case translate = "TRANSLATE"
+        case transcribe = "TRANSCRIBE"
+        case liveChat = "LIVE"
         
         var id: String { rawValue }
         
         var displayName: String {
             switch self {
             case .all: return "All"
-            case .tts: return "TTS"
-            case .stt: return "STT"
+            case .translate: return "Translate"
+            case .transcribe: return "Transcribe"
+            case .liveChat: return "Live Chat"
             }
         }
     }
     
     @State private var selectedFilter: ActivityFilter = .all
+    @State private var selectedLiveChatItem: HistoryItem? = nil
     
     @State private var selectedHistoryItem: HistoryItem? = nil
     @State private var isSelectionMode: Bool = false
@@ -197,10 +200,6 @@ struct ActivityView: View {
                     .pickerStyle(.segmented)
                     .onChange(of: selectedFilter) { _, _ in
                         HapticManager.shared.selection()
-                        historyItems.removeAll()
-                        Task {
-                            await loadInitialHistory()
-                        }
                     }
                     
                     // History List with Paginated LazyVStack
@@ -213,33 +212,35 @@ struct ActivityView: View {
                                 .padding(.vertical, 32)
                             Spacer()
                         }
-                    } else if historyItems.isEmpty {
+                    } else if filteredHistoryItems.isEmpty {
                         SpeakITEmptyState(
-                            icon: selectedFilter == .stt ? "mic.slash" : "clock.arrow.circlepath",
-                            title: selectedFilter == .stt ? "No STT Transcriptions" : (selectedFilter == .tts ? "No TTS Audio" : "No Generations Yet"),
-                            description: selectedFilter == .stt
-                                ? "Your Speech-to-Text audio transcriptions will appear here once you record or upload audio in STT Studio."
-                                : "Your recent Text-to-Speech audio and transcriptions will appear here."
+                            icon: emptyStateIcon,
+                            title: emptyStateTitle,
+                            description: emptyStateDescription
                         )
                     } else {
                         LazyVStack(spacing: 10) {
-                            ForEach(historyItems) { item in
-                                SpeakITHistoryRow(
-                                    item: item,
-                                    isPlaying: (playingItemId == item.id) && playerManager.isPlaying,
-                                    isLoading: loadingItemId == item.id,
-                                    isSelectionMode: isSelectionMode,
-                                    isSelected: selectedItemIds.contains(item.id),
-                                    onSelect: {
-                                        toggleSelection(for: item.id)
-                                    },
-                                    onTap: {
-                                        selectedHistoryItem = item
-                                    },
-                                    onPlay: {
-                                        playHistoryItem(item)
-                                    }
-                                )
+                            ForEach(filteredHistoryItems) { item in
+                                if item.isLiveChat {
+                                    liveChatHistoryCard(item)
+                                } else {
+                                    SpeakITHistoryRow(
+                                        item: item,
+                                        isPlaying: (playingItemId == item.id) && playerManager.isPlaying,
+                                        isLoading: loadingItemId == item.id,
+                                        isSelectionMode: isSelectionMode,
+                                        isSelected: selectedItemIds.contains(item.id),
+                                        onSelect: {
+                                            toggleSelection(for: item.id)
+                                        },
+                                        onTap: {
+                                            selectedHistoryItem = item
+                                        },
+                                        onPlay: {
+                                            playHistoryItem(item)
+                                        }
+                                    )
+                                }
                             }
                             
                             // Controlled Pagination Footer
@@ -314,6 +315,9 @@ struct ActivityView: View {
                     }
                 }
             }
+            .sheet(item: $selectedLiveChatItem) { item in
+                LiveChatDetailView(item: item)
+            }
             .alert("Delete Selected Items", isPresented: $showDeleteSelectedConfirmation) {
                 Button("Cancel", role: .cancel) {}
                 Button("Delete", role: .destructive) {
@@ -337,6 +341,7 @@ struct ActivityView: View {
                 Text("Are you sure you want to clear your generation logs?")
             }
             .task(id: selectedFilter) {
+                historyItems.removeAll()
                 await loadInitialHistory()
                 await appState.loadCurrentUser()
                 appState.isHistoryDirty = false
@@ -431,6 +436,163 @@ struct ActivityView: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("activity.pageSizeSelector")
+    }
+    
+    // MARK: - Filtered Items & Empty States
+    private var filteredHistoryItems: [HistoryItem] {
+        switch selectedFilter {
+        case .all:
+            return historyItems
+        case .translate:
+            return historyItems.filter { $0.isTTS }
+        case .transcribe:
+            return historyItems.filter { $0.isSTT }
+        case .liveChat:
+            return historyItems.filter { $0.isLiveChat }
+        }
+    }
+    
+    private var emptyStateIcon: String {
+        switch selectedFilter {
+        case .all: return "clock.arrow.circlepath"
+        case .translate: return "waveform"
+        case .transcribe: return "mic.fill"
+        case .liveChat: return "bubble.left.and.bubble.right.fill"
+        }
+    }
+    
+    private var emptyStateTitle: String {
+        switch selectedFilter {
+        case .all: return "No Activity Yet"
+        case .translate: return "No Translations"
+        case .transcribe: return "No Transcriptions"
+        case .liveChat: return "No Live Sessions"
+        }
+    }
+    
+    private var emptyStateDescription: String {
+        switch selectedFilter {
+        case .all: return "Your generated speech, transcriptions, and live conversations will appear here."
+        case .translate: return "Synthesize speech in the Translate tab to view your generation history."
+        case .transcribe: return "Transcribe audio files or speech in the Transcribe tab to see records."
+        case .liveChat: return "Start a Face-to-Face conversation in Live mode to save dialogue logs."
+        }
+    }
+    
+    // MARK: - Live Chat History Card (SpeakIT Design System Aligned)
+    private func liveChatHistoryCard(_ item: HistoryItem) -> some View {
+        let isSelected = selectedItemIds.contains(item.id)
+        let turns = item.liveChatTurnCount
+        
+        return HStack(spacing: 14) {
+            if isSelectionMode {
+                // Multiselect Checkbox
+                Button(action: {
+                    HapticManager.shared.selection()
+                    toggleSelection(for: item.id)
+                }) {
+                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundColor(isSelected ? Color.speakitPrimary : Color.speakitTextTertiary)
+                        .frame(width: 36, height: 36)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(isSelected ? "Selected" : "Not selected")
+            } else {
+                // Live Chat Icon Badge
+                Button(action: {
+                    HapticManager.shared.light()
+                    selectedLiveChatItem = item
+                }) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.speakitBadgeBackground)
+                            .frame(width: 36, height: 36)
+                        
+                        Image(systemName: "bubble.left.and.bubble.right.fill")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(Color.speakitPrimary)
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("View Live Conversation \(item.liveChatTitle)")
+            }
+            
+            // Title & Subtitle Info
+            VStack(alignment: .leading, spacing: 3) {
+                Text(item.liveChatTitle)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(Color.speakitTextPrimary)
+                    .lineLimit(1)
+                
+                HStack(spacing: 6) {
+                    Text("\(turns) \(turns == 1 ? "turn" : "turns")")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(Color.speakitTextSecondary)
+                    
+                    Text("•")
+                        .font(.system(size: 10))
+                        .foregroundColor(Color.speakitTextTertiary)
+                    
+                    Text("Live Session")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(Color.speakitPrimary)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.speakitBadgeBackground)
+                        .clipShape(Capsule())
+                }
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                if isSelectionMode {
+                    HapticManager.shared.selection()
+                    toggleSelection(for: item.id)
+                } else {
+                    HapticManager.shared.light()
+                    selectedLiveChatItem = item
+                }
+            }
+            
+            Spacer()
+            
+            // Timestamp (Date & Time in AM/PM directly stamped) and optional chevron
+            HStack(spacing: 6) {
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(item.formattedDate)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(Color.speakitTextSecondary)
+                    
+                    Text(item.formattedTime)
+                        .font(.system(size: 10, weight: .regular))
+                        .foregroundColor(Color.speakitTextTertiary)
+                }
+                
+                if !isSelectionMode {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(Color.speakitTextTertiary.opacity(0.7))
+                }
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                if isSelectionMode {
+                    HapticManager.shared.selection()
+                    toggleSelection(for: item.id)
+                } else {
+                    HapticManager.shared.light()
+                    selectedLiveChatItem = item
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .frame(height: 70)
+        .background(isSelected ? Color.speakitBadgeBackground.opacity(0.7) : Color.speakitCardSurface)
+        .cornerRadius(14)
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(isSelected ? Color.speakitPrimary : Color.speakitBorder, lineWidth: isSelected ? 1.5 : 1)
+        )
     }
     
     private func toggleSelection(for itemId: Int64) {
@@ -558,8 +720,10 @@ struct ActivityView: View {
     }
     
     private func refreshAll() async {
-        await appState.loadCurrentUser()
-        await loadInitialHistory()
+        // Refresh history and user profile concurrently to prevent UI re-evaluation cancelling history fetch
+        async let userTask: Void = appState.loadCurrentUser()
+        async let historyTask: Void = loadInitialHistory()
+        _ = await (userTask, historyTask)
         appState.isHistoryDirty = false
     }
     
@@ -580,16 +744,23 @@ struct ActivityView: View {
                     self.historyItems = items
                     self.hasMorePages = !response.isLastPage && (items.count == self.pageSize)
                 } else {
-                    self.historyItems = []
+                    if self.historyItems.isEmpty {
+                        self.historyItems = []
+                    }
                     self.hasMorePages = false
                 }
             }
         } catch {
             await MainActor.run {
                 self.isLoadingInitial = false
-                print("Failed to fetch history from backend: \(error)")
-                self.historyItems = []
-                self.hasMorePages = false
+                if !(error is CancellationError) && (error as? URLError)?.code != .cancelled {
+                    print("Failed to fetch history from backend: \(error)")
+                }
+                // Never clear existing history items on refresh error or gesture cancellation
+                if self.historyItems.isEmpty {
+                    self.historyItems = []
+                    self.hasMorePages = false
+                }
             }
         }
     }
@@ -630,6 +801,8 @@ struct ActivityView: View {
     }
 }
 
+private struct ActivityDummyCodable: Codable {}
+
 // MARK: - Spring Boot Paged Response DTO
 struct HistoryPageMetadata: Codable {
     let size: Int?
@@ -645,6 +818,44 @@ struct HistoryPageResponse: Codable {
     let totalElements: Int?
     let last: Bool?
     let numberOfElements: Int?
+    
+    enum CodingKeys: String, CodingKey {
+        case content, page, totalPages, totalElements, last, numberOfElements
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.page = try? container.decode(HistoryPageMetadata.self, forKey: .page)
+        self.totalPages = try? container.decode(Int.self, forKey: .totalPages)
+        self.totalElements = try? container.decode(Int.self, forKey: .totalElements)
+        self.last = try? container.decode(Bool.self, forKey: .last)
+        self.numberOfElements = try? container.decode(Int.self, forKey: .numberOfElements)
+        
+        // Resilient array decoding: if any single item has unexpected structure, preserve all other items!
+        if var contentArray = try? container.nestedUnkeyedContainer(forKey: .content) {
+            var items: [HistoryItem] = []
+            while !contentArray.isAtEnd {
+                if let item = try? contentArray.decode(HistoryItem.self) {
+                    items.append(item)
+                } else {
+                    _ = try? contentArray.decode(ActivityDummyCodable.self)
+                }
+            }
+            self.content = items
+        } else {
+            self.content = try? container.decode([HistoryItem].self, forKey: .content)
+        }
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encodeIfPresent(content, forKey: .content)
+        try container.encodeIfPresent(page, forKey: .page)
+        try container.encodeIfPresent(totalPages, forKey: .totalPages)
+        try container.encodeIfPresent(totalElements, forKey: .totalElements)
+        try container.encodeIfPresent(last, forKey: .last)
+        try container.encodeIfPresent(numberOfElements, forKey: .numberOfElements)
+    }
     
     var isLastPage: Bool {
         if let l = last {
