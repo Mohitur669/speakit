@@ -569,3 +569,9 @@ COMMENT ON COLUMN users.usage_month            IS 'Billing month this accumulato
 -- Allows language column to store multiple codes (e.g. 'hi-IN, en-IN') up to 50 chars
 -- ─────────────────────────────────────────────────────────────────────────────
 ALTER TABLE speech_to_text_requests ALTER COLUMN language TYPE VARCHAR(50);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Client-Generated Unique Session UUID (Idempotency Key for Live Sessions)
+-- ─────────────────────────────────────────────────────────────────────────────
+ALTER TABLE speech_to_text_requests ADD COLUMN IF NOT EXISTS session_id VARCHAR(64);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_stt_user_session_id ON speech_to_text_requests(user_id, session_id) WHERE session_id IS NOT NULL;

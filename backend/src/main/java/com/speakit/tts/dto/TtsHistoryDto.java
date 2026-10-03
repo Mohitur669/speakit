@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class TtsHistoryDto {
     private Long id;
+    private String sessionId;
     private String voiceId;
     private String voiceName;
     private String voiceType; // STANDARD, NEURAL, NATURAL, INDIAN, or STT

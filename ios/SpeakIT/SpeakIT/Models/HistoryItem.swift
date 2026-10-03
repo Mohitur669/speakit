@@ -9,6 +9,7 @@ import Foundation
 
 struct HistoryItem: Codable, Identifiable {
     let id: Int64
+    let sessionId: String?
     let textSnippet: String
     let fullText: String?
     let characterCount: Int
@@ -25,6 +26,7 @@ struct HistoryItem: Codable, Identifiable {
     
     init(
         id: Int64,
+        sessionId: String? = nil,
         textSnippet: String,
         fullText: String? = nil,
         characterCount: Int = 0,
@@ -40,6 +42,7 @@ struct HistoryItem: Codable, Identifiable {
         status: String? = nil
     ) {
         self.id = id
+        self.sessionId = sessionId
         self.textSnippet = textSnippet
         self.fullText = fullText
         self.characterCount = characterCount
@@ -56,7 +59,7 @@ struct HistoryItem: Codable, Identifiable {
     }
     
     enum CodingKeys: String, CodingKey {
-        case id, textSnippet, fullText, characterCount, voiceId, voiceName, engineType, voiceType, createdAt, audioUrl, transliteration, mode, filename, status
+        case id, sessionId, textSnippet, fullText, characterCount, voiceId, voiceName, engineType, voiceType, createdAt, audioUrl, transliteration, mode, filename, status
     }
     
     init(from decoder: Decoder) throws {
@@ -71,6 +74,7 @@ struct HistoryItem: Codable, Identifiable {
             self.id = Int64(abs(UUID().hashValue))
         }
         self.textSnippet = (try? container.decode(String.self, forKey: .textSnippet)) ?? "Audio generation"
+        self.sessionId = try? container.decode(String.self, forKey: .sessionId)
         self.fullText = try? container.decode(String.self, forKey: .fullText)
         self.characterCount = (try? container.decode(Int.self, forKey: .characterCount)) ?? 0
         self.voiceId = try? container.decode(String.self, forKey: .voiceId)
@@ -96,6 +100,7 @@ struct HistoryItem: Codable, Identifiable {
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
+        try container.encodeIfPresent(sessionId, forKey: .sessionId)
         try container.encode(textSnippet, forKey: .textSnippet)
         try container.encodeIfPresent(fullText, forKey: .fullText)
         try container.encode(characterCount, forKey: .characterCount)

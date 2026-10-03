@@ -148,7 +148,11 @@ final class AppState {
         
         do {
             let user: User = try await HTTPClient.shared.request(.userProfile)
-            self.currentUser = user
+            var mergedUser = user
+            if let current = self.currentUser {
+                mergedUser.charactersUsed = max(user.charactersUsed, current.charactersUsed)
+            }
+            self.currentUser = mergedUser
         } catch {
             print("Failed to load user profile: \(error)")
             // If offline, use cached or mock user so app remains functional for testing

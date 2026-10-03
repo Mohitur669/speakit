@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class SaveLiveSessionRequest {
     private Long id; // Optional existing session/history ID to update if continuing an existing session
+    private String sessionId; // Client-generated unique session UUID (Idempotency key)
     private String sessionType; // "CONVERSATION" or "SOLO"
     private String title; // "Live Conversation" or "Live Dictation"
     private String language; // "hi-IN" or "hi-IN, en-IN"
