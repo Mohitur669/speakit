@@ -86,6 +86,10 @@ struct LiveTranscriptionView: View {
     @State private var bannerMessage: String? = nil
     
     // Conversation Mode States & Editable Speaker Names
+    @State private var isConversationSessionStarted: Bool = false
+    @State private var sessionTitle: String = ""
+    @State private var showNewSessionConfirmation: Bool = false
+    
     @State private var speaker1Name: String = "Speaker 1"
     @State private var speaker2Name: String = "Speaker 2"
     @State private var editingSpeaker: SpeakerSide? = nil
@@ -97,6 +101,13 @@ struct LiveTranscriptionView: View {
     @State private var activeSpeaker: SpeakerSide? = nil
     @State private var conversationHistory: [ConversationBubble] = []
     @State private var swapRotation: Double = 0
+    
+    // Previous Sessions Hub & Duplicate Save Guard
+    @State private var previousLiveSessions: [HistoryItem] = []
+    @State private var isLoadingPreviousSessions: Bool = false
+    @State private var currentSessionId: Int64? = nil
+    @State private var lastPersistedTranscript: String? = nil
+    @State private var isPersistingSession: Bool = false
     
     private let availableLanguages: [(code: String, name: String)] = [
         ("auto", "Auto (Detect)"),
@@ -206,8 +217,26 @@ struct LiveTranscriptionView: View {
         } message: {
             Text("Enter a custom name for this speaker.")
         }
+        .alert("Start New Session?", isPresented: $showNewSessionConfirmation) {
+            Button("Cancel", role: .cancel) {}
+            Button("Save & Start New", role: .none) {
+                persistCurrentSessionHistory()
+                conversationHistory.removeAll()
+                sessionTitle = ""
+                withAnimation {
+                    isConversationSessionStarted = false
+                }
+            }
+        } message: {
+            Text("Your current conversation will be saved to your Activity history logs.")
+        }
         .speakITToast(message: $liveService.errorMessage, style: .error, bottomPadding: 90)
         .speakITToast(message: $bannerMessage, style: .info, bottomPadding: 90)
+        .onAppear {
+            Task {
+                await fetchPreviousLiveSessions()
+            }
+        }
         .onDisappear {
             if liveService.isRecording {
                 liveService.stopSession()
@@ -610,9 +639,9 @@ struct LiveTranscriptionView: View {
             
             Button(action: {
                 if liveService.isRecording {
-                    let partial = liveService.partialTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
-                    if !partial.isEmpty {
-                        appState.recordCharacterUsage(partial.count)
+                    let text = liveService.fullTranscriptText.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !text.isEmpty {
+                        appState.recordCharacterUsage(text.count)
                     }
                     liveService.stopSession()
                     persistCurrentSessionHistory()
@@ -621,6 +650,12 @@ struct LiveTranscriptionView: View {
                         HapticManager.shared.warning()
                         appState.showPaywallSheet = true
                         bannerMessage = "Live Transcription requires a Pro plan or higher."
+                        return
+                    }
+                    if let user = appState.currentUser, user.remainingCharacters <= 0 {
+                        HapticManager.shared.warning()
+                        appState.showPaywallSheet = true
+                        bannerMessage = "Character quota exhausted. Please upgrade your plan."
                         return
                     }
                     Task {
@@ -669,65 +704,467 @@ struct LiveTranscriptionView: View {
     // MARK: - 6. Face-to-Face Two-Person Conversation View
     private var conversationView: some View {
         VStack(spacing: 0) {
+            if !isConversationSessionStarted {
+                faceToFaceSessionLauncher
+            } else {
+                activeConversationDialogueView
+            }
+        }
+    }
+    
+    // MARK: - Active Session Top Toolbar
+    private var activeConversationTopBar: some View {
+        HStack(spacing: 8) {
+            // Live indicator & title
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(liveService.isRecording ? Color.red : Color.speakitSuccess)
+                    .frame(width: 8, height: 8)
+                
+                Text(resolvedSessionTitle)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(Color.speakitTextPrimary)
+                    .lineLimit(1)
+            }
+            
+            Spacer()
+            
+            // "New Session" button
+            Button(action: {
+                showNewSessionConfirmation = true
+            }) {
+                HStack(spacing: 4) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 10, weight: .bold))
+                    Text("New")
+                        .font(.system(size: 12, weight: .bold))
+                }
+                .foregroundColor(Color.speakitPrimary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Color.speakitBadgeBackground)
+                .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            
+            // "End & Save" button
+            Button(action: {
+                persistCurrentSessionHistory()
+                withAnimation {
+                    isConversationSessionStarted = false
+                    conversationHistory.removeAll()
+                    sessionTitle = ""
+                    currentSessionId = nil
+                    lastPersistedTranscript = nil
+                }
+            }) {
+                HStack(spacing: 4) {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 10, weight: .bold))
+                    Text("End")
+                        .font(.system(size: 12, weight: .bold))
+                }
+                .foregroundColor(Color.speakitTextSecondary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Color.speakitCardSurface)
+                .clipShape(Capsule())
+                .overlay(Capsule().stroke(Color.speakitBorder, lineWidth: 1))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, SpeakITSpacing.screenMargin)
+        .padding(.vertical, 8)
+        .background(Color.speakitCardSurface)
+        .overlay(
+            Rectangle().frame(height: 1).foregroundColor(Color.speakitBorder),
+            alignment: .bottom
+        )
+    }
+    
+    // MARK: - Face-to-Face Session Setup Launcher
+    private var faceToFaceSessionLauncher: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+
+                // ── Title ──────────────────────────────────────────────────
+                VStack(spacing: 4) {
+                    Text("New Session")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundColor(Color.speakitTextPrimary)
+                    Text("Set up speakers before starting.")
+                        .font(.system(size: 13))
+                        .foregroundColor(Color.speakitTextSecondary)
+                }
+                .padding(.top, 8)
+
+                // ── Grouped Setup Card ─────────────────────────────────────
+                VStack(spacing: 0) {
+
+                    // Session Name row
+                    rowContainer {
+                        HStack(spacing: 8) {
+                            Text("Session Name")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(Color.speakitTextPrimary)
+                            Spacer()
+                            TextField("Optional name…", text: $sessionTitle)
+                                .font(.system(size: 13))
+                                .foregroundColor(Color.speakitTextSecondary)
+                                .multilineTextAlignment(.trailing)
+                            
+                            Button(action: {
+                                HapticManager.shared.light()
+                                sessionTitle = generateDefaultSessionName()
+                            }) {
+                                Image(systemName: "dice")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(Color.speakitTextTertiary)
+                                    .frame(width: 20, height: 20)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Generate random session name")
+                        }
+                    }
+
+                    rowDivider
+
+                    // Speaker 1 row
+                    rowContainer {
+                        HStack(spacing: 8) {
+                            Circle()
+                                .fill(Color.speakitPrimary)
+                                .frame(width: 8, height: 8)
+
+                            HStack(spacing: 4) {
+                                TextField("Speaker 1", text: $speaker1Name)
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(Color.speakitTextPrimary)
+                                    .lineLimit(1)
+                                    .fixedSize(horizontal: true, vertical: false)
+
+                                Button(action: {
+                                    tempSpeakerName = speaker1Name
+                                    editingSpeaker = .personA
+                                    showRenameAlert = true
+                                }) {
+                                    Image(systemName: "pencil")
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundColor(Color.speakitTextTertiary)
+                                        .frame(width: 18, height: 18)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .frame(maxWidth: 170, alignment: .leading)
+
+                            Spacer()
+                            languagePicker(code: $personALang, accentColor: Color.speakitPrimary)
+                        }
+                    }
+
+                    // Swap button — flush between the two speaker rows
+                    HStack {
+                        Spacer()
+                        Button(action: {
+                            HapticManager.shared.selection()
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                swapRotation += 180
+                                let tmp = personALang
+                                personALang = personBLang
+                                personBLang = tmp
+                            }
+                        }) {
+                            Image(systemName: "arrow.up.arrow.down")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(Color.speakitPrimary)
+                                .rotationEffect(.degrees(swapRotation))
+                        }
+                        .padding(.horizontal, SpeakITSpacing.screenMargin)
+                        .padding(.vertical, 2)
+                        Spacer()
+                    }
+                    .background(Color.speakitCardSurface)
+                    .overlay(Rectangle().frame(height: 0.4).foregroundColor(Color.speakitBorder), alignment: .top)
+                    .overlay(Rectangle().frame(height: 0.4).foregroundColor(Color.speakitBorder), alignment: .bottom)
+
+                    // Speaker 2 row
+                    rowContainer {
+                        HStack(spacing: 8) {
+                            Circle()
+                                .fill(Color.speakitSecondary)
+                                .frame(width: 8, height: 8)
+
+                            HStack(spacing: 4) {
+                                TextField("Speaker 2", text: $speaker2Name)
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(Color.speakitTextPrimary)
+                                    .lineLimit(1)
+                                    .fixedSize(horizontal: true, vertical: false)
+
+                                Button(action: {
+                                    tempSpeakerName = speaker2Name
+                                    editingSpeaker = .personB
+                                    showRenameAlert = true
+                                }) {
+                                    Image(systemName: "pencil")
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundColor(Color.speakitTextTertiary)
+                                        .frame(width: 18, height: 18)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .frame(maxWidth: 170, alignment: .leading)
+
+                            Spacer()
+                            languagePicker(code: $personBLang, accentColor: Color.speakitSecondary)
+                        }
+                    }
+                }
+                .background(Color.speakitCardSurface)
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.speakitBorder, lineWidth: 0.5))
+
+                // ── Start CTA ──────────────────────────────────────────────
+                Button(action: {
+                    if let user = appState.currentUser, user.remainingCharacters <= 0 {
+                        HapticManager.shared.warning()
+                        appState.showPaywallSheet = true
+                        bannerMessage = "Character quota exhausted. Please upgrade your plan."
+                        return
+                    }
+                    HapticManager.shared.success()
+                    withAnimation {
+                        currentSessionId = nil
+                        lastPersistedTranscript = nil
+                        conversationHistory.removeAll()
+                        if sessionTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            sessionTitle = generateDefaultSessionName()
+                        }
+                        isConversationSessionStarted = true
+                    }
+                }) {
+                    Text("Start Session")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 46)
+                        .background(Color.speakitPrimary)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+
+                // ── Previous Sessions Section ──────────────────────────────
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        Text("PREVIOUS SESSIONS")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(Color.speakitTextTertiary)
+                        
+                        Spacer()
+                        
+                        if isLoadingPreviousSessions {
+                            ProgressView()
+                                .scaleEffect(0.7)
+                        } else {
+                            Button(action: {
+                                Task {
+                                    await fetchPreviousLiveSessions()
+                                }
+                            }) {
+                                Image(systemName: "arrow.clockwise")
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundColor(Color.speakitTextTertiary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.top, 8)
+                    
+                    if previousLiveSessions.isEmpty && !isLoadingPreviousSessions {
+                        HStack {
+                            Spacer()
+                            VStack(spacing: 6) {
+                                Image(systemName: "bubble.left.and.bubble.right")
+                                    .font(.system(size: 24))
+                                    .foregroundColor(Color.speakitTextTertiary.opacity(0.6))
+                                Text("No previous sessions found")
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundColor(Color.speakitTextSecondary)
+                                Text("Completed conversations will appear here so you can continue them anytime.")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(Color.speakitTextTertiary)
+                                    .multilineTextAlignment(.center)
+                            }
+                            .padding(.vertical, 20)
+                            Spacer()
+                        }
+                        .background(Color.speakitCardSurface)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.speakitBorder, lineWidth: 0.5))
+                    } else {
+                        VStack(spacing: 8) {
+                            ForEach(previousLiveSessions) { item in
+                                Button(action: {
+                                    HapticManager.shared.selection()
+                                    continuePreviousSession(item)
+                                }) {
+                                    HStack(spacing: 12) {
+                                        ZStack {
+                                            Circle()
+                                                .fill(Color.speakitBadgeBackground)
+                                                .frame(width: 38, height: 38)
+                                            Image(systemName: "bubble.left.and.bubble.right.fill")
+                                                .font(.system(size: 13, weight: .bold))
+                                                .foregroundColor(Color.speakitPrimary)
+                                        }
+                                        
+                                        VStack(alignment: .leading, spacing: 3) {
+                                            Text(item.liveChatTitle)
+                                                .font(.system(size: 14, weight: .semibold))
+                                                .foregroundColor(Color.speakitTextPrimary)
+                                                .lineLimit(1)
+                                            
+                                            HStack(spacing: 6) {
+                                                Text("\(item.liveChatTurnCount) \(item.liveChatTurnCount == 1 ? "turn" : "turns")")
+                                                    .font(.system(size: 11, weight: .medium))
+                                                    .foregroundColor(Color.speakitTextSecondary)
+                                                Text("•")
+                                                    .font(.system(size: 10))
+                                                    .foregroundColor(Color.speakitTextTertiary)
+                                                Text(item.formattedDateAndTime)
+                                                    .font(.system(size: 11))
+                                                    .foregroundColor(Color.speakitTextTertiary)
+                                            }
+                                        }
+                                        
+                                        Spacer()
+                                        
+                                        // "Continue" pill action
+                                        HStack(spacing: 4) {
+                                            Text("Continue")
+                                                .font(.system(size: 11, weight: .semibold))
+                                            Image(systemName: "arrow.right")
+                                                .font(.system(size: 9, weight: .bold))
+                                        }
+                                        .foregroundColor(Color.speakitPrimary)
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 5)
+                                        .background(Color.speakitBadgeBackground)
+                                        .clipShape(Capsule())
+                                    }
+                                    .padding(12)
+                                    .background(Color.speakitCardSurface)
+                                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.speakitBorder, lineWidth: 0.5))
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, SpeakITSpacing.screenMargin)
+            .padding(.bottom, 24)
+        }
+        .refreshable {
+            await fetchPreviousLiveSessions()
+        }
+    }
+
+    // MARK: - Launcher Helpers
+
+    /// A settings-style row container with standard horizontal padding and height.
+    @ViewBuilder
+    private func rowContainer<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        content()
+            .padding(.horizontal, 14)
+            .frame(minHeight: 48)
+            .background(Color.speakitCardSurface)
+    }
+
+    private var rowDivider: some View {
+        Divider()
+            .padding(.leading, 14)
+            .background(Color.speakitBorder)
+    }
+
+    /// Compact language picker pill — tinted with speaker accent colour.
+    @ViewBuilder
+    private func languagePicker(code: Binding<String>, accentColor: Color) -> some View {
+        Menu {
+            ForEach(availableLanguages, id: \.code) { item in
+                Button(action: {
+                    HapticManager.shared.selection()
+                    code.wrappedValue = item.code
+                }) {
+                    HStack {
+                        Text(item.name)
+                        if code.wrappedValue == item.code {
+                            Image(systemName: "checkmark")
+                        }
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Text(availableLanguages.first(where: { $0.code == code.wrappedValue })?.name ?? "—")
+                    .font(.system(size: 12, weight: .medium))
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 9, weight: .semibold))
+            }
+            .foregroundColor(accentColor)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(accentColor.opacity(0.1))
+            .clipShape(Capsule())
+        }
+    }
+    
+    // MARK: - Active Conversation Dialogue View
+    private var activeConversationDialogueView: some View {
+        VStack(spacing: 0) {
+            activeConversationTopBar
+            
             // Conversation Dialogue Scroll
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(spacing: 14) {
-                        if conversationHistory.isEmpty && !liveService.isRecording && liveService.partialTranscript.isEmpty && liveService.committedSegments.isEmpty {
-                            VStack(spacing: 12) {
-                                Spacer(minLength: 50)
-                                Image(systemName: "person.2.wave.2.fill")
-                                    .font(.system(size: 42))
-                                    .foregroundColor(Color.speakitPrimary.opacity(0.75))
-                                Text("Face-to-Face Interpreter")
-                                    .font(.system(size: 19, weight: .bold))
-                                    .foregroundColor(Color.speakitTextPrimary)
-                                Text("Place device between two speakers. Tap either microphone button below to speak turn-by-turn.")
-                                    .font(.system(size: 13))
-                                    .foregroundColor(Color.speakitTextSecondary)
-                                    .multilineTextAlignment(.center)
-                                    .padding(.horizontal, 32)
-                                Spacer(minLength: 50)
-                            }
-                        } else {
-                            ForEach(conversationHistory) { bubble in
-                                conversationTurnCard(bubble)
-                            }
-                            
-                            if liveService.isRecording, let active = activeSpeaker {
-                                let liveSpeech = liveService.fullTranscriptText
-                                let isSpeakerA = active == .personA
-                                HStack {
-                                    if !isSpeakerA { Spacer(minLength: 24) }
-                                    VStack(alignment: isSpeakerA ? .leading : .trailing, spacing: 6) {
-                                        HStack(spacing: 6) {
-                                            Circle()
-                                                .fill(Color.red)
-                                                .frame(width: 8, height: 8)
-                                            Text("\(isSpeakerA ? speaker1Name : speaker2Name) is speaking...")
-                                                .font(.system(size: 11, weight: .bold))
-                                                .foregroundColor(isSpeakerA ? Color.speakitPrimary : Color(hex: "0D9488"))
-                                        }
-                                        Text(liveSpeech.isEmpty ? "Listening for speech..." : liveSpeech)
-                                            .font(.system(size: 15))
-                                            .foregroundColor(liveSpeech.isEmpty ? Color.speakitTextTertiary : Color.speakitTextPrimary)
-                                            .italic()
+                        ForEach(conversationHistory) { bubble in
+                            conversationTurnCard(bubble)
+                        }
+                        
+                        if liveService.isRecording, let active = activeSpeaker {
+                            let liveSpeech = liveService.fullTranscriptText
+                            let isSpeakerA = active == .personA
+                            HStack {
+                                if !isSpeakerA { Spacer(minLength: 24) }
+                                VStack(alignment: isSpeakerA ? .leading : .trailing, spacing: 6) {
+                                    HStack(spacing: 6) {
+                                        Circle()
+                                            .fill(Color.red)
+                                            .frame(width: 8, height: 8)
+                                        Text("\(isSpeakerA ? speaker1Name : speaker2Name) is speaking...")
+                                            .font(.system(size: 11, weight: .bold))
+                                            .foregroundColor(isSpeakerA ? Color.speakitPrimary : Color.speakitSecondary)
                                     }
-                                    .padding(14)
-                                    .background(
-                                        isSpeakerA
-                                            ? Color.speakitBadgeBackground.opacity(0.7)
-                                            : Color(hex: "0D9488").opacity(0.12)
-                                    )
-                                    .cornerRadius(SpeakITSpacing.cardRadius)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: SpeakITSpacing.cardRadius)
-                                            .stroke(isSpeakerA ? Color.speakitPrimary.opacity(0.3) : Color(hex: "0D9488").opacity(0.3), lineWidth: 1)
-                                    )
-                                    if isSpeakerA { Spacer(minLength: 24) }
+                                    Text(liveSpeech.isEmpty ? "Listening for speech..." : liveSpeech)
+                                        .font(.system(size: 15))
+                                        .foregroundColor(liveSpeech.isEmpty ? Color.speakitTextTertiary : Color.speakitTextPrimary)
+                                        .italic()
                                 }
-                                .id("conv-active-turn")
+                                .padding(14)
+                                .background(
+                                    isSpeakerA
+                                        ? Color.speakitBadgeBackground.opacity(0.7)
+                                        : Color.speakitSecondary.opacity(0.12)
+                                )
+                                .cornerRadius(SpeakITSpacing.cardRadius)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: SpeakITSpacing.cardRadius)
+                                        .stroke(isSpeakerA ? Color.speakitPrimary.opacity(0.3) : Color.speakitSecondary.opacity(0.3), lineWidth: 1)
+                                )
+                                if isSpeakerA { Spacer(minLength: 24) }
                             }
+                            .id("conv-active-turn")
                         }
                     }
                     .padding(.horizontal, SpeakITSpacing.screenMargin)
@@ -750,10 +1187,10 @@ struct LiveTranscriptionView: View {
     
     private func conversationTurnCard(_ bubble: ConversationBubble) -> some View {
         let isSpeakerA = bubble.speakerSide == .personA
-        let bubbleColor: Color = isSpeakerA ? Color.speakitPrimary : Color(hex: "0D9488")
+        let bubbleColor: Color = isSpeakerA ? Color.speakitPrimary : Color.speakitSecondary
         let bubbleBg: Color = isSpeakerA
-            ? Color.speakitPrimary.opacity(0.13)
-            : Color(hex: "0D9488").opacity(0.13)
+            ? Color.speakitBadgeBackground
+            : Color.speakitCard
         let targetLangName = availableLanguages.first(where: { $0.code == bubble.targetLanguage })?.name ?? bubble.targetLanguage
 
         // Bubble corner radii: pointed corner on the speaker's side (iMessage style)
@@ -1009,7 +1446,7 @@ struct LiveTranscriptionView: View {
 
                 FaceToFaceMicButton(
                     side: .personB,
-                    accentColor: Color(hex: "0D9488"),
+                    accentColor: Color.speakitSecondary,
                     isActive: liveService.isRecording && activeSpeaker == .personB
                 ) {
                     handleSpeakerTurn(.personB, lang: personBLang)
@@ -1106,7 +1543,7 @@ struct LiveTranscriptionView: View {
                     }) {
                         Text(speaker2Name)
                             .font(.system(size: 13, weight: .bold))
-                            .foregroundColor(Color(hex: "0D9488"))
+                            .foregroundColor(Color.speakitSecondary)
                             .lineLimit(1)
                             .frame(height: 20)
                     }
@@ -1138,10 +1575,10 @@ struct LiveTranscriptionView: View {
                         }
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
-                        .background(Color(hex: "0D9488").opacity(0.12))
+                        .background(Color.speakitSecondary.opacity(0.12))
                         .clipShape(Capsule())
                         .overlay(
-                            Capsule().stroke(Color(hex: "0D9488").opacity(0.25), lineWidth: 0.5)
+                            Capsule().stroke(Color.speakitSecondary.opacity(0.25), lineWidth: 0.5)
                         )
                     }
                     .buttonStyle(.plain)
@@ -1161,8 +1598,13 @@ struct LiveTranscriptionView: View {
             let previousSpeaker = activeSpeaker
             liveService.stopSession()
             if let active = previousSpeaker, !lastText.isEmpty {
-                // Deduct remaining character credit for spoken utterance
+                // Deduct remaining character credit for spoken utterance immediately
                 appState.recordCharacterUsage(lastText.count)
+                
+                if let user = appState.currentUser, user.remainingCharacters <= 0 {
+                    HapticManager.shared.warning()
+                    bannerMessage = "Character credits depleted. Please upgrade your plan."
+                }
                 
                 let sourceLang = active == .personA ? personALang : personBLang
                 let targetLang = active == .personA ? personBLang : personALang
@@ -1200,6 +1642,12 @@ struct LiveTranscriptionView: View {
             HapticManager.shared.warning()
             appState.showPaywallSheet = true
             bannerMessage = "Face-to-Face Conversation requires Pro Plus."
+            return
+        }
+        if let user = appState.currentUser, user.remainingCharacters <= 0 {
+            HapticManager.shared.warning()
+            appState.showPaywallSheet = true
+            bannerMessage = "Character quota exhausted. Please upgrade your plan."
             return
         }
         HapticManager.shared.medium()
@@ -1286,6 +1734,31 @@ struct LiveTranscriptionView: View {
         }
     }
     
+    // MARK: - Session Name Generation
+    /// Generates a randomized, creative session title when the session name is blank.
+    /// Combines an evocative adjective with a conversation-themed noun (e.g. "Echo Pulse", "Summit Talks", "Cosmic Orbit").
+    private func generateDefaultSessionName() -> String {
+        let adjectives = [
+            "Cosmic", "Echo", "Summit", "Velvet", "Zenith", "Atlas", "Horizon",
+            "Silver", "Aura", "Solstice", "Morning", "Beacon", "Pinnacle",
+            "Nova", "Radiant", "Vibrant", "Quantum", "Cascade", "Crystal", "Golden",
+            "Pacific", "Lunar", "Solar", "Amber", "Cedar", "Breeze", "Starlight"
+        ]
+        let nouns = [
+            "Talks", "Pulse", "Dialogue", "Exchange", "Connect", "Sync",
+            "Chat", "Orbit", "Session", "Forum", "Bridge", "Stream", "Circle",
+            "Huddle", "Nexus", "Converse"
+        ]
+        let adj = adjectives.randomElement() ?? "Live"
+        let noun = nouns.randomElement() ?? "Session"
+        return "\(adj) \(noun)"
+    }
+
+    private var resolvedSessionTitle: String {
+        let trimmed = sessionTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? generateDefaultSessionName() : trimmed
+    }
+    
     private func persistCurrentSessionHistory() {
         if studioMode == .conversation {
             guard !conversationHistory.isEmpty else { return }
@@ -1301,12 +1774,20 @@ struct LiveTranscriptionView: View {
             let fullText = lines.joined(separator: "\n\n")
             guard !fullText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
             
+            // Duplicate guard: skip if already persisted or currently saving
+            if fullText == lastPersistedTranscript || isPersistingSession {
+                return
+            }
+            isPersistingSession = true
+            lastPersistedTranscript = fullText
+            
             let totalChars = conversationHistory.reduce(0) { $0 + $1.originalText.count + $1.translatedText.count }
-            let title = "Live Conversation (\(conversationHistory.count) turns)"
+            let title = resolvedSessionTitle
             let languages = "\(personALang), \(personBLang)"
             
             Task {
                 struct SaveSessionReq: Codable {
+                    let id: Int64?
                     let sessionType: String
                     let title: String
                     let language: String
@@ -1316,6 +1797,7 @@ struct LiveTranscriptionView: View {
                     let characterCount: Int
                 }
                 let req = SaveSessionReq(
+                    id: currentSessionId,
                     sessionType: "CONVERSATION",
                     title: title,
                     language: languages,
@@ -1326,9 +1808,18 @@ struct LiveTranscriptionView: View {
                 )
                 if let bodyData = try? JSONEncoder().encode(req) {
                     struct SessionResp: Codable { let id: Int64?; let message: String? }
-                    let _: SessionResp? = try? await HTTPClient.shared.request(.saveLiveSession, method: "POST", body: bodyData)
+                    let resp: SessionResp? = try? await HTTPClient.shared.request(.saveLiveSession, method: "POST", body: bodyData)
                     await MainActor.run {
+                        self.isPersistingSession = false
+                        if let returnedId = resp?.id {
+                            self.currentSessionId = returnedId
+                        }
                         appState.isHistoryDirty = true
+                    }
+                    await fetchPreviousLiveSessions()
+                } else {
+                    await MainActor.run {
+                        self.isPersistingSession = false
                     }
                 }
             }
@@ -1336,6 +1827,12 @@ struct LiveTranscriptionView: View {
             // Solo Mode
             let fullText = liveService.fullTranscriptText.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !fullText.isEmpty else { return }
+            
+            if fullText == lastPersistedTranscript || isPersistingSession {
+                return
+            }
+            isPersistingSession = true
+            lastPersistedTranscript = fullText
             
             let title = "Live Dictation"
             let lang = liveService.languageCode
@@ -1345,6 +1842,7 @@ struct LiveTranscriptionView: View {
             
             Task {
                 struct SaveSessionReq: Codable {
+                    let id: Int64?
                     let sessionType: String
                     let title: String
                     let language: String
@@ -1354,6 +1852,7 @@ struct LiveTranscriptionView: View {
                     let characterCount: Int
                 }
                 let req = SaveSessionReq(
+                    id: currentSessionId,
                     sessionType: "SOLO",
                     title: title,
                     language: lang,
@@ -1364,12 +1863,72 @@ struct LiveTranscriptionView: View {
                 )
                 if let bodyData = try? JSONEncoder().encode(req) {
                     struct SessionResp: Codable { let id: Int64?; let message: String? }
-                    let _: SessionResp? = try? await HTTPClient.shared.request(.saveLiveSession, method: "POST", body: bodyData)
+                    let resp: SessionResp? = try? await HTTPClient.shared.request(.saveLiveSession, method: "POST", body: bodyData)
                     await MainActor.run {
+                        self.isPersistingSession = false
+                        if let returnedId = resp?.id {
+                            self.currentSessionId = returnedId
+                        }
                         appState.isHistoryDirty = true
+                    }
+                    await fetchPreviousLiveSessions()
+                } else {
+                    await MainActor.run {
+                        self.isPersistingSession = false
                     }
                 }
             }
+        }
+    }
+    
+    // MARK: - Previous Sessions Actions
+    private func fetchPreviousLiveSessions() async {
+        await MainActor.run {
+            self.isLoadingPreviousSessions = true
+        }
+        do {
+            let response: HistoryPageResponse = try await HTTPClient.shared.request(
+                .history(page: 0, size: 10, type: "LIVE")
+            )
+            await MainActor.run {
+                self.isLoadingPreviousSessions = false
+                self.previousLiveSessions = response.content ?? []
+            }
+        } catch {
+            await MainActor.run {
+                self.isLoadingPreviousSessions = false
+            }
+        }
+    }
+    
+    private func continuePreviousSession(_ item: HistoryItem) {
+        let turns = item.parsedLiveChatTurns
+        guard !turns.isEmpty else { return }
+        
+        // Track existing session ID to update in-place rather than creating duplicate entries
+        currentSessionId = item.id
+        sessionTitle = item.liveChatTitle
+        speaker1Name = turns.first?.speakerName ?? "Speaker 1"
+        speaker2Name = turns.first(where: { !$0.isSpeakerA })?.speakerName ?? "Speaker 2"
+        personALang = turns.first?.speakerLanguage ?? "hi-IN"
+        personBLang = turns.first(where: { !$0.isSpeakerA })?.speakerLanguage ?? "en-IN"
+        
+        conversationHistory = turns.map { turn in
+            ConversationBubble(
+                speakerSide: turn.isSpeakerA ? .personA : .personB,
+                speakerName: turn.speakerName,
+                speakerLanguage: turn.speakerLanguage,
+                targetLanguage: turn.targetLanguage ?? (turn.isSpeakerA ? personBLang : personALang),
+                originalText: turn.originalText,
+                translatedText: turn.translatedText ?? ""
+            )
+        }
+        
+        // Prevent duplicate saves of the existing transcript
+        lastPersistedTranscript = item.fullText
+        
+        withAnimation {
+            isConversationSessionStarted = true
         }
     }
     
