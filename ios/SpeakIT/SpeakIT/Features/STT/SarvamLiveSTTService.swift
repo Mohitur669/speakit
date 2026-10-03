@@ -170,7 +170,12 @@ final class SarvamLiveSTTService {
         // 2. Configure AVAudioSession
         let session = AVAudioSession.sharedInstance()
         do {
-            try session.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker, .allowBluetoothHFP])
+            try session.setCategory(
+                .playAndRecord,
+                mode: .spokenAudio,
+                options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP]
+            )
+            try session.overrideOutputAudioPort(.speaker)
             try session.setActive(true, options: .notifyOthersOnDeactivation)
         } catch {
             print("Failed to configure audio session for Live STT: \(error)")

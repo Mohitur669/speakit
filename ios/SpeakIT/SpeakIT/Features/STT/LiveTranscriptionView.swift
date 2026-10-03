@@ -34,16 +34,42 @@ struct ConversationBubble: Identifiable {
     let timestamp: Date = Date()
 }
 
-final class LocalSpeechSpeaker {
+final class LocalSpeechSpeaker: NSObject, AVSpeechSynthesizerDelegate {
     static let shared = LocalSpeechSpeaker()
     private let synthesizer = AVSpeechSynthesizer()
+    
+    override private init() {
+        super.init()
+        synthesizer.delegate = self
+    }
     
     func speak(text: String, languageCode: String = "en-US") {
         if synthesizer.isSpeaking {
             synthesizer.stopSpeaking(at: .immediate)
         }
+        
+        // Industry Standard (Apple Audio Session Guidelines for Live Speech):
+        // 1. Force audio output to primary loudspeaker (bypassing the telephone earpiece receiver)
+        // 2. Use .spokenAudio mode to apply speech-optimized dynamic range compression and loudness normalization
+        let session = AVAudioSession.sharedInstance()
+        do {
+            try session.setCategory(
+                .playAndRecord,
+                mode: .spokenAudio,
+                options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP]
+            )
+            try session.overrideOutputAudioPort(.speaker)
+            try session.setActive(true, options: .notifyOthersOnDeactivation)
+        } catch {
+            print("LocalSpeechSpeaker: Audio session routing failed: \(error)")
+        }
+        
         let utterance = AVSpeechUtterance(string: text)
         utterance.rate = AVSpeechUtteranceDefaultSpeechRate
+        utterance.volume = 1.0 // Full digital gain
+        utterance.pitchMultiplier = 1.0
+        utterance.preUtteranceDelay = 0.04 // Prevents clipping initial phonemes on hardware DAC wake
+        
         let bcp47 = languageCode == "auto" ? "en-US" : languageCode
         utterance.voice = AVSpeechSynthesisVoice(language: bcp47) ?? AVSpeechSynthesisVoice(language: "en-US")
         synthesizer.speak(utterance)
@@ -965,9 +991,9 @@ struct LiveTranscriptionView: View {
     }
 
     private var dualConversationDock: some View {
-        HStack(alignment: .bottom, spacing: 8) {
-            // Speaker 1 Column: Mic, Speaker Name, Language Selector (all centered along the same vertical axis)
-            VStack(spacing: 8) {
+        VStack(spacing: 12) {
+            // Row 1: Dual Mics
+            HStack(spacing: 8) {
                 FaceToFaceMicButton(
                     side: .personA,
                     accentColor: Color.speakitPrimary,
@@ -975,86 +1001,12 @@ struct LiveTranscriptionView: View {
                 ) {
                     handleSpeakerTurn(.personA, lang: personALang)
                 }
+                .frame(maxWidth: .infinity)
 
-                Button(action: {
-                    tempSpeakerName = speaker1Name
-                    editingSpeaker = .personA
-                    showRenameAlert = true
-                }) {
-                    Text(speaker1Name)
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundColor(Color.speakitPrimary)
-                        .lineLimit(1)
-                        .frame(height: 20)
-                }
-                .buttonStyle(.plain)
+                // Spacer matching center swap button width (32pt) to maintain identical vertical center axis
+                Color.clear
+                    .frame(width: 32, height: 1)
 
-                Menu {
-                    ForEach(availableLanguages, id: \.code) { item in
-                        Button(action: {
-                            HapticManager.shared.selection()
-                            personALang = item.code
-                        }) {
-                            HStack {
-                                Text(item.name)
-                                if personALang == item.code {
-                                    Image(systemName: "checkmark")
-                                }
-                            }
-                        }
-                    }
-                } label: {
-                    HStack(spacing: 4) {
-                        Text(availableLanguages.first(where: { $0.code == personALang })?.name ?? "Hindi")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(Color.speakitTextPrimary)
-                            .lineLimit(1)
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 8, weight: .bold))
-                            .foregroundColor(Color.speakitTextSecondary)
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(Color.speakitBadgeBackground)
-                    .clipShape(Capsule())
-                    .overlay(
-                        Capsule().stroke(Color.speakitBorder.opacity(0.6), lineWidth: 0.5)
-                    )
-                }
-                .buttonStyle(.plain)
-                .disabled(liveService.isRecording)
-            }
-            .frame(maxWidth: .infinity)
-
-            // Center Interactive Language Swap Button (aligned precisely on the language pill row)
-            Button(action: {
-                HapticManager.shared.medium()
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.72)) {
-                    swapRotation += 180
-                    let tempLang = personALang
-                    personALang = personBLang
-                    personBLang = tempLang
-                }
-            }) {
-                ZStack {
-                    Circle()
-                        .fill(Color.speakitCardSurface)
-                        .frame(width: 32, height: 32)
-                        .overlay(Circle().stroke(Color.speakitBorder, lineWidth: 1))
-                        .shadow(color: Color.black.opacity(0.04), radius: 2, y: 1)
-
-                    Image(systemName: "arrow.left.arrow.right")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(Color.speakitPrimary)
-                        .rotationEffect(.degrees(swapRotation))
-                }
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Swap Speaker Languages")
-            .padding(.bottom, 2)
-
-            // Speaker 2 Column: Mic, Speaker Name, Language Selector (all centered along the same vertical axis)
-            VStack(spacing: 8) {
                 FaceToFaceMicButton(
                     side: .personB,
                     accentColor: Color(hex: "0D9488"),
@@ -1062,56 +1014,141 @@ struct LiveTranscriptionView: View {
                 ) {
                     handleSpeakerTurn(.personB, lang: personBLang)
                 }
+                .frame(maxWidth: .infinity)
+            }
 
-                Button(action: {
-                    tempSpeakerName = speaker2Name
-                    editingSpeaker = .personB
-                    showRenameAlert = true
-                }) {
-                    Text(speaker2Name)
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundColor(Color(hex: "0D9488"))
-                        .lineLimit(1)
-                        .frame(height: 20)
-                }
-                .buttonStyle(.plain)
+            // Row 2: Speaker Names & Languages with Swap Button at the Middle Height of Speaker & Language
+            HStack(alignment: .center, spacing: 8) {
+                // Speaker 1: Name + Language
+                VStack(spacing: 8) {
+                    Button(action: {
+                        tempSpeakerName = speaker1Name
+                        editingSpeaker = .personA
+                        showRenameAlert = true
+                    }) {
+                        Text(speaker1Name)
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(Color.speakitPrimary)
+                            .lineLimit(1)
+                            .frame(height: 20)
+                    }
+                    .buttonStyle(.plain)
 
-                Menu {
-                    ForEach(availableLanguages, id: \.code) { item in
-                        Button(action: {
-                            HapticManager.shared.selection()
-                            personBLang = item.code
-                        }) {
-                            HStack {
-                                Text(item.name)
-                                if personBLang == item.code {
-                                    Image(systemName: "checkmark")
+                    Menu {
+                        ForEach(availableLanguages, id: \.code) { item in
+                            Button(action: {
+                                HapticManager.shared.selection()
+                                personALang = item.code
+                            }) {
+                                HStack {
+                                    Text(item.name)
+                                    if personALang == item.code {
+                                        Image(systemName: "checkmark")
+                                    }
                                 }
                             }
                         }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text(availableLanguages.first(where: { $0.code == personALang })?.name ?? "Hindi")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(Color.speakitTextPrimary)
+                                .lineLimit(1)
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 8, weight: .bold))
+                                .foregroundColor(Color.speakitTextSecondary)
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Color.speakitBadgeBackground)
+                        .clipShape(Capsule())
+                        .overlay(
+                            Capsule().stroke(Color.speakitBorder.opacity(0.6), lineWidth: 0.5)
+                        )
                     }
-                } label: {
-                    HStack(spacing: 4) {
-                        Text(availableLanguages.first(where: { $0.code == personBLang })?.name ?? "English")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(Color.speakitTextPrimary)
-                            .lineLimit(1)
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 8, weight: .bold))
-                            .foregroundColor(Color.speakitTextSecondary)
+                    .buttonStyle(.plain)
+                    .disabled(liveService.isRecording)
+                }
+                .frame(maxWidth: .infinity)
+
+                // Center Interactive Language Swap Button (centered at the middle height of Speaker Name + Language)
+                Button(action: {
+                    HapticManager.shared.medium()
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.72)) {
+                        swapRotation += 180
+                        let tempLang = personALang
+                        personALang = personBLang
+                        personBLang = tempLang
                     }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(Color(hex: "0D9488").opacity(0.12))
-                    .clipShape(Capsule())
-                    .overlay(
-                        Capsule().stroke(Color(hex: "0D9488").opacity(0.25), lineWidth: 0.5)
-                    )
+                }) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.speakitCardSurface)
+                            .frame(width: 32, height: 32)
+                            .overlay(Circle().stroke(Color.speakitBorder, lineWidth: 1))
+                            .shadow(color: Color.black.opacity(0.04), radius: 2, y: 1)
+
+                        Image(systemName: "arrow.left.arrow.right")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(Color.speakitPrimary)
+                            .rotationEffect(.degrees(swapRotation))
+                    }
                 }
                 .buttonStyle(.plain)
-                .disabled(liveService.isRecording)
+                .accessibilityLabel("Swap Speaker Languages")
+
+                // Speaker 2: Name + Language
+                VStack(spacing: 8) {
+                    Button(action: {
+                        tempSpeakerName = speaker2Name
+                        editingSpeaker = .personB
+                        showRenameAlert = true
+                    }) {
+                        Text(speaker2Name)
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(Color(hex: "0D9488"))
+                            .lineLimit(1)
+                            .frame(height: 20)
+                    }
+                    .buttonStyle(.plain)
+
+                    Menu {
+                        ForEach(availableLanguages, id: \.code) { item in
+                            Button(action: {
+                                HapticManager.shared.selection()
+                                personBLang = item.code
+                            }) {
+                                HStack {
+                                    Text(item.name)
+                                    if personBLang == item.code {
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text(availableLanguages.first(where: { $0.code == personBLang })?.name ?? "English")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(Color.speakitTextPrimary)
+                                .lineLimit(1)
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 8, weight: .bold))
+                                .foregroundColor(Color.speakitTextSecondary)
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Color(hex: "0D9488").opacity(0.12))
+                        .clipShape(Capsule())
+                        .overlay(
+                            Capsule().stroke(Color(hex: "0D9488").opacity(0.25), lineWidth: 0.5)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(liveService.isRecording)
+                }
+                .frame(maxWidth: .infinity)
             }
-            .frame(maxWidth: .infinity)
         }
         .padding(.horizontal, SpeakITSpacing.screenMargin)
         .padding(.top, 4)
