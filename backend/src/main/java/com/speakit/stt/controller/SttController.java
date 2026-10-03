@@ -263,6 +263,9 @@ public class SttController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
+        log.info("saveLiveSession incoming payload: id={}, sessionId={}, sessionType={}, title={}, chars={}",
+                sessionRequest.getId(), sessionRequest.getSessionId(), sessionRequest.getSessionType(), sessionRequest.getTitle(), sessionRequest.getCharacterCount());
+
         String transcript = sessionRequest.getTranscript() != null ? sessionRequest.getTranscript().trim() : "";
         if (transcript.isEmpty()) {
             return ResponseEntity.badRequest().body("Transcript cannot be empty");

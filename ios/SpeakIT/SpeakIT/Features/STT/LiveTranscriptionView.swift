@@ -1828,6 +1828,18 @@ struct LiveTranscriptionView: View {
                     let durationSeconds: Int
                     let transcript: String
                     let characterCount: Int
+
+                    enum CodingKeys: String, CodingKey {
+                        case id
+                        case sessionId
+                        case sessionType
+                        case title
+                        case language
+                        case mode
+                        case durationSeconds
+                        case transcript
+                        case characterCount
+                    }
                 }
                 let req = SaveSessionReq(
                     id: targetSessionId,
@@ -1840,12 +1852,14 @@ struct LiveTranscriptionView: View {
                     transcript: fullText,
                     characterCount: totalChars
                 )
+                print("🛰️ [LiveTranscriptionView] Persisting conversation session: id=\(String(describing: targetSessionId)), sessionId=\(targetSessionUuid), title=\(title), chars=\(totalChars)")
                 if let bodyData = try? JSONEncoder().encode(req) {
                     struct SessionResp: Codable { let id: Int64?; let sessionId: String?; let message: String? }
                     let resp: SessionResp? = try? await HTTPClient.shared.request(.saveLiveSession, method: "POST", body: bodyData)
                     await MainActor.run {
                         self.isPersistingSession = false
                         if let returnedId = resp?.id {
+                            print("✅ [LiveTranscriptionView] Persisted conversation session: returnedId=\(returnedId), sessionId=\(resp?.sessionId ?? "nil")")
                             if self.isConversationSessionStarted {
                                 self.currentSessionId = returnedId
                                 if let returnedUuid = resp?.sessionId, !returnedUuid.isEmpty {
@@ -1892,6 +1906,18 @@ struct LiveTranscriptionView: View {
                     let durationSeconds: Int
                     let transcript: String
                     let characterCount: Int
+
+                    enum CodingKeys: String, CodingKey {
+                        case id
+                        case sessionId
+                        case sessionType
+                        case title
+                        case language
+                        case mode
+                        case durationSeconds
+                        case transcript
+                        case characterCount
+                    }
                 }
                 let req = SaveSessionReq(
                     id: targetSessionId,
@@ -1904,12 +1930,14 @@ struct LiveTranscriptionView: View {
                     transcript: fullText,
                     characterCount: charCount
                 )
+                print("🛰️ [LiveTranscriptionView] Persisting solo session: id=\(String(describing: targetSessionId)), sessionId=\(targetSessionUuid), title=\(title), chars=\(charCount)")
                 if let bodyData = try? JSONEncoder().encode(req) {
                     struct SessionResp: Codable { let id: Int64?; let sessionId: String?; let message: String? }
                     let resp: SessionResp? = try? await HTTPClient.shared.request(.saveLiveSession, method: "POST", body: bodyData)
                     await MainActor.run {
                         self.isPersistingSession = false
                         if let returnedId = resp?.id {
+                            print("✅ [LiveTranscriptionView] Persisted solo session: returnedId=\(returnedId), sessionId=\(resp?.sessionId ?? "nil")")
                             self.currentSessionId = returnedId
                             if let returnedUuid = resp?.sessionId, !returnedUuid.isEmpty {
                                 self.currentSessionUuid = returnedUuid
@@ -1949,18 +1977,35 @@ struct LiveTranscriptionView: View {
     
     private func continuePreviousSession(_ item: HistoryItem) {
         let turns = item.parsedLiveChatTurns
-        guard !turns.isEmpty else { return }
+        let effectiveTurns: [LiveChatTurn]
+        if !turns.isEmpty {
+            effectiveTurns = turns
+        } else if let full = item.fullText, !full.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            effectiveTurns = [
+                LiveChatTurn(
+                    speakerName: "Speaker 1",
+                    speakerLanguage: item.voiceId ?? "hi-IN",
+                    originalText: full,
+                    targetLanguage: nil,
+                    translatedText: nil,
+                    isSpeakerA: true
+                )
+            ]
+        } else {
+            return
+        }
         
         // Track existing session ID and UUID to update in-place rather than creating duplicate entries
         currentSessionId = item.id
         currentSessionUuid = (item.sessionId != nil && !item.sessionId!.isEmpty) ? item.sessionId! : UUID().uuidString
         sessionTitle = item.liveChatTitle
-        speaker1Name = turns.first?.speakerName ?? "Speaker 1"
-        speaker2Name = turns.first(where: { !$0.isSpeakerA })?.speakerName ?? "Speaker 2"
-        personALang = turns.first?.speakerLanguage ?? "hi-IN"
-        personBLang = turns.first(where: { !$0.isSpeakerA })?.speakerLanguage ?? "en-IN"
+        print("🔄 [LiveTranscriptionView] Continuing previous session: id=\(item.id), sessionId=\(currentSessionUuid), title=\(sessionTitle), turns=\(effectiveTurns.count)")
+        speaker1Name = effectiveTurns.first?.speakerName ?? "Speaker 1"
+        speaker2Name = effectiveTurns.first(where: { !$0.isSpeakerA })?.speakerName ?? "Speaker 2"
+        personALang = effectiveTurns.first?.speakerLanguage ?? "hi-IN"
+        personBLang = effectiveTurns.first(where: { !$0.isSpeakerA })?.speakerLanguage ?? "en-IN"
         
-        conversationHistory = turns.map { turn in
+        conversationHistory = effectiveTurns.map { turn in
             ConversationBubble(
                 speakerSide: turn.isSpeakerA ? .personA : .personB,
                 speakerName: turn.speakerName,

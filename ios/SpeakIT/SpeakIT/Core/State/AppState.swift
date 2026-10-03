@@ -148,11 +148,11 @@ final class AppState {
         
         do {
             let user: User = try await HTTPClient.shared.request(.userProfile)
-            var mergedUser = user
             if let current = self.currentUser {
-                mergedUser.charactersUsed = max(user.charactersUsed, current.charactersUsed)
+                self.currentUser = user.updatingCharactersUsed(max(user.charactersUsed, current.charactersUsed))
+            } else {
+                self.currentUser = user
             }
-            self.currentUser = mergedUser
         } catch {
             print("Failed to load user profile: \(error)")
             // If offline, use cached or mock user so app remains functional for testing
@@ -179,24 +179,7 @@ final class AppState {
         )
         let newUsed = current.charactersUsed + count
         withAnimation(.easeInOut(duration: 0.25)) {
-                self.currentUser = User(
-                    id: current.id,
-                    username: current.username,
-                    email: current.email,
-                    fullName: current.fullName,
-                    role: current.role,
-                    planType: current.planType,
-                    status: current.status,
-                    subscriptionStatus: current.subscriptionStatus,
-                    planExpiry: current.planExpiry,
-                    characterLimit: current.characterLimit,
-                    charactersUsed: newUsed,
-                    phoneNumber: current.phoneNumber,
-                    avatarUrl: current.avatarUrl,
-                    dailyCount: current.dailyCount,
-                    dailyLimit: current.dailyLimit,
-                    emailVerified: current.emailVerified
-                )
+            self.currentUser = current.updatingCharactersUsed(newUsed)
         }
         
         if isAuthenticated {
