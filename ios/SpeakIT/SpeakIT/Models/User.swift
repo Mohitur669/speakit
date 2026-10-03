@@ -18,7 +18,7 @@ struct User: Codable, Identifiable {
     let subscriptionStatus: String?
     let planExpiry: Date?
     let characterLimit: Int
-    let charactersUsed: Int
+    var charactersUsed: Int
     let phoneNumber: String?
     let avatarUrl: String?
     let dailyCount: Int
@@ -182,6 +182,27 @@ struct User: Codable, Identifiable {
             charactersUsed: self.charactersUsed,
             phoneNumber: self.phoneNumber,
             avatarUrl: newUrl,
+            dailyCount: self.dailyCount,
+            dailyLimit: self.dailyLimit,
+            emailVerified: self.emailVerified
+        )
+    }
+
+    func updatingCharactersUsed(_ newUsed: Int) -> User {
+        User(
+            id: self.id,
+            username: self.username,
+            email: self.email,
+            fullName: self.fullName,
+            role: self.role,
+            planType: self.planType,
+            status: self.status,
+            subscriptionStatus: self.subscriptionStatus,
+            planExpiry: self.planExpiry,
+            characterLimit: self.characterLimit,
+            charactersUsed: newUsed,
+            phoneNumber: self.phoneNumber,
+            avatarUrl: self.avatarUrl,
             dailyCount: self.dailyCount,
             dailyLimit: self.dailyLimit,
             emailVerified: self.emailVerified
