@@ -59,7 +59,8 @@ final class LocalSpeechSpeaker: NSObject, AVSpeechSynthesizerDelegate {
         synthesizer.delegate = self
     }
     
-    static func availableVoices(for languageCode: String, gender: SpeakerGender? = nil) -> [AVSpeechSynthesisVoice] {
+    /// Returns voices that directly match the requested language and preferred gender.
+    static func matchingVoices(for languageCode: String, gender: SpeakerGender) -> [AVSpeechSynthesisVoice] {
         let bcp47 = languageCode == "auto" ? "en-US" : languageCode
         let prefix = bcp47.split(separator: "-").first.map(String.init) ?? bcp47
         let allVoices = AVSpeechSynthesisVoice.speechVoices()
@@ -69,14 +70,65 @@ final class LocalSpeechSpeaker: NSObject, AVSpeechSynthesizerDelegate {
             $0.language.lowercased().hasPrefix(prefix.lowercased()) &&
             $0.language.caseInsensitiveCompare(bcp47) != .orderedSame
         }
-        let candidates = exactMatches + prefixMatches
-        if let g = gender {
-            let filtered = candidates.filter { $0.gender == g.avGender }
-            if !filtered.isEmpty {
-                return filtered
+        return (exactMatches + prefixMatches).filter { $0.gender == gender.avGender }
+    }
+    
+    /// Returns accessible regional and standard system voices matching the preferred gender
+    /// (e.g. Indian English Rishi, Daniel, Fred for Male; Lekha, Vani, Geeta, Soumya, Piya, Samantha, Karen for Female).
+    static func allAvailableVoices(for gender: SpeakerGender) -> [AVSpeechSynthesisVoice] {
+        let allVoices = AVSpeechSynthesisVoice.speechVoices()
+        let matchingGender = allVoices.filter { $0.gender == gender.avGender }
+        
+        // Prioritize Indian regional voices, Indian English, and major English accents
+        let prioritizedLanguages: [String] = [
+            "en-IN", "hi-IN", "ta-IN", "te-IN", "kn-IN", "bn-IN",
+            "en-US", "en-GB", "en-AU", "en-IE", "en-ZA"
+        ]
+        
+        return matchingGender.sorted { v1, v2 in
+            let idx1 = prioritizedLanguages.firstIndex(where: { v1.language.caseInsensitiveCompare($0) == .orderedSame }) ?? 999
+            let idx2 = prioritizedLanguages.firstIndex(where: { v2.language.caseInsensitiveCompare($0) == .orderedSame }) ?? 999
+            if idx1 != idx2 { return idx1 < idx2 }
+            return v1.name < v2.name
+        }
+    }
+
+    /// Clean, readable subtitle displaying language name and gender for dropdown rows
+    static func voiceSubtitle(for voice: AVSpeechSynthesisVoice) -> String {
+        let langName: String
+        switch voice.language.lowercased() {
+        case "hi-in": langName = "Hindi"
+        case "en-in": langName = "Indian English"
+        case "en-gb": langName = "UK English"
+        case "en-us": langName = "US English"
+        case "en-au": langName = "AU English"
+        case "en-ie": langName = "Irish English"
+        case "en-za": langName = "ZA English"
+        case "ta-in": langName = "Tamil"
+        case "te-in": langName = "Telugu"
+        case "kn-in": langName = "Kannada"
+        case "bn-in": langName = "Bengali"
+        case "mr-in": langName = "Marathi"
+        case "gu-in": langName = "Gujarati"
+        default: langName = voice.language
+        }
+        let genderStr = voice.gender == .male ? "Male" : "Female"
+        return "\(langName) • \(genderStr)"
+    }
+    
+    static func availableVoices(for languageCode: String, gender: SpeakerGender? = nil) -> [AVSpeechSynthesisVoice] {
+        guard let g = gender else {
+            let bcp47 = languageCode == "auto" ? "en-US" : languageCode
+            let prefix = bcp47.split(separator: "-").first.map(String.init) ?? bcp47
+            return AVSpeechSynthesisVoice.speechVoices().filter {
+                $0.language.lowercased().hasPrefix(prefix.lowercased())
             }
         }
-        return candidates
+        let matching = matchingVoices(for: languageCode, gender: g)
+        if !matching.isEmpty {
+            return matching
+        }
+        return allAvailableVoices(for: g)
     }
 
     func stop() {
@@ -131,10 +183,27 @@ final class LocalSpeechSpeaker: NSObject, AVSpeechSynthesizerDelegate {
             "te-IN": "నమస్కారం! ఇది మీ అనువాద స్వరం.",
             "bn-IN": "নমস্কার! এটি আপনার কণ্ঠস্বরের নমুনা।",
             "mr-IN": "नमस्कार! हा तुमच्या आवाजाचा नमुना आहे.",
-            "gu-IN": "નમસ્તે! આ તમારા અવાજનો નમૂનો છે."
+            "gu-IN": "નમસ્તે! આ તમારા અવાજનો નમૂનો છે.",
+            "kn-IN": "ನಮಸ್ಕಾರ! ಇದು ನಿಮ್ಮ ಧ್ವನಿಯ ಮಾದರಿಯಾಗಿದೆ.",
+            "ml-IN": "നമസ്കാരം! ഇത് നിങ്ങളുടെ ശബ്ദത്തിന്റെ സാമ്പിളാണ്.",
+            "pa-IN": "ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ! ਇਹ ਤੁਹਾਡੀ ਅਵਾਜ਼ ਦਾ ਨਮੂਨਾ ਹੈ।",
+            "or-IN": "ନମସ୍କାର! ଏହା ଆପଣଙ୍କ ସ୍ୱରର ନମୁନା ଅଟେ।"
         ]
-        let phrase = testPhrases[languageCode] ?? "Hello, this is your translation voice."
-        speak(text: phrase, languageCode: languageCode, gender: gender, voiceIdentifier: voiceIdentifier)
+        
+        let (resolvedVoice, _) = resolveVoice(languageCode: languageCode, gender: gender, voiceIdentifier: voiceIdentifier)
+        let resolvedVoiceLang = resolvedVoice?.language ?? languageCode
+        
+        // Critical audio synthesis safety:
+        // English voices (e.g. Rishi en-IN, Daniel en-GB, Fred en-US) choke and silently drop non-Latin scripts (Devanagari, Tamil, etc.).
+        // If the voice speaking this test is an English voice while the session language is non-English,
+        // use an English test phrase so the preview plays crisp, natural audio without failure.
+        let phrase: String
+        if resolvedVoiceLang.hasPrefix("en") && !languageCode.hasPrefix("en") {
+            phrase = "Hello! This is a preview of your translation voice."
+        } else {
+            phrase = testPhrases[languageCode] ?? testPhrases[resolvedVoiceLang] ?? "Hello! This is a preview of your translation voice."
+        }
+        speak(text: phrase, languageCode: resolvedVoiceLang, gender: gender, voiceIdentifier: voiceIdentifier)
     }
 
     private func resolveVoice(
@@ -142,35 +211,63 @@ final class LocalSpeechSpeaker: NSObject, AVSpeechSynthesizerDelegate {
         gender: SpeakerGender,
         voiceIdentifier: String?
     ) -> (AVSpeechSynthesisVoice?, Float) {
-        if let id = voiceIdentifier, id != "auto", !id.isEmpty,
-           let explicitVoice = AVSpeechSynthesisVoice(identifier: id) {
-            return (explicitVoice, 1.0)
-        }
-        
         let bcp47 = languageCode == "auto" ? "en-US" : languageCode
         let prefix = bcp47.split(separator: "-").first.map(String.init) ?? bcp47
         let allVoices = AVSpeechSynthesisVoice.speechVoices()
+
+        // 1. If explicit voice was chosen by the user, honor it directly
+        if let id = voiceIdentifier, id != "auto", !id.isEmpty,
+           let explicitVoice = AVSpeechSynthesisVoice(identifier: id) {
+            let pitch: Float
+            if gender == .male && explicitVoice.gender == .female {
+                pitch = 0.82
+            } else if gender == .female && explicitVoice.gender == .male {
+                pitch = 1.18
+            } else {
+                pitch = 1.0
+            }
+            return (explicitVoice, pitch)
+        }
         
+        // 2. Exact language match with preferred gender
         let exactMatches = allVoices.filter { $0.language.caseInsensitiveCompare(bcp47) == .orderedSame }
         if let match = exactMatches.first(where: { $0.gender == gender.avGender }) {
             return (match, 1.0)
         }
         
+        // 3. Prefix language match with preferred gender
         let prefixMatches = allVoices.filter { $0.language.lowercased().hasPrefix(prefix.lowercased()) }
         if let match = prefixMatches.first(where: { $0.gender == gender.avGender }) {
             return (match, 1.0)
         }
         
-        let fallback = exactMatches.first ?? prefixMatches.first ?? AVSpeechSynthesisVoice(language: bcp47) ?? AVSpeechSynthesisVoice(language: "en-US")
+        // 4. Regional fallback for Indic languages missing native voices
+        var fallbackVoice: AVSpeechSynthesisVoice? = exactMatches.first ?? prefixMatches.first
+        if fallbackVoice == nil {
+            if bcp47 == "mr-IN" {
+                // Marathi shares Devanagari script with Hindi Lekha
+                fallbackVoice = allVoices.first(where: { $0.identifier.contains("Lekha") })
+            }
+        }
+        
+        if fallbackVoice == nil {
+            // Fallback to preferred gender voice in Indian English or standard English
+            let matchingGender = allVoices.filter { $0.gender == gender.avGender }
+            fallbackVoice = matchingGender.first(where: { $0.language == "en-IN" })
+                ?? matchingGender.first(where: { $0.language.hasPrefix("en") })
+                ?? AVSpeechSynthesisVoice(language: bcp47)
+                ?? AVSpeechSynthesisVoice(language: "en-US")
+        }
+        
         let pitch: Float
-        if gender == .male && fallback?.gender != .male {
-            pitch = 0.84 // Masculine pitch compensation when only female voice is installed
-        } else if gender == .female && fallback?.gender == .male {
+        if gender == .male && fallbackVoice?.gender != .male {
+            pitch = 0.82 // Masculine pitch compensation when only female voice is installed
+        } else if gender == .female && fallbackVoice?.gender == .male {
             pitch = 1.18 // Feminine pitch compensation when only male voice is installed
         } else {
             pitch = 1.0
         }
-        return (fallback, pitch)
+        return (fallbackVoice, pitch)
     }
 }
 
@@ -996,18 +1093,20 @@ struct LiveTranscriptionView: View {
                                 gender: $speaker1Gender,
                                 accentColor: Color.speakitPrimary,
                                 onChanged: {
-                                    ensureValidVoice(for: speaker1Gender, targetLanguage: personBLang, voiceId: &speaker1VoiceId)
+                                    ensureValidVoice(for: speaker1Gender, language: personALang, voiceId: &speaker1VoiceId)
                                 }
                             )
 
                             voiceDropdownMenu(
                                 selectedVoiceId: $speaker1VoiceId,
                                 gender: speaker1Gender,
-                                targetLanguage: personBLang,
+                                language: personALang,
                                 accentColor: Color.speakitPrimary
                             )
 
-                            languagePicker(code: $personALang, accentColor: Color.speakitPrimary)
+                            languagePicker(code: $personALang, accentColor: Color.speakitPrimary) {
+                                ensureValidVoice(for: speaker1Gender, language: personALang, voiceId: &speaker1VoiceId)
+                            }
                         }
                     }
 
@@ -1021,8 +1120,8 @@ struct LiveTranscriptionView: View {
                                 let tmp = personALang
                                 personALang = personBLang
                                 personBLang = tmp
-                                ensureValidVoice(for: speaker1Gender, targetLanguage: personBLang, voiceId: &speaker1VoiceId)
-                                ensureValidVoice(for: speaker2Gender, targetLanguage: personALang, voiceId: &speaker2VoiceId)
+                                ensureValidVoice(for: speaker1Gender, language: personALang, voiceId: &speaker1VoiceId)
+                                ensureValidVoice(for: speaker2Gender, language: personBLang, voiceId: &speaker2VoiceId)
                             }
                         }) {
                             Image(systemName: "arrow.up.arrow.down")
@@ -1073,18 +1172,20 @@ struct LiveTranscriptionView: View {
                                 gender: $speaker2Gender,
                                 accentColor: Color.speakitSecondary,
                                 onChanged: {
-                                    ensureValidVoice(for: speaker2Gender, targetLanguage: personALang, voiceId: &speaker2VoiceId)
+                                    ensureValidVoice(for: speaker2Gender, language: personBLang, voiceId: &speaker2VoiceId)
                                 }
                             )
 
                             voiceDropdownMenu(
                                 selectedVoiceId: $speaker2VoiceId,
                                 gender: speaker2Gender,
-                                targetLanguage: personALang,
+                                language: personBLang,
                                 accentColor: Color.speakitSecondary
                             )
 
-                            languagePicker(code: $personBLang, accentColor: Color.speakitSecondary)
+                            languagePicker(code: $personBLang, accentColor: Color.speakitSecondary) {
+                                ensureValidVoice(for: speaker2Gender, language: personBLang, voiceId: &speaker2VoiceId)
+                            }
                         }
                     }
                 }
@@ -1275,7 +1376,7 @@ struct LiveTranscriptionView: View {
 
     /// Compact language picker pill — tinted with speaker accent colour.
     @ViewBuilder
-    private func languagePicker(code: Binding<String>, accentColor: Color) -> some View {
+    private func languagePicker(code: Binding<String>, accentColor: Color, onChanged: (() -> Void)? = nil) -> some View {
         SpeakITDropdownContainer {
             HStack(spacing: 3) {
                 Text(compactLanguageName(for: code.wrappedValue))
@@ -1301,6 +1402,7 @@ struct LiveTranscriptionView: View {
                             accentColor: accentColor
                         ) {
                             code.wrappedValue = item.code
+                            onChanged?()
                             isPresented.wrappedValue = false
                         }
 
@@ -1321,10 +1423,10 @@ struct LiveTranscriptionView: View {
     
     // MARK: - Voice & Gender Filtration Helpers (Matches Translate Page Concept)
     
-    private func ensureValidVoice(for gender: SpeakerGender, targetLanguage: String, voiceId: inout String?) {
+    private func ensureValidVoice(for gender: SpeakerGender, language: String, voiceId: inout String?) {
         guard let id = voiceId, id != "auto" else { return }
-        let voices = LocalSpeechSpeaker.availableVoices(for: targetLanguage, gender: gender)
-        if !voices.contains(where: { $0.identifier == id }) {
+        let validVoices = LocalSpeechSpeaker.allAvailableVoices(for: gender)
+        if !validVoices.contains(where: { $0.identifier == id }) {
             voiceId = nil
         }
     }
@@ -1362,18 +1464,23 @@ struct LiveTranscriptionView: View {
     }
 
     /// Voice dropdown menu filtered by the selected speaker gender with checkmark strictly on the RIGHT
+    /// Implements matching voices + all available voices matching the Translate Page design
     @ViewBuilder
     private func voiceDropdownMenu(
         selectedVoiceId: Binding<String?>,
         gender: SpeakerGender,
-        targetLanguage: String,
+        language: String,
         accentColor: Color
     ) -> some View {
-        let filteredVoices = LocalSpeechSpeaker.availableVoices(for: targetLanguage, gender: gender)
+        let matchingVoices = LocalSpeechSpeaker.matchingVoices(for: language, gender: gender)
+        let allGenderVoices = LocalSpeechSpeaker.allAvailableVoices(for: gender)
+        let otherVoices = allGenderVoices.filter { v in !matchingVoices.contains(where: { $0.identifier == v.identifier }) }
         let currentId = selectedVoiceId.wrappedValue ?? "auto"
+        let langName = availableLanguages.first(where: { $0.code == language })?.name ?? language
+        
         let displayName: String = {
             if let id = selectedVoiceId.wrappedValue, id != "auto",
-               let matched = AVSpeechSynthesisVoice(identifier: id) {
+               let matched = (matchingVoices + otherVoices).first(where: { $0.identifier == id }) {
                 let clean = matched.name.components(separatedBy: " (").first ?? matched.name
                 if clean.count > 5 {
                     return "\(clean.prefix(4))..."
@@ -1414,15 +1521,23 @@ struct LiveTranscriptionView: View {
                         isPresented.wrappedValue = false
                     }
 
-                    if !filteredVoices.isEmpty {
+                    // Matching Voices (for selected language & gender)
+                    if !matchingVoices.isEmpty {
                         Divider()
                             .padding(.horizontal, 10)
                             .opacity(0.4)
 
-                        ForEach(filteredVoices, id: \.identifier) { voice in
+                        Text("Matching Voices (\(langName))")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(Color.speakitTextTertiary)
+                            .padding(.horizontal, 14)
+                            .padding(.top, 6)
+                            .padding(.bottom, 2)
+
+                        ForEach(matchingVoices, id: \.identifier) { voice in
                             SpeakITDropdownOptionRow(
                                 title: voice.name,
-                                subtitle: voice.gender == .female ? "Female Voice" : "Male Voice",
+                                subtitle: LocalSpeechSpeaker.voiceSubtitle(for: voice),
                                 icon: "waveform",
                                 isSelected: currentId == voice.identifier,
                                 accentColor: accentColor
@@ -1431,7 +1546,40 @@ struct LiveTranscriptionView: View {
                                 isPresented.wrappedValue = false
                             }
 
-                            if voice.identifier != filteredVoices.last?.identifier {
+                            if voice.identifier != matchingVoices.last?.identifier {
+                                Divider()
+                                    .padding(.horizontal, 10)
+                                    .opacity(0.3)
+                            }
+                        }
+                    }
+
+                    // All Available Voices (matching gender)
+                    if !otherVoices.isEmpty {
+                        Divider()
+                            .padding(.horizontal, 10)
+                            .opacity(0.4)
+
+                        Text(matchingVoices.isEmpty ? "Available Voices (\(gender.rawValue))" : "Other Available Voices")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(Color.speakitTextTertiary)
+                            .padding(.horizontal, 14)
+                            .padding(.top, 6)
+                            .padding(.bottom, 2)
+
+                        ForEach(otherVoices, id: \.identifier) { voice in
+                            SpeakITDropdownOptionRow(
+                                title: voice.name,
+                                subtitle: LocalSpeechSpeaker.voiceSubtitle(for: voice),
+                                icon: "waveform",
+                                isSelected: currentId == voice.identifier,
+                                accentColor: accentColor
+                            ) {
+                                selectedVoiceId.wrappedValue = voice.identifier
+                                isPresented.wrappedValue = false
+                            }
+
+                            if voice.identifier != otherVoices.last?.identifier {
                                 Divider()
                                     .padding(.horizontal, 10)
                                     .opacity(0.3)
@@ -1446,7 +1594,7 @@ struct LiveTranscriptionView: View {
                     Button(action: {
                         HapticManager.shared.light()
                         LocalSpeechSpeaker.shared.testVoice(
-                            languageCode: targetLanguage,
+                            languageCode: language,
                             gender: gender,
                             voiceIdentifier: selectedVoiceId.wrappedValue
                         )
@@ -1468,8 +1616,8 @@ struct LiveTranscriptionView: View {
                 }
                 .padding(.vertical, 4)
             }
-            .frame(minWidth: 200)
-            .frame(maxHeight: 280)
+            .frame(minWidth: 220)
+            .frame(maxHeight: 320)
             .background(Color.speakitCardSurface)
         }
     }
@@ -1856,6 +2004,7 @@ struct LiveTranscriptionView: View {
                                         accentColor: Color.speakitPrimary
                                     ) {
                                         personALang = item.code
+                                        ensureValidVoice(for: speaker1Gender, language: personALang, voiceId: &speaker1VoiceId)
                                         isPresented.wrappedValue = false
                                     }
                                     if item.code != availableLanguages.last?.code {
@@ -1881,8 +2030,8 @@ struct LiveTranscriptionView: View {
                         let tempLang = personALang
                         personALang = personBLang
                         personBLang = tempLang
-                        ensureValidVoice(for: speaker1Gender, targetLanguage: personBLang, voiceId: &speaker1VoiceId)
-                        ensureValidVoice(for: speaker2Gender, targetLanguage: personALang, voiceId: &speaker2VoiceId)
+                        ensureValidVoice(for: speaker1Gender, language: personALang, voiceId: &speaker1VoiceId)
+                        ensureValidVoice(for: speaker2Gender, language: personBLang, voiceId: &speaker2VoiceId)
                     }
                 }) {
                     ZStack {
@@ -1944,6 +2093,7 @@ struct LiveTranscriptionView: View {
                                         accentColor: Color.speakitSecondary
                                     ) {
                                         personBLang = item.code
+                                        ensureValidVoice(for: speaker2Gender, language: personBLang, voiceId: &speaker2VoiceId)
                                         isPresented.wrappedValue = false
                                     }
                                     if item.code != availableLanguages.last?.code {
