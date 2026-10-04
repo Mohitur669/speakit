@@ -203,21 +203,7 @@ struct ContactSupportSheet: View {
                                 .font(.system(size: 13, weight: .semibold))
                                 .foregroundColor(Color.speakitTextPrimary)
                             
-                            Menu {
-                                ForEach(topicOptions, id: \.key) { option in
-                                    Button(action: {
-                                        HapticManager.shared.selection()
-                                        selectedTopicKey = option.key
-                                    }) {
-                                        HStack {
-                                            Text(option.label)
-                                            if selectedTopicKey == option.key {
-                                                Image(systemName: "checkmark")
-                                            }
-                                        }
-                                    }
-                                }
-                            } label: {
+                            SpeakITDropdownContainer {
                                 HStack {
                                     Text(selectedTopicLabel)
                                         .font(.system(size: 14, weight: .medium))
@@ -235,6 +221,28 @@ struct ContactSupportSheet: View {
                                     RoundedRectangle(cornerRadius: 12)
                                         .stroke(Color.speakitBorder, lineWidth: 1)
                                 )
+                            } content: { isPresented in
+                                ScrollView {
+                                    VStack(alignment: .leading, spacing: 0) {
+                                        ForEach(topicOptions, id: \.key) { option in
+                                            SpeakITDropdownOptionRow(
+                                                title: option.label,
+                                                isSelected: selectedTopicKey == option.key,
+                                                accentColor: Color.speakitPrimary
+                                            ) {
+                                                selectedTopicKey = option.key
+                                                isPresented.wrappedValue = false
+                                            }
+                                            if option.key != topicOptions.last?.key {
+                                                Divider().padding(.horizontal, 10).opacity(0.3)
+                                            }
+                                        }
+                                    }
+                                    .padding(.vertical, 4)
+                                }
+                                .frame(minWidth: 220)
+                                .frame(maxHeight: 280)
+                                .background(Color.speakitCardSurface)
                             }
                         }
                         
