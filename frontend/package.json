@@ -45,7 +45,8 @@
     "@vitest/mocker": "^4.1.11",
     "esbuild": "^0.28.1",
     "@babel/core": "^7.29.6",
-    "body-parser": "^2.3.0"
+    "body-parser": "^2.3.0",
+    "proxy-addr": "^2.0.8"
   },
   "dependencies": {
     "@angular/common": "21.2.20",
