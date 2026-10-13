@@ -250,13 +250,7 @@ struct LiveVoiceBridgeView: View {
                     Text("Microphone Language")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(Color.speakitTextTertiary)
-                    Menu {
-                        ForEach(availableLanguages, id: \.code) { lang in
-                            Button(lang.name) {
-                                sourceLanguage = lang.code
-                            }
-                        }
-                    } label: {
+                    SpeakITDropdownContainer {
                         HStack(spacing: 4) {
                             Text(availableLanguages.first(where: { $0.code == sourceLanguage })?.name ?? sourceLanguage)
                                 .font(.system(size: 15, weight: .semibold))
@@ -265,6 +259,30 @@ struct LiveVoiceBridgeView: View {
                                 .font(.system(size: 11, weight: .semibold))
                                 .foregroundColor(Color.speakitTextTertiary)
                         }
+                    } content: { isPresented in
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 0) {
+                                ForEach(availableLanguages, id: \.code) { lang in
+                                    SpeakITDropdownOptionRow(
+                                        title: lang.name,
+                                        icon: "globe",
+                                        isSelected: sourceLanguage == lang.code,
+                                        accentColor: Color.speakitPrimary
+                                    ) {
+                                        sourceLanguage = lang.code
+                                        isPresented.wrappedValue = false
+                                    }
+
+                                    if lang.code != availableLanguages.last?.code {
+                                        Divider().padding(.horizontal, 10).opacity(0.3)
+                                    }
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                        .frame(minWidth: 180)
+                        .frame(maxHeight: 300)
+                        .background(Color.speakitCardSurface)
                     }
                 }
                 Spacer()

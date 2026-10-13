@@ -122,13 +122,7 @@ struct STTStudioView: View {
                     }
                     
                     // Language Selection Card
-                    Menu {
-                        Button("Auto detect") { selectedLanguage = "Auto detect" }
-                        Button("English (US)") { selectedLanguage = "English (US)" }
-                        Button("Hindi") { selectedLanguage = "Hindi" }
-                        Button("Tamil") { selectedLanguage = "Tamil" }
-                        Button("Spanish") { selectedLanguage = "Spanish" }
-                    } label: {
+                    SpeakITDropdownContainer {
                         HStack {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Language")
@@ -150,17 +144,35 @@ struct STTStudioView: View {
                             RoundedRectangle(cornerRadius: SpeakITSpacing.cardRadius)
                                 .stroke(Color.speakitBorder, lineWidth: 1)
                         )
+                    } content: { isPresented in
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 0) {
+                                let langs = ["Auto detect", "English (US)", "Hindi", "Tamil", "Spanish"]
+                                ForEach(langs, id: \.self) { lang in
+                                    SpeakITDropdownOptionRow(
+                                        title: lang,
+                                        icon: "globe",
+                                        isSelected: selectedLanguage == lang,
+                                        accentColor: Color.speakitPrimary
+                                    ) {
+                                        selectedLanguage = lang
+                                        isPresented.wrappedValue = false
+                                    }
+
+                                    if lang != langs.last {
+                                        Divider().padding(.horizontal, 10).opacity(0.3)
+                                    }
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                        .frame(minWidth: 190)
+                        .frame(maxHeight: 280)
+                        .background(Color.speakitCardSurface)
                     }
                     
                     // Processing Mode Selection Card
-                    Menu {
-                        ForEach(STTProcessingMode.allCases, id: \.self) { mode in
-                            Button(mode.rawValue) {
-                                HapticManager.shared.selection()
-                                processingMode = mode
-                            }
-                        }
-                    } label: {
+                    SpeakITDropdownContainer {
                         HStack {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("Processing Mode")
@@ -184,6 +196,30 @@ struct STTStudioView: View {
                             RoundedRectangle(cornerRadius: SpeakITSpacing.cardRadius)
                                 .stroke(Color.speakitBorder, lineWidth: 1)
                         )
+                    } content: { isPresented in
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 0) {
+                                ForEach(STTProcessingMode.allCases, id: \.self) { mode in
+                                    SpeakITDropdownOptionRow(
+                                        title: mode.rawValue,
+                                        icon: "waveform.badge.magnifyingglass",
+                                        isSelected: processingMode == mode,
+                                        accentColor: Color.speakitPrimary
+                                    ) {
+                                        processingMode = mode
+                                        isPresented.wrappedValue = false
+                                    }
+
+                                    if mode != STTProcessingMode.allCases.last {
+                                        Divider().padding(.horizontal, 10).opacity(0.3)
+                                    }
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                        .frame(minWidth: 200)
+                        .frame(maxHeight: 280)
+                        .background(Color.speakitCardSurface)
                     }
                     
                     // Stop & Transcribe Button

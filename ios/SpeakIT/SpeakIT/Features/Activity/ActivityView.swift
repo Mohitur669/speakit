@@ -406,20 +406,16 @@ struct ActivityView: View {
     
     // MARK: - Page Size Selector Menu
     private var pageSizeMenu: some View {
-        Menu {
-            ForEach(pageSizeOptions, id: \.self) { size in
-                Button(action: {
-                    changePageSize(to: size)
-                }) {
-                    HStack {
-                        Text("\(size) items")
-                        if pageSize == size {
-                            Image(systemName: "checkmark")
-                        }
-                    }
-                }
-            }
-        } label: {
+        SpeakITDropdownMenu(
+            selection: Binding(
+                get: { pageSize },
+                set: { changePageSize(to: $0) }
+            ),
+            options: pageSizeOptions,
+            title: { "\($0) items" },
+            accentColor: Color.speakitPrimary,
+            minWidth: 140
+        ) {
             HStack(spacing: 6) {
                 Image(systemName: "slider.horizontal.3")
                     .font(.system(size: 13, weight: .semibold))
@@ -434,7 +430,6 @@ struct ActivityView: View {
             .background(Color.speakitBadgeBackground)
             .clipShape(Capsule())
         }
-        .buttonStyle(.plain)
         .accessibilityIdentifier("activity.pageSizeSelector")
     }
     

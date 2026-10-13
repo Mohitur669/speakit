@@ -167,39 +167,7 @@ struct VoiceCatalogSheet: View {
                 .fixedSize(horizontal: true, vertical: false)
                 
                 // Language Dropdown Menu (directly adjacent to Gender, zero gap margin)
-                Menu {
-                    Button(action: {
-                        HapticManager.shared.selection()
-                        withAnimation(.easeInOut(duration: 0.15)) {
-                            selectedLanguage = "ALL"
-                        }
-                    }) {
-                        HStack {
-                            Text("All Languages")
-                            if selectedLanguage == "ALL" {
-                                Image(systemName: "checkmark")
-                            }
-                        }
-                    }
-                    
-                    Divider()
-                    
-                    ForEach(availableLanguages, id: \.self) { lang in
-                        Button(action: {
-                            HapticManager.shared.selection()
-                            withAnimation(.easeInOut(duration: 0.15)) {
-                                selectedLanguage = lang
-                            }
-                        }) {
-                            HStack {
-                                Text(lang)
-                                if selectedLanguage == lang {
-                                    Image(systemName: "checkmark")
-                                }
-                            }
-                        }
-                    }
-                } label: {
+                SpeakITDropdownContainer {
                     HStack(spacing: 4) {
                         Image(systemName: "globe")
                             .font(.system(size: 11, weight: .semibold))
@@ -222,8 +190,46 @@ struct VoiceCatalogSheet: View {
                         Capsule()
                             .stroke(selectedLanguage == "ALL" ? Color.speakitBorder : Color.speakitPrimary, lineWidth: 1)
                     )
+                } content: { isPresented in
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 0) {
+                            SpeakITDropdownOptionRow(
+                                title: "All Languages",
+                                icon: "globe",
+                                isSelected: selectedLanguage == "ALL",
+                                accentColor: Color.speakitPrimary
+                            ) {
+                                withAnimation(.easeInOut(duration: 0.15)) {
+                                    selectedLanguage = "ALL"
+                                }
+                                isPresented.wrappedValue = false
+                            }
+
+                            Divider().padding(.horizontal, 10).opacity(0.4)
+
+                            ForEach(availableLanguages, id: \.self) { lang in
+                                SpeakITDropdownOptionRow(
+                                    title: lang,
+                                    isSelected: selectedLanguage == lang,
+                                    accentColor: Color.speakitPrimary
+                                ) {
+                                    withAnimation(.easeInOut(duration: 0.15)) {
+                                        selectedLanguage = lang
+                                    }
+                                    isPresented.wrappedValue = false
+                                }
+
+                                if lang != availableLanguages.last {
+                                    Divider().padding(.horizontal, 10).opacity(0.3)
+                                }
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    .frame(minWidth: 180)
+                    .frame(maxHeight: 300)
+                    .background(Color.speakitCardSurface)
                 }
-                .buttonStyle(.plain)
                 .fixedSize(horizontal: true, vertical: false)
                 
                 Spacer()
