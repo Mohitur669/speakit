@@ -206,22 +206,7 @@ struct TranscriptionResultSheet: View {
                         // Row 1: Target Language Picker & Gender Filter
                         HStack(spacing: 8) {
                             // Target Language Dropdown Menu
-                            Menu {
-                                ForEach(LanguageHelper.supportedTranslationLanguages) { lang in
-                                    Button(action: {
-                                        HapticManager.shared.selection()
-                                        selectedTargetLanguage = lang
-                                        updateSelectedVoiceForLanguage(lang)
-                                    }) {
-                                        HStack {
-                                            Text(lang.name)
-                                            if selectedTargetLanguage.code == lang.code {
-                                                Image(systemName: "checkmark")
-                                            }
-                                        }
-                                    }
-                                }
-                            } label: {
+                            SpeakITDropdownContainer {
                                 HStack(spacing: 6) {
                                     Image(systemName: "globe")
                                         .font(.system(size: 12, weight: .semibold))
@@ -236,6 +221,31 @@ struct TranscriptionResultSheet: View {
                                 .background(Color.speakitBadgeBackground)
                                 .foregroundColor(Color.speakitPrimary)
                                 .cornerRadius(10)
+                            } content: { isPresented in
+                                ScrollView {
+                                    VStack(alignment: .leading, spacing: 0) {
+                                        ForEach(LanguageHelper.supportedTranslationLanguages) { lang in
+                                            SpeakITDropdownOptionRow(
+                                                title: lang.name,
+                                                icon: "globe",
+                                                isSelected: selectedTargetLanguage.code == lang.code,
+                                                accentColor: Color.speakitPrimary
+                                            ) {
+                                                selectedTargetLanguage = lang
+                                                updateSelectedVoiceForLanguage(lang)
+                                                isPresented.wrappedValue = false
+                                            }
+
+                                            if lang.code != LanguageHelper.supportedTranslationLanguages.last?.code {
+                                                Divider().padding(.horizontal, 10).opacity(0.3)
+                                            }
+                                        }
+                                    }
+                                    .padding(.vertical, 4)
+                                }
+                                .frame(minWidth: 190)
+                                .frame(maxHeight: 300)
+                                .background(Color.speakitCardSurface)
                             }
                             
                             Spacer()
@@ -278,44 +288,7 @@ struct TranscriptionResultSheet: View {
                         }
                         
                         // Row 2: Narrator Voice Selector Dropdown (Merged Sarvam, ElevenLabs & Standard)
-                        Menu {
-                            Section("Matching Voices (\(selectedTargetLanguage.name))") {
-                                ForEach(filteredVoices) { voice in
-                                    Button(action: {
-                                        HapticManager.shared.selection()
-                                        selectedVoice = voice
-                                    }) {
-                                        HStack {
-                                            Text("\(voice.name) (\(voice.engineDisplayName) • \(voice.gender.capitalized))")
-                                            if selectedVoice.id == voice.id {
-                                                Image(systemName: "checkmark")
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            if filteredVoices.count < voices.count {
-                                Section("All Available Voices") {
-                                    ForEach(voices.filter { v in
-                                        if selectedGender == "ALL" { return true }
-                                        return v.gender.uppercased() == selectedGender
-                                    }) { voice in
-                                        Button(action: {
-                                            HapticManager.shared.selection()
-                                            selectedVoice = voice
-                                        }) {
-                                            HStack {
-                                                Text("\(voice.name) (\(voice.languageName) • \(voice.engineDisplayName))")
-                                                if selectedVoice.id == voice.id {
-                                                    Image(systemName: "checkmark")
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        } label: {
+                        SpeakITDropdownContainer {
                             HStack(spacing: 8) {
                                 Image(systemName: "person.wave.2.fill")
                                     .font(.system(size: 13, weight: .semibold))
@@ -341,6 +314,71 @@ struct TranscriptionResultSheet: View {
                             .background(Color.speakitCardSurface)
                             .cornerRadius(12)
                             .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.speakitBorder, lineWidth: 1))
+                        } content: { isPresented in
+                            ScrollView {
+                                VStack(alignment: .leading, spacing: 0) {
+                                    Text("Matching Voices (\(selectedTargetLanguage.name))")
+                                        .font(.system(size: 11, weight: .bold))
+                                        .foregroundColor(Color.speakitTextTertiary)
+                                        .padding(.horizontal, 14)
+                                        .padding(.top, 8)
+                                        .padding(.bottom, 4)
+
+                                    ForEach(filteredVoices) { voice in
+                                        SpeakITDropdownOptionRow(
+                                            title: voice.name,
+                                            subtitle: "\(voice.engineDisplayName) • \(voice.gender.capitalized)",
+                                            icon: "waveform",
+                                            isSelected: selectedVoice.id == voice.id,
+                                            accentColor: Color.speakitPrimary
+                                        ) {
+                                            selectedVoice = voice
+                                            isPresented.wrappedValue = false
+                                        }
+
+                                        if voice.id != filteredVoices.last?.id {
+                                            Divider().padding(.horizontal, 10).opacity(0.3)
+                                        }
+                                    }
+
+                                    if filteredVoices.count < voices.count {
+                                        Divider().padding(.horizontal, 10).opacity(0.6)
+
+                                        Text("All Available Voices")
+                                            .font(.system(size: 11, weight: .bold))
+                                            .foregroundColor(Color.speakitTextTertiary)
+                                            .padding(.horizontal, 14)
+                                            .padding(.top, 8)
+                                            .padding(.bottom, 4)
+
+                                        let otherVoices = voices.filter { v in
+                                            if selectedGender == "ALL" { return true }
+                                            return v.gender.uppercased() == selectedGender
+                                        }
+
+                                        ForEach(otherVoices) { voice in
+                                            SpeakITDropdownOptionRow(
+                                                title: voice.name,
+                                                subtitle: "\(voice.languageName) • \(voice.engineDisplayName)",
+                                                icon: "waveform",
+                                                isSelected: selectedVoice.id == voice.id,
+                                                accentColor: Color.speakitPrimary
+                                            ) {
+                                                selectedVoice = voice
+                                                isPresented.wrappedValue = false
+                                            }
+
+                                            if voice.id != otherVoices.last?.id {
+                                                Divider().padding(.horizontal, 10).opacity(0.3)
+                                            }
+                                        }
+                                    }
+                                }
+                                .padding(.vertical, 4)
+                            }
+                            .frame(minWidth: 240)
+                            .frame(maxHeight: 320)
+                            .background(Color.speakitCardSurface)
                         }
                         
                         // Translate Button

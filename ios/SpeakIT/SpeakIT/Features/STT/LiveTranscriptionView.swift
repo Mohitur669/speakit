@@ -22,6 +22,20 @@ enum SpeakerSide: String {
     case personB = "Speaker 2"
 }
 
+enum SpeakerGender: String, CaseIterable, Identifiable, Codable {
+    case female = "Female"
+    case male = "Male"
+    
+    var id: String { rawValue }
+    
+    var avGender: AVSpeechSynthesisVoiceGender {
+        switch self {
+        case .female: return .female
+        case .male: return .male
+        }
+    }
+}
+
 struct ConversationBubble: Identifiable {
     let id = UUID()
     let speakerSide: SpeakerSide
@@ -31,6 +45,8 @@ struct ConversationBubble: Identifiable {
     let originalText: String
     var translatedText: String
     var isTranslating: Bool = false
+    var speakerGender: SpeakerGender = .female
+    var speakerVoiceIdentifier: String? = nil
     let timestamp: Date = Date()
 }
 
@@ -43,7 +59,90 @@ final class LocalSpeechSpeaker: NSObject, AVSpeechSynthesizerDelegate {
         synthesizer.delegate = self
     }
     
-    func speak(text: String, languageCode: String = "en-US") {
+    /// Returns voices that directly match the requested language and preferred gender.
+    static func matchingVoices(for languageCode: String, gender: SpeakerGender) -> [AVSpeechSynthesisVoice] {
+        let bcp47 = languageCode == "auto" ? "en-US" : languageCode
+        let prefix = bcp47.split(separator: "-").first.map(String.init) ?? bcp47
+        let allVoices = AVSpeechSynthesisVoice.speechVoices()
+        
+        let exactMatches = allVoices.filter { $0.language.caseInsensitiveCompare(bcp47) == .orderedSame }
+        let prefixMatches = allVoices.filter {
+            $0.language.lowercased().hasPrefix(prefix.lowercased()) &&
+            $0.language.caseInsensitiveCompare(bcp47) != .orderedSame
+        }
+        return (exactMatches + prefixMatches).filter { $0.gender == gender.avGender }
+    }
+    
+    /// Returns accessible regional and standard system voices matching the preferred gender
+    /// (e.g. Indian English Rishi, Daniel, Fred for Male; Lekha, Vani, Geeta, Soumya, Piya, Samantha, Karen for Female).
+    static func allAvailableVoices(for gender: SpeakerGender) -> [AVSpeechSynthesisVoice] {
+        let allVoices = AVSpeechSynthesisVoice.speechVoices()
+        let matchingGender = allVoices.filter { $0.gender == gender.avGender }
+        
+        // Prioritize Indian regional voices, Indian English, and major English accents
+        let prioritizedLanguages: [String] = [
+            "en-IN", "hi-IN", "ta-IN", "te-IN", "kn-IN", "bn-IN",
+            "en-US", "en-GB", "en-AU", "en-IE", "en-ZA"
+        ]
+        
+        return matchingGender.sorted { v1, v2 in
+            let idx1 = prioritizedLanguages.firstIndex(where: { v1.language.caseInsensitiveCompare($0) == .orderedSame }) ?? 999
+            let idx2 = prioritizedLanguages.firstIndex(where: { v2.language.caseInsensitiveCompare($0) == .orderedSame }) ?? 999
+            if idx1 != idx2 { return idx1 < idx2 }
+            return v1.name < v2.name
+        }
+    }
+
+    /// Clean, readable subtitle displaying language name and gender for dropdown rows
+    static func voiceSubtitle(for voice: AVSpeechSynthesisVoice) -> String {
+        let langName: String
+        switch voice.language.lowercased() {
+        case "hi-in": langName = "Hindi"
+        case "en-in": langName = "Indian English"
+        case "en-gb": langName = "UK English"
+        case "en-us": langName = "US English"
+        case "en-au": langName = "AU English"
+        case "en-ie": langName = "Irish English"
+        case "en-za": langName = "ZA English"
+        case "ta-in": langName = "Tamil"
+        case "te-in": langName = "Telugu"
+        case "kn-in": langName = "Kannada"
+        case "bn-in": langName = "Bengali"
+        case "mr-in": langName = "Marathi"
+        case "gu-in": langName = "Gujarati"
+        default: langName = voice.language
+        }
+        let genderStr = voice.gender == .male ? "Male" : "Female"
+        return "\(langName) • \(genderStr)"
+    }
+    
+    static func availableVoices(for languageCode: String, gender: SpeakerGender? = nil) -> [AVSpeechSynthesisVoice] {
+        guard let g = gender else {
+            let bcp47 = languageCode == "auto" ? "en-US" : languageCode
+            let prefix = bcp47.split(separator: "-").first.map(String.init) ?? bcp47
+            return AVSpeechSynthesisVoice.speechVoices().filter {
+                $0.language.lowercased().hasPrefix(prefix.lowercased())
+            }
+        }
+        let matching = matchingVoices(for: languageCode, gender: g)
+        if !matching.isEmpty {
+            return matching
+        }
+        return allAvailableVoices(for: g)
+    }
+
+    func stop() {
+        if synthesizer.isSpeaking {
+            synthesizer.stopSpeaking(at: .immediate)
+        }
+    }
+    
+    func speak(
+        text: String,
+        languageCode: String = "en-US",
+        gender: SpeakerGender = .female,
+        voiceIdentifier: String? = nil
+    ) {
         if synthesizer.isSpeaking {
             synthesizer.stopSpeaking(at: .immediate)
         }
@@ -67,12 +166,108 @@ final class LocalSpeechSpeaker: NSObject, AVSpeechSynthesizerDelegate {
         let utterance = AVSpeechUtterance(string: text)
         utterance.rate = AVSpeechUtteranceDefaultSpeechRate
         utterance.volume = 1.0 // Full digital gain
-        utterance.pitchMultiplier = 1.0
         utterance.preUtteranceDelay = 0.04 // Prevents clipping initial phonemes on hardware DAC wake
         
-        let bcp47 = languageCode == "auto" ? "en-US" : languageCode
-        utterance.voice = AVSpeechSynthesisVoice(language: bcp47) ?? AVSpeechSynthesisVoice(language: "en-US")
+        let (selectedVoice, pitch) = resolveVoice(languageCode: languageCode, gender: gender, voiceIdentifier: voiceIdentifier)
+        utterance.voice = selectedVoice
+        utterance.pitchMultiplier = pitch
         synthesizer.speak(utterance)
+    }
+
+    func testVoice(languageCode: String, gender: SpeakerGender, voiceIdentifier: String?) {
+        let testPhrases: [String: String] = [
+            "hi-IN": "नमस्ते, यह आपकी अनुवाद आवाज़ का नमूना है।",
+            "en-IN": "Hello! This is a preview of your translation voice.",
+            "en-US": "Hello! This is a preview of your translation voice.",
+            "ta-IN": "வணக்கம்! இது உங்கள் குரலின் மாதிரியாகும்.",
+            "te-IN": "నమస్కారం! ఇది మీ అనువాద స్వరం.",
+            "bn-IN": "নমস্কার! এটি আপনার কণ্ঠস্বরের নমুনা।",
+            "mr-IN": "नमस्कार! हा तुमच्या आवाजाचा नमुना आहे.",
+            "gu-IN": "નમસ્તે! આ તમારા અવાજનો નમૂનો છે.",
+            "kn-IN": "ನಮಸ್ಕಾರ! ಇದು ನಿಮ್ಮ ಧ್ವನಿಯ ಮಾದರಿಯಾಗಿದೆ.",
+            "ml-IN": "നമസ്കാരം! ഇത് നിങ്ങളുടെ ശബ്ദത്തിന്റെ സാമ്പിളാണ്.",
+            "pa-IN": "ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ! ਇਹ ਤੁਹਾਡੀ ਅਵਾਜ਼ ਦਾ ਨਮੂਨਾ ਹੈ।",
+            "or-IN": "ନମସ୍କାର! ଏହା ଆପଣଙ୍କ ସ୍ୱରର ନମୁନା ଅଟେ।"
+        ]
+        
+        let (resolvedVoice, _) = resolveVoice(languageCode: languageCode, gender: gender, voiceIdentifier: voiceIdentifier)
+        let resolvedVoiceLang = resolvedVoice?.language ?? languageCode
+        
+        // Critical audio synthesis safety:
+        // English voices (e.g. Rishi en-IN, Daniel en-GB, Fred en-US) choke and silently drop non-Latin scripts (Devanagari, Tamil, etc.).
+        // If the voice speaking this test is an English voice while the session language is non-English,
+        // use an English test phrase so the preview plays crisp, natural audio without failure.
+        let phrase: String
+        if resolvedVoiceLang.hasPrefix("en") && !languageCode.hasPrefix("en") {
+            phrase = "Hello! This is a preview of your translation voice."
+        } else {
+            phrase = testPhrases[languageCode] ?? testPhrases[resolvedVoiceLang] ?? "Hello! This is a preview of your translation voice."
+        }
+        speak(text: phrase, languageCode: resolvedVoiceLang, gender: gender, voiceIdentifier: voiceIdentifier)
+    }
+
+    private func resolveVoice(
+        languageCode: String,
+        gender: SpeakerGender,
+        voiceIdentifier: String?
+    ) -> (AVSpeechSynthesisVoice?, Float) {
+        let bcp47 = languageCode == "auto" ? "en-US" : languageCode
+        let prefix = bcp47.split(separator: "-").first.map(String.init) ?? bcp47
+        let allVoices = AVSpeechSynthesisVoice.speechVoices()
+
+        // 1. If explicit voice was chosen by the user, honor it directly
+        if let id = voiceIdentifier, id != "auto", !id.isEmpty,
+           let explicitVoice = AVSpeechSynthesisVoice(identifier: id) {
+            let pitch: Float
+            if gender == .male && explicitVoice.gender == .female {
+                pitch = 0.82
+            } else if gender == .female && explicitVoice.gender == .male {
+                pitch = 1.18
+            } else {
+                pitch = 1.0
+            }
+            return (explicitVoice, pitch)
+        }
+        
+        // 2. Exact language match with preferred gender
+        let exactMatches = allVoices.filter { $0.language.caseInsensitiveCompare(bcp47) == .orderedSame }
+        if let match = exactMatches.first(where: { $0.gender == gender.avGender }) {
+            return (match, 1.0)
+        }
+        
+        // 3. Prefix language match with preferred gender
+        let prefixMatches = allVoices.filter { $0.language.lowercased().hasPrefix(prefix.lowercased()) }
+        if let match = prefixMatches.first(where: { $0.gender == gender.avGender }) {
+            return (match, 1.0)
+        }
+        
+        // 4. Regional fallback for Indic languages missing native voices
+        var fallbackVoice: AVSpeechSynthesisVoice? = exactMatches.first ?? prefixMatches.first
+        if fallbackVoice == nil {
+            if bcp47 == "mr-IN" {
+                // Marathi shares Devanagari script with Hindi Lekha
+                fallbackVoice = allVoices.first(where: { $0.identifier.contains("Lekha") })
+            }
+        }
+        
+        if fallbackVoice == nil {
+            // Fallback to preferred gender voice in Indian English or standard English
+            let matchingGender = allVoices.filter { $0.gender == gender.avGender }
+            fallbackVoice = matchingGender.first(where: { $0.language == "en-IN" })
+                ?? matchingGender.first(where: { $0.language.hasPrefix("en") })
+                ?? AVSpeechSynthesisVoice(language: bcp47)
+                ?? AVSpeechSynthesisVoice(language: "en-US")
+        }
+        
+        let pitch: Float
+        if gender == .male && fallbackVoice?.gender != .male {
+            pitch = 0.82 // Masculine pitch compensation when only female voice is installed
+        } else if gender == .female && fallbackVoice?.gender == .male {
+            pitch = 1.18 // Feminine pitch compensation when only male voice is installed
+        } else {
+            pitch = 1.0
+        }
+        return (fallbackVoice, pitch)
     }
 }
 
@@ -101,6 +296,12 @@ struct LiveTranscriptionView: View {
     @State private var activeSpeaker: SpeakerSide? = nil
     @State private var conversationHistory: [ConversationBubble] = []
     @State private var swapRotation: Double = 0
+    
+    // Voice & Gender Filtration for Face-to-Face Mode (Matches Translate Voice Filtration)
+    @State private var speaker1Gender: SpeakerGender = .female
+    @State private var speaker2Gender: SpeakerGender = .male
+    @State private var speaker1VoiceId: String? = nil
+    @State private var speaker2VoiceId: String? = nil
     
     // Previous Sessions Hub & Duplicate Save Guard
     @State private var previousLiveSessions: [HistoryItem] = []
@@ -367,43 +568,7 @@ struct LiveTranscriptionView: View {
     private var soloHeaderControlsStrip: some View {
         HStack(spacing: 10) {
             // Mode Dropdown Menu: Transcribe vs Translate
-            Menu {
-                Button(action: {
-                    guard liveService.mode != "transcribe" else { return }
-                    HapticManager.shared.selection()
-                    liveService.mode = "transcribe"
-                }) {
-                    HStack {
-                        Label("Transcribe", systemImage: "waveform")
-                        if liveService.mode == "transcribe" {
-                            Image(systemName: "checkmark")
-                        }
-                    }
-                }
-                
-                Button(action: {
-                    guard liveService.mode != "translate" else { return }
-                    if !currentUserPlan.allowsLiveTranslation {
-                        HapticManager.shared.warning()
-                        appState.showPaywallSheet = true
-                        bannerMessage = "Live Translation requires Pro Plus or Enterprise."
-                        return
-                    }
-                    HapticManager.shared.selection()
-                    liveService.mode = "translate"
-                }) {
-                    HStack {
-                        if !currentUserPlan.allowsLiveTranslation {
-                            Label("Translate (Pro Plus)", systemImage: "lock.fill")
-                        } else {
-                            Label("Translate", systemImage: "character.bubble")
-                        }
-                        if liveService.mode == "translate" {
-                            Image(systemName: "checkmark")
-                        }
-                    }
-                }
-            } label: {
+            SpeakITDropdownContainer {
                 HStack(spacing: 6) {
                     Image(systemName: liveService.mode == "translate" ? "character.bubble" : "waveform")
                         .font(.system(size: 12, weight: .semibold))
@@ -418,33 +583,52 @@ struct LiveTranscriptionView: View {
                 .background(Color.speakitCardSurface)
                 .clipShape(Capsule())
                 .overlay(Capsule().stroke(Color.speakitBorder, lineWidth: 1))
+            } content: { isPresented in
+                VStack(alignment: .leading, spacing: 0) {
+                    SpeakITDropdownOptionRow(
+                        title: "Transcribe",
+                        subtitle: "Speech-to-text only",
+                        icon: "waveform",
+                        isSelected: liveService.mode == "transcribe"
+                    ) {
+                        liveService.mode = "transcribe"
+                        isPresented.wrappedValue = false
+                    }
+
+                    Divider().padding(.horizontal, 10).opacity(0.3)
+
+                    SpeakITDropdownOptionRow(
+                        title: "Translate\(currentUserPlan.allowsLiveTranslation ? "" : " (Pro Plus)")",
+                        subtitle: "Real-time speech translation",
+                        icon: "character.bubble",
+                        isSelected: liveService.mode == "translate"
+                    ) {
+                        if !currentUserPlan.allowsLiveTranslation {
+                            HapticManager.shared.warning()
+                            appState.showPaywallSheet = true
+                            bannerMessage = "Live Translation requires Pro Plus or Enterprise."
+                        } else {
+                            liveService.mode = "translate"
+                        }
+                        isPresented.wrappedValue = false
+                    }
+                }
+                .padding(.vertical, 4)
+                .frame(minWidth: 190)
+                .background(Color.speakitCardSurface)
             }
-            .buttonStyle(.plain)
             .disabled(liveService.isRecording)
             
             Spacer()
             
             // Language Picker Menu
-            Menu {
-                ForEach(availableLanguages, id: \.code) { item in
-                    Button(action: {
-                        HapticManager.shared.selection()
-                        liveService.languageCode = item.code
-                    }) {
-                        HStack {
-                            Text(item.name)
-                            if liveService.languageCode == item.code {
-                                Image(systemName: "checkmark")
-                            }
-                        }
-                    }
-                }
-            } label: {
+            SpeakITDropdownContainer {
                 HStack(spacing: 5) {
                     Image(systemName: "globe")
                         .font(.system(size: 12, weight: .semibold))
                     Text(availableLanguages.first(where: { $0.code == liveService.languageCode })?.name ?? "Language")
                         .font(.system(size: 12, weight: .semibold))
+                        .lineLimit(1)
                     Image(systemName: "chevron.down")
                         .font(.system(size: 9, weight: .bold))
                 }
@@ -454,8 +638,31 @@ struct LiveTranscriptionView: View {
                 .background(Color.speakitBadgeBackground)
                 .clipShape(Capsule())
                 .overlay(Capsule().stroke(Color.speakitPrimary.opacity(0.15), lineWidth: 1))
+            } content: { isPresented in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(availableLanguages, id: \.code) { item in
+                            SpeakITDropdownOptionRow(
+                                title: item.name,
+                                icon: "globe",
+                                isSelected: liveService.languageCode == item.code,
+                                accentColor: Color.speakitPrimary
+                            ) {
+                                liveService.languageCode = item.code
+                                isPresented.wrappedValue = false
+                            }
+
+                            if item.code != availableLanguages.last?.code {
+                                Divider().padding(.horizontal, 10).opacity(0.3)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+                .frame(minWidth: 170)
+                .frame(maxHeight: 300)
+                .background(Color.speakitCardSurface)
             }
-            .buttonStyle(.plain)
             .disabled(liveService.isRecording)
         }
     }
@@ -853,17 +1060,17 @@ struct LiveTranscriptionView: View {
 
                     // Speaker 1 row
                     rowContainer {
-                        HStack(spacing: 8) {
+                        HStack(spacing: 4) {
                             Circle()
                                 .fill(Color.speakitPrimary)
                                 .frame(width: 8, height: 8)
 
-                            HStack(spacing: 4) {
+                            HStack(spacing: 3) {
                                 TextField("Speaker 1", text: $speaker1Name)
-                                    .font(.system(size: 14, weight: .medium))
+                                    .font(.system(size: 13, weight: .semibold))
                                     .foregroundColor(Color.speakitTextPrimary)
                                     .lineLimit(1)
-                                    .fixedSize(horizontal: true, vertical: false)
+                                    .truncationMode(.tail)
 
                                 Button(action: {
                                     tempSpeakerName = speaker1Name
@@ -871,16 +1078,35 @@ struct LiveTranscriptionView: View {
                                     showRenameAlert = true
                                 }) {
                                     Image(systemName: "pencil")
-                                        .font(.system(size: 11, weight: .medium))
+                                        .font(.system(size: 10, weight: .medium))
                                         .foregroundColor(Color.speakitTextTertiary)
-                                        .frame(width: 18, height: 18)
+                                        .frame(width: 16, height: 16)
                                 }
                                 .buttonStyle(.plain)
                             }
-                            .frame(maxWidth: 170, alignment: .leading)
+                            .frame(maxWidth: 80, alignment: .leading)
 
-                            Spacer()
-                            languagePicker(code: $personALang, accentColor: Color.speakitPrimary)
+                            Spacer(minLength: 2)
+
+                            // Voice filtration (Gender Dropdown & Voice Selector) beside the speaker to the right
+                            genderDropdownMenu(
+                                gender: $speaker1Gender,
+                                accentColor: Color.speakitPrimary,
+                                onChanged: {
+                                    ensureValidVoice(for: speaker1Gender, language: personALang, voiceId: &speaker1VoiceId)
+                                }
+                            )
+
+                            voiceDropdownMenu(
+                                selectedVoiceId: $speaker1VoiceId,
+                                gender: speaker1Gender,
+                                language: personALang,
+                                accentColor: Color.speakitPrimary
+                            )
+
+                            languagePicker(code: $personALang, accentColor: Color.speakitPrimary) {
+                                ensureValidVoice(for: speaker1Gender, language: personALang, voiceId: &speaker1VoiceId)
+                            }
                         }
                     }
 
@@ -894,6 +1120,8 @@ struct LiveTranscriptionView: View {
                                 let tmp = personALang
                                 personALang = personBLang
                                 personBLang = tmp
+                                ensureValidVoice(for: speaker1Gender, language: personALang, voiceId: &speaker1VoiceId)
+                                ensureValidVoice(for: speaker2Gender, language: personBLang, voiceId: &speaker2VoiceId)
                             }
                         }) {
                             Image(systemName: "arrow.up.arrow.down")
@@ -911,17 +1139,17 @@ struct LiveTranscriptionView: View {
 
                     // Speaker 2 row
                     rowContainer {
-                        HStack(spacing: 8) {
+                        HStack(spacing: 4) {
                             Circle()
                                 .fill(Color.speakitSecondary)
                                 .frame(width: 8, height: 8)
 
-                            HStack(spacing: 4) {
+                            HStack(spacing: 3) {
                                 TextField("Speaker 2", text: $speaker2Name)
-                                    .font(.system(size: 14, weight: .medium))
+                                    .font(.system(size: 13, weight: .semibold))
                                     .foregroundColor(Color.speakitTextPrimary)
                                     .lineLimit(1)
-                                    .fixedSize(horizontal: true, vertical: false)
+                                    .truncationMode(.tail)
 
                                 Button(action: {
                                     tempSpeakerName = speaker2Name
@@ -929,16 +1157,35 @@ struct LiveTranscriptionView: View {
                                     showRenameAlert = true
                                 }) {
                                     Image(systemName: "pencil")
-                                        .font(.system(size: 11, weight: .medium))
+                                        .font(.system(size: 10, weight: .medium))
                                         .foregroundColor(Color.speakitTextTertiary)
-                                        .frame(width: 18, height: 18)
+                                        .frame(width: 16, height: 16)
                                 }
                                 .buttonStyle(.plain)
                             }
-                            .frame(maxWidth: 170, alignment: .leading)
+                            .frame(maxWidth: 80, alignment: .leading)
 
-                            Spacer()
-                            languagePicker(code: $personBLang, accentColor: Color.speakitSecondary)
+                            Spacer(minLength: 2)
+
+                            // Voice filtration (Gender Dropdown & Voice Selector) beside the speaker to the right
+                            genderDropdownMenu(
+                                gender: $speaker2Gender,
+                                accentColor: Color.speakitSecondary,
+                                onChanged: {
+                                    ensureValidVoice(for: speaker2Gender, language: personBLang, voiceId: &speaker2VoiceId)
+                                }
+                            )
+
+                            voiceDropdownMenu(
+                                selectedVoiceId: $speaker2VoiceId,
+                                gender: speaker2Gender,
+                                language: personBLang,
+                                accentColor: Color.speakitSecondary
+                            )
+
+                            languagePicker(code: $personBLang, accentColor: Color.speakitSecondary) {
+                                ensureValidVoice(for: speaker2Gender, language: personBLang, voiceId: &speaker2VoiceId)
+                            }
                         }
                     }
                 }
@@ -1110,38 +1357,271 @@ struct LiveTranscriptionView: View {
             .background(Color.speakitBorder)
     }
 
+    /// Compact language display name (e.g. "Eng...", "Hin...", "Tam...", "Odia", "Auto")
+    /// If length is increasing (> 4 chars), shows first 3 letters followed by "..."
+    /// to guarantee the pill stays on one single line beside the gender and voice selectors.
+    private func compactLanguageName(for code: String) -> String {
+        guard let item = availableLanguages.first(where: { $0.code == code }) else {
+            return code
+        }
+        let name = item.name
+        if name.lowercased().hasPrefix("auto") {
+            return "Auto"
+        }
+        if name.count <= 4 {
+            return name
+        }
+        return "\(name.prefix(3))..."
+    }
+
     /// Compact language picker pill — tinted with speaker accent colour.
     @ViewBuilder
-    private func languagePicker(code: Binding<String>, accentColor: Color) -> some View {
-        Menu {
-            ForEach(availableLanguages, id: \.code) { item in
-                Button(action: {
-                    HapticManager.shared.selection()
-                    code.wrappedValue = item.code
-                }) {
-                    HStack {
-                        Text(item.name)
-                        if code.wrappedValue == item.code {
-                            Image(systemName: "checkmark")
+    private func languagePicker(code: Binding<String>, accentColor: Color, onChanged: (() -> Void)? = nil) -> some View {
+        SpeakITDropdownContainer {
+            HStack(spacing: 3) {
+                Text(compactLanguageName(for: code.wrappedValue))
+                    .font(.system(size: 11, weight: .medium))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 7, weight: .bold))
+            }
+            .foregroundColor(accentColor)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 5)
+            .background(accentColor.opacity(0.12))
+            .clipShape(Capsule())
+        } content: { isPresented in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(availableLanguages, id: \.code) { item in
+                        SpeakITDropdownOptionRow(
+                            title: item.name,
+                            icon: "globe",
+                            isSelected: code.wrappedValue == item.code,
+                            accentColor: accentColor
+                        ) {
+                            code.wrappedValue = item.code
+                            onChanged?()
+                            isPresented.wrappedValue = false
+                        }
+
+                        if item.code != availableLanguages.last?.code {
+                            Divider()
+                                .padding(.horizontal, 10)
+                                .opacity(0.3)
                         }
                     }
                 }
+                .padding(.vertical, 4)
             }
-        } label: {
-            HStack(spacing: 4) {
-                Text(availableLanguages.first(where: { $0.code == code.wrappedValue })?.name ?? "—")
-                    .font(.system(size: 12, weight: .medium))
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.system(size: 9, weight: .semibold))
-            }
-            .foregroundColor(accentColor)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(accentColor.opacity(0.1))
-            .clipShape(Capsule())
+            .frame(minWidth: 170)
+            .frame(maxHeight: 300)
+            .background(Color.speakitCardSurface)
         }
     }
     
+    // MARK: - Voice & Gender Filtration Helpers (Matches Translate Page Concept)
+    
+    private func ensureValidVoice(for gender: SpeakerGender, language: String, voiceId: inout String?) {
+        guard let id = voiceId, id != "auto" else { return }
+        let validVoices = LocalSpeechSpeaker.allAvailableVoices(for: gender)
+        if !validVoices.contains(where: { $0.identifier == id }) {
+            voiceId = nil
+        }
+    }
+
+    /// Compact Gender dropdown menu (♀ Female / ♂ Male) with selection checkmark strictly on the RIGHT
+    @ViewBuilder
+    private func genderDropdownMenu(
+        gender: Binding<SpeakerGender>,
+        accentColor: Color,
+        onChanged: (() -> Void)? = nil
+    ) -> some View {
+        SpeakITDropdownMenu(
+            selection: gender,
+            options: SpeakerGender.allCases,
+            title: { g in "\(g == .female ? "♀" : "♂") \(g.rawValue)" },
+            accentColor: accentColor,
+            minWidth: 140,
+            onSelected: { _ in onChanged?() }
+        ) {
+            HStack(spacing: 3) {
+                Text(gender.wrappedValue == .female ? "♀" : "♂")
+                    .font(.system(size: 10, weight: .bold))
+                Text(gender.wrappedValue.rawValue)
+                    .font(.system(size: 11, weight: .medium))
+                    .lineLimit(1)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 7, weight: .bold))
+            }
+            .foregroundColor(accentColor)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 5)
+            .background(accentColor.opacity(0.12))
+            .clipShape(Capsule())
+        }
+    }
+
+    /// Voice dropdown menu filtered by the selected speaker gender with checkmark strictly on the RIGHT
+    /// Implements matching voices + all available voices matching the Translate Page design
+    @ViewBuilder
+    private func voiceDropdownMenu(
+        selectedVoiceId: Binding<String?>,
+        gender: SpeakerGender,
+        language: String,
+        accentColor: Color
+    ) -> some View {
+        let matchingVoices = LocalSpeechSpeaker.matchingVoices(for: language, gender: gender)
+        let allGenderVoices = LocalSpeechSpeaker.allAvailableVoices(for: gender)
+        let otherVoices = allGenderVoices.filter { v in !matchingVoices.contains(where: { $0.identifier == v.identifier }) }
+        let currentId = selectedVoiceId.wrappedValue ?? "auto"
+        let langName = availableLanguages.first(where: { $0.code == language })?.name ?? language
+        
+        let displayName: String = {
+            if let id = selectedVoiceId.wrappedValue, id != "auto",
+               let matched = (matchingVoices + otherVoices).first(where: { $0.identifier == id }) {
+                let clean = matched.name.components(separatedBy: " (").first ?? matched.name
+                if clean.count > 5 {
+                    return "\(clean.prefix(4))..."
+                }
+                return clean
+            }
+            return "Auto"
+        }()
+
+        SpeakITDropdownContainer {
+            HStack(spacing: 3) {
+                Image(systemName: "waveform")
+                    .font(.system(size: 9, weight: .semibold))
+                Text(displayName)
+                    .font(.system(size: 11, weight: .medium))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 7, weight: .bold))
+            }
+            .foregroundColor(Color.speakitTextPrimary)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 5)
+            .background(Color.speakitBadgeBackground)
+            .clipShape(Capsule())
+            .overlay(Capsule().stroke(Color.speakitBorder, lineWidth: 0.5))
+        } content: { isPresented in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    SpeakITDropdownOptionRow(
+                        title: "Auto (\(gender.rawValue))",
+                        subtitle: "Default system voice",
+                        icon: "sparkles",
+                        isSelected: currentId == "auto",
+                        accentColor: accentColor
+                    ) {
+                        selectedVoiceId.wrappedValue = nil
+                        isPresented.wrappedValue = false
+                    }
+
+                    // Matching Voices (for selected language & gender)
+                    if !matchingVoices.isEmpty {
+                        Divider()
+                            .padding(.horizontal, 10)
+                            .opacity(0.4)
+
+                        Text("Matching Voices (\(langName))")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(Color.speakitTextTertiary)
+                            .padding(.horizontal, 14)
+                            .padding(.top, 6)
+                            .padding(.bottom, 2)
+
+                        ForEach(matchingVoices, id: \.identifier) { voice in
+                            SpeakITDropdownOptionRow(
+                                title: voice.name,
+                                subtitle: LocalSpeechSpeaker.voiceSubtitle(for: voice),
+                                icon: "waveform",
+                                isSelected: currentId == voice.identifier,
+                                accentColor: accentColor
+                            ) {
+                                selectedVoiceId.wrappedValue = voice.identifier
+                                isPresented.wrappedValue = false
+                            }
+
+                            if voice.identifier != matchingVoices.last?.identifier {
+                                Divider()
+                                    .padding(.horizontal, 10)
+                                    .opacity(0.3)
+                            }
+                        }
+                    }
+
+                    // All Available Voices (matching gender)
+                    if !otherVoices.isEmpty {
+                        Divider()
+                            .padding(.horizontal, 10)
+                            .opacity(0.4)
+
+                        Text(matchingVoices.isEmpty ? "Available Voices (\(gender.rawValue))" : "Other Available Voices")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(Color.speakitTextTertiary)
+                            .padding(.horizontal, 14)
+                            .padding(.top, 6)
+                            .padding(.bottom, 2)
+
+                        ForEach(otherVoices, id: \.identifier) { voice in
+                            SpeakITDropdownOptionRow(
+                                title: voice.name,
+                                subtitle: LocalSpeechSpeaker.voiceSubtitle(for: voice),
+                                icon: "waveform",
+                                isSelected: currentId == voice.identifier,
+                                accentColor: accentColor
+                            ) {
+                                selectedVoiceId.wrappedValue = voice.identifier
+                                isPresented.wrappedValue = false
+                            }
+
+                            if voice.identifier != otherVoices.last?.identifier {
+                                Divider()
+                                    .padding(.horizontal, 10)
+                                    .opacity(0.3)
+                            }
+                        }
+                    }
+
+                    Divider()
+                        .padding(.horizontal, 10)
+                        .opacity(0.5)
+
+                    Button(action: {
+                        HapticManager.shared.light()
+                        LocalSpeechSpeaker.shared.testVoice(
+                            languageCode: language,
+                            gender: gender,
+                            voiceIdentifier: selectedVoiceId.wrappedValue
+                        )
+                    }) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "play.circle.fill")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(accentColor)
+                            Text("Preview Voice")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(accentColor)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 9)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.vertical, 4)
+            }
+            .frame(minWidth: 220)
+            .frame(maxHeight: 320)
+            .background(Color.speakitCardSurface)
+        }
+    }
+
     // MARK: - Active Conversation Dialogue View
     private var activeConversationDialogueView: some View {
         VStack(spacing: 0) {
@@ -1300,7 +1780,9 @@ struct LiveTranscriptionView: View {
                                 HapticManager.shared.light()
                                 LocalSpeechSpeaker.shared.speak(
                                     text: bubble.translatedText,
-                                    languageCode: bubble.targetLanguage
+                                    languageCode: bubble.targetLanguage,
+                                    gender: bubble.speakerGender,
+                                    voiceIdentifier: bubble.speakerVoiceIdentifier
                                 )
                             }) {
                                 Image(systemName: "speaker.wave.2.fill")
@@ -1479,8 +1961,8 @@ struct LiveTranscriptionView: View {
 
             // Row 2: Speaker Names & Languages with Swap Button at the Middle Height of Speaker & Language
             HStack(alignment: .center, spacing: 8) {
-                // Speaker 1: Name + Language
-                VStack(spacing: 8) {
+                // Speaker 1: Name + Language + Voice/Gender filtration
+                VStack(spacing: 6) {
                     Button(action: {
                         tempSpeakerName = speaker1Name
                         editingSpeaker = .personA
@@ -1490,25 +1972,11 @@ struct LiveTranscriptionView: View {
                             .font(.system(size: 13, weight: .bold))
                             .foregroundColor(Color.speakitPrimary)
                             .lineLimit(1)
-                            .frame(height: 20)
+                            .frame(height: 18)
                     }
                     .buttonStyle(.plain)
 
-                    Menu {
-                        ForEach(availableLanguages, id: \.code) { item in
-                            Button(action: {
-                                HapticManager.shared.selection()
-                                personALang = item.code
-                            }) {
-                                HStack {
-                                    Text(item.name)
-                                    if personALang == item.code {
-                                        Image(systemName: "checkmark")
-                                    }
-                                }
-                            }
-                        }
-                    } label: {
+                    SpeakITDropdownContainer {
                         HStack(spacing: 4) {
                             Text(availableLanguages.first(where: { $0.code == personALang })?.name ?? "Hindi")
                                 .font(.system(size: 11, weight: .semibold))
@@ -1519,14 +1987,37 @@ struct LiveTranscriptionView: View {
                                 .foregroundColor(Color.speakitTextSecondary)
                         }
                         .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
+                        .padding(.vertical, 5)
                         .background(Color.speakitBadgeBackground)
                         .clipShape(Capsule())
                         .overlay(
                             Capsule().stroke(Color.speakitBorder.opacity(0.6), lineWidth: 0.5)
                         )
+                    } content: { isPresented in
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 0) {
+                                ForEach(availableLanguages, id: \.code) { item in
+                                    SpeakITDropdownOptionRow(
+                                        title: item.name,
+                                        icon: "globe",
+                                        isSelected: personALang == item.code,
+                                        accentColor: Color.speakitPrimary
+                                    ) {
+                                        personALang = item.code
+                                        ensureValidVoice(for: speaker1Gender, language: personALang, voiceId: &speaker1VoiceId)
+                                        isPresented.wrappedValue = false
+                                    }
+                                    if item.code != availableLanguages.last?.code {
+                                        Divider().padding(.horizontal, 10).opacity(0.3)
+                                    }
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                        .frame(minWidth: 170)
+                        .frame(maxHeight: 300)
+                        .background(Color.speakitCardSurface)
                     }
-                    .buttonStyle(.plain)
                     .disabled(liveService.isRecording)
                 }
                 .frame(maxWidth: .infinity)
@@ -1539,6 +2030,8 @@ struct LiveTranscriptionView: View {
                         let tempLang = personALang
                         personALang = personBLang
                         personBLang = tempLang
+                        ensureValidVoice(for: speaker1Gender, language: personALang, voiceId: &speaker1VoiceId)
+                        ensureValidVoice(for: speaker2Gender, language: personBLang, voiceId: &speaker2VoiceId)
                     }
                 }) {
                     ZStack {
@@ -1557,8 +2050,8 @@ struct LiveTranscriptionView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Swap Speaker Languages")
 
-                // Speaker 2: Name + Language
-                VStack(spacing: 8) {
+                // Speaker 2: Name + Language + Voice/Gender filtration
+                VStack(spacing: 6) {
                     Button(action: {
                         tempSpeakerName = speaker2Name
                         editingSpeaker = .personB
@@ -1568,25 +2061,11 @@ struct LiveTranscriptionView: View {
                             .font(.system(size: 13, weight: .bold))
                             .foregroundColor(Color.speakitSecondary)
                             .lineLimit(1)
-                            .frame(height: 20)
+                            .frame(height: 18)
                     }
                     .buttonStyle(.plain)
 
-                    Menu {
-                        ForEach(availableLanguages, id: \.code) { item in
-                            Button(action: {
-                                HapticManager.shared.selection()
-                                personBLang = item.code
-                            }) {
-                                HStack {
-                                    Text(item.name)
-                                    if personBLang == item.code {
-                                        Image(systemName: "checkmark")
-                                    }
-                                }
-                            }
-                        }
-                    } label: {
+                    SpeakITDropdownContainer {
                         HStack(spacing: 4) {
                             Text(availableLanguages.first(where: { $0.code == personBLang })?.name ?? "English")
                                 .font(.system(size: 11, weight: .semibold))
@@ -1597,14 +2076,37 @@ struct LiveTranscriptionView: View {
                                 .foregroundColor(Color.speakitTextSecondary)
                         }
                         .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
+                        .padding(.vertical, 5)
                         .background(Color.speakitSecondary.opacity(0.12))
                         .clipShape(Capsule())
                         .overlay(
                             Capsule().stroke(Color.speakitSecondary.opacity(0.25), lineWidth: 0.5)
                         )
+                    } content: { isPresented in
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 0) {
+                                ForEach(availableLanguages, id: \.code) { item in
+                                    SpeakITDropdownOptionRow(
+                                        title: item.name,
+                                        icon: "globe",
+                                        isSelected: personBLang == item.code,
+                                        accentColor: Color.speakitSecondary
+                                    ) {
+                                        personBLang = item.code
+                                        ensureValidVoice(for: speaker2Gender, language: personBLang, voiceId: &speaker2VoiceId)
+                                        isPresented.wrappedValue = false
+                                    }
+                                    if item.code != availableLanguages.last?.code {
+                                        Divider().padding(.horizontal, 10).opacity(0.3)
+                                    }
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                        .frame(minWidth: 170)
+                        .frame(maxHeight: 300)
+                        .background(Color.speakitCardSurface)
                     }
-                    .buttonStyle(.plain)
                     .disabled(liveService.isRecording)
                 }
                 .frame(maxWidth: .infinity)
@@ -1631,6 +2133,8 @@ struct LiveTranscriptionView: View {
                 
                 let sourceLang = active == .personA ? personALang : personBLang
                 let targetLang = active == .personA ? personBLang : personALang
+                let currentGender = active == .personA ? speaker1Gender : speaker2Gender
+                let currentVoiceId = active == .personA ? speaker1VoiceId : speaker2VoiceId
                 let bubble = ConversationBubble(
                     speakerSide: active,
                     speakerName: active == .personA ? speaker1Name : speaker2Name,
@@ -1638,7 +2142,9 @@ struct LiveTranscriptionView: View {
                     targetLanguage: targetLang,
                     originalText: lastText,
                     translatedText: "",
-                    isTranslating: sourceLang != targetLang
+                    isTranslating: sourceLang != targetLang,
+                    speakerGender: currentGender,
+                    speakerVoiceIdentifier: currentVoiceId
                 )
                 withAnimation(.spring(response: 0.38, dampingFraction: 0.78)) {
                     conversationHistory.append(bubble)
@@ -1723,8 +2229,14 @@ struct LiveTranscriptionView: View {
                             // Deduct remaining character credit for translated text
                             appState.recordCharacterUsage(resp.translatedText.count)
                             
+                            let bubble = conversationHistory[idx]
                             // Automatically speak translated text in the listener's language!
-                            LocalSpeechSpeaker.shared.speak(text: resp.translatedText, languageCode: targetLang)
+                            LocalSpeechSpeaker.shared.speak(
+                                text: resp.translatedText,
+                                languageCode: targetLang,
+                                gender: bubble.speakerGender,
+                                voiceIdentifier: bubble.speakerVoiceIdentifier
+                            )
                         }
                     }
                 }
