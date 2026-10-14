@@ -27,3 +27,7 @@ ios/SpeakIT/.env
 cdn-url-list*
 cdn-scraping-report*.pdf
 cdn-scraping-report*.xlsx
+
+# data-source and exports
+*.csv
+*.jsonl
