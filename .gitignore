@@ -3,8 +3,10 @@
 .env.*
 
 *.log
-reports/*
-!reports/audit/
+reports/
+scripts/**/reports/
+scripts/**/data/
+automation-script-logs/
 
 .venv
 

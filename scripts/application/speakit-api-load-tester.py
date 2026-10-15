@@ -17,6 +17,7 @@ Requirements:
 - httpx, rich, faker, asyncio (Python 3.10+)
 """
 
+import os
 import httpx
 import time
 import asyncio
@@ -102,12 +103,12 @@ def cpanel(content, **kw):
 
 # ── Runtime Configuration ───────────────────────────────────────────────────
 class Cfg:
-    base_url: str = "http://localhost:8080"
-    auth_username: str = "test"
-    auth_password: str = "DUMMY_PASSWORD_PLACEHOLDER"
-    token: str = ""
-    user_id: int = 0
-    test_target: str = "all"
+    base_url: str = os.getenv("TEST_BASE_URL", "http://localhost:8080")
+    auth_username: str = os.getenv("TEST_AUTH_USERNAME", "testuser")
+    auth_password: str = os.getenv("TEST_AUTH_PASSWORD", "TestPassword123@")
+    token: str = os.getenv("TEST_AUTH_TOKEN", "")
+    user_id: int = int(os.getenv("TEST_USER_ID", "0"))
+    test_target: str = os.getenv("TEST_TARGET", "all")
 
 cfg = Cfg()
 results: list[dict] = []

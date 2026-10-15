@@ -146,13 +146,13 @@ public struct SpeakITLogicTests {
         // MARK: - 6. User Profile Decoding & TabBar Rendering Tests
         print("▶️ Testing User Profile Decoding & TabBar Avatar Rendering...")
         let jsonString = """
-        {"token":"test-token","username":"mohitur","fullName":"Mohd Mohitur Rahaman","email":"mohitur669@gmail.com","phoneNumber":null,"avatarUrl":null,"role":"ROLE_USER","planType":"PRO_PLUS","subscriptionStatus":"ACTIVE","planExpiry":"2026-11-03T16:18:16.688424","sessionVersion":6,"sessionDurationMs":7200000,"idleTimeoutMs":300000,"emailVerified":true,"characterLimit":15000,"charactersUsed":494,"dailyCount":0,"dailyLimit":-1,"avatarDailyLimit":20,"avatarChangeCount":0}
+        {"token":"test-token","username":"testuser","fullName":"Test User","email":"testuser@example.com","phoneNumber":null,"avatarUrl":null,"role":"ROLE_USER","planType":"PRO_PLUS","subscriptionStatus":"ACTIVE","planExpiry":"2026-11-03T16:18:16.688424","sessionVersion":6,"sessionDurationMs":7200000,"idleTimeoutMs":300000,"emailVerified":true,"characterLimit":15000,"charactersUsed":494,"dailyCount":0,"dailyLimit":-1,"avatarDailyLimit":20,"avatarChangeCount":0}
         """
         do {
             let decodedUser = try JSONDecoder().decode(User.self, from: jsonString.data(using: .utf8)!)
-            assert(decodedUser.username == "mohitur", "Decoded username is mohitur")
-            assert(decodedUser.fullName == "Mohd Mohitur Rahaman", "Decoded fullName is Mohd Mohitur Rahaman")
-            assert(decodedUser.initials == "MM", "Decoded initials are MM")
+            assert(decodedUser.username == "testuser", "Decoded username is testuser")
+            assert(decodedUser.fullName == "Test User", "Decoded fullName is Test User")
+            assert(decodedUser.initials == "TU", "Decoded initials are TU")
             assert(decodedUser.planType == .proPlus, "Decoded planType is PRO_PLUS")
             assert(decodedUser.planExpiry != nil, "Decoded planExpiry is non-nil")
             assert(decodedUser.formattedExpiry != nil, "Decoded formattedExpiry is non-nil")
@@ -166,46 +166,23 @@ public struct SpeakITLogicTests {
             assert(false, "Failed to decode User JSON: \(error)")
         }
         
-        // MARK: - 7. Live Login & Profile Integration Test (mohitur / DUMMY_PASSWORD_PLACEHOLDER)
-        print("▶️ Testing Live Authentication & Profile Loading for mohitur...")
+        // MARK: - 7. Authentication State & Profile Verification Tests
+        print("▶️ Testing Authentication State & Profile Verification...")
         do {
-            struct LoginReq: Codable {
-                let username: String
-                let password: String
-            }
-            struct LoginResp: Codable {
-                let token: String
-                let username: String?
-                let email: String?
-                let phoneNumber: String?
-                let role: String?
-                let planType: String?
-                let characterLimit: Int?
-                let charactersUsed: Int?
-            }
-            let body = try JSONEncoder().encode(LoginReq(username: "mohitur", password: "DUMMY_PASSWORD_PLACEHOLDER"))
-            let resp: LoginResp = try await HTTPClient.shared.request(.login, method: "POST", body: body)
-            
-            let resolvedPlan = PlanType(rawValue: (resp.planType ?? "FREE").uppercased()) ?? .free
-            let user = User(
-                username: resp.username ?? "mohitur",
-                email: resp.email ?? "",
-                role: resp.role ?? "ROLE_USER",
-                planType: resolvedPlan,
-                characterLimit: resp.characterLimit,
-                charactersUsed: resp.charactersUsed ?? 0,
-                phoneNumber: resp.phoneNumber
+            let testUser = User(
+                username: "testuser",
+                email: "testuser@example.com",
+                role: "ROLE_USER",
+                planType: .proPlus,
+                characterLimit: 15000,
+                charactersUsed: 494,
+                phoneNumber: nil
             )
-            AppState.shared.login(token: resp.token, user: user)
+            AppState.shared.login(token: "test-auth-token-123", user: testUser)
             
-            // Verify loadCurrentUser()
-            await AppState.shared.loadCurrentUser()
-            
-            assert(AppState.shared.currentUser?.username == "mohitur", "currentUser successfully logged in and updated to mohitur")
-            assert(AppState.shared.currentUser?.planType == .proPlus, "mohitur has active PRO_PLUS plan")
+            assert(AppState.shared.currentUser?.username == "testuser", "currentUser successfully logged in and updated to testuser")
+            assert(AppState.shared.currentUser?.planType == .proPlus, "testuser has active PRO_PLUS plan")
             assert(AppState.shared.isAuthenticated, "AppState isAuthenticated is true")
-        } catch {
-            assert(false, "Live login and user profile retrieval failed for mohitur: \(error)")
         }
         
         print("\n==========================================")

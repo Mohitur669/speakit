@@ -131,7 +131,14 @@ public class RazorpayService {
 
             boolean isValid = false;
             if (subOrOrderId != null && subOrOrderId.startsWith("sub_sim_")) {
-                isValid = true;
+                if ("rzp_test_placeholder".equals(razorpayConfig.getKeyId())) {
+                    log.warn("Mock simulation subscription {} verified in test sandbox mode for user {}", subOrOrderId, user.getUsername());
+                    isValid = true;
+                } else {
+                    log.error("SECURITY ALERT: User {} attempted to verify simulated subscription {} against configured gateway!",
+                            user.getUsername(), subOrOrderId);
+                    return false;
+                }
             } else if (subOrOrderId != null && request.getRazorpayPaymentId() != null && request.getRazorpaySignature() != null) {
                 String secret = razorpayConfig.getKeySecret();
                 String paymentId = request.getRazorpayPaymentId().trim();
