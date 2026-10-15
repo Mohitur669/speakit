@@ -13,7 +13,7 @@ IOS_SIMULATOR_BASE_URL = http:/$()/localhost:8080
 
 // Web host URL for plan management & billing (no trailing slash, no path).
 // This value is used on physical devices. Simulator automatically uses http://localhost:4200 in Swift.
-WEB_HOST_URL = https:/$()/speakit.mohitur.com
+WEB_HOST_URL = https:/$()/speakit.example.com
 
 // Optional local developer overrides (gitignored - safe for production URLs)
 #include? "Local.xcconfig"

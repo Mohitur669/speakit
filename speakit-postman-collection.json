@@ -21,7 +21,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"username\": \"testuser\",\n    \"email\": \"test@mohitur.com\",\n    \"password\": \"Password123!\",\n    \"phoneNumber\": \"+919876543210\"\n}"
+                            "raw": "{\n    \"username\": \"testuser\",\n    \"email\": \"user@example.com\",\n    \"password\": \"Password123!\",\n    \"phoneNumber\": \"+15551234567\"\n}"
                         },
                         "url": {
                             "raw": "{{baseUrl}}/api/auth/register",
@@ -64,7 +64,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"email\": \"test@mohitur.com\",\n    \"otp\": \"123456\"\n}"
+                            "raw": "{\n    \"email\": \"user@example.com\",\n    \"otp\": \"123456\"\n}"
                         },
                         "url": {
                             "raw": "{{baseUrl}}/api/auth/verify-email",
@@ -135,7 +135,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"email\": \"test@mohitur.com\"\n}"
+                            "raw": "{\n    \"email\": \"user@example.com\"\n}"
                         },
                         "url": {
                             "raw": "{{baseUrl}}/api/auth/resend-otp",
@@ -163,7 +163,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"email\": \"test@mohitur.com\"\n}"
+                            "raw": "{\n    \"email\": \"user@example.com\"\n}"
                         },
                         "url": {
                             "raw": "{{baseUrl}}/api/auth/forgot-password",
@@ -191,7 +191,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"email\": \"test@mohitur.com\",\n    \"otp\": \"123456\",\n    \"newPassword\": \"NewSecurePassword123!\"\n}"
+                            "raw": "{\n    \"email\": \"user@example.com\",\n    \"otp\": \"123456\",\n    \"newPassword\": \"NewSecurePassword123!\"\n}"
                         },
                         "url": {
                             "raw": "{{baseUrl}}/api/auth/reset-password",
@@ -353,7 +353,7 @@
                     "request": {
                         "method": "GET",
                         "url": {
-                            "raw": "{{baseUrl}}/api/auth/check-email?email=test@mohitur.com",
+                            "raw": "{{baseUrl}}/api/auth/check-email?email=user@example.com",
                             "host": [
                                 "{{baseUrl}}"
                             ],
@@ -365,7 +365,7 @@
                             "query": [
                                 {
                                     "key": "email",
-                                    "value": "test@mohitur.com"
+                                    "value": "user@example.com"
                                 }
                             ]
                         },
@@ -389,7 +389,7 @@
                             "query": [
                                 {
                                     "key": "phone",
-                                    "value": "+919876543210"
+                                    "value": "+15551234567"
                                 }
                             ]
                         },
@@ -482,7 +482,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"username\": \"updateduser\",\n    \"email\": \"updated@mohitur.com\",\n    \"phoneNumber\": \"+919876543211\",\n    \"currentPassword\": \"Password123!\",\n    \"newPassword\": \"NewSecurePassword123!\",\n    \"otp\": \"123456\"\n}"
+                            "raw": "{\n    \"username\": \"updateduser\",\n    \"email\": \"updated@example.com\",\n    \"phoneNumber\": \"+15551234568\",\n    \"currentPassword\": \"Password123!\",\n    \"newPassword\": \"NewSecurePassword123!\",\n    \"otp\": \"123456\"\n}"
                         },
                         "url": {
                             "raw": "{{baseUrl}}/api/v1/users/profile",
@@ -1175,7 +1175,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"entity\": \"event\",\n    \"account_id\": \"acc_BFQ7uISujFjQIK\",\n    \"event\": \"payment.captured\",\n    \"contains\": [\n        \"payment\"\n    ],\n    \"payload\": {\n        \"payment\": {\n            \"entity\": {\n                \"id\": \"pay_DESLFZ4ox4asD5\",\n                \"entity\": \"payment\",\n                \"amount\": 49900,\n                \"currency\": \"INR\",\n                \"status\": \"captured\",\n                \"order_id\": \"order_DESLeaves456\",\n                \"method\": \"card\",\n                \"email\": \"test@mohitur.com\",\n                \"contact\": \"+919876543210\"\n            }\n        }\n    },\n    \"created_at\": 1568212100\n}"
+                            "raw": "{\n    \"entity\": \"event\",\n    \"account_id\": \"acc_BFQ7uISujFjQIK\",\n    \"event\": \"payment.captured\",\n    \"contains\": [\n        \"payment\"\n    ],\n    \"payload\": {\n        \"payment\": {\n            \"entity\": {\n                \"id\": \"pay_DESLFZ4ox4asD5\",\n                \"entity\": \"payment\",\n                \"amount\": 49900,\n                \"currency\": \"INR\",\n                \"status\": \"captured\",\n                \"order_id\": \"order_DESLeaves456\",\n                \"method\": \"card\",\n                \"email\": \"user@example.com\",\n                \"contact\": \"+15551234567\"\n            }\n        }\n    },\n    \"created_at\": 1568212100\n}"
                         },
                         "url": {
                             "raw": "{{baseUrl}}/api/v1/webhooks/razorpay",
@@ -1214,7 +1214,7 @@
                         ],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"firstName\": \"Mohitur\",\n    \"lastName\": \"Rahman\",\n    \"email\": \"test@mohitur.com\",\n    \"topic\": \"enterprise\",\n    \"message\": \"I am interested in high-volume API access for enterprise synthesis.\",\n    \"website\": \"\"\n}"
+                            "raw": "{\n    \"firstName\": \"John\",\n    \"lastName\": \"Doe\",\n    \"email\": \"user@example.com\",\n    \"topic\": \"enterprise\",\n    \"message\": \"I am interested in high-volume API access for enterprise synthesis.\",\n    \"website\": \"\"\n}"
                         },
                         "url": {
                             "raw": "{{baseUrl}}/api/contact",

@@ -271,9 +271,8 @@ struct LoginView: View {
                         HapticManager.shared.error()
                         self.errorMessage = "Invalid username or password. Please try again."
                     } else if case APIError.networkError = error {
-                        // Offline preview fallback mode for smooth testing
-                        HapticManager.shared.success()
-                        self.appState.login(token: "mock-offline-token", user: User.sample)
+                        HapticManager.shared.error()
+                        self.errorMessage = "Unable to connect to the server. Please check your internet connection and try again."
                     } else {
                         HapticManager.shared.error()
                         self.errorMessage = error.userFriendlyMessage

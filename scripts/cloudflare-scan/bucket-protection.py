@@ -101,7 +101,7 @@ def load_urls(file_path: str) -> List[str]:
         default_content = (
             "# SpeakIT CDN Avatar URLs for Anti-Scraping & Edge Security Testing\n"
             "# Add one URL per line. Lines starting with '#' or empty lines are ignored.\n\n"
-            "https://cdn-speakit-avatar.mohitur.com/avatars/u_1_1790504326272.jpg\n"
+            "https://cdn.example.com/avatars/sample-avatar.jpg\n"
         )
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(default_content)
@@ -115,7 +115,7 @@ def load_urls(file_path: str) -> List[str]:
 
     if not urls:
         print("[*] No active URLs found in file. Adding default sample avatar URL...")
-        urls = ["https://cdn-speakit-avatar.mohitur.com/avatars/u_1_1790504326272.jpg"]
+        urls = ["https://cdn.example.com/avatars/sample-avatar.jpg"]
 
     return urls
 

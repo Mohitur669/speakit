@@ -31,17 +31,28 @@ public class WebSocketConfig implements WebSocketConfigurer {
     private final com.speakit.stt.websocket.ElevenLabsLiveTtsWebSocketHandler elevenLabsLiveTtsWebSocketHandler;
     private final Map<String, Set<WebSocketSession>> userSessions = new ConcurrentHashMap<>();
 
+    @org.springframework.beans.factory.annotation.Value("${cors.allowed-origins:http://localhost:4200,http://127.0.0.1:4200}")
+    private String allowedOrigins;
+
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
+        String[] patterns = java.util.Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toArray(String[]::new);
+        if (patterns.length == 0) {
+            patterns = new String[]{"http://localhost:4200", "http://127.0.0.1:4200"};
+        }
+
         registry.addHandler(new LogoutWebSocketHandler(), "/ws/logout")
-                .setAllowedOriginPatterns("*");
+                .setAllowedOriginPatterns(patterns);
 
         registry.addHandler(liveSttWebSocketHandler, "/ws/live-stt")
-                .setAllowedOriginPatterns("*");
+                .setAllowedOriginPatterns(patterns);
 
         // Phase 4: Live Voice Bridge — ElevenLabs Streaming TTS proxy
         registry.addHandler(elevenLabsLiveTtsWebSocketHandler, "/ws/live-tts")
-                .setAllowedOriginPatterns("*");
+                .setAllowedOriginPatterns(patterns);
     }
 
     public void notifyLogout(String username) {
