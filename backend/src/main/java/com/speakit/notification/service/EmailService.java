@@ -33,10 +33,10 @@ public class EmailService {
 
     private final JavaMailSender mailSender;
 
-    @Value("${app.mail.from}")
+    @Value("${app.mail.from:noreply@example.com}")
     private String fromEmail;
 
-    @Value("${app.mail.reply-to:support@mohitur.com}")
+    @Value("${app.mail.reply-to:support@example.com}")
     private String replyToEmail;
 
     @Value("${app.email.provider:SMTP}")
@@ -65,16 +65,18 @@ public class EmailService {
     @PostConstruct
     public void init() {
         if ("SES_API".equalsIgnoreCase(emailProvider)) {
-            String activeAccessKey = (sesAccessKey != null && !sesAccessKey.isBlank()) ? sesAccessKey : defaultAccessKey;
-            String activeSecretKey = (sesSecretKey != null && !sesSecretKey.isBlank()) ? sesSecretKey : defaultSecretKey;
+            String activeAccessKey = (sesAccessKey != null && !sesAccessKey.isBlank()) ? sesAccessKey
+                    : defaultAccessKey;
+            String activeSecretKey = (sesSecretKey != null && !sesSecretKey.isBlank()) ? sesSecretKey
+                    : defaultSecretKey;
             String activeRegion = (sesRegion != null && !sesRegion.isBlank()) ? sesRegion : defaultRegion;
 
-            if (activeAccessKey != null && !activeAccessKey.isBlank() && activeSecretKey != null && !activeSecretKey.isBlank()) {
+            if (activeAccessKey != null && !activeAccessKey.isBlank() && activeSecretKey != null
+                    && !activeSecretKey.isBlank()) {
                 this.sesClient = SesClient.builder()
                         .region(Region.of(activeRegion))
                         .credentialsProvider(StaticCredentialsProvider.create(
-                                AwsBasicCredentials.create(activeAccessKey, activeSecretKey)
-                        ))
+                                AwsBasicCredentials.create(activeAccessKey, activeSecretKey)))
                         .build();
                 log.info("Initialized AWS SES API Client with active credentials for region: {}", activeRegion);
             } else {
@@ -105,7 +107,8 @@ public class EmailService {
                 sesClient.sendEmail(emailRequest);
                 log.info("Successfully sent transactional email via AWS SES API to: {} with subject: {}", to, subject);
             } catch (Exception e) {
-                log.error("Failed to send transactional email via AWS SES API to: {} with subject: {}. Error: {}", to, subject,
+                log.error("Failed to send transactional email via AWS SES API to: {} with subject: {}. Error: {}", to,
+                        subject,
                         e.getMessage(), e);
             }
         } else {
