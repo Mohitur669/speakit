@@ -56,7 +56,6 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class AuthService {
 
@@ -74,6 +73,38 @@ public class AuthService {
     private final SubscriptionService subscriptionService;
     private final AvatarStorageService avatarStorageService;
     private final UserAvatarHistoryRepository userAvatarHistoryRepository;
+
+    public AuthService(
+            UserRepository userRepository,
+            PendingRegistrationRepository pendingRegistrationRepository,
+            PasswordEncoder passwordEncoder,
+            JwtService jwtService,
+            AuthenticationManager authenticationManager,
+            OtpVerificationRepository otpVerificationRepository,
+            OtpEmailSender otpEmailSender,
+            WSTicketService wsTicketService,
+            WebSocketConfig webSocketConfig,
+            TtsHistoryRepository ttsHistoryRepository,
+            SpeechToTextRequestRepository speechToTextRequestRepository,
+            SubscriptionService subscriptionService,
+            AvatarStorageService avatarStorageService,
+            UserAvatarHistoryRepository userAvatarHistoryRepository
+    ) {
+        this.userRepository = userRepository;
+        this.pendingRegistrationRepository = pendingRegistrationRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
+        this.authenticationManager = authenticationManager;
+        this.otpVerificationRepository = otpVerificationRepository;
+        this.otpEmailSender = otpEmailSender;
+        this.wsTicketService = wsTicketService;
+        this.webSocketConfig = webSocketConfig;
+        this.ttsHistoryRepository = ttsHistoryRepository;
+        this.speechToTextRequestRepository = speechToTextRequestRepository;
+        this.subscriptionService = subscriptionService;
+        this.avatarStorageService = avatarStorageService;
+        this.userAvatarHistoryRepository = userAvatarHistoryRepository;
+    }
 
     @Value("${auth.session-duration-ms:7200000}")
     private long sessionDurationMs;
