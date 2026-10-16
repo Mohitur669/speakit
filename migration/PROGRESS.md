@@ -53,3 +53,17 @@
   - `./mvnw test-compile`: SUCCESS (1.368s)
   - `./mvnw test -Dtest="!ContactControllerTest,!SpeakItApplicationTests"`: SUCCESS (98 passed, 0 failed, 6 skipped)
 - Outcome: Stage B migration to Spring Boot 4.0.8 cleanly verified and functional.
+
+---
+
+## Stage C: Upgrade to Spring Boot 4.1.x (4.1.1)
+- Updated `spring-boot-starter-parent` from `4.0.8` to `4.1.1` in `backend/pom.xml`.
+- Removed temporary `spring-boot-properties-migrator` runtime dependency.
+- Updated `jacoco-maven-plugin` to `0.8.13` for Java 21 / Spring Boot 4.1 bytecode compatibility.
+- Exported post-migration dependency tree: `migration/deps-after.txt`.
+- Commands run:
+  - `./mvnw clean compile`: SUCCESS (3.864s)
+  - `./mvnw test-compile`: SUCCESS (1.298s)
+  - `./mvnw clean test -Dtest="!ContactControllerTest,!SpeakItApplicationTests"`: SUCCESS (98 passed, 0 failed, 6 skipped, 8.010s)
+- Outcome: Stage C migration to Spring Boot 4.1.1 completed and verified.
+
