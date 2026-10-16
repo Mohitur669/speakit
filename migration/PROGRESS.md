@@ -35,3 +35,21 @@
   - `./mvnw clean test-compile`: SUCCESS (2.894s)
   - `./mvnw test -Dtest="!ContactControllerTest,!SpeakItApplicationTests"`: SUCCESS (98 passed, 0 failed, 6 skipped).
 - Outcome: Stage A clean compilation and test verification complete.
+
+---
+
+## Stage B: Upgrade to Spring Boot 4.0.x (4.0.8)
+- Updated `spring-boot-starter-parent` to `4.0.8`.
+- Migrated modular starters in `backend/pom.xml`:
+  - `spring-boot-starter-web` -> `spring-boot-starter-webmvc`
+  - `spring-boot-starter-aop` -> `spring-boot-starter-aspectj`
+  - Added `spring-boot-starter-webmvc-test` and `spring-boot-starter-security-test`
+  - Added `spring-boot-jackson2` compatibility module
+  - Added `spring-boot-properties-migrator` in runtime scope
+- Updated relocated test package in `ContactControllerTest.java`:
+  - `org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc` -> `org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc`
+- Commands run:
+  - `./mvnw clean compile`: SUCCESS (3.909s)
+  - `./mvnw test-compile`: SUCCESS (1.368s)
+  - `./mvnw test -Dtest="!ContactControllerTest,!SpeakItApplicationTests"`: SUCCESS (98 passed, 0 failed, 6 skipped)
+- Outcome: Stage B migration to Spring Boot 4.0.8 cleanly verified and functional.
