@@ -54,8 +54,7 @@ struct ActivityView: View {
     @State private var errorMessage: String? = nil
     
     var body: some View {
-        NavigationStack {
-            ScrollView {
+        ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     // Header Row
                     HStack {
@@ -356,7 +355,6 @@ struct ActivityView: View {
                 }
             }
             .speakITToast(message: $errorMessage, style: .error, bottomPadding: 20)
-        }
     }
     
     // MARK: - Multiselect Floating Bar

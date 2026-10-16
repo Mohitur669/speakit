@@ -14,17 +14,39 @@ enum TabBarAvatarRenderer {
     /// Brand primary color (#6366F1)
     private static let primaryColor = UIColor(red: 0.388, green: 0.400, blue: 0.945, alpha: 1.0)
     
+    /// High-speed in-memory cache for rendered circular tab avatars
+    private static let cache = NSCache<NSString, UIImage>()
+    
+    /// Clears the rendered tab bar avatar cache (e.g., when the user logs out or updates profile photo).
+    static func clearCache() {
+        cache.removeAllObjects()
+    }
+    
     /// Renders a circular profile image for the tab bar item.
     /// - Parameters:
     ///   - image: Optional custom profile UIImage.
     ///   - initials: User's initials string if custom photo is absent.
     ///   - isSelected: Whether the profile tab is currently active.
+    ///   - customKey: Optional cache key identifier (e.g. avatar URL).
     /// - Returns: High-resolution circular UIImage configured with `.alwaysOriginal` rendering.
     static func render(
         image: UIImage?,
         initials: String,
-        isSelected: Bool
+        isSelected: Bool,
+        customKey: String? = nil
     ) -> UIImage {
+        let key: NSString
+        if let customKey = customKey, !customKey.isEmpty {
+            key = "\(customKey):\(isSelected ? "sel" : "unsel")" as NSString
+        } else if let photo = image {
+            key = "img_\(photo.hash)_\(Int(photo.size.width))x\(Int(photo.size.height)):\(isSelected ? "sel" : "unsel")" as NSString
+        } else {
+            key = "mono_\(initials):\(isSelected ? "sel" : "unsel")" as NSString
+        }
+        
+        if let cached = cache.object(forKey: key) {
+            return cached
+        }
         let size = CGSize(width: iconSize, height: iconSize)
         let format = UIGraphicsImageRendererFormat.default()
         format.scale = UIScreen.main.scale
@@ -122,6 +144,8 @@ enum TabBarAvatarRenderer {
             }
         }
         
-        return rendered.withRenderingMode(.alwaysOriginal)
+        let finalImage = rendered.withRenderingMode(.alwaysOriginal)
+        cache.setObject(finalImage, forKey: key)
+        return finalImage
     }
 }
