@@ -137,6 +137,7 @@ final class AppState {
         self.selectedTab = 0
         AudioPlayerManager.shared.stop()
         _ = AudioRecordingManager.shared.stopRecording()
+        TabBarAvatarRenderer.clearCache()
     }
     
     // MARK: - User Profile

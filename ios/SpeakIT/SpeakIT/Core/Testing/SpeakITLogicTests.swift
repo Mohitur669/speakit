@@ -162,6 +162,12 @@ public struct SpeakITLogicTests {
             
             let selectedImage = TabBarAvatarRenderer.render(image: nil, initials: decodedUser.initials, isSelected: true)
             assert(selectedImage.size.width == 25, "TabBar selected avatar rendered with width 25")
+            
+            let cachedUnselected = TabBarAvatarRenderer.render(image: nil, initials: decodedUser.initials, isSelected: false)
+            assert(cachedUnselected === unselectedImage, "TabBar unselected avatar retrieved instantaneously from memory cache")
+            
+            let cachedSelected = TabBarAvatarRenderer.render(image: nil, initials: decodedUser.initials, isSelected: true)
+            assert(cachedSelected === selectedImage, "TabBar selected avatar retrieved instantaneously from memory cache")
         } catch {
             assert(false, "Failed to decode User JSON: \(error)")
         }

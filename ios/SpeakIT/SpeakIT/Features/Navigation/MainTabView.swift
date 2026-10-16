@@ -10,6 +10,8 @@ import SwiftUI
 struct MainTabView: View {
     @Environment(AppState.self) private var appState
     @State private var profileTabImage: UIImage? = nil
+    @State private var cachedUnselectedAvatar: UIImage? = nil
+    @State private var cachedSelectedAvatar: UIImage? = nil
     
     var body: some View {
         @Bindable var state = appState
@@ -66,37 +68,42 @@ struct MainTabView: View {
             .tag(4)
         }
         .tint(Color.speakitPrimary)
-        .onChange(of: state.selectedTab) { _, _ in
+        .onChange(of: state.selectedTab) { oldTab, newTab in
             HapticManager.shared.selection()
-            Task {
-                await updateProfileTabIcon()
+            let wasProfile = (oldTab == 4)
+            let isProfile = (newTab == 4)
+            if wasProfile != isProfile {
+                self.profileTabImage = isProfile ? (cachedSelectedAvatar ?? profileTabImage) : (cachedUnselectedAvatar ?? profileTabImage)
             }
         }
-        .task(id: "\(state.currentUser?.avatarUrl ?? "")-\(state.currentUser?.initials ?? "")-\(state.selectedTab)") {
-            await updateProfileTabIcon()
+        .task(id: "\(state.currentUser?.avatarUrl ?? "")-\(state.currentUser?.initials ?? "")") {
+            await prepareProfileIcons()
         }
         .sheet(isPresented: $state.showPaywallSheet) {
             SubscriptionPaywallView()
         }
     }
     
-    private func updateProfileTabIcon() async {
+    private func prepareProfileIcons() async {
         let user = appState.currentUser
         let initials = user?.initials ?? "U"
-        let isSelected = appState.selectedTab == 4
+        let avatarUrl = user?.avatarUrl?.trimmingCharacters(in: .whitespacesAndNewlines)
         
-        if let avatarUrl = user?.avatarUrl, !avatarUrl.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            if let img = AvatarCacheManager.shared.memoryImage(for: avatarUrl) {
-                self.profileTabImage = TabBarAvatarRenderer.render(image: img, initials: initials, isSelected: isSelected)
-                return
-            }
-            if let img = await AvatarCacheManager.shared.loadImage(from: avatarUrl) {
-                self.profileTabImage = TabBarAvatarRenderer.render(image: img, initials: initials, isSelected: isSelected)
-                return
+        var sourceImage: UIImage? = nil
+        if let avatarUrl = avatarUrl, !avatarUrl.isEmpty {
+            sourceImage = AvatarCacheManager.shared.memoryImage(for: avatarUrl)
+            if sourceImage == nil {
+                sourceImage = await AvatarCacheManager.shared.loadImage(from: avatarUrl)
             }
         }
         
-        self.profileTabImage = TabBarAvatarRenderer.render(image: nil, initials: initials, isSelected: isSelected)
+        let cacheKey = (avatarUrl != nil && !avatarUrl!.isEmpty) ? avatarUrl! : initials
+        let unselected = TabBarAvatarRenderer.render(image: sourceImage, initials: initials, isSelected: false, customKey: cacheKey)
+        let selected = TabBarAvatarRenderer.render(image: sourceImage, initials: initials, isSelected: true, customKey: cacheKey)
+        
+        self.cachedUnselectedAvatar = unselected
+        self.cachedSelectedAvatar = selected
+        self.profileTabImage = (appState.selectedTab == 4) ? selected : unselected
     }
 }
 
