@@ -257,7 +257,7 @@ public class ElevenLabsLiveTtsWebSocketHandler extends AbstractWebSocketHandler 
         try {
             WebSocketHttpHeaders elHeaders = new WebSocketHttpHeaders();
             // API key passed in BOS message — no header auth needed for streaming endpoint
-            wsClient.doHandshake(upstreamHandler, elHeaders, URI.create(elUrl));
+            wsClient.execute(upstreamHandler, elHeaders, URI.create(elUrl));
             log.info("Live TTS WS: Connecting to ElevenLabs upstream: voiceId={}, sessionId={}", voiceId, clientSession.getId());
         } catch (Exception e) {
             log.error("Live TTS WS: Failed to connect to ElevenLabs upstream for session {}", clientSession.getId(), e);
