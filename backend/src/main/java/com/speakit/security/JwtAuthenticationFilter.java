@@ -7,6 +7,7 @@ import com.speakit.user.entity.User;
  * Spring Security context for authenticated users.
  */
 import com.speakit.user.repository.UserRepository;
+import com.speakit.user.service.UserSessionCacheService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -27,7 +28,7 @@ import java.io.IOException;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
-    private final UserRepository userRepository;
+    private final UserSessionCacheService userSessionCacheService;
 
     @Override
     protected void doFilterInternal(
@@ -56,8 +57,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            // Fetch only session version and plan type using projection
-            com.speakit.user.repository.UserSessionProjection userProj = userRepository.findSessionAndPlanByUsername(username).orElse(null);
+            // Fetch cached session version and plan type using in-memory Caffeine cache (avoids DB hit)
+            com.speakit.user.repository.UserSessionProjection userProj = userSessionCacheService.getUserSession(username).orElse(null);
             Long tokenSessionVersion = jwtService.extractSessionVersion(jwt);
 
             if (userProj != null && tokenSessionVersion != null) {

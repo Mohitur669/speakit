@@ -19,6 +19,7 @@ public class RequestLoggingFilter implements Filter {
 
     private static final String REQUEST_ID_KEY = "requestId";
     private static final String REQUEST_ID_HEADER = "X-Request-ID";
+    private static final String SERVER_TIMING_HEADER = "Server-Timing";
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
@@ -33,6 +34,7 @@ public class RequestLoggingFilter implements Filter {
             requestId = UUID.randomUUID().toString().substring(0, 8);
         }
 
+        long startTime = System.currentTimeMillis();
         try {
             MDC.put(REQUEST_ID_KEY, requestId);
             // Add to response headers for frontend troubleshooting
@@ -40,7 +42,12 @@ public class RequestLoggingFilter implements Filter {
             
             chain.doFilter(request, response);
         } finally {
+            long duration = System.currentTimeMillis() - startTime;
+            if (!httpResponse.isCommitted()) {
+                httpResponse.setHeader(SERVER_TIMING_HEADER, "app;dur=" + duration);
+            }
             MDC.remove(REQUEST_ID_KEY);
         }
     }
 }
+

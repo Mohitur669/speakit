@@ -103,7 +103,9 @@ public class SecurityConfig {
             "Content-Type",
             "Access-Control-Allow-Origin", 
             "Access-Control-Allow-Credentials",
-            "X-Logout-Reason"
+            "X-Logout-Reason",
+            "X-Request-ID",
+            "Server-Timing"
         ));
         
         configuration.setAllowCredentials(true);
