@@ -65,9 +65,19 @@ struct EmptyResponse: Codable {
 
 final class HTTPClient {
     static let shared = HTTPClient()
-    private let session = URLSession.shared
+    private let session: URLSession
     
-    private init() {}
+    private init() {
+        let configuration = URLSessionConfiguration.default
+        configuration.httpMaximumConnectionsPerHost = 6
+        configuration.timeoutIntervalForRequest = 30.0
+        configuration.timeoutIntervalForResource = 60.0
+        // Enforce HTTP Keep-Alive header and persistent connection reuse
+        configuration.httpAdditionalHeaders = [
+            "Connection": "keep-alive"
+        ]
+        self.session = URLSession(configuration: configuration)
+    }
     
     // MARK: - Standard JSON Request
     func request<T: Decodable>(_ endpoint: APIEndpoint, method: String = "GET", body: Data? = nil, headers: [String: String]? = nil) async throws -> T {

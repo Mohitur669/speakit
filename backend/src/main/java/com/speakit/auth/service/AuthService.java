@@ -73,6 +73,7 @@ public class AuthService {
     private final SubscriptionService subscriptionService;
     private final AvatarStorageService avatarStorageService;
     private final UserAvatarHistoryRepository userAvatarHistoryRepository;
+    private final com.speakit.user.service.UserSessionCacheService userSessionCacheService;
 
     public AuthService(
             UserRepository userRepository,
@@ -88,7 +89,9 @@ public class AuthService {
             SpeechToTextRequestRepository speechToTextRequestRepository,
             SubscriptionService subscriptionService,
             AvatarStorageService avatarStorageService,
-            UserAvatarHistoryRepository userAvatarHistoryRepository
+            UserAvatarHistoryRepository userAvatarHistoryRepository,
+            @org.springframework.beans.factory.annotation.Autowired(required = false)
+            com.speakit.user.service.UserSessionCacheService userSessionCacheService
     ) {
         this.userRepository = userRepository;
         this.pendingRegistrationRepository = pendingRegistrationRepository;
@@ -104,6 +107,7 @@ public class AuthService {
         this.subscriptionService = subscriptionService;
         this.avatarStorageService = avatarStorageService;
         this.userAvatarHistoryRepository = userAvatarHistoryRepository;
+        this.userSessionCacheService = userSessionCacheService;
     }
 
     @Value("${auth.session-duration-ms:7200000}")
@@ -224,6 +228,9 @@ public class AuthService {
 
     public void logout(String username) {
         userRepository.incrementSessionVersion(username);
+        if (userSessionCacheService != null) {
+            userSessionCacheService.evictSession(username);
+        }
         webSocketConfig.notifyLogout(username);
         log.info("User {} logged out, session invalidated", username);
     }
@@ -735,6 +742,9 @@ public class AuthService {
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         
         userRepository.incrementSessionVersion(user.getUsername());
+        if (userSessionCacheService != null) {
+            userSessionCacheService.evictSession(user.getUsername());
+        }
         user.setSessionVersion(user.getSessionVersion() + 1);
         webSocketConfig.notifyLogout(user.getUsername());
         
@@ -824,6 +834,9 @@ public class AuthService {
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.incrementSessionVersion(user.getUsername());
+        if (userSessionCacheService != null) {
+            userSessionCacheService.evictSession(user.getUsername());
+        }
         user.setSessionVersion(user.getSessionVersion() + 1);
         webSocketConfig.notifyLogout(user.getUsername());
         userRepository.save(user);
@@ -986,44 +999,33 @@ public class AuthService {
                 final Long finalUserId = user.getId();
 
                 long tDb0 = System.currentTimeMillis();
-                CompletableFuture<Integer> dailyCountFuture = CompletableFuture.supplyAsync(() ->
-                        (int) ttsHistoryRepository.countRecentByUserId(finalUserId, todayStart));
 
+                // 1. Daily TTS generation count for today
+                dailyCount = (int) ttsHistoryRepository.countRecentByUserId(finalUserId, todayStart);
+
+                // 2. Monthly characters used from atomic UsageLedger (avoids scanning history tables when ledger is up to date)
                 java.time.LocalDate currentMonth = java.time.LocalDate.now().withDayOfMonth(1);
-                CompletableFuture<Long> ledgerCharsFuture = CompletableFuture.supplyAsync(() -> {
-                    if (userRepository == null) return 0L;
-                    return userRepository.findUsageLedgerById(finalUserId)
-                            .map(ledger -> {
-                                if (ledger.getUsageMonth() != null && ledger.getUsageMonth().isBefore(currentMonth)) {
-                                    return 0L;
-                                }
-                                return ledger.getTtsChars() + ledger.getSttChars();
-                            })
-                            .orElse(0L);
-                });
+                Optional<com.speakit.user.repository.UsageLedgerProjection> ledgerOpt = userRepository != null 
+                        ? userRepository.findUsageLedgerById(finalUserId) 
+                        : Optional.empty();
 
-                CompletableFuture<Long> ttsCharsFuture = CompletableFuture.supplyAsync(() ->
-                        ttsHistoryRepository.sumCharactersUsedSince(finalUserId, monthStart));
+                if (ledgerOpt.isPresent() && ledgerOpt.get().getUsageMonth() != null && !ledgerOpt.get().getUsageMonth().isBefore(currentMonth)) {
+                    charactersUsed = (int) (ledgerOpt.get().getTtsChars() + ledgerOpt.get().getSttChars());
+                } else {
+                    // Fallback to table sum only if ledger is uninitialized or in a previous month
+                    long ttsChars = ttsHistoryRepository.sumCharactersUsedSince(finalUserId, monthStart);
+                    long sttChars = speechToTextRequestRepository != null ? speechToTextRequestRepository.sumCharactersUsedSince(finalUserId, monthStart) : 0L;
+                    long ledgerChars = ledgerOpt.map(l -> l.getTtsChars() + l.getSttChars()).orElse(0L);
+                    charactersUsed = (int) Math.max(ledgerChars, ttsChars + sttChars);
+                }
 
-                CompletableFuture<Long> sttCharsFuture = CompletableFuture.supplyAsync(() ->
-                        speechToTextRequestRepository != null ? speechToTextRequestRepository.sumCharactersUsedSince(finalUserId, monthStart) : 0L);
-
-                CompletableFuture<Integer> avatarFuture = CompletableFuture.supplyAsync(() -> {
-                    if (userAvatarHistoryRepository == null) return 0;
-                    return (int) userAvatarHistoryRepository.countByUserIdAndActionAndCreatedAtGreaterThanEqual(
+                // 3. Avatar changes today
+                if (userAvatarHistoryRepository != null) {
+                    avatarChangesToday = (int) userAvatarHistoryRepository.countByUserIdAndActionAndCreatedAtGreaterThanEqual(
                             finalUserId, "UPLOAD", startOfTodayUtc);
-                });
+                }
 
-                CompletableFuture.allOf(dailyCountFuture, ledgerCharsFuture, ttsCharsFuture, sttCharsFuture, avatarFuture).join();
-
-                dailyCount = dailyCountFuture.join();
-                long ledgerChars = ledgerCharsFuture.join();
-                long ttsChars = ttsCharsFuture.join();
-                long sttChars = sttCharsFuture.join();
-                avatarChangesToday = avatarFuture.join();
-                charactersUsed = (int) Math.max(ledgerChars, ttsChars + sttChars);
-
-                log.info("Auth stats timing: limits={}ms, parallelDbQueries={}ms",
+                log.info("Auth stats timing: limits={}ms, sequentialDbQueries={}ms",
                         tLimits, (System.currentTimeMillis() - tDb0));
             } catch (Exception e) {
                 log.warn("Failed to compute user usage stats for auth response", e);
