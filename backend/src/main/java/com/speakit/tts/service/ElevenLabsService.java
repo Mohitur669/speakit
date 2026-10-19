@@ -1,6 +1,7 @@
 package com.speakit.tts.service;
 
 import com.speakit.tts.exception.SpeechConversionException;
+import org.jspecify.annotations.Nullable;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
@@ -46,7 +47,7 @@ public class ElevenLabsService {
      * &lt;voiceStyle&gt;text&lt;/voiceStyle&gt; — supported by eleven_flash_v2_5 and eleven_turbo_v2_5.
      * Voice style direction tags provide emotional performance guidance to the AI voice model.
      */
-    public InputStream synthesizeSpeech(String text, String voiceId, String voiceStyle) {
+    public InputStream synthesizeSpeech(String text, String voiceId, @Nullable String voiceStyle) {
         // SEC-04: Validate voiceId is a safe alphanumeric token before concatenating
         // it into the URL to prevent outbound path traversal (CWE-22 / SSRF-lite).
         if (voiceId == null || !voiceId.matches("^[a-zA-Z0-9_-]+$")) {

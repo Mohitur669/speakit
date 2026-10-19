@@ -5,13 +5,11 @@ import com.speakit.auth.dto.ResendOtpRequest;
 import com.speakit.auth.dto.ForgotPasswordRequest;
 import com.speakit.auth.dto.AuthResponse;
 import com.speakit.auth.dto.AuthRequest;
-import com.speakit.user.entity.User;
-
 import com.speakit.shared.aspect.RateLimitAction;
 import com.speakit.shared.aspect.RateLimited;
-import com.speakit.tts.dto.*;
 import com.speakit.auth.service.AuthService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
@@ -87,7 +85,8 @@ public class AuthController {
      */
     @GetMapping("/me")
     public ResponseEntity<AuthResponse> getMe() {
-        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String username = (auth != null) ? auth.getName() : "";
         return ResponseEntity.ok(authService.getUserProfile(username));
     }
 
@@ -105,7 +104,8 @@ public class AuthController {
      */
     @PostMapping("/logout")
     public ResponseEntity<Void> logout() {
-        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String username = (auth != null) ? auth.getName() : "";
         authService.logout(username);
         return ResponseEntity.ok().build();
     }
@@ -115,7 +115,8 @@ public class AuthController {
      */
     @PostMapping("/ws-ticket")
     public ResponseEntity<Map<String, String>> getWSTicket() {
-        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String username = (auth != null) ? auth.getName() : "";
         String ticket = authService.issueWSTicket(username);
         return ResponseEntity.ok(Map.of("ticket", ticket));
     }

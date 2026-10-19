@@ -1,6 +1,7 @@
 package com.speakit.tts.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.jspecify.annotations.Nullable;
 import com.speakit.tts.exception.SpeechConversionException;
 import jakarta.annotation.PostConstruct;
 import lombok.Data;
@@ -171,7 +172,7 @@ public class SarvamService {
      * Synthesizes text into speech using Sarvam AI.
      * Returns an InputStream of the audio data.
      */
-    public InputStream synthesizeSpeech(String text, String voiceId, String languageCode, Double pace, Integer samplingRate) {
+    public InputStream synthesizeSpeech(String text, String voiceId, @Nullable String languageCode, @Nullable Double pace, @Nullable Integer samplingRate) {
         if (apiKey == null || apiKey.isEmpty()) {
             throw new SpeechConversionException("Sarvam AI API Key is missing. Please configure SARVAM_API_KEY.");
         }

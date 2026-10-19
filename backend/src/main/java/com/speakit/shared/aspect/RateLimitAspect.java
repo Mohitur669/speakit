@@ -1,13 +1,4 @@
 package com.speakit.shared.aspect;
-import com.speakit.contact.dto.ContactRequest;
-import com.speakit.auth.dto.VerifyEmailChangeRequest;
-import com.speakit.auth.dto.VerifyEmailRequest;
-import com.speakit.auth.dto.ResetPasswordRequest;
-import com.speakit.auth.dto.ResendOtpRequest;
-import com.speakit.auth.dto.ForgotPasswordRequest;
-import com.speakit.auth.dto.AuthRequest;
-import com.speakit.user.entity.User;
-
 import com.speakit.config.RateLimitConfig;
 import com.speakit.shared.exception.RateLimitExceededException;
 import io.github.bucket4j.Bucket;
@@ -18,7 +9,6 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -42,11 +32,13 @@ import com.github.benmanes.caffeine.cache.Cache;
 @Slf4j
 public class RateLimitAspect {
 
-    @Autowired
-    private Cache<String, Bucket> rateLimitBuckets;
+    private final Cache<String, Bucket> rateLimitBuckets;
+    private final RateLimitConfig rateLimitConfig;
 
-    @Autowired
-    private RateLimitConfig rateLimitConfig;
+    public RateLimitAspect(Cache<String, Bucket> rateLimitBuckets, RateLimitConfig rateLimitConfig) {
+        this.rateLimitBuckets = rateLimitBuckets;
+        this.rateLimitConfig = rateLimitConfig;
+    }
 
     @Around("@annotation(com.speakit.shared.aspect.RateLimited)")
     public Object enforceRateLimit(ProceedingJoinPoint joinPoint) throws Throwable {

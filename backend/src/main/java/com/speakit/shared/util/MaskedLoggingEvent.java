@@ -71,6 +71,7 @@ public class MaskedLoggingEvent implements ILoggingEvent {
     }
 
     @Override
+    @Deprecated
     public Marker getMarker() {
         return delegate.getMarker();
     }
@@ -86,6 +87,7 @@ public class MaskedLoggingEvent implements ILoggingEvent {
     }
 
     @Override
+    @Deprecated
     public Map<String, String> getMdc() {
         return delegate.getMdc();
     }

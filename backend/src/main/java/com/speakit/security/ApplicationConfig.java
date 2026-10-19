@@ -1,5 +1,4 @@
 package com.speakit.security;
-import com.speakit.user.entity.User;
 
 import com.speakit.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;

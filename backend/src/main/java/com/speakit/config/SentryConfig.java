@@ -1,8 +1,6 @@
 package com.speakit.config;
 
-import io.sentry.SentryEvent;
 import io.sentry.SentryOptions.BeforeSendCallback;
-import io.sentry.Hint;
 import io.sentry.SentryLevel;
 import io.sentry.protocol.Mechanism;
 import io.sentry.protocol.Message;

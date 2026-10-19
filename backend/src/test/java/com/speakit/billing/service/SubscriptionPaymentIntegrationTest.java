@@ -2,7 +2,6 @@ package com.speakit.billing.service;
 
 import com.speakit.billing.dto.PaymentOrderRequest;
 import com.speakit.billing.dto.PaymentOrderResponse;
-import com.speakit.billing.dto.PaymentVerificationRequest;
 import com.speakit.billing.entity.PlanType;
 import com.speakit.billing.entity.Subscription;
 import com.speakit.billing.entity.SubscriptionStatus;
@@ -20,7 +19,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;

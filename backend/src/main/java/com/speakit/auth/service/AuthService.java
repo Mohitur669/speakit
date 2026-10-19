@@ -1,8 +1,6 @@
 package com.speakit.auth.service;
 import com.speakit.tts.service.WSTicketService;
-import com.speakit.notification.service.EmailService;
 import com.speakit.notification.service.OtpEmailSender;
-import com.speakit.parameter.service.SystemParameterService;
 import com.speakit.auth.dto.VerifyEmailChangeRequest;
 import com.speakit.auth.dto.VerifyEmailRequest;
 import com.speakit.auth.dto.ResetPasswordRequest;
@@ -21,7 +19,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 
 import com.speakit.config.WebSocketConfig;
-import com.speakit.tts.dto.*;
 import com.speakit.billing.entity.PlanType;
 import com.speakit.user.entity.User;
 import com.speakit.auth.entity.OtpVerification;
@@ -31,11 +28,8 @@ import com.speakit.auth.repository.OtpVerificationRepository;
 import com.speakit.auth.repository.PendingRegistrationRepository;
 import com.speakit.security.JwtService;
 import com.speakit.shared.util.Sanitizer;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -53,7 +47,6 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 
 @Service
 @Slf4j
@@ -63,7 +56,6 @@ public class AuthService {
     private final PendingRegistrationRepository pendingRegistrationRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
-    private final AuthenticationManager authenticationManager;
     private final OtpVerificationRepository otpVerificationRepository;
     private final OtpEmailSender otpEmailSender;
     private final WSTicketService wsTicketService;
@@ -80,7 +72,6 @@ public class AuthService {
             PendingRegistrationRepository pendingRegistrationRepository,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
-            AuthenticationManager authenticationManager,
             OtpVerificationRepository otpVerificationRepository,
             OtpEmailSender otpEmailSender,
             WSTicketService wsTicketService,
@@ -97,7 +88,6 @@ public class AuthService {
         this.pendingRegistrationRepository = pendingRegistrationRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
-        this.authenticationManager = authenticationManager;
         this.otpVerificationRepository = otpVerificationRepository;
         this.otpEmailSender = otpEmailSender;
         this.wsTicketService = wsTicketService;

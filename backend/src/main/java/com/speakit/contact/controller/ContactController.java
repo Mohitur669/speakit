@@ -6,7 +6,6 @@ import com.speakit.contact.dto.ContactRequest;
 import com.speakit.contact.service.ContactService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,11 +15,14 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
 @RequestMapping("/api/contact")
-@RequiredArgsConstructor
 @lombok.extern.slf4j.Slf4j
 public class ContactController {
 
     private final ContactService contactService;
+
+    public ContactController(ContactService contactService) {
+        this.contactService = contactService;
+    }
 
     // Replay Protection Cache (RequestID -> Expiry)
     private final ConcurrentHashMap<String, Long> requestIds = new ConcurrentHashMap<>();

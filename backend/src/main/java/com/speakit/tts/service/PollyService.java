@@ -1,5 +1,6 @@
 package com.speakit.tts.service;
 import com.speakit.billing.entity.PlanType;
+import org.jspecify.annotations.Nullable;
 
 import com.speakit.tts.exception.SpeechConversionException;
 import jakarta.annotation.PostConstruct;
@@ -67,7 +68,7 @@ public class PollyService implements SpeechProvider {
     }
 
     @Override
-    public InputStream synthesizeSpeech(String text, String voiceId, String outputFormat, Map<String, Object> additionalParams) {
+    public InputStream synthesizeSpeech(String text, String voiceId, String outputFormat, @Nullable Map<String, Object> additionalParams) {
         // Use provided engine if present, otherwise negotiate
         Engine engine = (additionalParams != null && additionalParams.containsKey("engine")) 
                 ? (Engine) additionalParams.get("engine") 
@@ -90,7 +91,7 @@ public class PollyService implements SpeechProvider {
      * Prioritizes NEURAL for quality, but falls back to STANDARD if the user's
      * plan does not support high-cost engines.
      */
-    public Engine getBestEngineForVoice(String voiceId, com.speakit.billing.entity.PlanType planType) {
+    public Engine getBestEngineForVoice(String voiceId, @Nullable PlanType planType) {
         List<Voice> voices = getRawAvailableVoices();
         Voice voice = voices.stream()
                 .filter(v -> v.id().toString().equalsIgnoreCase(voiceId) || v.name().equalsIgnoreCase(voiceId))
@@ -99,9 +100,9 @@ public class PollyService implements SpeechProvider {
 
         // Security check: Only PRO/PRO_PLUS/ENTERPRISE users can use NEURAL
         boolean isPremiumPlan = planType != null && (
-                planType == com.speakit.billing.entity.PlanType.PRO || 
-                planType == com.speakit.billing.entity.PlanType.PRO_PLUS || 
-                planType == com.speakit.billing.entity.PlanType.ENTERPRISE
+                planType == PlanType.PRO || 
+                planType == PlanType.PRO_PLUS || 
+                planType == PlanType.ENTERPRISE
         );
 
         if (voice != null) {
@@ -181,13 +182,13 @@ public class PollyService implements SpeechProvider {
      * Overloaded method to retrieve voices matching plan access.
      * Non-premium plans filter out neural-only voices.
      */
-    public List<Map<String, Object>> getAvailableVoices(com.speakit.billing.entity.PlanType planType) {
+    public List<Map<String, Object>> getAvailableVoices(@Nullable PlanType planType) {
         List<Voice> rawVoices = getRawAvailableVoices();
         
         boolean isPremiumPlan = planType != null && (
-                planType == com.speakit.billing.entity.PlanType.PRO || 
-                planType == com.speakit.billing.entity.PlanType.PRO_PLUS || 
-                planType == com.speakit.billing.entity.PlanType.ENTERPRISE
+                planType == PlanType.PRO || 
+                planType == PlanType.PRO_PLUS || 
+                planType == PlanType.ENTERPRISE
         );
         
         List<Voice> filteredVoices;

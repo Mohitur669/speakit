@@ -1,7 +1,6 @@
 package com.speakit.tts.service;
 import com.speakit.parameter.service.SystemParameterService;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -9,12 +8,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class KeepAliveService {
 
     private final RestClient restClient = RestClient.create();
     private final SystemParameterService systemParameterService;
+
+    public KeepAliveService(SystemParameterService systemParameterService) {
+        this.systemParameterService = systemParameterService;
+    }
 
     @Value("${auth.keep-alive-url:}")
     private String externalUrl;

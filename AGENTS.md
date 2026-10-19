@@ -18,7 +18,7 @@ This document serves as the authoritative architectural blueprint, engineering s
 SpeakIT is a production-grade SaaS for AI voice generation. It is designed for high concurrency, minimal database latency, and sub-second TTS delivery.
 
 ## Tech Stack
-- **Backend:** Java 21, Spring Boot 3.x, Spring Security (JWT)
+- **Backend:** Java 25 (LTS), Spring Boot 4.x, Spring Security (JWT)
 - **Data Layer:** PostgreSQL, Hibernate/JPA, Bucket4j (Rate Limiting)
 - **Frontend:** Angular 21.x (Standalone Components, Signals), Tailwind CSS
 - **Infrastructure:** AWS Polly (Neural Engine), Docker, Render (Keep-alive architecture)

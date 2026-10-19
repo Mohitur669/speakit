@@ -16,6 +16,7 @@ import java.time.Duration;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import org.mockito.ArgumentMatchers;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -38,13 +39,13 @@ class ResendOtpEmailSenderTest {
 
     @Test
     void sendOtpEmail_success_buildsCorrectRequest() throws IOException, InterruptedException {
-        when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(httpResponse);
+        when(httpClient.send(any(HttpRequest.class), ArgumentMatchers.<HttpResponse.BodyHandler<String>>any())).thenReturn(httpResponse);
         when(httpResponse.statusCode()).thenReturn(200);
 
         resendOtpEmailSender.sendOtpEmail("user@example.com", "testuser", "123456", 10);
 
         ArgumentCaptor<HttpRequest> requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
-        verify(httpClient).send(requestCaptor.capture(), any(HttpResponse.BodyHandler.class));
+        verify(httpClient).send(requestCaptor.capture(), ArgumentMatchers.<HttpResponse.BodyHandler<String>>any());
 
         HttpRequest request = requestCaptor.getValue();
         assertEquals("https://api.resend.com/emails", request.uri().toString());
@@ -59,14 +60,14 @@ class ResendOtpEmailSenderTest {
     @Test
     void sendOtpEmail_failure_doesNotThrowJustLikeLegacySender() throws IOException, InterruptedException {
         // Legacy sender logs error but doesn't throw, allowing flow to continue
-        when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenThrow(new IOException("Network error"));
+        when(httpClient.send(any(HttpRequest.class), ArgumentMatchers.<HttpResponse.BodyHandler<String>>any())).thenThrow(new IOException("Network error"));
 
         assertDoesNotThrow(() -> resendOtpEmailSender.sendOtpEmail("user@example.com", "testuser", "123456", 10));
     }
 
     @Test
     void sendOtpEmail_non200Response_logsErrorButDoesNotThrow() throws IOException, InterruptedException {
-        when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(httpResponse);
+        when(httpClient.send(any(HttpRequest.class), ArgumentMatchers.<HttpResponse.BodyHandler<String>>any())).thenReturn(httpResponse);
         when(httpResponse.statusCode()).thenReturn(403);
         when(httpResponse.body()).thenReturn("Forbidden");
 

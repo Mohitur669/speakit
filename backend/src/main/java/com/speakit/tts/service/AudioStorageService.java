@@ -1,6 +1,7 @@
 package com.speakit.tts.service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
@@ -14,7 +15,6 @@ import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import jakarta.annotation.PostConstruct;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -151,7 +151,7 @@ public class AudioStorageService {
     /**
      * Retrieves an input stream for audio stored in R2 or local disk fallback.
      */
-    public InputStream getAudioInputStream(String storageKey, String audioUrl) throws IOException {
+    public @Nullable InputStream getAudioInputStream(String storageKey, String audioUrl) throws IOException {
         String key = storageKey;
         if ((key == null || key.isBlank()) && audioUrl != null && !audioUrl.isBlank()) {
             if (audioUrl.contains("audio/")) {

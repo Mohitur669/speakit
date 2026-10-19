@@ -6,7 +6,6 @@ import com.speakit.parameter.service.SystemParameterService;
 import com.speakit.security.JwtService;
 import com.speakit.user.entity.User;
 import com.speakit.user.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -41,7 +40,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * Target latency: < 800ms end-to-end (Sarvam STT ~100-200ms + ElevenLabs TTS ~75ms + network).
  */
 @Component
-@RequiredArgsConstructor
 @Slf4j
 public class ElevenLabsLiveTtsWebSocketHandler extends AbstractWebSocketHandler {
 
@@ -49,6 +47,17 @@ public class ElevenLabsLiveTtsWebSocketHandler extends AbstractWebSocketHandler 
     private final UserRepository userRepository;
     private final ObjectMapper objectMapper;
     private final SystemParameterService systemParameterService;
+
+    public ElevenLabsLiveTtsWebSocketHandler(
+            JwtService jwtService,
+            UserRepository userRepository,
+            ObjectMapper objectMapper,
+            SystemParameterService systemParameterService) {
+        this.jwtService = jwtService;
+        this.userRepository = userRepository;
+        this.objectMapper = objectMapper;
+        this.systemParameterService = systemParameterService;
+    }
 
     @Value("${elevenlabs.apiKey:}")
     private String elevenLabsApiKey;
@@ -206,7 +215,7 @@ public class ElevenLabsLiveTtsWebSocketHandler extends AbstractWebSocketHandler 
                 ));
                 bos.put("xi_api_key", elevenLabsApiKey);
                 bos.put("try_trigger_generation", true);
-                upstream.sendMessage(new TextMessage(new ObjectMapper().writeValueAsString(bos)));
+                upstream.sendMessage(new TextMessage(objectMapper.writeValueAsString(bos)));
             }
 
             @Override

@@ -1,6 +1,7 @@
 package com.speakit.tts.controller;
 
 import com.speakit.stt.entity.SpeechToTextRequest;
+import org.jspecify.annotations.Nullable;
 import com.speakit.stt.repository.SpeechToTextRequestRepository;
 import com.speakit.tts.dto.TtsHistoryDto;
 import com.speakit.tts.repository.TtsHistoryRepository;
@@ -268,7 +269,7 @@ public class HistoryController {
      * Resynthesizes audio on-demand for older history records where audio files were not stored,
      * saving it to storage so subsequent plays are instant.
      */
-    private InputStream resynthesizeAudio(com.speakit.tts.entity.TtsHistory history) {
+    private @Nullable InputStream resynthesizeAudio(com.speakit.tts.entity.TtsHistory history) {
         try {
             String text = history.getFullText() != null ? history.getFullText() : history.getTextSnippet();
             if (text == null || text.trim().isEmpty()) return null;

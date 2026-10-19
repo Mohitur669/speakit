@@ -9,10 +9,8 @@ import com.speakit.stt.exception.SttException;
 import com.speakit.stt.provider.ElevenLabsSpeechToTextProvider;
 import com.speakit.stt.provider.SarvamSpeechToTextProvider;
 import com.speakit.stt.repository.SpeechToTextRequestRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
@@ -26,7 +24,6 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class SttService {
 
@@ -35,6 +32,19 @@ public class SttService {
     private final SpeechToTextRequestRepository sttRepository;
     private final UserRepository userRepository;
     private final SystemParameterService systemParameterService;
+
+    public SttService(
+            SarvamSpeechToTextProvider sarvamProvider,
+            ElevenLabsSpeechToTextProvider elevenLabsProvider,
+            SpeechToTextRequestRepository sttRepository,
+            UserRepository userRepository,
+            SystemParameterService systemParameterService) {
+        this.sarvamProvider = sarvamProvider;
+        this.elevenLabsProvider = elevenLabsProvider;
+        this.sttRepository = sttRepository;
+        this.userRepository = userRepository;
+        this.systemParameterService = systemParameterService;
+    }
 
     // Bounded, auto-expiring deduplication cache (SEC-03 / CWE-770).
     // Fingerprints expire after the dedupe window so the map stays small at steady state.

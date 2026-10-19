@@ -5,7 +5,6 @@ import com.speakit.tts.dto.TtsRequest;
 import com.speakit.billing.entity.PlanType;
 import com.speakit.billing.entity.SubscriptionStatus;
 import com.speakit.user.entity.User;
-import com.speakit.stt.repository.SpeechToTextRequestRepository;
 import com.speakit.tts.repository.TtsHistoryRepository;
 import com.speakit.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,8 +29,6 @@ class TtsServiceTest {
     private SubscriptionService subscriptionService;
     @Mock
     private TtsHistoryRepository ttsHistoryRepository;
-    @Mock
-    private SpeechToTextRequestRepository speechToTextRequestRepository;
     @Mock
     private UserRepository userRepository;
 
