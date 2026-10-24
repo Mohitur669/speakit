@@ -4,12 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.speakit.billing.entity.PlanType;
 import com.speakit.security.JwtService;
-import com.speakit.stt.entity.SpeechToTextRequest;
-import com.speakit.stt.repository.SpeechToTextRequestRepository;
 import com.speakit.tts.service.WSTicketService;
 import com.speakit.user.entity.User;
 import com.speakit.user.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -22,7 +19,6 @@ import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
@@ -35,15 +31,22 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  * Protects upstream API keys, enforces user authentication, buffers initial audio chunks, and saves session history.
  */
 @Component
-@RequiredArgsConstructor
 @Slf4j
 public class LiveSttWebSocketHandler extends AbstractWebSocketHandler {
 
     private final WSTicketService wsTicketService;
     private final JwtService jwtService;
     private final UserRepository userRepository;
-    private final SpeechToTextRequestRepository speechToTextRequestRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    public LiveSttWebSocketHandler(
+            WSTicketService wsTicketService,
+            JwtService jwtService,
+            UserRepository userRepository) {
+        this.wsTicketService = wsTicketService;
+        this.jwtService = jwtService;
+        this.userRepository = userRepository;
+    }
 
     @Value("${sarvam.apiKey:}")
     private String sarvamApiKey;

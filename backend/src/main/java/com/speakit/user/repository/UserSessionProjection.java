@@ -2,7 +2,7 @@ package com.speakit.user.repository;
 
 import com.speakit.billing.entity.PlanType;
 import com.speakit.billing.entity.SubscriptionStatus;
-import org.springframework.lang.Nullable;
+import org.jspecify.annotations.Nullable;
 import java.time.LocalDateTime;
 
 public interface UserSessionProjection {

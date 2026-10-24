@@ -1,12 +1,10 @@
 package com.speakit.tts.controller;
-import com.speakit.user.entity.User;
 
 import com.speakit.shared.aspect.RateLimitAction;
 import com.speakit.shared.aspect.RateLimited;
 import com.speakit.tts.dto.TtsRequest;
 import com.speakit.billing.entity.PlanType;
 import com.speakit.billing.entity.SubscriptionStatus;
-import com.speakit.tts.entity.TtsHistory;
 import com.speakit.tts.service.TtsService;
 import com.speakit.tts.service.AudioStorageService;
 import com.speakit.tts.service.ElevenLabsService;

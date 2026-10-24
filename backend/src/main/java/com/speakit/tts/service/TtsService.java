@@ -1,5 +1,7 @@
 package com.speakit.tts.service;
+
 import com.speakit.billing.service.SubscriptionService;
+import org.jspecify.annotations.Nullable;
 
 import com.speakit.tts.dto.TtsRequest;
 import com.speakit.billing.entity.PlanType;
@@ -7,9 +9,6 @@ import com.speakit.billing.entity.SubscriptionStatus;
 import com.speakit.tts.entity.TtsHistory;
 import com.speakit.tts.repository.TtsHistoryRepository;
 import com.speakit.user.repository.UserRepository;
-import com.speakit.user.repository.UsageLedgerProjection;
-import com.speakit.stt.repository.SpeechToTextRequestRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,14 +17,21 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class TtsService {
 
     private final SubscriptionService subscriptionService;
     private final TtsHistoryRepository ttsHistoryRepository;
-    private final SpeechToTextRequestRepository speechToTextRequestRepository;
     private final UserRepository userRepository;
+
+    public TtsService(
+            SubscriptionService subscriptionService,
+            TtsHistoryRepository ttsHistoryRepository,
+            UserRepository userRepository) {
+        this.subscriptionService = subscriptionService;
+        this.ttsHistoryRepository = ttsHistoryRepository;
+        this.userRepository = userRepository;
+    }
 
     @Transactional
     public void recordHistory(Long userId, String voiceId, String voiceName, String voiceType, String format, int charCount, String text) {
@@ -33,7 +39,7 @@ public class TtsService {
     }
 
     @Transactional
-    public TtsHistory recordHistory(Long userId, String voiceId, String voiceName, String voiceType, String format, int charCount, String text, String audioUrl, String storageKey) {
+    public @Nullable TtsHistory recordHistory(Long userId, String voiceId, String voiceName, String voiceType, String format, int charCount, String text, String audioUrl, String storageKey) {
         try {
             if (userId != null) {
                 String snippet = (text != null && text.length() > 100) ? text.substring(0, 100) : (text != null ? text : "");

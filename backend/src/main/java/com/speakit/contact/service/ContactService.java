@@ -5,7 +5,6 @@ import com.speakit.contact.dto.ContactRequest;
 import com.speakit.contact.entity.ContactSubmission;
 import com.speakit.contact.repository.ContactSubmissionRepository;
 import com.speakit.shared.util.Sanitizer;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,12 +16,16 @@ import java.util.Base64;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class ContactService {
 
     private final ContactSubmissionRepository contactRepository;
     private final TelegramService telegramService;
+
+    public ContactService(ContactSubmissionRepository contactRepository, TelegramService telegramService) {
+        this.contactRepository = contactRepository;
+        this.telegramService = telegramService;
+    }
     
     // Memory-efficient deduplication cache (Hashed Content -> Timestamp)
     private final ConcurrentHashMap<String, Long> messageFingerprints = new ConcurrentHashMap<>();

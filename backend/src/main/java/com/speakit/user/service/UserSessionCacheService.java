@@ -4,7 +4,6 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.speakit.user.repository.UserRepository;
 import com.speakit.user.repository.UserSessionProjection;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -17,11 +16,14 @@ import java.util.concurrent.TimeUnit;
  * while providing immediate cache eviction on session invalidation (logout/password reset).
  */
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class UserSessionCacheService {
 
     private final UserRepository userRepository;
+
+    public UserSessionCacheService(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
 
     // Cache user session projections for 60 seconds (maximum 10,000 entries)
     private final Cache<String, Optional<UserSessionProjection>> sessionCache = Caffeine.newBuilder()

@@ -1,6 +1,5 @@
 package com.speakit.tts.controller;
 import com.speakit.contact.repository.ContactSubmissionRepository;
-import com.speakit.contact.entity.ContactSubmission;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.speakit.contact.dto.ContactRequest;
@@ -25,7 +24,7 @@ public class ContactControllerTest {
     private ObjectMapper objectMapper;
 
     @Autowired
-    private com.speakit.contact.repository.ContactSubmissionRepository contactSubmissionRepository;
+    private ContactSubmissionRepository contactSubmissionRepository;
 
     @org.junit.jupiter.api.BeforeEach
     public void setup() {

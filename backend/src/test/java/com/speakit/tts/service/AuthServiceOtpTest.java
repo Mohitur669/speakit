@@ -1,5 +1,4 @@
 package com.speakit.tts.service;
-import com.speakit.notification.service.EmailService;
 import com.speakit.notification.service.OtpEmailSender;
 import com.speakit.parameter.service.SystemParameterService;
 import com.speakit.auth.dto.VerifyEmailChangeRequest;
@@ -12,7 +11,6 @@ import com.speakit.auth.service.AuthService;
 import com.speakit.user.dto.UserProfileUpdateRequest;
 
 import com.speakit.config.WebSocketConfig;
-import com.speakit.tts.dto.*;
 import com.speakit.auth.entity.OtpVerification;
 import com.speakit.auth.entity.PendingRegistration;
 import com.speakit.auth.repository.PendingRegistrationRepository;
@@ -30,7 +28,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDateTime;
@@ -58,9 +55,6 @@ class AuthServiceOtpTest {
 
     @Mock
     private JwtService jwtService;
-
-    @Mock
-    private AuthenticationManager authenticationManager;
 
     @Mock
     private WebSocketConfig webSocketConfig;

@@ -29,9 +29,9 @@ SpeakIT is a production-grade, full-stack SaaS platform powered by **AWS Polly**
 - **Hosting:** Vercel
 
 ### Backend (Enterprise Java)
-- **Framework:** Spring Boot 3.5.x
-- **Language:** Java 21 (LTS)
-- **Security:** Spring Security 6.x (Stateless JWT)
+- **Framework:** Spring Boot 4.x
+- **Language:** Java 25 (LTS)
+- **Security:** Spring Security (Stateless JWT)
 - **Database:** PostgreSQL (Hibernate/JPA)
 - **Integrations:** AWS SDK for Polly (v2.x), ElevenLabs API, Razorpay SDK
 - **Hosting:** Render
@@ -113,7 +113,7 @@ The database is engineered for **PostgreSQL 16+** using enterprise-grade JPA pat
 
 ### Prerequisites
 - **Node.js** 22+
-- **Java 21** (JDK)
+- **Java 25** (JDK)
 - **Maven** 3.9+
 - **PostgreSQL** 16+ (Local or Cloud)
 

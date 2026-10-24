@@ -2,7 +2,6 @@ package com.speakit.parameter.service;
 
 import com.speakit.parameter.entity.SystemParameter;
 import com.speakit.parameter.repository.SystemParameterRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -15,13 +14,16 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class SystemParameterService {
 
     private final SystemParameterRepository repository;
     public static final String CACHE_NAME = "systemParameters";
     private final Map<String, String> localCache = new java.util.concurrent.ConcurrentHashMap<>();
+
+    public SystemParameterService(SystemParameterRepository repository) {
+        this.repository = repository;
+    }
 
     // --- 1. DYNAMICALLY GOVERNED PARAMETER ACCESS (Governed by DYNAMIC_PLAN_FEATURES_LIVE flag) ---
 

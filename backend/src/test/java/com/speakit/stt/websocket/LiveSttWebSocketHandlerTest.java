@@ -1,7 +1,6 @@
 package com.speakit.stt.websocket;
 
 import com.speakit.security.JwtService;
-import com.speakit.stt.repository.SpeechToTextRequestRepository;
 import com.speakit.tts.service.WSTicketService;
 import com.speakit.user.entity.User;
 import com.speakit.user.repository.UserRepository;
@@ -32,9 +31,6 @@ class LiveSttWebSocketHandlerTest {
 
     @Mock
     private UserRepository userRepository;
-
-    @Mock
-    private SpeechToTextRequestRepository speechToTextRequestRepository;
 
     @Mock
     private WebSocketSession session;

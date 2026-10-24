@@ -34,7 +34,7 @@ class SttServiceTest {
     @Mock
     private UserRepository userRepository;
     @Mock
-    private com.speakit.parameter.service.SystemParameterService systemParameterService;
+    private SystemParameterService systemParameterService;
 
     @InjectMocks
     private SttService sttService;

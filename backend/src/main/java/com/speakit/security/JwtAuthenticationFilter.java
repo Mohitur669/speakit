@@ -1,19 +1,16 @@
 package com.speakit.security;
 import com.speakit.user.repository.UserSessionProjection;
-import com.speakit.user.entity.User;
 
 /*
  * HTTP request filter validating JWT tokens and setting
  * Spring Security context for authenticated users.
  */
-import com.speakit.user.repository.UserRepository;
 import com.speakit.user.service.UserSessionCacheService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -32,9 +29,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(
-            @NonNull HttpServletRequest request,
-            @NonNull HttpServletResponse response,
-            @NonNull FilterChain filterChain
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain filterChain
     ) throws ServletException, IOException {
         String path = request.getServletPath();
         if (path.equals("/api/auth/login") || path.equals("/api/auth/register") || path.equals("/api/contact") || path.startsWith("/ws/")) {
@@ -58,7 +55,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             // Fetch cached session version and plan type using in-memory Caffeine cache (avoids DB hit)
-            com.speakit.user.repository.UserSessionProjection userProj = userSessionCacheService.getUserSession(username).orElse(null);
+            UserSessionProjection userProj = userSessionCacheService.getUserSession(username).orElse(null);
             Long tokenSessionVersion = jwtService.extractSessionVersion(jwt);
 
             if (userProj != null && tokenSessionVersion != null) {
