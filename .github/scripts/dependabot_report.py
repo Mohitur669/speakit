@@ -35,6 +35,7 @@ import base64
 import json
 import os
 import re
+import shutil
 import sys
 from datetime import datetime, timezone
 from html import escape
@@ -105,7 +106,9 @@ UPGRADE_HINTS = {
 def fetch_alerts(session: requests.Session, repo: str, state: str) -> list[dict]:
     url = f"{API_ROOT}/repos/{repo}/dependabot/alerts"
     params = {"per_page": 100, "sort": "created", "direction": "desc"}
-    if state != "all":
+    if state == "all":
+        params["state"] = "open,fixed,dismissed,auto_dismissed"
+    elif state:
         params["state"] = state
 
     alerts: list[dict] = []
@@ -249,6 +252,38 @@ def upgrade_hint(group: dict) -> str:
     return text
 
 
+def get_local_version(package: str, manifest: str) -> str | None:
+    """Check working tree manifests to determine current installed/pinned version."""
+    try:
+        if "package" in manifest:
+            lock_path = Path("frontend/package-lock.json")
+            if lock_path.exists():
+                data = json.loads(lock_path.read_text(encoding="utf-8"))
+                packages = data.get("packages", {})
+                pkg_key = f"node_modules/{package}"
+                if pkg_key in packages and "version" in packages[pkg_key]:
+                    return packages[pkg_key]["version"]
+                deps = data.get("dependencies", {})
+                if package in deps and "version" in deps[package]:
+                    return deps[package]["version"]
+            pkg_path = Path("frontend/package.json")
+            if pkg_path.exists():
+                pkg_data = json.loads(pkg_path.read_text(encoding="utf-8"))
+                for sec in ("overrides", "dependencies", "devDependencies"):
+                    if package in pkg_data.get(sec, {}):
+                        return str(pkg_data[sec][package]).lstrip("^~")
+        elif "pom.xml" in manifest:
+            pom_path = Path("backend/pom.xml")
+            if pom_path.exists():
+                text = pom_path.read_text(encoding="utf-8")
+                m = re.search(rf"<artifactId>{re.escape(package)}</artifactId>\s*<version>(.*?)</version>", text)
+                if m:
+                    return m.group(1)
+    except Exception:
+        pass
+    return None
+
+
 # ------------------------------------------------------------------------ images
 
 
@@ -353,45 +388,216 @@ def alert_detail_md(a: dict, repo: str) -> str:
     return "\n".join(lines)
 
 
-def build_markdown(repo: str, alerts: list[dict], groups: list[dict], state: str) -> str:
-    counts = {s: sum(1 for a in alerts if a["severity"] == s) for s in ("critical", "high", "medium", "low")}
+def build_consolidated_plan(
+    repo: str,
+    open_alerts: list[dict],
+    fixed_alerts: list[dict],
+    groups: list[dict],
+    branch: str = "master",
+) -> str:
+    total_alerts = open_alerts + fixed_alerts
+    total_count = len(total_alerts)
+
+    counts_total = {s: sum(1 for a in total_alerts if a["severity"] == s) for s in ("critical", "high", "medium", "low")}
+    counts_open = {s: sum(1 for a in open_alerts if a["severity"] == s) for s in ("critical", "high", "medium", "low")}
+    counts_fixed = {s: sum(1 for a in fixed_alerts if a["severity"] == s) for s in ("critical", "high", "medium", "low")}
+
+    pct_fixed = f"{(len(fixed_alerts) / total_count * 100):.1f}%" if total_count else "100.0%"
+    pct_open = f"{(len(open_alerts) / total_count * 100):.1f}%" if total_count else "0.0%"
+
+    locally_patched_alerts = sum(len(g["alerts"]) for g in groups if g.get("is_locally_patched"))
+    pending_alerts_count = len(open_alerts) - locally_patched_alerts
+
     generated = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
     out = [
-        f"# Dependabot security report — {repo}",
+        f"# Dependabot VAPT Security Report & Remediation Plan — {repo}",
         "",
-        f"Generated {generated} • state filter: `{state}` • {len(alerts)} alert(s)",
+        f"**Repository**: `{repo}`  ",
+        f"**Generated**: `{generated}`  ",
+        f"**Branch Context**: `{branch}`  ",
         "",
-        "| Critical | High | Medium | Low |",
-        "| --- | --- | --- | --- |",
-        f"| {counts['critical']} | {counts['high']} | {counts['medium']} | {counts['low']} |",
+        "---",
         "",
-        "## Remediation plan",
+        "## 📊 Executive Scorecard: What is Fixed vs. What is Left",
         "",
-        "Ordered by severity, then by how many alerts each upgrade closes.",
+        "| Status Category | Critical | High | Medium | Low | Total | Percentage |",
+        "|:---|:---:|:---:|:---:|:---:|:---:|:---:|",
+        f"| **✅ Remediated & Fixed (Closed)** | {counts_fixed['critical']} | {counts_fixed['high']} | {counts_fixed['medium']} | {counts_fixed['low']} | **{len(fixed_alerts)}** | **{pct_fixed}** |",
+        f"| **⚠️ Pending Remediation (Left)** | {counts_open['critical']} | {counts_open['high']} | {counts_open['medium']} | {counts_open['low']} | **{len(open_alerts)}** | **{pct_open}** |",
+        f"| **📌 Total Tracked Vulnerabilities** | {counts_total['critical']} | {counts_total['high']} | {counts_total['medium']} | {counts_total['low']} | **{total_count}** | **100.0%** |",
+        "",
+        f"### 🔍 Current Branch Remediation Status (`{branch}`)",
+        f"- **✅ Already Patched on Current Branch**: {locally_patched_alerts} alert(s) across {sum(1 for g in groups if g.get('is_locally_patched'))} package group(s)",
+        f"- **⚠️ Left to Remediate Locally**: {pending_alerts_count} alert(s) across {sum(1 for g in groups if not g.get('is_locally_patched'))} package group(s)",
+        "",
+        "---",
+        "",
+        "## 1. 🤖 Instructions & Protocol for AI Coding Agent",
+        "",
+        "You are tasked with autonomously fixing all remaining dependency vulnerabilities (VAPT alerts) listed below. "
+        "You have full workspace access and shell execution capability. Follow these instructions strictly:",
+        "",
+        "### Operational Protocol & Safeguards",
+        "1. **Group-Based Execution**: All alerts sharing the same package and manifest are grouped into a single unit of work. Remediate them together in one operation rather than separately.",
+        "2. **Minimal Change Principle**: Change ONLY what each vulnerability upgrade requires. Do not perform unrelated refactors, mass formatting changes, or update unrelated dependencies.",
+        "3. **Direct vs. Transitive Dependencies**:",
+        "   - **Direct**: Bump the version in `package.json` (frontend) or `pom.xml` (backend) directly to the target version.",
+        "   - **Transitive**: Add/update `overrides` in `package.json` (frontend) or `<dependencyManagement>` in `pom.xml` (backend) to pin the safe version without breaking parent packages.",
+        "4. **Package Manager Tooling**: Always use standard tooling (`npm install`, `./mvnw test-compile`, etc.) to update lockfiles. Never manually edit lockfile hashes, integrity strings, or structure.",
+        "5. **Rigorous Verification**:",
+        "   - Clean install: Ensure dependencies resolve cleanly.",
+        "   - Build: Compile the application (`npm run build` or `./mvnw clean test-compile`).",
+        "   - Tests: Run the automated test suite (`npm test -- --watch=false` or `./mvnw test`).",
+        "   - Confirm version: Verify the installed version meets or exceeds the target (`npm ls <pkg>` or `mvn dependency:tree -Dincludes=<pkg>`).",
+        "6. **Git & Commit Governance**:",
+        "   - **MANDATORY**: Do NOT automatically commit (`git commit`) or push (`git push`). Always ask the user for explicit permission before staging, committing, or pushing code changes.",
+        "   - Suggested commit message format when user approves:",
+        "     ```text",
+        "     fix(deps): bump <package> to <target_version>",
+        "",
+        "     Closes dependabot alert #<id1>, #<id2>",
+        "     ```",
+        "7. **Safety Rules & Constraints**:",
+        "   - Never downgrade any package version.",
+        "   - Never suppress, skip, or remove failing tests to bypass verification.",
+        "   - **IMPORTANT**: Completely ignore `scripts/dependency-vapt-pipeline/fix-alerts.py`. Do not run, edit, or interact with this script.",
+        "   - If an upgrade encounters unresolvable breaking changes or has no safe patched version available, document the manual mitigation required in the progress log below and proceed to the next group.",
+        "",
+        "---",
+        "",
+        f"## 2. ⚠️ What Is Left: Active Vulnerabilities & Remediation Plan ({len(open_alerts)} Alerts)",
+        "",
+        "The following vulnerabilities are currently open on GitHub and require verification or patching:",
+        "",
+        "### Prioritized Open Alerts Overview",
+        "",
+        "| # | Severity | Package | Ecosystem | Manifest | Target Version | Local Branch Status | Closes Alerts | Advisory / GHSA |",
+        "|:---:|:---:|:---|:---:|:---|:---:|:---:|:---:|:---|",
+    ]
+
+    group_for = {a["number"]: g for g in groups for a in g["alerts"]}
+    for a in open_alerts:
+        g = group_for[a["number"]]
+        closes = ", ".join(f"#{x['number']}" for x in g["alerts"])
+        local_status = f"✅ Patched (`{g['local_version']}`)" if g.get("is_locally_patched") else f"⚠️ Action Required (Installed: `{g['local_version'] or 'not found'}`)"
+        out.append(
+            f"| [#{a['number']}]({a['html_url']}) | **{a['severity'].upper()}** | `{a['package']}` | "
+            f"{a['ecosystem']} | `{a['manifest']}` | `{g['target_version'] or 'NO PATCH'}` | "
+            f"{local_status} | {closes} | `{a['ghsa_id'] or '—'}` |"
+        )
+
+    out += [
+        "",
+        "### Remediation Action Plan (Grouped by Package)",
+        "",
+        "Ordered by urgency: pending local packages first, then by severity:",
         "",
     ]
 
     for i, g in enumerate(groups, 1):
+        alert_nums = ", ".join(f"[#{a['number']}]({a['html_url']})" for a in g["alerts"])
+        local_badge = f"✅ **Patched on Current Branch** (Installed: `{g['local_version']}`)" if g.get("is_locally_patched") else f"⚠️ **Action Required** (Installed: `{g['local_version'] or 'not installed'}`)"
         out += [
-            f"### {i}. Upgrade `{g['package']}` to `{g['target_version'] or 'n/a'}` — closes {len(g['alerts'])} alert(s)",
+            f"#### Group {i}: Upgrade `{g['package']}` to `{g['target_version'] or 'n/a'}`",
             "",
-            f"- Manifest: `{g['manifest']}`",
-            f"- Ecosystem: {g['ecosystem']}",
-            f"- Worst severity: {g['worst_severity'].upper()}",
-            f"- Alerts: {', '.join('#' + str(a['number']) for a in g['alerts'])}",
+            f"- **Status**: {local_badge}",
+            f"- **Manifest**: `{g['manifest']}`",
+            f"- **Ecosystem**: {g['ecosystem']}",
+            f"- **Worst Severity**: {g['worst_severity'].upper()}",
+            f"- **Closing Alerts**: {alert_nums} ({len(g['alerts'])} alert(s) resolved)",
             "",
+            "##### Recommended Remediation Command",
             "```",
             upgrade_hint(g),
             "```",
             "",
+            "##### Acceptance Criteria",
+            f"- [ ] Manifest and lockfile pin `{g['package']}` at or above `{g['target_version'] or 'safe release'}`",
+            f"- [ ] Dependency installation resolves successfully without dependency conflict errors",
+            f"- [ ] Project compiles and builds successfully (`npm run build` or `./mvnw test-compile`)",
+            f"- [ ] Automated test suite passes (`npm test -- --watch=false` or `./mvnw test`)",
+            f"- [ ] No new security vulnerabilities introduced by this dependency update",
+            "",
+            "##### Detailed Advisories in this Group",
+            "",
         ]
 
-    out += ["---", "", "## Alert details", ""]
-    for a in sorted(alerts, key=lambda x: (sev_rank(x), x["number"])):
-        out.append(alert_detail_md(a, repo))
-        out.append("---")
-        out.append("")
+        for a in g["alerts"]:
+            out += [
+                f"###### Alert #{a['number']}: {a['summary']}",
+                "",
+                f"- **Severity**: {a['severity'].upper()} | **CVSS**: {a['cvss_score'] if a['cvss_score'] is not None else '—'} | **EPSS**: {a['epss_percentage'] if a['epss_percentage'] is not None else '—'}",
+                f"- **Package**: `{a['package']}` ({a['ecosystem']})",
+                f"- **Vulnerable Range**: `{a['vulnerable_range'] or '—'}`",
+                f"- **First Patched Version**: `{a['first_patched'] or 'None'}`",
+                f"- **Scope / Relationship**: `{a['scope'] or '—'}` / `{a['relationship'] or '—'}`",
+                f"- **Identifiers**: GHSA: `{a['ghsa_id'] or '—'}` | CVE: `{a['cve_id'] or '—'}`",
+                f"- **Alert Link**: {a['html_url']}",
+                "",
+                "**Advisory Description**:",
+                "> " + "\n> ".join((a["description"] or "No description provided.").splitlines()),
+                "",
+            ]
+            if a["references"]:
+                out += ["**References**:", ""] + [f"- {ref}" for ref in a["references"][:5]] + [""]
+
+        out += ["---", ""]
+
+    # Section 3: What Is Fixed
+    out += [
+        f"## 3. ✅ What Is Fixed: Remediated Vulnerabilities ({len(fixed_alerts)} Alerts Resolved)",
+        "",
+        f"A total of **{len(fixed_alerts)}** vulnerabilities have been successfully remediated and closed on GitHub.",
+        "",
+        "### Remediated Packages Summary",
+        "",
+        "| Package | Ecosystem | Resolved Alerts | Safe Patched Version | Latest Closed Date |",
+        "|:---|:---:|:---:|:---:|:---:|",
+    ]
+
+    fixed_by_pkg: dict[tuple, list[dict]] = {}
+    for a in fixed_alerts:
+        k = (a["ecosystem"], a["package"])
+        fixed_by_pkg.setdefault(k, []).append(a)
+
+    for (eco, pkg), f_alerts in sorted(fixed_by_pkg.items(), key=lambda x: -len(x[1])):
+        safe_vers = [a["first_patched"] for a in f_alerts if a.get("first_patched")]
+        highest_safe = sorted(safe_vers, key=version_key, reverse=True)[0] if safe_vers else "—"
+        latest_closed = max((a.get("fixed_at") or a.get("dismissed_at") or "") for a in f_alerts)
+        out.append(f"| `{pkg}` | {eco} | **{len(f_alerts)}** | `{highest_safe}` | {fmt_date(latest_closed)} |")
+
+    out += [
+        "",
+        "### Complete Remediated Vulnerabilities Audit Trail",
+        "",
+        "| # | Severity | Package | Ecosystem | Patched Version | Closed Date | Resolution | CVE / GHSA |",
+        "|:---:|:---:|:---|:---:|:---:|:---:|:---:|:---|",
+    ]
+
+    for a in sorted(fixed_alerts, key=lambda x: (x.get("fixed_at") or x.get("dismissed_at") or ""), reverse=True):
+        closed_date = fmt_date(a.get("fixed_at") or a.get("dismissed_at"))
+        resolution = a.get("dismissed_reason") or a.get("state") or "fixed"
+        cve_or_ghsa = a.get("cve_id") or a.get("ghsa_id") or "—"
+        out.append(
+            f"| [#{a['number']}]({a['html_url']}) | **{a['severity'].upper()}** | `{a['package']}` | "
+            f"{a['ecosystem']} | `{a['first_patched'] or '—'}` | {closed_date} | {resolution.title()} | `{cve_or_ghsa}` |"
+        )
+
+    out += [
+        "",
+        "---",
+        "",
+        "## 4. 📝 Remediation Progress Log",
+        "",
+        "Track progress for remaining open groups:",
+        "",
+    ]
+    for i, g in enumerate(groups, 1):
+        st = "✅ Verified on branch" if g.get("is_locally_patched") else "⏳ Pending fix"
+        out.append(f"- [{'x' if g.get('is_locally_patched') else ' '}] Group {i}: `{g['package']}` -> `{g['target_version'] or 'n/a'}` ({g['manifest']}) — {st}")
+    out.append("")
+
     return "\n".join(out)
 
 
@@ -404,6 +610,7 @@ h1 { font-size: 20pt; border-bottom: 2px solid #d1d9e0; padding-bottom: 6px; }
 h2 { font-size: 15pt; border-bottom: 1px solid #d1d9e0; padding-bottom: 4px; margin-top: 26px; }
 h3 { font-size: 12.5pt; margin-top: 20px; page-break-after: avoid; }
 h4 { font-size: 11pt; margin-top: 14px; page-break-after: avoid; }
+h5, h6 { font-size: 10pt; margin-top: 10px; page-break-after: avoid; }
 table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 9.5pt; }
 th, td { border: 1px solid #d1d9e0; padding: 5px 8px; text-align: left; vertical-align: top;
          word-break: break-word; }
@@ -441,60 +648,13 @@ def write_pdf(html: str, path: Path) -> bool:
         return False
 
 
-# ------------------------------------------------------------------- agent output
-
-
-def agent_brief(a: dict, group: dict, repo: str) -> str:
-    return f"""# Fix task — alert #{a['number']}: {a['summary']}
-
-Repository: `{repo}`
-Alert: {a['html_url']}
-
-## Target
-- Package: `{a['package']}` ({a['ecosystem']})
-- Manifest: `{a['manifest']}`
-- Currently matched range: `{a['vulnerable_range']}`
-- Minimum safe version: `{a['first_patched'] or 'NO PATCH AVAILABLE'}`
-- Version to move to (covers every open alert on this package): `{group['target_version'] or 'n/a'}`
-- Severity: {a['severity'].upper()} | CVSS {a['cvss_score']} | EPSS {a['epss_percentage']}
-- Scope: {a['scope']} | Relationship: {a['relationship']}
-
-## How to apply
-```
-{upgrade_hint(group)}
-```
-
-## Constraints
-- Change only what this fix requires. No refactors, no formatting sweeps, no unrelated bumps.
-- If the upgrade forces a breaking API change, stop and write the required migration
-  steps into the task log instead of guessing.
-- Keep the lockfile and the manifest in sync; commit both.
-- If no patched version exists, do not invent one — record the mitigation
-  (config change, dependency removal, or dismissal rationale) instead.
-
-## Acceptance criteria
-- [ ] Manifest and lockfile pin `{a['package']}` at or above `{group['target_version'] or a['first_patched']}`
-- [ ] Install/resolve step succeeds from a clean state
-- [ ] Build passes
-- [ ] Test suite passes
-- [ ] No new dependency alert introduced by the bump
-
-## Advisory (verbatim)
-
-{a['description'] or '_No advisory body provided._'}
-
-## References
-{chr(10).join('- ' + r for r in a['references']) or '- none'}
-"""
-
-
 # -------------------------------------------------------------------------- main
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Generate a Dependabot alert report.")
     ap.add_argument("--repo", default=os.environ.get("GITHUB_REPOSITORY"), help="owner/name")
-    ap.add_argument("--state", default="open", choices=["open", "fixed", "dismissed", "auto_dismissed", "all"])
+    ap.add_argument("--state", default="all", choices=["open", "fixed", "dismissed", "auto_dismissed", "all"])
     ap.add_argument("--min-severity", default="low", choices=["low", "medium", "high", "critical"])
     ap.add_argument("--out", default="reports/dependabot")
     ap.add_argument("--no-pdf", action="store_true")
@@ -523,15 +683,37 @@ def main() -> int:
     alerts = [a for a in (normalise(x) for x in raw) if sev_rank(a) <= cutoff]
     alerts.sort(key=lambda a: (sev_rank(a), a["number"]))
 
+    open_alerts = [a for a in alerts if a["state"] == "open"]
+    fixed_alerts = [a for a in alerts if a["state"] in ("fixed", "dismissed", "auto_dismissed")]
+
     if not args.no_images:
-        for a in alerts:
+        for a in open_alerts:
             a["description"] = inline_images(a["description"], session)
 
-    groups = group_upgrades(alerts)
+    groups = group_upgrades(open_alerts)
     group_for = {a["number"]: g for g in groups for a in g["alerts"]}
 
+    branch_name = os.popen("git branch --show-current 2>/dev/null").read().strip() or "master"
+    for g in groups:
+        cur_ver = get_local_version(g["package"], g["manifest"])
+        g["local_version"] = cur_ver
+        g["is_locally_patched"] = bool(
+            cur_ver and g["target_version"] and version_key(cur_ver) >= version_key(g["target_version"])
+        )
+
+    # Sort groups: pending updates first, then by worst severity
+    groups.sort(key=lambda g: (1 if g.get("is_locally_patched") else 0, SEVERITY_ORDER.get(g["worst_severity"], 9), -len(g["alerts"])))
+
     out = Path(args.out)
-    (out / "agent").mkdir(parents=True, exist_ok=True)
+    out.mkdir(parents=True, exist_ok=True)
+
+    # Clean up obsolete agent directory and scattered markdown files
+    if (out / "agent").exists():
+        shutil.rmtree(out / "agent", ignore_errors=True)
+    for stale in ("summary.md", "report.md", "fix-log.md"):
+        stale_path = out / stale
+        if stale_path.exists():
+            stale_path.unlink()
 
     (out / "alerts.json").write_text(json.dumps(raw, indent=2), encoding="utf-8")
 
@@ -545,54 +727,47 @@ def main() -> int:
             "manifest": a["manifest"],
             "current_range": a["vulnerable_range"],
             "target_version": group_for[a["number"]]["target_version"],
+            "local_version": group_for[a["number"]]["local_version"],
+            "is_locally_patched": group_for[a["number"]]["is_locally_patched"],
             "closes_alerts": [x["number"] for x in group_for[a["number"]]["alerts"]],
             "ghsa_id": a["ghsa_id"],
             "cve_id": a["cve_id"],
-            "brief": f"agent/alert-{a['number']}-{re.sub(r'[^A-Za-z0-9._-]', '_', a['package'] or 'pkg')}.md",
+            "brief": "fix-vapt-alerts.md",
             "alert_url": a["html_url"],
         }
-        for i, a in enumerate(alerts, 1)
+        for i, a in enumerate(open_alerts, 1)
     ]
     (out / "agent-queue.json").write_text(json.dumps(queue, indent=2), encoding="utf-8")
 
-    for a in alerts:
-        slug = re.sub(r"[^A-Za-z0-9._-]", "_", a["package"] or "pkg")
-        (out / "agent" / f"alert-{a['number']}-{slug}.md").write_text(
-            agent_brief(a, group_for[a["number"]], args.repo), encoding="utf-8"
-        )
+    # Generate single consolidated AI remediation plan and protocol
+    consolidated_md = build_consolidated_plan(args.repo, open_alerts, fixed_alerts, groups, branch_name)
+    (out / "fix-vapt-alerts.md").write_text(consolidated_md, encoding="utf-8")
 
-    body_md = build_markdown(args.repo, alerts, groups, args.state)
-    (out / "report.md").write_text(body_md, encoding="utf-8")
-
-    html = build_html(args.repo, body_md)
+    html = build_html(args.repo, consolidated_md)
     (out / "report.html").write_text(html, encoding="utf-8")
     if not args.no_pdf:
         write_pdf(html, out / "report.pdf")
 
-    counts = {s: sum(1 for a in alerts if a["severity"] == s) for s in ("critical", "high", "medium", "low")}
-    summary = [
-        f"## Dependabot report — {args.repo}",
-        "",
-        f"{len(alerts)} alert(s) • critical {counts['critical']} · high {counts['high']} · "
-        f"medium {counts['medium']} · low {counts['low']}",
-        "",
-        "| # | Severity | Package | Upgrade to | Manifest |",
-        "| --- | --- | --- | --- | --- |",
-    ]
-    for a in alerts:
-        summary.append(
-            f"| [#{a['number']}]({a['html_url']}) | {a['severity'].upper()} | `{a['package']}` | "
-            f"`{group_for[a['number']]['target_version'] or 'n/a'}` | `{a['manifest']}` |"
-        )
-    (out / "summary.md").write_text("\n".join(summary) + "\n", encoding="utf-8")
+    pct_fixed = f"{(len(fixed_alerts) / len(alerts) * 100):.1f}%" if alerts else "100.0%"
+    pct_open = f"{(len(open_alerts) / len(alerts) * 100):.1f}%" if alerts else "0.0%"
 
-    print(f"{len(alerts)} alert(s) written to {out}/")
+    print("=" * 72)
+    print(f"[OK] Consolidated VAPT Report generated: {out / 'fix-vapt-alerts.md'}")
+    print("-" * 72)
+    print(f"Executive Scorecard:")
+    print(f"  ✅ Remediated & Fixed : {len(fixed_alerts)} ({pct_fixed})")
+    print(f"  ⚠️  Pending (Left)     : {len(open_alerts)} ({pct_open})")
+    print(f"  📌 Total Tracked      : {len(alerts)} (100.0%)")
+    print("")
+    print(f"Current Branch Status ({branch_name}):")
     for g in groups:
-        print(f"  {g['worst_severity'].upper():8} {g['package']} -> {g['target_version']} ({len(g['alerts'])} alerts)")
+        st = f"✅ Patched ({g['local_version']})" if g.get("is_locally_patched") else f"⚠️ Action Required (Installed: {g['local_version'] or 'none'})"
+        print(f"  {g['worst_severity'].upper():8} {g['package']:20} -> {g['target_version']} ({len(g['alerts'])} alerts) [{st}]")
+    print("=" * 72)
 
     if args.fail_on:
         threshold = SEVERITY_ORDER[args.fail_on]
-        breaching = [a for a in alerts if sev_rank(a) <= threshold]
+        breaching = [a for a in open_alerts if sev_rank(a) <= threshold]
         if breaching:
             print(f"::error::{len(breaching)} alert(s) at or above {args.fail_on}")
             return 1

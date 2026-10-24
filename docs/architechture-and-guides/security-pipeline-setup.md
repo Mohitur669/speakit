@@ -37,8 +37,8 @@ flowchart TD
     end
 
     subgraph ARTIFACTS["Generated Artifacts (reports/ — Git-Ignored)"]
-        CS_PY --> CS_OUT["reports/code-scanning/\n- alerts.json\n- agent-queue.json\n- report.html / report.pdf\n- agent/alert-N-rule.md"]
-        DB_PY --> DB_OUT["reports/dependabot/\n- alerts.json\n- agent-queue.json\n- report.html / report.pdf\n- agent/alert-N-pkg.md"]
+        CS_PY --> CS_OUT["reports/code-scanning/\n- alerts.json\n- agent-queue.json\n- report.html / report.pdf\n- fix-code-scanning-alerts.md"]
+        DB_PY --> DB_OUT["reports/dependabot/\n- alerts.json\n- agent-queue.json\n- report.html / report.pdf\n- fix-vapt-alerts.md"]
         CS_PY & DB_PY --> CSV_OUT["reports/alerts/*.csv"]
     end
 
@@ -354,9 +354,7 @@ reports/
 
 ---
 
-## 8. Step 7 — Feeding Reports to Any Agentic AI Tool for Automated Fixes
-
-Every file in `reports/code-scanning/agent/` and `reports/dependabot/agent/` is a **standalone remediation brief** explicitly engineered for an AI coding assistant.
+`reports/code-scanning/fix-code-scanning-alerts.md` and `reports/dependabot/fix-vapt-alerts.md` are **single consolidated remediation plans & agent protocols** explicitly engineered for an AI coding assistant.
 
 ### 8.1 The Local Fix Sequence Diagram
 

@@ -1384,10 +1384,10 @@ sequenceDiagram
     Npm->>Repo: Loop through NPM alerts, bump package.json, run tests, commit
     Npm-->>Gen: Return fast-track success
     Gen-->>AI: Ready for complex AI handoff
-    AI->>Repo: Read fix-vapt-alerts.md & queue
+    AI->>Repo: Read reports/dependabot/fix-vapt-alerts.md
     loop For each complex backend vulnerability
         AI->>Repo: Update Maven POMs, run 'mvn test'
-        AI->>Repo: Commit fixed branch, append to fix-log.md
+        AI->>Repo: Update progress checklist in fix-vapt-alerts.md
     end
 ```
 
@@ -1397,13 +1397,13 @@ sequenceDiagram
 * **Trigger**: Scheduled via GitHub Actions (`.github/workflows/dependabot-report.yml`) or manually orchestrated locally.
 * **Engine**: `.github/scripts/dependabot_report.py`.
 * **Execution**: Normalizes nested advisory data, extracts CVSS/EPSS scores, and deduplicates vulnerabilities by computing the highest necessary target version. 
-* **Outputs**: Generates `agent-queue.json` (severity-ordered fix queue) and human-readable HTML/PDF reports (using WeasyPrint) stored in `reports/dependabot/`.
+* **Outputs**: Generates `agent-queue.json` (severity-ordered fix queue), `fix-vapt-alerts.md` (single consolidated AI remediation plan & protocol), and human-readable HTML/PDF reports stored in `reports/dependabot/`.
 
 ### 38.4 Phase 2: Local Orchestration & Fast-Tracking (Bash Automation)
 * **Setup Orchestrator**: `scripts/dependency-vapt-pipeline/generate-vapt-reports.sh` acts as the single entry point. It provisions local virtual environments, installs Python requirements, tests `gh cli` token scopes, and runs the Phase 1 Python engine.
 * **NPM Fast-Track Engine**: Immediately after report generation, the orchestrator triggers `auto-fix-npm.py`. This script instantly eliminates frontend vulnerability noise by autonomously bumping `package.json` targets, running `npm ci` and Angular test suites, and committing successful patches to the `vapt-fix` branch.
 
 ### 38.5 Phase 3: Autonomous AI Remediation & Strict Governance
-* **Instruction Protocol**: Complex alerts (e.g., Maven vulnerabilities, breaking API changes) bypass the fast-track and are handed off to the AI agent using the `fix-vapt-alerts.md` protocol.
+* **Instruction Protocol**: Complex alerts (e.g., Maven vulnerabilities, breaking API changes) bypass the fast-track and are handed off to the AI agent using the consolidated `reports/dependabot/fix-vapt-alerts.md` protocol.
 * **Governance**: The pipeline is strictly governed by workspace rules (`.agents/AGENTS.md`) which explicitly block the AI from interacting with legacy interactive scripts (e.g., `fix-alerts.py`).
 * **Execution**: The AI orchestrates itself—reading the queue, modifying `pom.xml`, executing JVM test suites (`mvn clean compile test`), and cleanly formatting `fix(deps)` commits without requiring interactive bash prompts.
