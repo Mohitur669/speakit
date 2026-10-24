@@ -9,8 +9,8 @@ on:
       state:
         description: Alert state filter
         type: choice
-        default: open
-        options: [open, fixed, dismissed, auto_dismissed, all]
+        default: all
+        options: [all, open, fixed, dismissed, auto_dismissed]
       min_severity:
         description: Lowest severity to include
         type: choice
@@ -62,7 +62,7 @@ jobs:
         run: |
           python .github/scripts/dependabot_report.py \
             --repo "${{ github.repository }}" \
-            --state "${{ inputs.state || 'open' }}" \
+            --state "${{ inputs.state || 'all' }}" \
             --min-severity "${{ inputs.min_severity || 'low' }}" \
             --out reports/dependabot
 
