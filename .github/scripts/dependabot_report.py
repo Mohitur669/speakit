@@ -103,13 +103,14 @@ UPGRADE_HINTS = {
 # --------------------------------------------------------------------------- fetch
 
 
-def fetch_alerts(session: requests.Session, repo: str, state: str) -> list[dict]:
+def fetch_alerts(session: requests.Session, repo: str, state: str = "all") -> list[dict]:
     url = f"{API_ROOT}/repos/{repo}/dependabot/alerts"
-    params = {"per_page": 100, "sort": "created", "direction": "desc"}
-    if state == "all":
-        params["state"] = "open,fixed,dismissed,auto_dismissed"
-    elif state:
-        params["state"] = state
+    params = {
+        "per_page": 100,
+        "sort": "created",
+        "direction": "desc",
+        "state": "open,fixed,dismissed,auto_dismissed",
+    }
 
     alerts: list[dict] = []
     while url:
