@@ -4,7 +4,6 @@ import com.speakit.parameter.entity.SystemParameter;
 import com.speakit.parameter.repository.SystemParameterRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,28 +27,33 @@ public class SystemParameterService {
     // --- 1. DYNAMICALLY GOVERNED PARAMETER ACCESS (Governed by DYNAMIC_PLAN_FEATURES_LIVE flag) ---
 
     /**
-     * Generic parameter fetcher governed by DYNAMIC_PLAN_FEATURES_LIVE flag.
-     * If DYNAMIC_PLAN_FEATURES_LIVE is 'Y' (case-insensitive), performs a live DB fetch.
-     * If other than 'Y', retrieves the parameter from the in-memory cache.
+     * Generic parameter fetcher for standard system parameters (feature flags, system toggles, quotas).
+     * Always retrieves the parameter from the in-memory cache to ensure zero DB latency for runtime checks.
      *
-     * @param name The system parameter key (e.g., FREE_PLAN_SYNTHESIZE_LIMIT, STT_ENABLED)
+     * @param name The system parameter key (e.g., STT_ENABLED, VOICE_BRIDGE_FLAG, STT_DEDUPE_WINDOW_MS)
+     * @param defaultValue Fallback value if missing from database
+     * @return The cached parameter value
+     */
+    public String getParameter(String name, String defaultValue) {
+        return getCachedParameter(name, defaultValue);
+    }
+
+    /**
+     * Plan feature and limit parameter fetcher governed by DYNAMIC_PLAN_FEATURES_LIVE flag.
+     * When DYNAMIC_PLAN_FEATURES_LIVE is 'Y' (case-insensitive), performs a live DB fetch for plan limits and features.
+     * When other than 'Y', retrieves the parameter from the in-memory cache.
+     *
+     * @param name The plan feature key (e.g., FREE_PLAN_SYNTHESIZE_LIMIT, MAX_PRO_CHARACTERS, ELEVENLABS_ENABLED)
      * @param defaultValue Fallback value if missing from database
      * @return The parameter value
      */
-    public String getParameter(String name, String defaultValue) {
+    public String getPlanFeatureParameter(String name, String defaultValue) {
         String dynamicLiveFlag = getCachedParameter("DYNAMIC_PLAN_FEATURES_LIVE", "N");
         if ("Y".equalsIgnoreCase(dynamicLiveFlag)) {
             return getLiveParameter(name, defaultValue);
         } else {
             return getCachedParameter(name, defaultValue);
         }
-    }
-
-    /**
-     * Backward-compatible alias for getParameter.
-     */
-    public String getPlanFeatureParameter(String name, String defaultValue) {
-        return getParameter(name, defaultValue);
     }
 
     public int getIntParameter(String name, int defaultValue) {
@@ -103,7 +107,7 @@ public class SystemParameterService {
 
     public BigDecimal getPrice(String name, BigDecimal defaultPrice) {
         try {
-            String value = getParameter(name, defaultPrice.toString());
+            String value = getPlanFeatureParameter(name, defaultPrice.toString());
             return new BigDecimal(value);
         } catch (Exception e) {
             log.error("Error parsing price for parameter: {}", name);
@@ -113,7 +117,6 @@ public class SystemParameterService {
 
     // --- 2. CACHED REPOSITORY CALLS (For stable UI Toggles, Feature Flags) ---
 
-    @Cacheable(value = CACHE_NAME, key = "#name")
     public String getCachedParameter(String name, String defaultValue) {
         String cached = localCache.get(name);
         if (cached != null) {

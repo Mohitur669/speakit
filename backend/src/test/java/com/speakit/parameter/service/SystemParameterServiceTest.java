@@ -34,14 +34,29 @@ class SystemParameterServiceTest {
     }
 
     @Test
-    @DisplayName("getParameter: When DYNAMIC_PLAN_FEATURES_LIVE is Y, fetches live from repository")
-    void getParameter_whenDynamicLiveIsY_fetchesLive() {
+    @DisplayName("getParameter: Always fetches via cached parameter path regardless of DYNAMIC_PLAN_FEATURES_LIVE")
+    void getParameter_alwaysUsesCache() {
+        when(repository.findById("STT_ENABLED"))
+                .thenReturn(Optional.of(SystemParameter.builder().parameterName("STT_ENABLED").parameterValue("true").build()));
+
+        String value = service.getParameter("STT_ENABLED", "false");
+
+        assertEquals("true", value);
+        // Second call should come strictly from in-memory cache without hitting repository again
+        String cachedValue = service.getParameter("STT_ENABLED", "false");
+        assertEquals("true", cachedValue);
+        verify(repository, times(1)).findById("STT_ENABLED");
+    }
+
+    @Test
+    @DisplayName("getPlanFeatureParameter: When DYNAMIC_PLAN_FEATURES_LIVE is Y, fetches live from repository")
+    void getPlanFeatureParameter_whenDynamicLiveIsY_fetchesLive() {
         when(repository.findById("DYNAMIC_PLAN_FEATURES_LIVE"))
                 .thenReturn(Optional.of(SystemParameter.builder().parameterName("DYNAMIC_PLAN_FEATURES_LIVE").parameterValue("Y").build()));
         when(repository.findById("FREE_PLAN_SYNTHESIZE_LIMIT"))
                 .thenReturn(Optional.of(SystemParameter.builder().parameterName("FREE_PLAN_SYNTHESIZE_LIMIT").parameterValue("15").build()));
 
-        String value = service.getParameter("FREE_PLAN_SYNTHESIZE_LIMIT", "5");
+        String value = service.getPlanFeatureParameter("FREE_PLAN_SYNTHESIZE_LIMIT", "5");
 
         assertEquals("15", value);
         // Verify live fetch occurred
@@ -49,14 +64,14 @@ class SystemParameterServiceTest {
     }
 
     @Test
-    @DisplayName("getParameter: When DYNAMIC_PLAN_FEATURES_LIVE is N, fetches via cached parameter path")
-    void getParameter_whenDynamicLiveIsN_fetchesCached() {
+    @DisplayName("getPlanFeatureParameter: When DYNAMIC_PLAN_FEATURES_LIVE is N, fetches via cached parameter path")
+    void getPlanFeatureParameter_whenDynamicLiveIsN_fetchesCached() {
         when(repository.findById("DYNAMIC_PLAN_FEATURES_LIVE"))
                 .thenReturn(Optional.of(SystemParameter.builder().parameterName("DYNAMIC_PLAN_FEATURES_LIVE").parameterValue("N").build()));
         when(repository.findById("FREE_PLAN_SYNTHESIZE_LIMIT"))
                 .thenReturn(Optional.of(SystemParameter.builder().parameterName("FREE_PLAN_SYNTHESIZE_LIMIT").parameterValue("20").build()));
 
-        String value = service.getParameter("FREE_PLAN_SYNTHESIZE_LIMIT", "5");
+        String value = service.getPlanFeatureParameter("FREE_PLAN_SYNTHESIZE_LIMIT", "5");
 
         assertEquals("20", value);
     }
@@ -64,8 +79,6 @@ class SystemParameterServiceTest {
     @Test
     @DisplayName("getParameter: When parameter is missing, returns safe default")
     void getParameter_whenMissing_returnsDefault() {
-        when(repository.findById("DYNAMIC_PLAN_FEATURES_LIVE"))
-                .thenReturn(Optional.of(SystemParameter.builder().parameterName("DYNAMIC_PLAN_FEATURES_LIVE").parameterValue("Y").build()));
         when(repository.findById("NON_EXISTENT_PARAM"))
                 .thenReturn(Optional.empty());
 
@@ -77,8 +90,6 @@ class SystemParameterServiceTest {
     @Test
     @DisplayName("getIntParameter: Correctly parses integer or returns default on parse error")
     void getIntParameter_parsesCorrectly() {
-        when(repository.findById("DYNAMIC_PLAN_FEATURES_LIVE"))
-                .thenReturn(Optional.of(SystemParameter.builder().parameterName("DYNAMIC_PLAN_FEATURES_LIVE").parameterValue("Y").build()));
         when(repository.findById("FREE_PLAN_SYNTHESIZE_LIMIT"))
                 .thenReturn(Optional.of(SystemParameter.builder().parameterName("FREE_PLAN_SYNTHESIZE_LIMIT").parameterValue("10").build()));
         when(repository.findById("INVALID_INT"))
@@ -91,8 +102,6 @@ class SystemParameterServiceTest {
     @Test
     @DisplayName("getLongParameter: Correctly parses long or returns default")
     void getLongParameter_parsesCorrectly() {
-        when(repository.findById("DYNAMIC_PLAN_FEATURES_LIVE"))
-                .thenReturn(Optional.of(SystemParameter.builder().parameterName("DYNAMIC_PLAN_FEATURES_LIVE").parameterValue("Y").build()));
         when(repository.findById("STT_DEDUPE_WINDOW_MS"))
                 .thenReturn(Optional.of(SystemParameter.builder().parameterName("STT_DEDUPE_WINDOW_MS").parameterValue("120000").build()));
 
@@ -102,8 +111,6 @@ class SystemParameterServiceTest {
     @Test
     @DisplayName("isFeatureEnabled: Respects boolean string values")
     void isFeatureEnabled_respectsBoolean() {
-        when(repository.findById("DYNAMIC_PLAN_FEATURES_LIVE"))
-                .thenReturn(Optional.of(SystemParameter.builder().parameterName("DYNAMIC_PLAN_FEATURES_LIVE").parameterValue("Y").build()));
         when(repository.findById("STT_ENABLED"))
                 .thenReturn(Optional.of(SystemParameter.builder().parameterName("STT_ENABLED").parameterValue("true").build()));
         when(repository.findById("MAINTENANCE_MODE"))
@@ -155,14 +162,13 @@ class SystemParameterServiceTest {
     }
 
     @Test
-    @DisplayName("isVoiceBridgeEnabled: Returns true for Y and false for N")
+    @DisplayName("isVoiceBridgeEnabled: Returns true for Y and false for N with cache eviction")
     void isVoiceBridgeEnabled_flagEvaluation() {
-        when(repository.findById("DYNAMIC_PLAN_FEATURES_LIVE"))
-                .thenReturn(Optional.of(SystemParameter.builder().parameterName("DYNAMIC_PLAN_FEATURES_LIVE").parameterValue("Y").build()));
-
         when(repository.findById("VOICE_BRIDGE_FLAG"))
                 .thenReturn(Optional.of(SystemParameter.builder().parameterName("VOICE_BRIDGE_FLAG").parameterValue("N").build()));
         assertFalse(service.isVoiceBridgeEnabled());
+
+        service.evictCache();
 
         when(repository.findById("VOICE_BRIDGE_FLAG"))
                 .thenReturn(Optional.of(SystemParameter.builder().parameterName("VOICE_BRIDGE_FLAG").parameterValue("Y").build()));
