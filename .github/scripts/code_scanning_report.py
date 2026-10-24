@@ -22,6 +22,7 @@ import csv
 import json
 import os
 import re
+import shutil
 import sys
 from datetime import datetime, timezone
 from html import escape
@@ -411,7 +412,15 @@ def main() -> int:
     alerts.sort(key=lambda a: (sev_rank(a), a["number"]))
 
     out = Path(args.out)
-    (out / "agent").mkdir(parents=True, exist_ok=True)
+    out.mkdir(parents=True, exist_ok=True)
+
+    # Clean up obsolete agent directory and scattered markdown files
+    if (out / "agent").exists():
+        shutil.rmtree(out / "agent", ignore_errors=True)
+    for stale in ("summary.md", "report.md"):
+        stale_path = out / stale
+        if stale_path.exists():
+            stale_path.unlink()
 
     (out / "alerts.json").write_text(json.dumps(raw, indent=2), encoding="utf-8")
 
@@ -426,49 +435,25 @@ def main() -> int:
             "end_line": a["end_line"],
             "message": a["message"],
             "cwes": a["cwes"],
-            "brief": f"agent/alert-{a['number']}-{re.sub(r'[^A-Za-z0-9._-]', '_', a['rule_id'])}.md",
+            "brief": "fix-code-scanning-alerts.md",
             "alert_url": a["html_url"],
         }
         for i, a in enumerate(alerts, 1)
     ]
     (out / "agent-queue.json").write_text(json.dumps(queue, indent=2), encoding="utf-8")
 
-    for a in alerts:
-        slug = re.sub(r"[^A-Za-z0-9._-]", "_", a["rule_id"])
-        (out / "agent" / f"alert-{a['number']}-{slug}.md").write_text(
-            agent_brief(a, args.repo), encoding="utf-8"
-        )
-
     body_md = build_markdown(args.repo, alerts, args.state)
-    (out / "report.md").write_text(body_md, encoding="utf-8")
+    (out / "fix-code-scanning-alerts.md").write_text(body_md, encoding="utf-8")
 
     html = build_html(args.repo, body_md)
     (out / "report.html").write_text(html, encoding="utf-8")
     if not args.no_pdf:
         write_pdf(html, out / "report.pdf")
 
-    counts = {s: sum(1 for a in alerts if a["severity"] == s) for s in ("critical", "high", "medium", "low")}
-    summary = [
-        f"## Code Scanning (CodeQL) report — {args.repo}",
-        "",
-        f"{len(alerts)} alert(s) • critical {counts['critical']} · high {counts['high']} · "
-        f"medium {counts['medium']} · low {counts['low']}",
-        "",
-        "| # | Severity | Rule | Location | Finding |",
-        "| --- | --- | --- | --- | --- |",
-    ]
-    for a in alerts:
-        loc = f"`{a['path']}:{a['start_line']}`" if a["path"] and a["start_line"] else "`—`"
-        summary.append(
-            f"| [#{a['number']}]({a['html_url']}) | {a['severity'].upper()} | `{a['rule_id']}` | "
-            f"{loc} | {a['rule_description'] or a['message']} |"
-        )
-    (out / "summary.md").write_text("\n".join(summary) + "\n", encoding="utf-8")
-
     # Export CSV to reports/alerts/code-scanning-alerts.csv as well
     export_csv(alerts, Path("reports/alerts/code-scanning-alerts.csv"))
 
-    print(f"{len(alerts)} Code Scanning alert(s) written to {out}/ and reports/alerts/code-scanning-alerts.csv")
+    print(f"[OK] {len(alerts)} Code Scanning alert(s) consolidated into {out / 'fix-code-scanning-alerts.md'} and reports/alerts/code-scanning-alerts.csv")
     for a in alerts:
         print(f"  {a['severity'].upper():8} #{a['number']} {a['rule_id']} in {a['path']}:{a['start_line']}")
 

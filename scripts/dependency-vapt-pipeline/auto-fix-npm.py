@@ -100,10 +100,8 @@ def main():
         run_cmd(f"git add package.json package-lock.json && git commit -m \"{msg}\"", cwd="frontend")
         
         # Log
-        log_line = f"- #{g['alert']} {pkg} -> {target} — fixed, branch vapt-fix, verified\n"
-        with open("reports/dependabot/fix-log.md", "a", encoding="utf-8") as f:
-            f.write(log_line)
-            
+        log_line = f"- #{g['alert']} {pkg} -> {target} — fixed, branch vapt-fix, verified"
+        print(f"[LOG] {log_line}")
         print(f"SUCCESS: {pkg}")
 
 if __name__ == "__main__":

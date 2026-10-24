@@ -68,7 +68,7 @@ jobs:
 
       - name: Job summary
         if: always()
-        run: cat reports/dependabot/summary.md >> "$GITHUB_STEP_SUMMARY" || true
+        run: cat reports/dependabot/fix-vapt-alerts.md >> "$GITHUB_STEP_SUMMARY" || true
 
       - name: Upload report bundle
         uses: actions/upload-artifact@v4

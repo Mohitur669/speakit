@@ -196,7 +196,8 @@ fi
 
 echo ""
 echo "[DONE] Setup, Report Generation, and NPM Fast-Tracking Complete!"
-echo "Reports available in:"
-echo "  - Dependabot:    reports/dependabot/ (and reports/alerts/dependabot-alerts-report.csv)"
-echo "  - Code Scanning: reports/code-scanning/ (and reports/alerts/code-scanning-alerts.csv)"
-echo "You can now manually submit 'fix-vapt-alerts.md' to the AI agent to begin processing the remaining complex vulnerabilities."
+echo "Consolidated AI Remediation Plan generated:"
+echo "  - Dependabot:    reports/dependabot/fix-vapt-alerts.md"
+echo "  - Code Scanning: reports/code-scanning/fix-code-scanning-alerts.md"
+echo ""
+echo "Feed 'reports/dependabot/fix-vapt-alerts.md' to the AI agent to begin processing the remaining vulnerabilities."
