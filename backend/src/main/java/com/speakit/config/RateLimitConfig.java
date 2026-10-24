@@ -38,6 +38,15 @@ public class RateLimitConfig {
     @Value("${rate-limit.live-param.capacity:100}")
     private long liveParamCapacity;
 
+    @Value("${rate-limit.ping.capacity:60}")
+    private long pingCapacity;
+
+    @Value("${rate-limit.ping.refill-tokens:60}")
+    private long pingRefillTokens;
+
+    @Value("${rate-limit.ping.refill-duration-minutes:1}")
+    private long pingRefillDurationMinutes;
+
     /**
      * Bounded, auto-expiring cache for rate-limit Buckets.
      * 
@@ -103,15 +112,15 @@ public class RateLimitConfig {
     }
 
     /**
-     * Highly restricted bucket for health checks.
-     * Designed to allow 1 internal ping every 14 minutes for Render free sleep prevention,
+     * Rate limit configuration for health check pings.
+     * Allows continuous container health checks (e.g. 60 pings/minute),
      * while blocking external flooding.
      */
     public Bucket createPingBucket() {
         return Bucket.builder()
                 .addLimit(Bandwidth.builder()
-                        .capacity(3) // Allow small burst
-                        .refillIntervally(1, Duration.ofMinutes(10)) // 1 token every 10 mins
+                        .capacity(pingCapacity)
+                        .refillIntervally(pingRefillTokens, Duration.ofMinutes(pingRefillDurationMinutes))
                         .build())
                 .build();
     }
