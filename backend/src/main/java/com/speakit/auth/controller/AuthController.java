@@ -8,6 +8,7 @@ import com.speakit.auth.dto.AuthRequest;
 import com.speakit.shared.aspect.RateLimitAction;
 import com.speakit.shared.aspect.RateLimited;
 import com.speakit.auth.service.AuthService;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -94,9 +95,9 @@ public class AuthController {
      * Lightweight endpoint for Render spin-down prevention and basic health monitoring.
      */
     @RateLimited(action = RateLimitAction.PING)
-    @GetMapping("/ping")
-    public ResponseEntity<Void> ping() {
-        return ResponseEntity.ok().build();
+    @GetMapping(value = "/ping", produces = MediaType.TEXT_PLAIN_VALUE)
+    public ResponseEntity<String> ping() {
+        return ResponseEntity.ok("OK");
     }
 
     /**
