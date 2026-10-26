@@ -16,6 +16,7 @@ import com.speakit.billing.repository.PaymentRepository;
 import com.speakit.billing.repository.SubscriptionRepository;
 import com.speakit.billing.service.RazorpayService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import java.time.LocalDateTime;
@@ -215,7 +216,7 @@ public class PaymentController {
      */
     @PostMapping("/apple/verify")
     public ResponseEntity<String> verifyApplePurchase(
-            @RequestBody AppleVerificationRequest request,
+            @Valid @RequestBody AppleVerificationRequest request,
             HttpServletRequest httpRequest) {
 
         Long userId = (Long) httpRequest.getAttribute("userId");
@@ -224,15 +225,15 @@ public class PaymentController {
         }
 
         // Map StoreKit productId → internal PlanType
-        PlanType newPlan = switch (request.getProductId()) {
+        PlanType newPlan = switch (request.getProductId() != null ? request.getProductId() : "") {
             case "com.speakit.pro"     -> PlanType.PRO;
             case "com.speakit.proplus" -> PlanType.PRO_PLUS;
             default -> null;
         };
 
         if (newPlan == null) {
-            log.warn("Apple verification: unknown productId '{}' for userId {}", request.getProductId(), userId);
-            return ResponseEntity.badRequest().body("Unknown product ID: " + request.getProductId());
+            log.warn("Apple verification: unknown productId for userId {}", userId);
+            return ResponseEntity.badRequest().body("Unknown product ID");
         }
 
         User user = userService.getUserById(userId);
