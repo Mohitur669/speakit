@@ -112,6 +112,20 @@ class PaymentControllerTest {
     }
 
     @Test
+    void verifyApplePurchase_unknownProductId_returnsBadRequestWithoutReflectingInput() {
+        when(httpRequest.getAttribute("userId")).thenReturn(100L);
+
+        AppleVerificationRequest request = new AppleVerificationRequest();
+        request.setProductId("<script>alert(1)</script>");
+        request.setTransactionId("tx_apple_unknown");
+
+        ResponseEntity<String> response = paymentController.verifyApplePurchase(request, httpRequest);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("Unknown product ID", response.getBody());
+    }
+
+    @Test
     void getPaymentHistory_populatesStoreKitMetadataAndInvoiceNote() {
         when(httpRequest.getAttribute("userId")).thenReturn(100L);
 
