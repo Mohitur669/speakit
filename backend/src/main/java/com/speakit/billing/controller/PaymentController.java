@@ -42,6 +42,13 @@ public class PaymentController {
     private final SubscriptionRepository subscriptionRepository;
     private final SubscriptionManagementService subscriptionManagementService;
 
+    @org.springframework.beans.factory.annotation.Value("${apple.storekit.sandbox-mode-enabled:false}")
+    private boolean sandboxModeEnabled;
+
+    void setSandboxModeEnabled(boolean sandboxModeEnabled) {
+        this.sandboxModeEnabled = sandboxModeEnabled;
+    }
+
     @GetMapping("/proration-quote")
     public ResponseEntity<ProrationQuoteResponse> getProrationQuote(
             @RequestParam String targetPlan,
@@ -222,6 +229,13 @@ public class PaymentController {
         Long userId = (Long) httpRequest.getAttribute("userId");
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        // Security Guard: Prevent unverified StoreKit upgrades in production when App Store Server API is unconfigured.
+        if (!sandboxModeEnabled) {
+            log.warn("Apple StoreKit unverified upgrade attempt rejected in production for userId: {}", userId);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Apple StoreKit sandbox verification is disabled in production. App Store Server API JWS receipt validation is required.");
         }
 
         // Map StoreKit productId → internal PlanType
