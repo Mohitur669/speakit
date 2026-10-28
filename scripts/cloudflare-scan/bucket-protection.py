@@ -20,10 +20,21 @@ import sys
 import time
 import ssl
 import json
+import argparse
 import urllib.request
 import urllib.error
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict, Any, Tuple
+
+# Optional Rich library for interactive progress bar and styling
+try:
+    from rich.console import Console
+    from rich.progress import Progress, BarColumn, TextColumn, TimeElapsedColumn, SpinnerColumn
+    HAS_RICH = True
+    console = Console()
+except ImportError:
+    HAS_RICH = False
+    console = None
 
 # Configuration
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -123,15 +134,19 @@ def load_urls(file_path: str) -> List[str]:
 def test_url(url: str, profile: Dict[str, Any]) -> Dict[str, Any]:
     """Execute an HTTP request simulating the specified profile."""
     start_time = time.time()
+    req_timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3] + " UTC"
     result = {
         "url": url,
         "profile": profile["name"],
         "user_agent": profile["user_agent"],
         "method": profile["method"],
         "is_bot": profile["is_bot"],
+        "request_time": req_timestamp,
+        "response_time": "",
         "status_code": None,
         "cf_ray": "N/A",
         "server": "N/A",
+        "response_body": "",
         "latency_ms": 0,
         "verdict": "ERROR",
         "notes": ""
@@ -151,10 +166,16 @@ def test_url(url: str, profile: Dict[str, Any]) -> Dict[str, Any]:
 
     try:
         with urllib.request.urlopen(req, timeout=10, context=ctx) as response:
+            result["response_time"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3] + " UTC"
             result["latency_ms"] = int((time.time() - start_time) * 1000)
             result["status_code"] = response.getcode()
             result["cf_ray"] = response.headers.get("cf-ray", "N/A")
             result["server"] = response.headers.get("server", "N/A")
+            try:
+                body_chunk = response.read(128).decode("utf-8", errors="ignore").strip()
+                result["response_body"] = "[HTML Page]" if "<html" in body_chunk.lower() else body_chunk[:80]
+            except Exception:
+                result["response_body"] = ""
 
             if profile["is_bot"]:
                 result["verdict"] = "VULNERABLE (UNBLOCKED)"
@@ -164,10 +185,16 @@ def test_url(url: str, profile: Dict[str, Any]) -> Dict[str, Any]:
                 result["notes"] = "Legitimate client accessed asset normally (Status 200)"
 
     except urllib.error.HTTPError as e:
+        result["response_time"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3] + " UTC"
         result["latency_ms"] = int((time.time() - start_time) * 1000)
         result["status_code"] = e.code
         result["cf_ray"] = e.headers.get("cf-ray", "N/A")
         result["server"] = e.headers.get("server", "N/A")
+        try:
+            body_chunk = e.read(128).decode("utf-8", errors="ignore").strip()
+            result["response_body"] = "[Cloudflare WAF Block Page]" if "<html" in body_chunk.lower() else body_chunk[:80]
+        except Exception:
+            result["response_body"] = ""
 
         if e.code == 403:
             if profile["is_bot"]:
@@ -187,6 +214,7 @@ def test_url(url: str, profile: Dict[str, Any]) -> Dict[str, Any]:
             result["notes"] = f"Server returned status {e.code}"
 
     except Exception as e:
+        result["response_time"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3] + " UTC"
         result["latency_ms"] = int((time.time() - start_time) * 1000)
         result["status_code"] = 0
         result["verdict"] = "CONN_ERROR"
@@ -562,9 +590,9 @@ def generate_pure_xlsx(output_xlsx: str, results: List[Dict[str, Any]], stats: D
     s2_rows.append('<row r="2"><c r="A2" t="inlineStr"><is><t>Full request telemetry log. Filter by Client Profile, HTTP Status, or Target CDN URL.</t></is></c></row>')
 
     start_row = 4
-    headers = ["#", "Client Profile", "Target CDN URL", "Method", "HTTP Status", "Latency", "Security Verdict", "Cloudflare Ray ID", "Audit Notes & Compliance"]
+    headers = ["#", "Client Profile", "Target CDN URL", "Method", "HTTP Status", "Latency", "Request Timestamp (UTC)", "Response Timestamp (UTC)", "Security Verdict", "Cloudflare Ray ID", "Audit Notes & Compliance"]
     hdr_cells = []
-    cols = ["A", "B", "C", "D", "E", "F", "G", "H", "I"]
+    cols = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K"]
     for col_l, h in zip(cols, headers):
         hdr_cells.append(f'<c r="{col_l}{start_row}" t="inlineStr"><is><t>{esc(h)}</t></is></c>')
     s2_rows.append(f'<row r="{start_row}">{"".join(hdr_cells)}</row>')
@@ -578,9 +606,11 @@ def generate_pure_xlsx(output_xlsx: str, results: List[Dict[str, Any]], stats: D
             f'<c r="D{r_num}" t="inlineStr"><is><t>{esc(r["method"])}</t></is></c>',
             f'<c r="E{r_num}"><v>{r["status_code"] or 0}</v></c>',
             f'<c r="F{r_num}" t="inlineStr"><is><t>{r["latency_ms"]} ms</t></is></c>',
-            f'<c r="G{r_num}" t="inlineStr"><is><t>{esc(r["verdict"])}</t></is></c>',
-            f'<c r="H{r_num}" t="inlineStr"><is><t>{esc(r["cf_ray"])}</t></is></c>',
-            f'<c r="I{r_num}" t="inlineStr"><is><t>{esc(r["notes"])}</t></is></c>'
+            f'<c r="G{r_num}" t="inlineStr"><is><t>{esc(r.get("request_time", "N/A"))}</t></is></c>',
+            f'<c r="H{r_num}" t="inlineStr"><is><t>{esc(r.get("response_time", "N/A"))}</t></is></c>',
+            f'<c r="I{r_num}" t="inlineStr"><is><t>{esc(r["verdict"])}</t></is></c>',
+            f'<c r="J{r_num}" t="inlineStr"><is><t>{esc(r["cf_ray"])}</t></is></c>',
+            f'<c r="K{r_num}" t="inlineStr"><is><t>{esc(r["notes"])}</t></is></c>'
         ]
         s2_rows.append(f'<row r="{r_num}">{"".join(c_cells)}</row>')
 
@@ -590,7 +620,7 @@ def generate_pure_xlsx(output_xlsx: str, results: List[Dict[str, Any]], stats: D
         '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
         '<sheetViews><sheetView tabSelected="1" workbookViewId="0"><pane ySplit="4" topLeftCell="A5" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
         '<sheetData>' + "".join(s2_rows) + '</sheetData>'
-        f'<autoFilter ref="A{start_row}:I{last_row}"/>'
+        f'<autoFilter ref="A{start_row}:K{last_row}"/>'
         '</worksheet>'
     )
 
@@ -806,7 +836,11 @@ def generate_excel_report(results: List[Dict[str, Any]], stats: Dict[str, Any], 
         # Table Header at Row 4
         start_row = 4
         ws_matrix.row_dimensions[start_row].height = 28
-        headers = ["#", "Client Profile", "Target CDN URL", "Method", "HTTP Status", "Latency", "Security Verdict", "Cloudflare Ray ID", "Audit Notes & Compliance"]
+        headers = [
+            "#", "Client Profile", "Target CDN URL", "Method", "HTTP Status",
+            "Latency", "Request Timestamp (UTC)", "Response Timestamp (UTC)",
+            "Security Verdict", "Cloudflare Ray ID", "Audit Notes & Compliance"
+        ]
         for col_idx, h in enumerate(headers, 1):
             c = ws_matrix.cell(row=start_row, column=col_idx, value=h)
             c.font = tbl_hdr_font
@@ -858,46 +892,56 @@ def generate_excel_report(results: List[Dict[str, Any]], stats: Dict[str, Any], 
             c6.font = cell_regular
             c6.alignment = center_align
 
-            # 7: Verdict Badge
-            c7 = ws_matrix.cell(row=row_num, column=7, value=r["verdict"])
+            # 7: Request Timestamp (UTC)
+            c7 = ws_matrix.cell(row=row_num, column=7, value=r.get("request_time", "N/A"))
+            c7.font = cell_code
             c7.alignment = center_align
-            if "PROTECTED" in r["verdict"]:
-                c7.fill = PatternFill(start_color=EMERALD_BG, fill_type="solid")
-                c7.font = Font(name="Calibri", size=9.5, bold=True, color=EMERALD_TEXT)
-            elif "SUCCESS" in r["verdict"]:
-                c7.fill = PatternFill(start_color=BLUE_BG, fill_type="solid")
-                c7.font = Font(name="Calibri", size=9.5, bold=True, color=BLUE_TEXT)
-            elif "VULNERABLE" in r["verdict"]:
-                c7.fill = PatternFill(start_color=ROSE_BG, fill_type="solid")
-                c7.font = Font(name="Calibri", size=9.5, bold=True, color=ROSE_TEXT)
-            elif "FALSE POSITIVE" in r["verdict"]:
-                c7.fill = PatternFill(start_color=AMBER_BG, fill_type="solid")
-                c7.font = Font(name="Calibri", size=9.5, bold=True, color=AMBER_TEXT)
 
-            # 8: CF Ray
-            c8 = ws_matrix.cell(row=row_num, column=8, value=r["cf_ray"])
+            # 8: Response Timestamp (UTC)
+            c8 = ws_matrix.cell(row=row_num, column=8, value=r.get("response_time", "N/A"))
             c8.font = cell_code
             c8.alignment = center_align
 
-            # 9: Notes
-            c9 = ws_matrix.cell(row=row_num, column=9, value=r["notes"])
-            c9.font = cell_regular
-            c9.alignment = left_align
+            # 9: Verdict Badge
+            c9 = ws_matrix.cell(row=row_num, column=9, value=r["verdict"])
+            c9.alignment = center_align
+            if "PROTECTED" in r["verdict"]:
+                c9.fill = PatternFill(start_color=EMERALD_BG, fill_type="solid")
+                c9.font = Font(name="Calibri", size=9.5, bold=True, color=EMERALD_TEXT)
+            elif "SUCCESS" in r["verdict"]:
+                c9.fill = PatternFill(start_color=BLUE_BG, fill_type="solid")
+                c9.font = Font(name="Calibri", size=9.5, bold=True, color=BLUE_TEXT)
+            elif "VULNERABLE" in r["verdict"]:
+                c9.fill = PatternFill(start_color=ROSE_BG, fill_type="solid")
+                c9.font = Font(name="Calibri", size=9.5, bold=True, color=ROSE_TEXT)
+            elif "FALSE POSITIVE" in r["verdict"]:
+                c9.fill = PatternFill(start_color=AMBER_BG, fill_type="solid")
+                c9.font = Font(name="Calibri", size=9.5, bold=True, color=AMBER_TEXT)
 
-            for col_i in range(1, 10):
+            # 10: CF Ray
+            c10 = ws_matrix.cell(row=row_num, column=10, value=r["cf_ray"])
+            c10.font = cell_code
+            c10.alignment = center_align
+
+            # 11: Notes
+            c11 = ws_matrix.cell(row=row_num, column=11, value=r["notes"])
+            c11.font = cell_regular
+            c11.alignment = left_align
+
+            for col_i in range(1, 12):
                 cell = ws_matrix.cell(row=row_num, column=col_i)
                 cell.border = cell_border
-                if col_i not in (5, 7):
+                if col_i not in (5, 9):
                     cell.fill = row_fill
 
         # Auto-Filter on execution matrix
         last_row = start_row + len(results)
-        ws_matrix.auto_filter.ref = f"A{start_row}:I{last_row}"
+        ws_matrix.auto_filter.ref = f"A{start_row}:K{last_row}"
 
         # Freeze Panes below table header
         ws_matrix.freeze_panes = f"A{start_row + 1}"
 
-        # Column widths for Sheet 2 (Col C = 78 for full URL)
+        # Column widths for Sheet 2
         col_widths = {
             "A": 7,   # #
             "B": 32,  # Client Profile
@@ -905,9 +949,11 @@ def generate_excel_report(results: List[Dict[str, Any]], stats: Dict[str, Any], 
             "D": 12,  # Method
             "E": 15,  # HTTP Status
             "F": 15,  # Latency
-            "G": 28,  # Security Verdict
-            "H": 25,  # CF Ray
-            "I": 52   # Notes
+            "G": 25,  # Request Timestamp (UTC)
+            "H": 25,  # Response Timestamp (UTC)
+            "I": 28,  # Security Verdict
+            "J": 25,  # CF Ray
+            "K": 52   # Notes
         }
         for col_l, width in col_widths.items():
             ws_matrix.column_dimensions[col_l].width = width
@@ -953,15 +999,26 @@ def print_menu():
 
 
 def main():
-    urls = load_urls(DEFAULT_INPUT_FILE)
+    parser = argparse.ArgumentParser(description="SpeakIT CDN Anti-Scraping & Edge Security Auditor")
+    parser.add_argument("--profile", "-p", choices=[str(i) for i in range(10)], help="Simulation profile (1-8 for specific, 9 for ALL, 0 to exit)")
+    parser.add_argument("--urls", "-u", default=DEFAULT_INPUT_FILE, help="Path to URL list file")
+    args, _ = parser.parse_known_args()
+
+    urls = load_urls(args.urls)
     if not urls:
         sys.exit(1)
 
     print_banner(urls)
 
+    choice = args.profile
     while True:
-        print_menu()
-        choice = input("\nEnter choice [0-9]: ").strip()
+        if not choice:
+            print_menu()
+            try:
+                choice = input("\nEnter choice [0-9]: ").strip()
+            except (EOFError, KeyboardInterrupt):
+                print("\nExiting audit. Goodbye!")
+                sys.exit(0)
 
         if choice == "0":
             print("\nExiting audit. Goodbye!")
@@ -976,35 +1033,82 @@ def main():
             print("[!] Invalid option. Please select 0 to 9.")
             continue
 
+        total_requests = len(selected_profiles) * len(urls)
         print("\n" + "-" * 70)
-        print(f"[*] Running {len(selected_profiles) * len(urls)} test request(s)...")
+        print(f"[*] Running {total_requests} test request(s)...")
         print("-" * 70)
 
         results = []
-        for url in urls:
-            for prof in selected_profiles:
-                res = test_url(url, prof)
-                results.append(res)
+        if HAS_RICH and console:
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[bold cyan]{task.description}"),
+                BarColumn(bar_width=30),
+                TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+                TextColumn("({task.completed}/{task.total})"),
+                TimeElapsedColumn(),
+                console=console
+            ) as progress:
+                task = progress.add_task("Auditing CDN Probes...", total=total_requests)
+                for url in urls:
+                    for prof in selected_profiles:
+                        res = test_url(url, prof)
+                        results.append(res)
 
-                # Console line indicator
-                status_disp = f"HTTP {res['status_code']}" if res['status_code'] else "ERROR"
-                verdict_color = ""
-                if "PROTECTED" in res["verdict"] or "SUCCESS" in res["verdict"]:
-                    verdict_color = "\033[92m"  # Green
-                elif "VULNERABLE" in res["verdict"] or "FALSE POSITIVE" in res["verdict"]:
-                    verdict_color = "\033[91m"  # Red
-                else:
-                    verdict_color = "\033[93m"  # Yellow
-                reset_color = "\033[0m"
+                        status_disp = f"HTTP {res['status_code']}" if res['status_code'] else "ERROR"
+                        verdict_color = ""
+                        if "PROTECTED" in res["verdict"] or "SUCCESS" in res["verdict"]:
+                            verdict_color = "\033[92m"  # Green
+                        elif "VULNERABLE" in res["verdict"] or "FALSE POSITIVE" in res["verdict"]:
+                            verdict_color = "\033[91m"  # Red
+                        else:
+                            verdict_color = "\033[93m"  # Yellow
+                        reset_color = "\033[0m"
+                        body_preview = f" | Body: {res['response_body']}" if res.get("response_body") else ""
 
-                print(
-                    f" [#{len(results):<2}] [{prof['method']}] {prof['name']:<32} "
-                    f"-> {status_disp:<10} "
-                    f"| Latency: {res['latency_ms']:>4}ms "
-                    f"| {verdict_color}{res['verdict']}{reset_color} "
-                    f"| Ray: {res['cf_ray']}"
-                )
-                time.sleep(0.1)  # Minimal pacing
+                        progress.console.print(
+                            f" [#{len(results):<2}] [{prof['method']}] {prof['name']:<32} "
+                            f"-> {status_disp:<10} "
+                            f"| Latency: {res['latency_ms']:>4}ms "
+                            f"| {verdict_color}{res['verdict']}{reset_color} "
+                            f"| Ray: {res['cf_ray']}\n"
+                            f"      [dim]↳ Req:  {res['request_time']}\n"
+                            f"      ↳ Resp: {res['response_time']}{body_preview}[/dim]"
+                        )
+                        progress.advance(task)
+                        time.sleep(0.05)
+        else:
+            for url in urls:
+                for prof in selected_profiles:
+                    res = test_url(url, prof)
+                    results.append(res)
+
+                    pct = int((len(results) / total_requests) * 100)
+                    bar_len = 20
+                    filled_len = int(bar_len * len(results) // total_requests)
+                    bar = "=" * filled_len + ("-" * (bar_len - filled_len))
+
+                    status_disp = f"HTTP {res['status_code']}" if res['status_code'] else "ERROR"
+                    verdict_color = ""
+                    if "PROTECTED" in res["verdict"] or "SUCCESS" in res["verdict"]:
+                        verdict_color = "\033[92m"  # Green
+                    elif "VULNERABLE" in res["verdict"] or "FALSE POSITIVE" in res["verdict"]:
+                        verdict_color = "\033[91m"  # Red
+                    else:
+                        verdict_color = "\033[93m"  # Yellow
+                    reset_color = "\033[0m"
+                    body_preview = f" | Body: {res['response_body']}" if res.get("response_body") else ""
+
+                    print(
+                        f" [{bar}] {pct:>3}% [#{len(results):<2}] [{prof['method']}] {prof['name']:<28} "
+                        f"-> {status_disp:<10} "
+                        f"| Lat: {res['latency_ms']:>4}ms "
+                        f"| {verdict_color}{res['verdict']}{reset_color} "
+                        f"| Ray: {res['cf_ray']}\n"
+                        f"      ↳ Req:  {res['request_time']}\n"
+                        f"      ↳ Resp: {res['response_time']}{body_preview}"
+                    )
+                    time.sleep(0.05)
 
         # Compute summary metrics
         stats = compute_stats(results)
