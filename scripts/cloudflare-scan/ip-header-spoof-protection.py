@@ -26,8 +26,10 @@ try:
     from rich.console import Console
     from rich.table import Table
     from rich.panel import Panel
+    from rich.progress import Progress, BarColumn, TextColumn, TimeElapsedColumn, SpinnerColumn
     HAS_RICH = True
-    console = Console()
+    term_width = max(130, Console().width)
+    console = Console(width=term_width)
 except ImportError:
     HAS_RICH = False
     console = None
@@ -36,6 +38,14 @@ except ImportError:
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "../.."))
 BACKEND_ENV_PATH = os.path.join(PROJECT_ROOT, "backend", ".env")
+
+
+def format_time_col(ts_str: str) -> str:
+    """Format full UTC timestamp (YYYY-MM-DD HH:MM:SS.mmm UTC) to compact HH:MM:SS.mmm for table columns."""
+    if not ts_str:
+        return "-"
+    parts = ts_str.split(" ")
+    return parts[1] if len(parts) >= 2 else ts_str
 
 
 def load_env_variables(filepath: str) -> Dict[str, str]:
@@ -73,34 +83,52 @@ def get_target_url(cli_override: str = None) -> str:
 def send_http_request(url: str, headers: Dict[str, str], method: str = "GET", timeout: int = 10) -> Dict[str, Any]:
     """Execute HTTP request using urllib standard library."""
     start_time = time.time()
+    req_timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3] + " UTC"
     ctx = ssl.create_default_context()
     req = urllib.request.Request(url=url, headers=headers, method=method)
 
     result = {
         "status_code": 0,
         "latency_ms": 0,
+        "request_time": req_timestamp,
+        "response_time": "",
         "cf_ray": "N/A",
         "server": "Unknown",
         "headers": {},
+        "response_body": "",
         "error": None
     }
 
     try:
         with urllib.request.urlopen(req, timeout=timeout, context=ctx) as response:
+            result["response_time"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3] + " UTC"
             result["latency_ms"] = int((time.time() - start_time) * 1000)
             result["status_code"] = response.getcode()
             result["cf_ray"] = response.headers.get("cf-ray", "N/A")
             result["server"] = response.headers.get("server", "N/A")
             result["headers"] = dict(response.headers)
+            try:
+                body_chunk = response.read(256).decode("utf-8", errors="ignore").strip()
+                result["response_body"] = "[HTML Page]" if "<html" in body_chunk.lower() else body_chunk[:80]
+            except Exception:
+                result["response_body"] = ""
     except urllib.error.HTTPError as e:
+        result["response_time"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3] + " UTC"
         result["latency_ms"] = int((time.time() - start_time) * 1000)
         result["status_code"] = e.code
         result["cf_ray"] = e.headers.get("cf-ray", "N/A")
         result["server"] = e.headers.get("server", "N/A")
         result["headers"] = dict(e.headers)
+        try:
+            body_chunk = e.read(256).decode("utf-8", errors="ignore").strip()
+            result["response_body"] = "[WAF/Cloudflare HTML Block]" if "<html" in body_chunk.lower() else body_chunk[:80]
+        except Exception:
+            result["response_body"] = ""
     except Exception as e:
+        result["response_time"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3] + " UTC"
         result["latency_ms"] = int((time.time() - start_time) * 1000)
         result["error"] = str(e)[:60]
+        result["response_body"] = f"Error: {str(e)[:60]}"
 
     return result
 
@@ -133,57 +161,119 @@ def run_ip_rotation_test(base_url: str, endpoint: str, total_requests: int = 15,
     results = []
     rate_limited_at = None
 
-    if HAS_RICH:
-        table = Table(title="X-Forwarded-For Rotation Probes", show_header=True, header_style="bold magenta")
-        table.add_column("#", justify="right", style="dim")
+    if HAS_RICH and console:
+        table = Table(title="X-Forwarded-For Rotation Probes (UTC Telemetry)", show_header=True, header_style="bold magenta")
+        table.add_column("Sl No", justify="right", style="dim")
         table.add_column("Spoofed IP", style="yellow")
         table.add_column("Status", justify="center")
         table.add_column("Latency", justify="right")
+        table.add_column("Req Time", justify="center", style="dim")
+        table.add_column("Resp Time", justify="center", style="dim")
         table.add_column("CF-Ray ID", style="cyan")
         table.add_column("Verdict", style="bold")
 
-    for i in range(1, total_requests + 1):
-        fake_ip = f"203.0.113.{i}"
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
-            "X-Forwarded-For": fake_ip,
-            "Accept": "application/json, text/plain, */*"
-        }
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[bold magenta]{task.description}"),
+            BarColumn(bar_width=30),
+            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+            TextColumn("({task.completed}/{task.total})"),
+            TimeElapsedColumn(),
+            console=console
+        ) as progress:
+            task = progress.add_task("Probing IP Rotation...", total=total_requests)
+            for i in range(1, total_requests + 1):
+                fake_ip = f"203.0.113.{i}"
+                headers = {
+                    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+                    "X-Forwarded-For": fake_ip,
+                    "Accept": "application/json, text/plain, */*"
+                }
 
-        res = send_http_request(url, headers=headers)
-        status = res["status_code"]
-        latency = res["latency_ms"]
-        cf_ray = res["cf_ray"]
+                res = send_http_request(url, headers=headers)
+                status = res["status_code"]
+                latency = res["latency_ms"]
+                cf_ray = res["cf_ray"]
 
-        if status == 429:
-            verdict = "THROTTLED (PROTECTED)"
-            if rate_limited_at is None:
-                rate_limited_at = i
-        elif status in (200, 204):
-            verdict = "ALLOWED (PENDING)" if rate_limited_at is None else "BYPASSED (LEAK)"
-        elif status == 403:
-            verdict = "WAF BLOCKED"
-        else:
-            verdict = f"Status {status}"
+                if status == 429:
+                    verdict = "THROTTLED (PROTECTED)"
+                    if rate_limited_at is None:
+                        rate_limited_at = i
+                elif status in (200, 204):
+                    verdict = "ALLOWED (PENDING)" if rate_limited_at is None else "BYPASSED (LEAK)"
+                elif status == 403:
+                    verdict = "WAF BLOCKED"
+                else:
+                    verdict = f"Status {status}"
 
-        if HAS_RICH:
-            status_style = "[bold red]429[/bold red]" if status == 429 else f"[bold green]{status}[/bold green]" if status == 200 else str(status)
-            verdict_style = f"[bold green]{verdict}[/bold green]" if "PROTECTED" in verdict else f"[bold red]{verdict}[/bold red]" if "BYPASSED" in verdict else verdict
-            table.add_row(str(i), fake_ip, status_style, f"{latency}ms", cf_ray, verdict_style)
-        else:
-            print(f" [#{i:>2}] Injected: {fake_ip:<15} -> HTTP {status:<4} | Latency: {latency:>4}ms | Ray: {cf_ray:<18} | {verdict}")
+                status_style = "[bold red]429[/bold red]" if status == 429 else f"[bold green]{status}[/bold green]" if status == 200 else str(status)
+                verdict_style = f"[bold green]{verdict}[/bold green]" if "PROTECTED" in verdict else f"[bold red]{verdict}[/bold red]" if "BYPASSED" in verdict else verdict
 
-        results.append({
-            "iteration": i,
-            "ip": fake_ip,
-            "status": status,
-            "latency_ms": latency,
-            "cf_ray": cf_ray
-        })
-        time.sleep(delay)
+                table.add_row(
+                    str(i),
+                    fake_ip,
+                    status_style,
+                    f"{latency}ms",
+                    format_time_col(res["request_time"]),
+                    format_time_col(res["response_time"]),
+                    cf_ray,
+                    verdict_style
+                )
 
-    if HAS_RICH:
+                results.append({
+                    "iteration": i,
+                    "ip": fake_ip,
+                    "status": status,
+                    "latency_ms": latency,
+                    "request_time": res["request_time"],
+                    "response_time": res["response_time"],
+                    "cf_ray": cf_ray
+                })
+                progress.advance(task)
+                time.sleep(delay)
+
         console.print(table)
+    else:
+        table_hdr = f"{'Sl No':<6} | {'Spoofed IP':<15} | {'Status':<6} | {'Latency':<8} | {'Req Time':<13} | {'Resp Time':<13} | {'CF-Ray ID':<22} | {'Verdict'}"
+        sep = "-" * len(table_hdr)
+        print(f"\n{table_hdr}\n{sep}")
+        for i in range(1, total_requests + 1):
+            fake_ip = f"203.0.113.{i}"
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+                "X-Forwarded-For": fake_ip,
+                "Accept": "application/json, text/plain, */*"
+            }
+
+            res = send_http_request(url, headers=headers)
+            status = res["status_code"]
+            latency = res["latency_ms"]
+            cf_ray = res["cf_ray"]
+
+            if status == 429:
+                verdict = "THROTTLED (PROTECTED)"
+                if rate_limited_at is None:
+                    rate_limited_at = i
+            elif status in (200, 204):
+                verdict = "ALLOWED (PENDING)" if rate_limited_at is None else "BYPASSED (LEAK)"
+            elif status == 403:
+                verdict = "WAF BLOCKED"
+            else:
+                verdict = f"Status {status}"
+
+            print(f"{i:<6} | {fake_ip:<15} | {status:<6} | {f'{latency}ms':<8} | {format_time_col(res['request_time']):<13} | {format_time_col(res['response_time']):<13} | {cf_ray:<22} | {verdict}")
+
+            results.append({
+                "iteration": i,
+                "ip": fake_ip,
+                "status": status,
+                "latency_ms": latency,
+                "request_time": res["request_time"],
+                "response_time": res["response_time"],
+                "cf_ray": cf_ray
+            })
+            time.sleep(delay)
+        print(sep)
 
     return results
 
@@ -210,40 +300,100 @@ def run_header_injection_matrix(base_url: str, endpoint: str) -> List[Dict[str, 
         ("Forwarded (RFC 7239)", {"Forwarded": "for=127.0.0.1;proto=https"}),
     ]
 
-    if HAS_RICH:
-        table = Table(title="Header Injection Results", show_header=True, header_style="bold magenta")
-        table.add_column("Header Test Case", style="yellow")
+    matrix_results = []
+    if HAS_RICH and console:
+        table = Table(title="Header Injection Results (UTC Telemetry)", show_header=True, header_style="bold magenta")
+        table.add_column("Sl No", justify="right", style="dim")
+        table.add_column("Header Test Case", style="bold yellow")
         table.add_column("Injected Value", style="cyan")
         table.add_column("Status", justify="center")
-        table.add_column("CF-Ray ID", style="dim")
+        table.add_column("Req Time", justify="center", style="dim")
+        table.add_column("Resp Time", justify="center", style="dim")
+        table.add_column("CF-Ray ID", style="cyan")
         table.add_column("Verdict", style="bold")
 
-    matrix_results = []
-    for name, headers in test_cases:
-        headers["User-Agent"] = "Mozilla/5.0 (SpeakIT-Security-Auditor/1.0)"
-        injected_val = list(headers.values())[0]
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[bold cyan]{task.description}"),
+            BarColumn(bar_width=25),
+            TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+            TextColumn("({task.completed}/{task.total})"),
+            TimeElapsedColumn(),
+            console=console
+        ) as progress:
+            task = progress.add_task("Testing Header Vectors...", total=len(test_cases))
+            for idx, (name, headers) in enumerate(test_cases, 1):
+                headers["User-Agent"] = "Mozilla/5.0 (SpeakIT-Security-Auditor/1.0)"
+                injected_val = list(headers.values())[0]
 
-        res = send_http_request(url, headers=headers)
-        status = res["status_code"]
-        cf_ray = res["cf_ray"]
+                res = send_http_request(url, headers=headers)
+                status = res["status_code"]
+                cf_ray = res["cf_ray"]
 
-        if status in (200, 429, 403, 404):
-            verdict = "HANDLED NORMALLY"
-        elif status == 500:
-            verdict = "SERVER ERROR (CHECK LOGS)"
-        else:
-            verdict = f"Status {status}"
+                if status in (200, 429, 403, 404):
+                    verdict = "HANDLED NORMALLY"
+                elif status == 500:
+                    verdict = "SERVER ERROR (CHECK LOGS)"
+                else:
+                    verdict = f"Status {status}"
 
-        if HAS_RICH:
-            table.add_row(name, injected_val, str(status), cf_ray, f"[green]{verdict}[/green]")
-        else:
-            print(f" [*] {name:<35} [{injected_val:<25}] -> HTTP {status:<4} | Ray: {cf_ray:<18} | {verdict}")
+                status_style = "[bold red]403[/bold red]" if status == 403 else f"[bold green]{status}[/bold green]" if status == 200 else str(status)
+                verdict_style = f"[bold green]{verdict}[/bold green]" if "NORMALLY" in verdict else verdict
 
-        matrix_results.append({"name": name, "header": injected_val, "status": status, "cf_ray": cf_ray})
-        time.sleep(0.1)
+                table.add_row(
+                    str(idx),
+                    name,
+                    injected_val,
+                    status_style,
+                    format_time_col(res["request_time"]),
+                    format_time_col(res["response_time"]),
+                    cf_ray,
+                    verdict_style
+                )
 
-    if HAS_RICH:
+                matrix_results.append({
+                    "name": name,
+                    "header": injected_val,
+                    "status": status,
+                    "request_time": res["request_time"],
+                    "response_time": res["response_time"],
+                    "cf_ray": cf_ray
+                })
+                progress.advance(task)
+                time.sleep(0.1)
+
         console.print(table)
+    else:
+        table_hdr = f"{'Sl No':<6} | {'Header Test Case':<28} | {'Injected Value':<22} | {'Status':<6} | {'Req Time':<13} | {'Resp Time':<13} | {'CF-Ray ID':<22} | {'Verdict'}"
+        sep = "-" * len(table_hdr)
+        print(f"\n{table_hdr}\n{sep}")
+        for idx, (name, headers) in enumerate(test_cases, 1):
+            headers["User-Agent"] = "Mozilla/5.0 (SpeakIT-Security-Auditor/1.0)"
+            injected_val = list(headers.values())[0]
+
+            res = send_http_request(url, headers=headers)
+            status = res["status_code"]
+            cf_ray = res["cf_ray"]
+
+            if status in (200, 429, 403, 404):
+                verdict = "HANDLED NORMALLY"
+            elif status == 500:
+                verdict = "SERVER ERROR (CHECK LOGS)"
+            else:
+                verdict = f"Status {status}"
+
+            print(f"{idx:<6} | {name:<28} | {injected_val:<22} | {status:<6} | {format_time_col(res['request_time']):<13} | {format_time_col(res['response_time']):<13} | {cf_ray:<22} | {verdict}")
+
+            matrix_results.append({
+                "name": name,
+                "header": injected_val,
+                "status": status,
+                "request_time": res["request_time"],
+                "response_time": res["response_time"],
+                "cf_ray": cf_ray
+            })
+            time.sleep(0.1)
+        print(sep)
 
     return matrix_results
 
@@ -785,7 +935,7 @@ def generate_excel_report(target_url: str, endpoint: str, rotation_results: List
 
         start_row = 4
         ws_matrix.row_dimensions[start_row].height = 28
-        headers_m = ["#", "Spoofed Header", "Injected IP Address", "Target Endpoint", "HTTP Status", "Latency", "Cloudflare Ray ID", "Security Verdict", "Audit Notes"]
+        headers_m = ["#", "Spoofed Header", "Injected IP Address", "Target Endpoint", "HTTP Status", "Latency", "Request Timestamp (UTC)", "Response Timestamp (UTC)", "Cloudflare Ray ID", "Security Verdict", "Audit Notes"]
         for col_idx, h in enumerate(headers_m, 1):
             c = ws_matrix.cell(row=start_row, column=col_idx, value=h)
             c.font = tbl_hdr_font
@@ -830,36 +980,44 @@ def generate_excel_report(target_url: str, endpoint: str, rotation_results: List
             c6.font = cell_regular
             c6.alignment = center_align
 
-            c7 = ws_matrix.cell(row=row_num, column=7, value=r["cf_ray"])
-            c7.font = cell_code
+            c7 = ws_matrix.cell(row=row_num, column=7, value=r.get("request_time", "N/A"))
+            c7.font = cell_regular
             c7.alignment = center_align
 
-            verdict_text = "THROTTLED (PROTECTED)" if r["status"] == 429 else "ALLOWED (PENDING)" if r["status"] == 200 else str(r["status"])
-            c8 = ws_matrix.cell(row=row_num, column=8, value=verdict_text)
+            c8 = ws_matrix.cell(row=row_num, column=8, value=r.get("response_time", "N/A"))
+            c8.font = cell_regular
             c8.alignment = center_align
-            c8.font = cell_bold
+
+            c9 = ws_matrix.cell(row=row_num, column=9, value=r["cf_ray"])
+            c9.font = cell_code
+            c9.alignment = center_align
+
+            verdict_text = "THROTTLED (PROTECTED)" if r["status"] == 429 else "ALLOWED (PENDING)" if r["status"] == 200 else str(r["status"])
+            c10 = ws_matrix.cell(row=row_num, column=10, value=verdict_text)
+            c10.alignment = center_align
+            c10.font = cell_bold
             if "PROTECTED" in verdict_text:
-                c8.fill = PatternFill(start_color=EMERALD_BG, fill_type="solid")
-                c8.font = Font(name="Calibri", size=9.5, bold=True, color=EMERALD_TEXT)
+                c10.fill = PatternFill(start_color=EMERALD_BG, fill_type="solid")
+                c10.font = Font(name="Calibri", size=9.5, bold=True, color=EMERALD_TEXT)
             elif "ALLOWED" in verdict_text:
-                c8.fill = PatternFill(start_color=GRAY_BG, fill_type="solid")
-                c8.font = Font(name="Calibri", size=9.5, color=GRAY_TEXT)
+                c10.fill = PatternFill(start_color=GRAY_BG, fill_type="solid")
+                c10.font = Font(name="Calibri", size=9.5, color=GRAY_TEXT)
 
-            c9 = ws_matrix.cell(row=row_num, column=9, value=f"Probe #{idx} evaluated against endpoint rate limit quota.")
-            c9.font = cell_regular
-            c9.alignment = left_align
+            c11 = ws_matrix.cell(row=row_num, column=11, value=f"Probe #{idx} evaluated against endpoint rate limit quota.")
+            c11.font = cell_regular
+            c11.alignment = left_align
 
-            for col_i in range(1, 10):
+            for col_i in range(1, 12):
                 cell = ws_matrix.cell(row=row_num, column=col_i)
                 cell.border = cell_border
-                if col_i not in (5, 8):
+                if col_i not in (5, 10):
                     cell.fill = row_fill
 
         last_row_m = start_row + len(rotation_results)
-        ws_matrix.auto_filter.ref = f"A{start_row}:I{last_row_m}"
+        ws_matrix.auto_filter.ref = f"A{start_row}:K{last_row_m}"
         ws_matrix.freeze_panes = f"A{start_row + 1}"
 
-        col_widths_m = {"A": 7, "B": 20, "C": 18, "D": 45, "E": 14, "F": 14, "G": 26, "H": 26, "I": 45}
+        col_widths_m = {"A": 7, "B": 20, "C": 18, "D": 45, "E": 14, "F": 14, "G": 25, "H": 25, "I": 26, "J": 26, "K": 45}
         for col_l, width in col_widths_m.items():
             ws_matrix.column_dimensions[col_l].width = width
 
@@ -876,7 +1034,7 @@ def generate_excel_report(target_url: str, endpoint: str, rotation_results: List
         ws_inject.cell(row=2, column=1, value=inject_meta).font = subtitle_font
 
         ws_inject.row_dimensions[start_row].height = 28
-        headers_i = ["#", "Test Case Vector", "Injected Header Name", "Injected Value", "HTTP Status", "Cloudflare Ray ID", "Security Verdict", "Edge Proxy Behavior & Analysis"]
+        headers_i = ["#", "Test Case Vector", "Injected Header Name", "Injected Value", "HTTP Status", "Request Timestamp (UTC)", "Response Timestamp (UTC)", "Cloudflare Ray ID", "Security Verdict", "Edge Proxy Behavior & Analysis"]
         for col_idx, h in enumerate(headers_i, 1):
             c = ws_inject.cell(row=start_row, column=col_idx, value=h)
             c.font = tbl_hdr_font
@@ -915,38 +1073,46 @@ def generate_excel_report(target_url: str, endpoint: str, rotation_results: List
                 c5.fill = PatternFill(start_color=BLUE_BG, fill_type="solid")
                 c5.font = Font(name="Calibri", size=9.5, bold=True, color=BLUE_TEXT)
 
-            c6 = ws_inject.cell(row=row_num, column=6, value=m["cf_ray"])
-            c6.font = cell_code
+            c6 = ws_inject.cell(row=row_num, column=6, value=m.get("request_time", "N/A"))
+            c6.font = cell_regular
             c6.alignment = center_align
+
+            c7 = ws_inject.cell(row=row_num, column=7, value=m.get("response_time", "N/A"))
+            c7.font = cell_regular
+            c7.alignment = center_align
+
+            c8 = ws_inject.cell(row=row_num, column=8, value=m["cf_ray"])
+            c8.font = cell_code
+            c8.alignment = center_align
 
             is_cf_block = "CF-Connecting-IP" in m["name"] and m["status"] == 403
             verdict_text = "EDGE BLOCKED (403)" if is_cf_block else "PROXIED (SANITIZED)"
-            c7 = ws_inject.cell(row=row_num, column=7, value=verdict_text)
-            c7.alignment = center_align
-            c7.font = cell_bold
+            c9 = ws_inject.cell(row=row_num, column=9, value=verdict_text)
+            c9.alignment = center_align
+            c9.font = cell_bold
             if is_cf_block:
-                c7.fill = PatternFill(start_color=EMERALD_BG, fill_type="solid")
-                c7.font = Font(name="Calibri", size=9.5, bold=True, color=EMERALD_TEXT)
+                c9.fill = PatternFill(start_color=EMERALD_BG, fill_type="solid")
+                c9.font = Font(name="Calibri", size=9.5, bold=True, color=EMERALD_TEXT)
             else:
-                c7.fill = PatternFill(start_color=GRAY_BG, fill_type="solid")
-                c7.font = Font(name="Calibri", size=9.5, color=GRAY_TEXT)
+                c9.fill = PatternFill(start_color=GRAY_BG, fill_type="solid")
+                c9.font = Font(name="Calibri", size=9.5, color=GRAY_TEXT)
 
             note_text = "Cloudflare edge intercepted and dropped forged CF-Connecting-IP header." if is_cf_block else "Edge proxy forwarded or stripped header; Spring Boot handled cleanly."
-            c8 = ws_inject.cell(row=row_num, column=8, value=note_text)
-            c8.font = cell_regular
-            c8.alignment = left_align
+            c10 = ws_inject.cell(row=row_num, column=10, value=note_text)
+            c10.font = cell_regular
+            c10.alignment = left_align
 
-            for col_i in range(1, 9):
+            for col_i in range(1, 11):
                 cell = ws_inject.cell(row=row_num, column=col_i)
                 cell.border = cell_border
-                if col_i not in (5, 7):
+                if col_i not in (5, 9):
                     cell.fill = row_fill
 
         last_row_i = start_row + len(matrix_results)
-        ws_inject.auto_filter.ref = f"A{start_row}:H{last_row_i}"
+        ws_inject.auto_filter.ref = f"A{start_row}:J{last_row_i}"
         ws_inject.freeze_panes = f"A{start_row + 1}"
 
-        col_widths_i = {"A": 7, "B": 32, "C": 22, "D": 25, "E": 14, "F": 26, "G": 24, "H": 55}
+        col_widths_i = {"A": 7, "B": 32, "C": 22, "D": 25, "E": 14, "F": 25, "G": 25, "H": 26, "I": 24, "J": 55}
         for col_l, width in col_widths_i.items():
             ws_inject.column_dimensions[col_l].width = width
 
@@ -967,6 +1133,77 @@ def generate_excel_report(target_url: str, endpoint: str, rotation_results: List
         print(f"\n[!] Failed to generate Excel report: {e}")
 
 
+def generate_csv_report(target_url: str, endpoint: str, rotation_results: List[Dict[str, Any]],
+                        matrix_results: List[Dict[str, Any]], output_csv_path: str):
+    """Generate consolidated CSV audit report encompassing IP rotation and header injection telemetry."""
+    import csv
+    csv_dir = os.path.dirname(output_csv_path)
+    if csv_dir:
+        os.makedirs(csv_dir, exist_ok=True)
+
+    fieldnames = [
+        "Sl No",
+        "Test Suite",
+        "Test Case Vector",
+        "Injected Header / Value",
+        "Target Endpoint",
+        "HTTP Status",
+        "Latency",
+        "Request Timestamp (UTC)",
+        "Response Timestamp (UTC)",
+        "Cloudflare Ray ID",
+        "Security Verdict",
+        "Audit Notes & Analysis"
+    ]
+
+    with open(output_csv_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(fieldnames)
+
+        # 1. IP Rotation Records
+        for idx, r in enumerate(rotation_results, start=1):
+            verdict_text = "THROTTLED (PROTECTED)" if r["status"] == 429 else "ALLOWED (PENDING)" if r["status"] == 200 else str(r["status"])
+            note = f"Probe #{idx} evaluated against endpoint rate limit quota."
+            writer.writerow([
+                idx,
+                "IP Rotation",
+                "X-Forwarded-For",
+                r.get("ip", ""),
+                endpoint,
+                r.get("status", 0),
+                f"{r.get('latency_ms', 0)} ms",
+                r.get("request_time", "N/A"),
+                r.get("response_time", "N/A"),
+                r.get("cf_ray", "N/A"),
+                verdict_text,
+                note
+            ])
+
+        # 2. Header Injection Records
+        offset = len(rotation_results)
+        for idx, m in enumerate(matrix_results, start=1):
+            is_cf_block = "CF-Connecting-IP" in m["name"] and m["status"] == 403
+            verdict_text = "EDGE BLOCKED (403)" if is_cf_block else "PROXIED (SANITIZED)"
+            note_text = "Cloudflare edge intercepted and dropped forged CF-Connecting-IP header." if is_cf_block else "Edge proxy forwarded or stripped header; Spring Boot handled cleanly."
+            writer.writerow([
+                offset + idx,
+                "Header Injection",
+                m.get("name", ""),
+                m.get("header", ""),
+                endpoint,
+                m.get("status", 0),
+                "-",
+                m.get("request_time", "N/A"),
+                m.get("response_time", "N/A"),
+                m.get("cf_ray", "N/A"),
+                verdict_text,
+                note_text
+            ])
+
+    print(f"[✓] Detailed CSV Report generated successfully:")
+    print(f"    -> {output_csv_path}\n")
+
+
 def main():
     parser = argparse.ArgumentParser(description="SpeakIT IP Header Spoofing & WAF Rate-Limit Integrity Auditor")
     parser.add_argument("--url", help="Target backend base URL (overrides PROD_API_URL from backend/.env)")
@@ -978,6 +1215,8 @@ def main():
                         help="Path to generate the output PDF report")
     parser.add_argument("--xlsx", default=os.path.join(SCRIPT_DIR, "reports", "ip-header-spoof-report.xlsx"),
                         help="Path to generate the output Excel report")
+    parser.add_argument("--csv", default=os.path.join(SCRIPT_DIR, "reports", "ip-header-spoof-report.csv"),
+                        help="Path to generate the output CSV report")
     args = parser.parse_args()
 
     target_url = get_target_url(args.url)
@@ -990,6 +1229,7 @@ def main():
     print(f" Total Requests   : {args.requests}")
     print(f" PDF Report Dest  : {args.pdf}")
     print(f" Excel Report Dest: {args.xlsx}")
+    print(f" CSV Report Dest  : {args.csv}")
     print("=" * 70 + "\n")
 
     test_baseline_connectivity(target_url)
@@ -998,6 +1238,7 @@ def main():
     evaluate_security_posture(rotation_results, matrix_results)
     generate_pdf_report(target_url, args.endpoint, rotation_results, matrix_results, args.pdf)
     generate_excel_report(target_url, args.endpoint, rotation_results, matrix_results, args.xlsx)
+    generate_csv_report(target_url, args.endpoint, rotation_results, matrix_results, args.csv)
 
 
 if __name__ == "__main__":

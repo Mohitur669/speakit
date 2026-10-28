@@ -68,6 +68,7 @@ class PaymentControllerTest {
                 subscriptionRepository,
                 subscriptionManagementService
         );
+        paymentController.setSandboxModeEnabled(true);
 
         testUser = User.builder()
                 .id(100L)
@@ -123,6 +124,22 @@ class PaymentControllerTest {
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertEquals("Unknown product ID", response.getBody());
+    }
+
+    @Test
+    void verifyApplePurchase_inProductionWithoutSandbox_returnsForbidden() {
+        paymentController.setSandboxModeEnabled(false);
+        when(httpRequest.getAttribute("userId")).thenReturn(100L);
+
+        AppleVerificationRequest request = new AppleVerificationRequest();
+        request.setProductId("com.speakit.proplus");
+        request.setTransactionId("tx_apple_exploit");
+
+        ResponseEntity<String> response = paymentController.verifyApplePurchase(request, httpRequest);
+
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+        assertTrue(response.getBody().contains("sandbox verification is disabled in production"));
+        verify(subscriptionManagementService, never()).upgradeUser(any(), any(), any());
     }
 
     @Test
