@@ -29,9 +29,11 @@ from typing import List, Dict, Any, Tuple
 # Optional Rich library for interactive progress bar and styling
 try:
     from rich.console import Console
+    from rich.table import Table
     from rich.progress import Progress, BarColumn, TextColumn, TimeElapsedColumn, SpinnerColumn
     HAS_RICH = True
-    console = Console()
+    term_width = max(130, Console().width)
+    console = Console(width=term_width)
 except ImportError:
     HAS_RICH = False
     console = None
@@ -39,6 +41,29 @@ except ImportError:
 # Configuration
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_INPUT_FILE = os.path.join(SCRIPT_DIR, "data/cdn-url-list.txt")
+
+
+def format_time_col(ts_str: str) -> str:
+    """Format full UTC timestamp (YYYY-MM-DD HH:MM:SS.mmm UTC) to compact HH:MM:SS.mmm for table columns."""
+    if not ts_str:
+        return "-"
+    parts = ts_str.split(" ")
+    return parts[1] if len(parts) >= 2 else ts_str
+
+
+def format_asset_path(url: str) -> str:
+    """Extract compact asset URI path for terminal table column display."""
+    if not url:
+        return "/"
+    try:
+        from urllib.parse import urlparse
+        parsed = urlparse(url)
+        path = parsed.path
+        if parsed.query:
+            path += f"?{parsed.query}"
+        return path or "/"
+    except Exception:
+        return url[-35:]
 
 # User-Agent Profiles for Testing
 SCRAPER_PROFILES = {
@@ -972,6 +997,46 @@ def generate_excel_report(results: List[Dict[str, Any]], stats: Dict[str, Any], 
         generate_pure_xlsx(output_xlsx, results, stats)
 
 
+def generate_csv_report(results: List[Dict[str, Any]], output_csv: str):
+    """Generate RFC 4180 compliant CSV audit report with full telemetry."""
+    import csv
+    csv_dir = os.path.dirname(output_csv)
+    if csv_dir:
+        os.makedirs(csv_dir, exist_ok=True)
+
+    fieldnames = [
+        "Sl No",
+        "Client Profile",
+        "Target CDN URL",
+        "Method",
+        "HTTP Status",
+        "Latency (ms)",
+        "Request Timestamp (UTC)",
+        "Response Timestamp (UTC)",
+        "Security Verdict",
+        "Cloudflare Ray ID",
+        "Audit Notes & Compliance"
+    ]
+
+    with open(output_csv, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(fieldnames)
+        for idx, r in enumerate(results, start=1):
+            writer.writerow([
+                idx,
+                r.get("profile", ""),
+                r.get("url", ""),
+                r.get("method", ""),
+                r.get("status_code", 0) or 0,
+                r.get("latency_ms", 0),
+                r.get("request_time", "N/A"),
+                r.get("response_time", "N/A"),
+                r.get("verdict", ""),
+                r.get("cf_ray", "N/A"),
+                r.get("notes", "")
+            ])
+
+
 def print_banner(urls: List[str]):
     """Print ASCII tool header."""
     print("=" * 70)
@@ -1002,6 +1067,9 @@ def main():
     parser = argparse.ArgumentParser(description="SpeakIT CDN Anti-Scraping & Edge Security Auditor")
     parser.add_argument("--profile", "-p", choices=[str(i) for i in range(10)], help="Simulation profile (1-8 for specific, 9 for ALL, 0 to exit)")
     parser.add_argument("--urls", "-u", default=DEFAULT_INPUT_FILE, help="Path to URL list file")
+    parser.add_argument("--csv", default=os.path.join(SCRIPT_DIR, "reports/cdn-scraping-report.csv"), help="Path to generate CSV report")
+    parser.add_argument("--xlsx", default=os.path.join(SCRIPT_DIR, "reports/cdn-scraping-report.xlsx"), help="Path to generate Excel report")
+    parser.add_argument("--pdf", default=os.path.join(SCRIPT_DIR, "reports/cdn-scraping-report.pdf"), help="Path to generate PDF report")
     args, _ = parser.parse_known_args()
 
     urls = load_urls(args.urls)
@@ -1040,6 +1108,18 @@ def main():
 
         results = []
         if HAS_RICH and console:
+            table = Table(title="CDN Anti-Scraping & Edge Security Matrix (UTC Telemetry)", show_header=True, header_style="bold cyan")
+            table.add_column("Sl No", justify="right", style="dim")
+            table.add_column("Client Profile", style="bold")
+            table.add_column("Target Asset", style="cyan", overflow="ellipsis")
+            table.add_column("Method", justify="center")
+            table.add_column("Status", justify="center")
+            table.add_column("Latency", justify="right")
+            table.add_column("Req Time", justify="center", style="dim")
+            table.add_column("Resp Time", justify="center", style="dim")
+            table.add_column("CF-Ray ID", style="cyan")
+            table.add_column("Verdict", style="bold")
+
             with Progress(
                 SpinnerColumn(),
                 TextColumn("[bold cyan]{task.description}"),
@@ -1056,67 +1136,56 @@ def main():
                         results.append(res)
 
                         status_disp = f"HTTP {res['status_code']}" if res['status_code'] else "ERROR"
-                        verdict_color = ""
-                        if "PROTECTED" in res["verdict"] or "SUCCESS" in res["verdict"]:
-                            verdict_color = "\033[92m"  # Green
-                        elif "VULNERABLE" in res["verdict"] or "FALSE POSITIVE" in res["verdict"]:
-                            verdict_color = "\033[91m"  # Red
+                        if res['status_code'] == 403:
+                            status_styled = "[bold red]403[/bold red]"
+                        elif res['status_code'] == 200:
+                            status_styled = "[bold green]200[/bold green]"
                         else:
-                            verdict_color = "\033[93m"  # Yellow
-                        reset_color = "\033[0m"
-                        body_preview = f" | Body: {res['response_body']}" if res.get("response_body") else ""
+                            status_styled = str(res['status_code'] or "ERR")
 
-                        progress.console.print(
-                            f" [#{len(results):<2}] [{prof['method']}] {prof['name']:<32} "
-                            f"-> {status_disp:<10} "
-                            f"| Latency: {res['latency_ms']:>4}ms "
-                            f"| {verdict_color}{res['verdict']}{reset_color} "
-                            f"| Ray: {res['cf_ray']}\n"
-                            f"      [dim]↳ Req:  {res['request_time']}\n"
-                            f"      ↳ Resp: {res['response_time']}{body_preview}[/dim]"
+                        if "PROTECTED" in res["verdict"] or "SUCCESS" in res["verdict"]:
+                            verdict_styled = f"[bold green]{res['verdict']}[/bold green]"
+                        elif "VULNERABLE" in res["verdict"] or "FALSE POSITIVE" in res["verdict"]:
+                            verdict_styled = f"[bold red]{res['verdict']}[/bold red]"
+                        else:
+                            verdict_styled = f"[bold yellow]{res['verdict']}[/bold yellow]"
+
+                        table.add_row(
+                            str(len(results)),
+                            prof["name"],
+                            format_asset_path(url),
+                            prof["method"],
+                            status_styled,
+                            f"{res['latency_ms']}ms",
+                            format_time_col(res["request_time"]),
+                            format_time_col(res["response_time"]),
+                            res["cf_ray"],
+                            verdict_styled
                         )
                         progress.advance(task)
                         time.sleep(0.05)
+
+            console.print(table)
         else:
+            table_hdr = f"{'Sl No':<6} | {'Client Profile':<25} | {'Target Asset':<28} | {'Method':<7} | {'Status':<6} | {'Latency':<8} | {'Req Time':<13} | {'Resp Time':<13} | {'CF-Ray ID':<22} | {'Verdict'}"
+            sep = "-" * len(table_hdr)
+            print(f"\n{table_hdr}\n{sep}")
             for url in urls:
                 for prof in selected_profiles:
                     res = test_url(url, prof)
                     results.append(res)
 
-                    pct = int((len(results) / total_requests) * 100)
-                    bar_len = 20
-                    filled_len = int(bar_len * len(results) // total_requests)
-                    bar = "=" * filled_len + ("-" * (bar_len - filled_len))
-
-                    status_disp = f"HTTP {res['status_code']}" if res['status_code'] else "ERROR"
-                    verdict_color = ""
-                    if "PROTECTED" in res["verdict"] or "SUCCESS" in res["verdict"]:
-                        verdict_color = "\033[92m"  # Green
-                    elif "VULNERABLE" in res["verdict"] or "FALSE POSITIVE" in res["verdict"]:
-                        verdict_color = "\033[91m"  # Red
-                    else:
-                        verdict_color = "\033[93m"  # Yellow
-                    reset_color = "\033[0m"
-                    body_preview = f" | Body: {res['response_body']}" if res.get("response_body") else ""
-
-                    print(
-                        f" [{bar}] {pct:>3}% [#{len(results):<2}] [{prof['method']}] {prof['name']:<28} "
-                        f"-> {status_disp:<10} "
-                        f"| Lat: {res['latency_ms']:>4}ms "
-                        f"| {verdict_color}{res['verdict']}{reset_color} "
-                        f"| Ray: {res['cf_ray']}\n"
-                        f"      ↳ Req:  {res['request_time']}\n"
-                        f"      ↳ Resp: {res['response_time']}{body_preview}"
-                    )
+                    status_str = str(res['status_code'] or 0)
+                    lat_str = f"{res['latency_ms']}ms"
+                    print(f"{len(results):<6} | {prof['name']:<25} | {format_asset_path(url):<28} | {prof['method']:<7} | {status_str:<6} | {lat_str:<8} | {format_time_col(res['request_time']):<13} | {format_time_col(res['response_time']):<13} | {res['cf_ray']:<22} | {res['verdict']}")
                     time.sleep(0.05)
+            print(sep)
 
         # Compute summary metrics
         stats = compute_stats(results)
 
         # 1. Generate PDF Report
-        pdf_filename = "reports/cdn-scraping-report.pdf"
-        pdf_path = os.path.join(SCRIPT_DIR, pdf_filename)
-
+        pdf_path = args.pdf
         print("\n" + "=" * 70)
         print(f"[*] Generating PDF Audit Report...")
         generate_report(results, pdf_path, stats)
@@ -1124,13 +1193,18 @@ def main():
         print(f"    -> {pdf_path}")
 
         # 2. Generate Excel (.xlsx) Report
-        xlsx_filename = "reports/cdn-scraping-report.xlsx"
-        xlsx_path = os.path.join(SCRIPT_DIR, xlsx_filename)
-
+        xlsx_path = args.xlsx
         print(f"[*] Generating Excel (.xlsx) Audit Report...")
         generate_excel_report(results, stats, xlsx_path)
         print(f"[✓] Excel (.xlsx) Audit Report saved successfully:")
         print(f"    -> {xlsx_path}")
+
+        # 3. Generate CSV Report
+        csv_path = args.csv
+        print(f"[*] Generating CSV Audit Report...")
+        generate_csv_report(results, csv_path)
+        print(f"[✓] CSV Audit Report saved successfully:")
+        print(f"    -> {csv_path}")
         print("=" * 70)
 
         break  # Finished run

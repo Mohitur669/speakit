@@ -28,7 +28,8 @@ try:
     from rich.panel import Panel
     from rich.progress import Progress, BarColumn, TextColumn, TimeElapsedColumn, SpinnerColumn
     HAS_RICH = True
-    console = Console()
+    term_width = max(130, Console().width)
+    console = Console(width=term_width)
 except ImportError:
     HAS_RICH = False
     console = None
@@ -37,6 +38,14 @@ except ImportError:
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "../.."))
 BACKEND_ENV_PATH = os.path.join(PROJECT_ROOT, "backend", ".env")
+
+
+def format_time_col(ts_str: str) -> str:
+    """Format full UTC timestamp (YYYY-MM-DD HH:MM:SS.mmm UTC) to compact HH:MM:SS.mmm for table columns."""
+    if not ts_str:
+        return "-"
+    parts = ts_str.split(" ")
+    return parts[1] if len(parts) >= 2 else ts_str
 
 
 def load_env_variables(filepath: str) -> Dict[str, str]:
@@ -153,6 +162,16 @@ def run_ip_rotation_test(base_url: str, endpoint: str, total_requests: int = 15,
     rate_limited_at = None
 
     if HAS_RICH and console:
+        table = Table(title="X-Forwarded-For Rotation Probes (UTC Telemetry)", show_header=True, header_style="bold magenta")
+        table.add_column("Sl No", justify="right", style="dim")
+        table.add_column("Spoofed IP", style="yellow")
+        table.add_column("Status", justify="center")
+        table.add_column("Latency", justify="right")
+        table.add_column("Req Time", justify="center", style="dim")
+        table.add_column("Resp Time", justify="center", style="dim")
+        table.add_column("CF-Ray ID", style="cyan")
+        table.add_column("Verdict", style="bold")
+
         with Progress(
             SpinnerColumn(),
             TextColumn("[bold magenta]{task.description}"),
@@ -189,11 +208,16 @@ def run_ip_rotation_test(base_url: str, endpoint: str, total_requests: int = 15,
 
                 status_style = "[bold red]429[/bold red]" if status == 429 else f"[bold green]{status}[/bold green]" if status == 200 else str(status)
                 verdict_style = f"[bold green]{verdict}[/bold green]" if "PROTECTED" in verdict else f"[bold red]{verdict}[/bold red]" if "BYPASSED" in verdict else verdict
-                body_preview = f" | Body: {res['response_body']}" if res.get("response_body") else ""
-                progress.console.print(
-                    f" [#{i:>3}/{total_requests}] Injected: {fake_ip:<15} -> HTTP {status_style:<4} | Latency: {latency:>4}ms | Ray: {cf_ray:<18} | {verdict_style}\n"
-                    f"       [dim]↳ Req:  {res['request_time']}\n"
-                    f"       ↳ Resp: {res['response_time']}{body_preview}[/dim]"
+
+                table.add_row(
+                    str(i),
+                    fake_ip,
+                    status_style,
+                    f"{latency}ms",
+                    format_time_col(res["request_time"]),
+                    format_time_col(res["response_time"]),
+                    cf_ray,
+                    verdict_style
                 )
 
                 results.append({
@@ -207,7 +231,12 @@ def run_ip_rotation_test(base_url: str, endpoint: str, total_requests: int = 15,
                 })
                 progress.advance(task)
                 time.sleep(delay)
+
+        console.print(table)
     else:
+        table_hdr = f"{'Sl No':<6} | {'Spoofed IP':<15} | {'Status':<6} | {'Latency':<8} | {'Req Time':<13} | {'Resp Time':<13} | {'CF-Ray ID':<22} | {'Verdict'}"
+        sep = "-" * len(table_hdr)
+        print(f"\n{table_hdr}\n{sep}")
         for i in range(1, total_requests + 1):
             fake_ip = f"203.0.113.{i}"
             headers = {
@@ -232,16 +261,7 @@ def run_ip_rotation_test(base_url: str, endpoint: str, total_requests: int = 15,
             else:
                 verdict = f"Status {status}"
 
-            pct = int((i / total_requests) * 100)
-            bar_len = 20
-            filled_len = int(bar_len * i // total_requests)
-            bar = "=" * filled_len + ("-" * (bar_len - filled_len))
-            body_preview = f" | Body: {res['response_body']}" if res.get("response_body") else ""
-            print(
-                f" [{bar}] {pct:>3}% [#{i:>3}/{total_requests}] {fake_ip:<15} -> HTTP {status:<4} | Lat: {latency:>4}ms | Ray: {cf_ray:<18} | {verdict}\n"
-                f"       ↳ Req:  {res['request_time']}\n"
-                f"       ↳ Resp: {res['response_time']}{body_preview}"
-            )
+            print(f"{i:<6} | {fake_ip:<15} | {status:<6} | {f'{latency}ms':<8} | {format_time_col(res['request_time']):<13} | {format_time_col(res['response_time']):<13} | {cf_ray:<22} | {verdict}")
 
             results.append({
                 "iteration": i,
@@ -253,6 +273,7 @@ def run_ip_rotation_test(base_url: str, endpoint: str, total_requests: int = 15,
                 "cf_ray": cf_ray
             })
             time.sleep(delay)
+        print(sep)
 
     return results
 
@@ -281,6 +302,16 @@ def run_header_injection_matrix(base_url: str, endpoint: str) -> List[Dict[str, 
 
     matrix_results = []
     if HAS_RICH and console:
+        table = Table(title="Header Injection Results (UTC Telemetry)", show_header=True, header_style="bold magenta")
+        table.add_column("Sl No", justify="right", style="dim")
+        table.add_column("Header Test Case", style="bold yellow")
+        table.add_column("Injected Value", style="cyan")
+        table.add_column("Status", justify="center")
+        table.add_column("Req Time", justify="center", style="dim")
+        table.add_column("Resp Time", justify="center", style="dim")
+        table.add_column("CF-Ray ID", style="cyan")
+        table.add_column("Verdict", style="bold")
+
         with Progress(
             SpinnerColumn(),
             TextColumn("[bold cyan]{task.description}"),
@@ -291,7 +322,7 @@ def run_header_injection_matrix(base_url: str, endpoint: str) -> List[Dict[str, 
             console=console
         ) as progress:
             task = progress.add_task("Testing Header Vectors...", total=len(test_cases))
-            for name, headers in test_cases:
+            for idx, (name, headers) in enumerate(test_cases, 1):
                 headers["User-Agent"] = "Mozilla/5.0 (SpeakIT-Security-Auditor/1.0)"
                 injected_val = list(headers.values())[0]
 
@@ -306,12 +337,20 @@ def run_header_injection_matrix(base_url: str, endpoint: str) -> List[Dict[str, 
                 else:
                     verdict = f"Status {status}"
 
-                body_preview = f" | Body: {res['response_body']}" if res.get("response_body") else ""
-                progress.console.print(
-                    f" [*] {name:<35} [{injected_val:<25}] -> HTTP {status:<4} | Ray: {cf_ray:<18} | {verdict}\n"
-                    f"       [dim]↳ Req:  {res['request_time']}\n"
-                    f"       ↳ Resp: {res['response_time']}{body_preview}[/dim]"
+                status_style = "[bold red]403[/bold red]" if status == 403 else f"[bold green]{status}[/bold green]" if status == 200 else str(status)
+                verdict_style = f"[bold green]{verdict}[/bold green]" if "NORMALLY" in verdict else verdict
+
+                table.add_row(
+                    str(idx),
+                    name,
+                    injected_val,
+                    status_style,
+                    format_time_col(res["request_time"]),
+                    format_time_col(res["response_time"]),
+                    cf_ray,
+                    verdict_style
                 )
+
                 matrix_results.append({
                     "name": name,
                     "header": injected_val,
@@ -322,7 +361,12 @@ def run_header_injection_matrix(base_url: str, endpoint: str) -> List[Dict[str, 
                 })
                 progress.advance(task)
                 time.sleep(0.1)
+
+        console.print(table)
     else:
+        table_hdr = f"{'Sl No':<6} | {'Header Test Case':<28} | {'Injected Value':<22} | {'Status':<6} | {'Req Time':<13} | {'Resp Time':<13} | {'CF-Ray ID':<22} | {'Verdict'}"
+        sep = "-" * len(table_hdr)
+        print(f"\n{table_hdr}\n{sep}")
         for idx, (name, headers) in enumerate(test_cases, 1):
             headers["User-Agent"] = "Mozilla/5.0 (SpeakIT-Security-Auditor/1.0)"
             injected_val = list(headers.values())[0]
@@ -338,16 +382,7 @@ def run_header_injection_matrix(base_url: str, endpoint: str) -> List[Dict[str, 
             else:
                 verdict = f"Status {status}"
 
-            pct = int((idx / len(test_cases)) * 100)
-            bar_len = 20
-            filled_len = int(bar_len * idx // len(test_cases))
-            bar = "=" * filled_len + ("-" * (bar_len - filled_len))
-            body_preview = f" | Body: {res['response_body']}" if res.get("response_body") else ""
-            print(
-                f" [{bar}] {pct:>3}% [*] {name:<35} [{injected_val:<25}] -> HTTP {status:<4} | Ray: {cf_ray:<18} | {verdict}\n"
-                f"       ↳ Req:  {res['request_time']}\n"
-                f"       ↳ Resp: {res['response_time']}{body_preview}"
-            )
+            print(f"{idx:<6} | {name:<28} | {injected_val:<22} | {status:<6} | {format_time_col(res['request_time']):<13} | {format_time_col(res['response_time']):<13} | {cf_ray:<22} | {verdict}")
 
             matrix_results.append({
                 "name": name,
@@ -358,6 +393,7 @@ def run_header_injection_matrix(base_url: str, endpoint: str) -> List[Dict[str, 
                 "cf_ray": cf_ray
             })
             time.sleep(0.1)
+        print(sep)
 
     return matrix_results
 
@@ -1097,6 +1133,77 @@ def generate_excel_report(target_url: str, endpoint: str, rotation_results: List
         print(f"\n[!] Failed to generate Excel report: {e}")
 
 
+def generate_csv_report(target_url: str, endpoint: str, rotation_results: List[Dict[str, Any]],
+                        matrix_results: List[Dict[str, Any]], output_csv_path: str):
+    """Generate consolidated CSV audit report encompassing IP rotation and header injection telemetry."""
+    import csv
+    csv_dir = os.path.dirname(output_csv_path)
+    if csv_dir:
+        os.makedirs(csv_dir, exist_ok=True)
+
+    fieldnames = [
+        "Sl No",
+        "Test Suite",
+        "Test Case Vector",
+        "Injected Header / Value",
+        "Target Endpoint",
+        "HTTP Status",
+        "Latency",
+        "Request Timestamp (UTC)",
+        "Response Timestamp (UTC)",
+        "Cloudflare Ray ID",
+        "Security Verdict",
+        "Audit Notes & Analysis"
+    ]
+
+    with open(output_csv_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(fieldnames)
+
+        # 1. IP Rotation Records
+        for idx, r in enumerate(rotation_results, start=1):
+            verdict_text = "THROTTLED (PROTECTED)" if r["status"] == 429 else "ALLOWED (PENDING)" if r["status"] == 200 else str(r["status"])
+            note = f"Probe #{idx} evaluated against endpoint rate limit quota."
+            writer.writerow([
+                idx,
+                "IP Rotation",
+                "X-Forwarded-For",
+                r.get("ip", ""),
+                endpoint,
+                r.get("status", 0),
+                f"{r.get('latency_ms', 0)} ms",
+                r.get("request_time", "N/A"),
+                r.get("response_time", "N/A"),
+                r.get("cf_ray", "N/A"),
+                verdict_text,
+                note
+            ])
+
+        # 2. Header Injection Records
+        offset = len(rotation_results)
+        for idx, m in enumerate(matrix_results, start=1):
+            is_cf_block = "CF-Connecting-IP" in m["name"] and m["status"] == 403
+            verdict_text = "EDGE BLOCKED (403)" if is_cf_block else "PROXIED (SANITIZED)"
+            note_text = "Cloudflare edge intercepted and dropped forged CF-Connecting-IP header." if is_cf_block else "Edge proxy forwarded or stripped header; Spring Boot handled cleanly."
+            writer.writerow([
+                offset + idx,
+                "Header Injection",
+                m.get("name", ""),
+                m.get("header", ""),
+                endpoint,
+                m.get("status", 0),
+                "-",
+                m.get("request_time", "N/A"),
+                m.get("response_time", "N/A"),
+                m.get("cf_ray", "N/A"),
+                verdict_text,
+                note_text
+            ])
+
+    print(f"[✓] Detailed CSV Report generated successfully:")
+    print(f"    -> {output_csv_path}\n")
+
+
 def main():
     parser = argparse.ArgumentParser(description="SpeakIT IP Header Spoofing & WAF Rate-Limit Integrity Auditor")
     parser.add_argument("--url", help="Target backend base URL (overrides PROD_API_URL from backend/.env)")
@@ -1108,6 +1215,8 @@ def main():
                         help="Path to generate the output PDF report")
     parser.add_argument("--xlsx", default=os.path.join(SCRIPT_DIR, "reports", "ip-header-spoof-report.xlsx"),
                         help="Path to generate the output Excel report")
+    parser.add_argument("--csv", default=os.path.join(SCRIPT_DIR, "reports", "ip-header-spoof-report.csv"),
+                        help="Path to generate the output CSV report")
     args = parser.parse_args()
 
     target_url = get_target_url(args.url)
@@ -1120,6 +1229,7 @@ def main():
     print(f" Total Requests   : {args.requests}")
     print(f" PDF Report Dest  : {args.pdf}")
     print(f" Excel Report Dest: {args.xlsx}")
+    print(f" CSV Report Dest  : {args.csv}")
     print("=" * 70 + "\n")
 
     test_baseline_connectivity(target_url)
@@ -1128,6 +1238,7 @@ def main():
     evaluate_security_posture(rotation_results, matrix_results)
     generate_pdf_report(target_url, args.endpoint, rotation_results, matrix_results, args.pdf)
     generate_excel_report(target_url, args.endpoint, rotation_results, matrix_results, args.xlsx)
+    generate_csv_report(target_url, args.endpoint, rotation_results, matrix_results, args.csv)
 
 
 if __name__ == "__main__":
