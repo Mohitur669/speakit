@@ -5,10 +5,13 @@
 *.log
 reports/
 scripts/**/reports/
-scripts/**/data/
+scripts/**/data/*
+!scripts/**/data/*example*
 automation-script-logs/
 
 .venv
+__pycache__/
+*.pyc
 
 # Xcode & macOS
 .DS_Store
@@ -25,10 +28,6 @@ ios/SpeakIT/Config/Local.xcconfig
 ios/SpeakIT/Config/.env
 ios/SpeakIT/.env
 
-# CDN testing inputs & audit reports
-cdn-url-list*
-cdn-scraping-report*.pdf
-cdn-scraping-report*.xlsx
 
 # data-source and exports
 *.csv

@@ -1,0 +1,18 @@
+# CDN Protection & Directory Enumeration Test URLs (Template)
+# Copy this file to cdn-url-list.txt and populate with your own target URLs.
+# Format: one URL per line. Lines starting with '#' are ignored.
+
+# --- 1. Target Sample Assets (Anti-Scraping / WAF Rule Verification) ---
+https://cdn.example.com/audio/sample_audio.mp3
+https://cdn.example.com/avatars/sample_avatar.jpg
+
+# --- 2. Bucket Root Directory Enumeration Probes ---
+https://cdn.example.com/
+
+# --- 3. Bucket Prefix Directory Enumeration Probes ---
+https://cdn.example.com/audio/
+https://cdn.example.com/avatars/
+
+# --- 4. S3 ListObjectsV2 XML Query Enumeration Probes ---
+https://cdn.example.com/?list-type=2
+https://cdn.example.com/audio/?list-type=2
