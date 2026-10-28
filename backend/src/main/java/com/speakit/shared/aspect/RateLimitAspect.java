@@ -223,7 +223,7 @@ public class RateLimitAspect {
     }
 
     private String extractRealIp(HttpServletRequest request) {
-        return request.getRemoteAddr();
+        return com.speakit.shared.util.IpUtil.getClientIp(request);
     }
 
     private String extractDeviceFingerprint(HttpServletRequest request) {

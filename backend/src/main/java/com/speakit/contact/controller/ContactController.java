@@ -57,7 +57,7 @@ public class ContactController {
         }
 
         // 2. Process
-        String ipAddress = httpRequest.getRemoteAddr();
+        String ipAddress = com.speakit.shared.util.IpUtil.getClientIp(httpRequest);
         contactService.handleSubmission(request, ipAddress, requestId);
 
         // Cleanup occasionally
