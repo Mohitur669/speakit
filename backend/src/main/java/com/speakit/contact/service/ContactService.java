@@ -1,4 +1,5 @@
 package com.speakit.contact.service;
+import com.speakit.notification.service.DiscordService;
 import com.speakit.notification.service.TelegramService;
 
 import com.speakit.contact.dto.ContactRequest;
@@ -21,10 +22,14 @@ public class ContactService {
 
     private final ContactSubmissionRepository contactRepository;
     private final TelegramService telegramService;
+    private final DiscordService discordService;
 
-    public ContactService(ContactSubmissionRepository contactRepository, TelegramService telegramService) {
+    public ContactService(ContactSubmissionRepository contactRepository,
+                          TelegramService telegramService,
+                          DiscordService discordService) {
         this.contactRepository = contactRepository;
         this.telegramService = telegramService;
+        this.discordService = discordService;
     }
     
     // Memory-efficient deduplication cache (Hashed Content -> Timestamp)
@@ -73,6 +78,15 @@ public class ContactService {
         
         // 5. Telegram Notification
         telegramService.sendNotification(
+            cleanFirstName + " " + cleanLastName,
+            cleanEmail,
+            submission.getTopic(),
+            cleanMessage,
+            requestId
+        );
+
+        // 6. Discord Notification
+        discordService.sendNotification(
             cleanFirstName + " " + cleanLastName,
             cleanEmail,
             submission.getTopic(),

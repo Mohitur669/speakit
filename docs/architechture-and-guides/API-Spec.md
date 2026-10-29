@@ -1583,6 +1583,11 @@ The Contact domain accepts public feedback, technical support requests, and ente
    - **MarkdownV2 Injection Shielding:** Escapes all 18 MarkdownV2 reserved characters (`_`, `*`, `[`, `]`, `(`, `)`, `~`, `` ` ``, `>`, `#`, `+`, `-`, `=`, `|`, `{`, `}`, `.`, `!`) to strictly prevent Telegram syntax breaking or malicious command injection.
    - **HTTP Client:** Uses Spring `RestClient` configured with a 5-second socket read timeout (`JdkClientHttpRequestFactory.setReadTimeout(Duration.ofSeconds(5))`) against `https://api.telegram.org/bot<token>/sendMessage`.
    - **Exponential Backoff Retries:** On network failure, attempts up to 3 times total (1 initial execution + up to 2 retries) with exponential backoff delays (1,000ms &rarr; 2,000ms).
+8. **Discord Webhook Alert (`DiscordService`):** Invokes `@Async` `discordService.sendNotification(name, email, topic, message, requestId)`:
+   - **Configuration:** Reads `app.discord.contact-form-webhook-url` (`DISCORD_CONTACT_FORM_WEBHOOK_URL`) configured via `application.properties` with no fallback.
+   - **Rich Visual Embeds:** Generates structured Discord embeds with topic-driven color codes (Billing: `#E02424`, Support: `#3B82F6`, Enterprise: `#10B981`, Feedback: `#F59E0B`, General: `#5865F2`), discrete inline fields for sender metadata, and UTC ISO-8601 timestamps.
+   - **String Boundary Shields:** Truncates message body to 4,000 characters and header fields to 250 characters to strictly avoid Discord 400 Bad Request limits.
+   - **HTTP Client & Retries:** Employs Spring `RestClient` with 5-second socket read timeout and exponential backoff retry shields (up to 3 attempts).
 
 **Data Flow Diagram (Mermaid)**
 ```mermaid
