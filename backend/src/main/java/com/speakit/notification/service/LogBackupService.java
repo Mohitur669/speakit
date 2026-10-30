@@ -67,7 +67,7 @@ public class LogBackupService {
     @Value("${cloudflare.r2.logs.secret-access-key:}")
     private String secretAccessKey;
 
-    @Value("${cloudflare.r2.logs.coolify-dir:}")
+    @Value("${cloudflare.r2.logs.coolify-dir:/app/logs}")
     private String coolifyLogsDir;
 
     @Value("${cloudflare.r2.logs.local-dir:logs/speakit-backend.log}")
@@ -205,7 +205,7 @@ public class LogBackupService {
         if (logFile == null || !logFile.exists() || !logFile.isFile()) {
             long duration = System.currentTimeMillis() - startTime;
             String msg = "No active log file found on disk.";
-            log.warn("Active log file not found. Checked locations: coolifyDir='{}', default='logs/speakit-backend.log'", coolifyLogsDir);
+            log.warn("Active log file not found. Checked locations: coolifyDir='{}', container='/app/logs/speakit-backend.log', default='logs/speakit-backend.log'", coolifyLogsDir);
             if (auditService != null) {
                 auditService.recordSkipped(auditId, "Cloudflare R2", safeBucket, msg, duration);
             }
@@ -267,7 +267,8 @@ public class LogBackupService {
             String compressionRatioStr = String.format("%.2f%%", Math.max(0.0, ratio));
 
             // 3. Sync any historical/exceeded chunks (*.gz) to <bucket_name>/speakit-backend/<YYYY>/<DD-MM-YYYY>/archive/<chunk_name>.gz
-            java.util.List<String> archivedKeys = uploadRolledArchives(logFile.getParentFile(), safeBucket, year, dayMonthYear);
+            File logDir = logFile.getAbsoluteFile().getParentFile();
+            java.util.List<String> archivedKeys = uploadRolledArchives(logDir, safeBucket, year, dayMonthYear);
 
             long duration = System.currentTimeMillis() - startTime;
             int totalFiles = 1 + archivedKeys.size();
@@ -329,36 +330,39 @@ public class LogBackupService {
 
     /**
      * Resolves the active log file based on LOG_ENVIRONMENT ("local" vs "coolify").
+     * - If LOG_ENVIRONMENT is "coolify": Resolves via COOLIFY_LOGS_DIR or falls back to container path /app/logs/speakit-backend.log.
      * - If LOG_ENVIRONMENT is "local" (default): Resolves via LOCAL_LOGS_DIR (e.g. logs/speakit-backend.log or backend/logs/speakit-backend.log).
-     * - If LOG_ENVIRONMENT is "coolify": Resolves via COOLIFY_LOGS_DIR.
      */
     private File resolveActiveLogFile() {
         String env = cleanEnv(logEnvironment);
 
         if ("coolify".equalsIgnoreCase(env)) {
+            // 1. Check explicitly configured coolifyLogsDir (can be file or directory)
             if (isConfigured(coolifyLogsDir)) {
-                Path coolifyPath = Paths.get(coolifyLogsDir.trim());
-                if (Files.isRegularFile(coolifyPath)) {
-                    return coolifyPath.toFile();
-                }
-                Path candidateInCoolify = coolifyPath.resolve("speakit-backend.log");
-                if (Files.exists(candidateInCoolify) && Files.isRegularFile(candidateInCoolify)) {
-                    return candidateInCoolify.toFile();
+                File file = findLogFile(coolifyLogsDir.trim());
+                if (file != null) {
+                    return file;
                 }
             }
-            log.warn("Log environment configured as 'coolify' but no valid log file found at coolifyLogsDir='{}'", coolifyLogsDir);
+            // 2. Fallback to standard Coolify container paths (/app/logs/speakit-backend.log)
+            Path containerLog = Paths.get("/app", "logs", "speakit-backend.log");
+            if (Files.exists(containerLog) && Files.isRegularFile(containerLog)) {
+                return containerLog.toFile();
+            }
+            Path containerRootLog = Paths.get("/app", "speakit-backend.log");
+            if (Files.exists(containerRootLog) && Files.isRegularFile(containerRootLog)) {
+                return containerRootLog.toFile();
+            }
+
+            log.warn("Log environment configured as 'coolify' but no valid log file found at coolifyLogsDir='{}' or /app/logs/speakit-backend.log", coolifyLogsDir);
             return null;
         }
 
         // Local environment resolution
         if (isConfigured(localLogsDir)) {
-            Path customLocal = Paths.get(localLogsDir.trim());
-            if (Files.isRegularFile(customLocal)) {
-                return customLocal.toFile();
-            }
-            Path candidateInCustom = customLocal.resolve("speakit-backend.log");
-            if (Files.exists(candidateInCustom) && Files.isRegularFile(candidateInCustom)) {
-                return candidateInCustom.toFile();
+            File file = findLogFile(localLogsDir.trim());
+            if (file != null) {
+                return file;
             }
         }
 
@@ -373,6 +377,28 @@ public class LogBackupService {
             return relativeToCurrent.toFile();
         }
 
+        Path rootCandidate = Paths.get("speakit-backend.log");
+        if (Files.exists(rootCandidate) && Files.isRegularFile(rootCandidate)) {
+            return rootCandidate.toFile();
+        }
+
+        return null;
+    }
+
+    private File findLogFile(String pathStr) {
+        if (!isConfigured(pathStr)) {
+            return null;
+        }
+        Path path = Paths.get(pathStr.trim());
+        if (Files.isRegularFile(path)) {
+            return path.toFile();
+        }
+        if (Files.isDirectory(path)) {
+            Path candidate = path.resolve("speakit-backend.log");
+            if (Files.exists(candidate) && Files.isRegularFile(candidate)) {
+                return candidate.toFile();
+            }
+        }
         return null;
     }
 
