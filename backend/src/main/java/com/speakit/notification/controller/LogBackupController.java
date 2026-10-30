@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 import java.security.Principal;
@@ -94,7 +95,7 @@ public class LogBackupController {
      */
     @GetMapping("/download")
     @RateLimited(action = RateLimitAction.PUBLIC)
-    public ResponseEntity<?> downloadLogs(
+    public ResponseEntity<StreamingResponseBody> downloadLogs(
             @RequestParam("startDate") String startDateStr,
             @RequestParam("endDate") String endDateStr,
             HttpServletRequest request,
@@ -120,48 +121,44 @@ public class LogBackupController {
             startDate = LocalDate.parse(startDateStr.trim(), formatter);
             endDate = LocalDate.parse(endDateStr.trim(), formatter);
         } catch (Exception ex) {
-            return ResponseEntity.badRequest().body(Map.of(
-                    "error", "Invalid date format. Expected format is DD-MM-YYYY (e.g. 24-10-2026)."
-            ));
+            throw new IllegalArgumentException("Invalid date format. Expected format is DD-MM-YYYY (e.g. 24-10-2026).");
         }
 
         if (endDate.isBefore(startDate)) {
-            return ResponseEntity.badRequest().body(Map.of(
-                    "error", "endDate cannot be before startDate (startDate: " + startDateStr + ", endDate: " + endDateStr + ")."
-            ));
+            throw new IllegalArgumentException("endDate cannot be before startDate (startDate: " + startDateStr + ", endDate: " + endDateStr + ").");
         }
 
         long daysBetween = ChronoUnit.DAYS.between(startDate, endDate);
         if (daysBetween > 7) {
-            return ResponseEntity.badRequest().body(Map.of(
-                    "error", "Date range exceeds maximum limit of 7 days (requested: " + daysBetween + " days)."
-            ));
+            throw new IllegalArgumentException("Date range exceeds maximum limit of 7 days (requested: " + daysBetween + " days).");
         }
 
         LocalDate today = LocalDate.now(logBackupService.getZoneId());
         if (endDate.isAfter(today)) {
-            return ResponseEntity.badRequest().body(Map.of(
-                    "error", "endDate cannot be in the future (today is " + today.format(formatter) + ")."
-            ));
+            throw new IllegalArgumentException("endDate cannot be in the future (today is " + today.format(formatter) + ").");
         }
 
         if (!logBackupService.isR2Enabled()) {
-            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(Map.of(
-                    "error", "Cloudflare R2 storage is not configured or disabled."
-            ));
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Cloudflare R2 storage is not configured or disabled.");
         }
 
         List<String> matchedKeys = logBackupService.findLogKeysForRange(startDate, endDate);
         if (matchedKeys == null || matchedKeys.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
-                    "error", String.format("No log backups found in Cloudflare R2 for date range %s to %s.", startDateStr, endDateStr)
-            ));
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, String.format("No log backups found in Cloudflare R2 for date range %s to %s.", startDateStr, endDateStr));
         }
 
         String zipFilename = String.format("speakit-logs-%s-to-%s.zip", startDateStr, endDateStr);
         Long auditId = logBackupService.recordDownloadAuditStart(username, userId);
 
-        StreamingResponseBody responseBody = logBackupService.createZipStream(matchedKeys, zipFilename, username, auditId);
+        StreamingResponseBody responseBody;
+        try {
+            responseBody = logBackupService.createZipStream(matchedKeys, zipFilename, username, auditId);
+        } catch (Exception ex) {
+            if (auditId != null) {
+                logBackupService.recordDownloadAuditFailure(auditId, "Failed to initialize zip stream: " + ex.getMessage());
+            }
+            throw ex;
+        }
 
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("application/zip"))

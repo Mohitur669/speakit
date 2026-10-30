@@ -521,6 +521,16 @@ public class LogBackupService {
     }
 
     /**
+     * Records an immediate failure in the audit ledger if download stream initialization fails before execution.
+     */
+    public void recordDownloadAuditFailure(Long auditId, String reason) {
+        if (auditService != null && auditId != null) {
+            String safeBucket = (bucketName != null) ? bucketName.trim() : "";
+            auditService.recordFailure(auditId, "Cloudflare R2", safeBucket, null, 0L, reason, 0L);
+        }
+    }
+
+    /**
      * Creates a high-efficiency StreamingResponseBody that pipes log objects from R2
      * directly into the client download socket as a ZIP archive without buffering on server disk.
      */

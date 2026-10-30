@@ -110,6 +110,19 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
+    @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
+    public ResponseEntity<ApiErrorResponse> handleResponseStatusException(
+            org.springframework.web.server.ResponseStatusException ex, HttpServletRequest request) {
+        log.warn("Response status exception: {} - {}", ex.getStatusCode(), ex.getReason());
+        captureHandledException(ex, SentryLevel.INFO);
+        HttpStatus status = HttpStatus.resolve(ex.getStatusCode().value());
+        if (status == null) {
+            status = HttpStatus.INTERNAL_SERVER_ERROR;
+        }
+        ApiErrorResponse response = buildResponse(status, status.getReasonPhrase(), ex.getReason(), request);
+        return new ResponseEntity<>(response, status);
+    }
+
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ApiErrorResponse> handleRuntimeException(RuntimeException ex, HttpServletRequest request) {
         log.warn("Business rule violation: {}", ex.getMessage());
