@@ -47,7 +47,7 @@ services:
           cpus: '1.0'
           memory: 512M
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/auth/ping || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/api/auth/ping || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
