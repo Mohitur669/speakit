@@ -10,7 +10,7 @@ RUN mvn clean package -DskipTests -q
 
 # Stage 2 — Run (Red Hat UBI 10 Minimal + Eclipse Temurin JRE 25: 0 Known CVEs)
 FROM eclipse-temurin:25-jre-ubi10-minimal
-RUN microdnf install -y shadow-utils curl && \
+RUN (microdnf install -y shadow-utils curl-minimal || microdnf install -y shadow-utils curl) && \
     microdnf clean all && \
     groupadd -r appgroup && \
     useradd -r -g appgroup -d /app -s /sbin/nologin appuser
