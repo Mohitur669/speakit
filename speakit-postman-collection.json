@@ -426,7 +426,8 @@
                         "description": "Returns boolean indicating whether a phone number is already registered."
                     }
                 }
-            ]
+            ],
+            "description": "# 1. Authentication & Security\n\nComprehensive identity verification, authentication lifecycle, and security controls for the SpeakIT platform. Implements stateless JWT authentication, session versioning, email-based OTP verification, account lockout protection, and single-use WebSocket ticket provisioning.\n\n### Available Endpoints in this Folder:\n- **`POST /api/auth/register`**: Registers a new user account in `PENDING_VERIFICATION` status, staging details in quarantine and dispatching a 6-digit email OTP.\n- **`POST /api/auth/verify-email`**: Verifies email OTP, activates the user account, and returns the initial JWT Bearer token.\n- **`POST /api/auth/login`**: Authenticates user credentials (username/email + password), increments session version, and returns an authenticated JWT Bearer token.\n- **`POST /api/auth/resend-registration-otp`**: Resends a fresh email registration OTP with anti-flood rate limiting.\n- **`POST /api/auth/forgot-password`**: Triggers password reset workflow by generating and emailing a secure 6-digit OTP.\n- **`POST /api/auth/reset-password`**: Validates password reset OTP and atomically updates the password hash.\n- **`GET /api/auth/me`**: Retrieves current authenticated profile context, role, and plan entitlements pre-cached from JWT attributes.\n- **`POST /api/auth/ws-ticket`**: Issues a short-lived (60s), single-use cryptographic ticket for secure WebSocket handshakes.\n- **`POST /api/auth/logout`**: Terminates the active session by incrementing session version, instantly invalidating all issued tokens across devices.\n- **`GET /api/auth/ping`**: Lightweight public keep-alive health check endpoint pinged periodically to prevent cold starts.\n- **`GET /api/auth/check-username`**: Real-time pre-validation checking username uniqueness and format rules without submitting a registration form.\n- **`GET /api/auth/check-email`**: Real-time pre-validation checking email availability and RFC compliance.\n- **`GET /api/auth/check-phone`**: Real-time pre-validation checking phone number availability and international E.164 formatting."
         },
         {
             "name": "2. User Profile Management",
@@ -683,7 +684,8 @@
                         "description": "Cancels any pending unverified email or profile updates and clears cached OTPs."
                     }
                 }
-            ]
+            ],
+            "description": "# 2. User Profile Management\n\nEndpoints for user profile inspection, avatar management, contact details updates, and password rotation. Sensitive profile modifications (such as email changes) are shielded by a two-phase challenge requiring OTP verification.\n\n### Available Endpoints in this Folder:\n- **`GET /api/user/profile`**: Retrieves complete user profile details, contact information, subscription tier, and account audit metadata.\n- **`POST /api/user/profile/request-update-otp`**: Dispatches an OTP verification challenge to the user prior to committing sensitive profile updates.\n- **`PUT /api/user/profile`**: Applies profile modifications (full name, phone number) and stages pending email changes.\n- **`POST /api/user/profile/verify-email-change`**: Validates email change OTP and promotes the staged email to primary account email.\n- **`POST /api/user/profile/resend-otp`**: Resends profile modification OTP with rate limiting protection.\n- **`POST /api/user/profile/change-password`**: Securely updates account password requiring verification of existing password credentials.\n- **`POST /api/user/profile/cancel-changes`**: Discards unverified pending profile updates and purges staged change records."
         },
         {
             "name": "3. Text-to-Speech (TTS)",
@@ -830,7 +832,8 @@
                         "description": "Streams generated speech audio in real time for immediate playback."
                     }
                 }
-            ]
+            ],
+            "description": "# 3. Text-to-Speech (TTS)\n\nHigh-performance neural speech synthesis engine powered by AWS Polly (Neural Engine), ElevenLabs, and Sarvam AI. Supports both buffered MP3 generation and sub-second chunked streaming, paired with write-forward billing usage ledger enforcement.\n\n### Available Endpoints in this Folder:\n- **`GET /api/tts/voices`**: Discovers all supported multi-lingual voices, neural engine availability, and regional dialects across integrated TTS providers.\n- **`GET /api/tts/usage`**: Returns the current billing cycle write-forward character usage accumulators, monthly plan quotas, and remaining balances.\n- **`POST /api/tts/synthesize`**: Generates high-fidelity buffered MP3 audio from input text, persists generation history, and caches audio artifacts to Cloudflare R2.\n- **`POST /api/tts/synthesize/stream`**: Delivers sub-second low-latency chunked audio streaming for real-time speech playback in browsers and mobile clients."
         },
         {
             "name": "4. Speech-to-Text & Translation",
@@ -980,7 +983,8 @@
                         "description": "Translates transcribed text between supported languages."
                     }
                 }
-            ]
+            ],
+            "description": "# 4. Speech-to-Text & Translation\n\nAutomatic Speech Recognition (ASR) and neural translation pipeline supporting multi-format audio files, live chunked recordings, language detection, and multi-lingual translation.\n\n### Available Endpoints in this Folder:\n- **`POST /api/stt/transcribe`**: Uploads and transcribes pre-recorded audio files (MP3, WAV, M4A, WebM) with MIME validation and plan quota checks.\n- **`POST /api/stt/transcribe/live`**: Transcribes live microphone audio recordings with session tracking, dialogue turn indexing, and speaker role labeling.\n- **`POST /api/stt/translate`**: Translates transcribed or user-provided text across supported global languages using neural translation models."
         },
         {
             "name": "5. Analytics & History",
@@ -1095,7 +1099,8 @@
                         "description": "Deletes all synthesis history entries for the authenticated user."
                     }
                 }
-            ]
+            ],
+            "description": "# 5. Analytics & History\n\nHistorical ledger and audit trail of speech synthesis conversions, character consumptions, audio URLs, and timestamps. History deletions do not alter the write-forward billing accumulators.\n\n### Available Endpoints in this Folder:\n- **`GET /api/history`**: Returns paginated, indexed history of past TTS conversions with audio streaming URLs, character counts, and timestamps.\n- **`DELETE /api/history/delete`**: Selectively deletes specific generation history records by ID while preserving billing ledger integrity.\n- **`DELETE /api/history/clear`**: Purges all synthesis history records for the authenticated user without affecting monthly character usage accumulators."
         },
         {
             "name": "6. Billing & Subscriptions",
@@ -1229,7 +1234,8 @@
                         "description": "Retrieves paginated history of transactions and plan subscriptions."
                     }
                 }
-            ]
+            ],
+            "description": "# 6. Billing & Subscriptions\n\nMonetization, tier entitlements, and payment processing integration powered by Razorpay. Manages subscription plans (Free, Pro, Pro Plus, Enterprise), order creation, and payment verification.\n\n### Available Endpoints in this Folder:\n- **`POST /api/billing/order`**: Generates a verified Razorpay order for subscription plan upgrade, downgrade, or renewal.\n- **`POST /api/billing/verify`**: Validates cryptographic Razorpay HMAC-SHA256 payment signature and activates plan tier entitlements.\n- **`GET /api/billing/history`**: Retrieves historical payment transactions, order IDs, payment amounts, currencies, and invoice statuses."
         },
         {
             "name": "7. Webhooks",
@@ -1272,7 +1278,8 @@
                         "description": "Public webhook endpoint receiving Razorpay payment events, verified with HMAC signature."
                     }
                 }
-            ]
+            ],
+            "description": "# 7. Webhooks\n\nCryptographically verified server-to-server webhook event handlers. Processes asynchronous subscription events, automated renewals, cancellations, and payment failures with idempotency protection.\n\n### Available Endpoints in this Folder:\n- **`POST /api/v1/webhooks/razorpay`**: Ingests and processes Razorpay webhook events (`payment.captured`, `subscription.activated`, `subscription.cancelled`) with HMAC signature verification and deduplication."
         },
         {
             "name": "8. Contact & Inquiries",
@@ -1314,7 +1321,8 @@
                         "description": "Public contact form submission endpoint with defense-in-depth security:\n1. Telegram & Discord Integration: Dispatches real-time alerts to Telegram via TelegramService and Discord Webhooks via DiscordService (topic-driven embeds, 5s timeout, up to 3 retries). Dispatches real-time alerts to the administrative Telegram channel via TelegramService (MarkdownV2 escaping, 5-second read timeout, up to 3 total attempts with 1s and 2s delays).\n2. Bot Protection: Invisible honeypot field ('website') silently rejects automated bot submissions.\n3. Replay Protection: Validates 'X-Request-ID' header against a 5-minute atomic in-memory cache to guarantee idempotency.\n4. Anti-Spam Deduplication: SHA-256 message fingerprinting suppresses duplicate submissions from the same sender within 60 seconds.\n5. Privacy Compliance: Client IP is hashed using SHA-256 before persisting to PostgreSQL ('contact_submissions').\n6. Supported Topics: 'support' (Technical Support), 'billing' (Billing), 'feature' (Feature Request), 'general' (General Inquiry), 'enterprise' (Enterprise / Partnership), 'feedback' (Feedback)."
                     }
                 }
-            ]
+            ],
+            "description": "# 8. Contact & Inquiries\n\nCustomer support, enterprise sales, and partnership inquiry dispatch gateway. Equipped with enterprise defensive shielding against automated spam and bots.\n\n### Available Endpoints in this Folder:\n- **`POST /api/contact`**: Dispatches customer inquiry submissions with hidden honeypot bot trap, SHA-256 anti-spam deduplication, and dual-dispatch alerting to Telegram and Discord webhooks."
         },
         {
             "name": "9. System Parameters",
@@ -1407,7 +1415,8 @@
                         "description": "Fetches parameter value from in-memory cache with periodic synchronization (whitelisted parameters only)."
                     }
                 }
-            ]
+            ],
+            "description": "# 9. System Parameters\n\nDynamic runtime parameter and feature-flag distribution subsystem. Whitelist-protected parameters can be queried and updated in production without requiring server restarts, backed by Caffeine in-memory caching.\n\n### Available Endpoints in this Folder:\n- **`GET /api/parameters/bulk`**: Fetches multiple approved public configuration parameters and dynamic feature flags in a single request.\n- **`GET /api/parameters/{name}/live`**: Queries the database directly for the real-time value of a whitelisted configuration parameter.\n- **`GET /api/parameters/{name}`**: Returns the in-memory cached value of a configuration parameter with periodic automatic synchronization."
         },
         {
             "name": "10. Real-Time WebSockets",
@@ -1446,7 +1455,8 @@
                         "description": "WebSocket endpoint for real-time session invalidation across multiple browser tabs. Handshake authenticated via single-use ticket."
                     }
                 }
-            ]
+            ],
+            "description": "# 10. Real-Time WebSockets\n\nBidirectional real-time communication channels for instant security events, cross-device session termination, and live audio bridging.\n\n### Available Endpoints in this Folder:\n- **`GET /ws/logout?ticket={ticket}`**: Establishes an authenticated single-use WebSocket connection to receive instant server-side logout notifications and session invalidation broadcasts."
         },
         {
             "name": "11. Administration & Operations",
@@ -1502,7 +1512,8 @@
                         "description": "Disaster Recovery & Ad-Hoc Diagnostic Endpoint:\n- Compresses active speakit-backend.log via in-memory GZIP stream without file locking.\n- Uploads compressed snapshot to Cloudflare R2 under speakit-backend/speakit-backend-{trigger}-{TIMESTAMP}.log.gz.\n- Requires authenticated JWT (Bearer token).\n- Rate limited via RateLimitAction.PUBLIC."
                     }
                 }
-            ]
+            ],
+            "description": "# 11. Administration & Operations\n\nDisaster recovery, operational diagnostics, and administrative maintenance infrastructure. Handles automated midnight and manual active log snapshot backups to Cloudflare R2 with full database audit ledger tracking.\n\n### Available Endpoints in this Folder:\n- **`POST /api/admin/logs/backup`**: Triggers manual ad-hoc backup of the active `speakit-backend.log`. Streams and compresses log via in-memory GZIP, synchronizes exceeded rollover archive chunks, logs execution lifecycle (`IN_PROGRESS` -> `SUCCESS`/`FAILED`) in `log_backup_audits`, and uploads snapshots to Cloudflare R2 under `speakit-backend/<YYYY>/<DD-MM-YYYY>/`."
         }
     ],
     "variable": [
