@@ -2,7 +2,7 @@
     "info": {
         "_postman_id": "b4e9b07a-c09f-4374-ad82-c9844df870e4",
         "name": "SpeakIT API",
-        "description": "# SpeakIT Production API Collection\n\nOfficial Postman Collection for SpeakIT SaaS — AI Voice Generation (TTS) & Speech-to-Text (STT) Platform.\n\n## Authentication Flow\n1. **Register**: `POST /api/auth/register` initiates user registration with username, email, phone, and password.\n2. **Verify Email**: `POST /api/auth/verify-email` verifies the OTP sent to email and returns the initial JWT `token`.\n3. **Login**: `POST /api/auth/login` returns a JWT `token`. The test script automatically stores this in the `{{token}}` variable.\n4. **Authenticated Requests**: All protected endpoints use Bearer Token auth (`{{token}}`).\n5. **WebSocket Session**: `POST /api/auth/ws-ticket` issues a single-use ticket for secure WebSocket handshakes (`/ws/logout`).\n\n## Environment Variables\n- `baseUrl`: The root HTTP URL of the backend (Default: `http://localhost:8080`)\n- `wsUrl`: The root WebSocket URL of the backend (Default: `ws://localhost:8080`)\n- `token`: The active JWT Bearer token (populated automatically on Login/Verify Email)\n- `ticket`: Single-use ticket for WebSocket connections (populated automatically on Issue WS Ticket)\n\n## Included Domains\n- Authentication & Account Lifecycles\n- User Profile & Security Management\n- Text-to-Speech (TTS - AWS Polly, ElevenLabs, Sarvam AI)\n- Speech-to-Text & Translation (STT)\n- TTS History & Analytics\n- Billing & Razorpay Subscriptions\n- Webhooks (Razorpay event handler)\n- Contact & Enterprise Inquiries\n- System Parameters (Whitelist-protected dynamic feature flags)\n- WebSocket Real-Time Invalidation",
+        "description": "# SpeakIT Production API Collection\n\nOfficial Postman Collection for SpeakIT SaaS \u2014 AI Voice Generation (TTS) & Speech-to-Text (STT) Platform.\n\n## Authentication Flow\n1. **Register**: `POST /api/auth/register` initiates user registration with username, email, phone, and password.\n2. **Verify Email**: `POST /api/auth/verify-email` verifies the OTP sent to email and returns the initial JWT `token`.\n3. **Login**: `POST /api/auth/login` returns a JWT `token`. The test script automatically stores this in the `{{token}}` variable.\n4. **Authenticated Requests**: All protected endpoints use Bearer Token auth (`{{token}}`).\n5. **WebSocket Session**: `POST /api/auth/ws-ticket` issues a single-use ticket for secure WebSocket handshakes (`/ws/logout`).\n\n## Environment Variables\n- `baseUrl`: The root HTTP URL of the backend (Default: `http://localhost:8080`)\n- `wsUrl`: The root WebSocket URL of the backend (Default: `ws://localhost:8080`)\n- `token`: The active JWT Bearer token (populated automatically on Login/Verify Email)\n- `ticket`: Single-use ticket for WebSocket connections (populated automatically on Issue WS Ticket)\n\n## Included Domains\n- Authentication & Account Lifecycles\n- User Profile & Security Management\n- Text-to-Speech (TTS - AWS Polly, ElevenLabs, Sarvam AI)\n- Speech-to-Text & Translation (STT)\n- TTS History & Analytics\n- Billing & Razorpay Subscriptions\n- Webhooks (Razorpay event handler)\n- Contact & Enterprise Inquiries\n- System Parameters (Whitelist-protected dynamic feature flags)\n- WebSocket Real-Time Invalidation\n- Administration & Disaster Recovery (Cloudflare R2 Log Backups)",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
     "item": [
@@ -1226,7 +1226,7 @@
                                 "contact"
                             ]
                         },
-                        "description": "Public contact form submission endpoint with defense-in-depth security:\n1. Telegram Bot Integration: Dispatches real-time alerts to the administrative Telegram channel via TelegramService (MarkdownV2 escaping, 5-second read timeout, up to 3 total attempts with 1s and 2s delays).\n2. Bot Protection: Invisible honeypot field ('website') silently rejects automated bot submissions.\n3. Replay Protection: Validates 'X-Request-ID' header against a 5-minute atomic in-memory cache to guarantee idempotency.\n4. Anti-Spam Deduplication: SHA-256 message fingerprinting suppresses duplicate submissions from the same sender within 60 seconds.\n5. Privacy Compliance: Client IP is hashed using SHA-256 before persisting to PostgreSQL ('contact_submissions').\n6. Supported Topics: 'support' (Technical Support), 'billing' (Billing), 'feature' (Feature Request), 'general' (General Inquiry), 'enterprise' (Enterprise / Partnership), 'feedback' (Feedback)."
+                        "description": "Public contact form submission endpoint with defense-in-depth security:\n1. Telegram & Discord Integration: Dispatches real-time alerts to Telegram via TelegramService and Discord Webhooks via DiscordService (topic-driven embeds, 5s timeout, up to 3 retries). Dispatches real-time alerts to the administrative Telegram channel via TelegramService (MarkdownV2 escaping, 5-second read timeout, up to 3 total attempts with 1s and 2s delays).\n2. Bot Protection: Invisible honeypot field ('website') silently rejects automated bot submissions.\n3. Replay Protection: Validates 'X-Request-ID' header against a 5-minute atomic in-memory cache to guarantee idempotency.\n4. Anti-Spam Deduplication: SHA-256 message fingerprinting suppresses duplicate submissions from the same sender within 60 seconds.\n5. Privacy Compliance: Client IP is hashed using SHA-256 before persisting to PostgreSQL ('contact_submissions').\n6. Supported Topics: 'support' (Technical Support), 'billing' (Billing), 'feature' (Feature Request), 'general' (General Inquiry), 'enterprise' (Enterprise / Partnership), 'feedback' (Feedback)."
                     }
                 }
             ]
@@ -1359,6 +1359,67 @@
                             ]
                         },
                         "description": "WebSocket endpoint for real-time session invalidation across multiple browser tabs. Handshake authenticated via single-use ticket."
+                    }
+                }
+            ]
+        },
+        {
+            "name": "11. Administration & Operations",
+            "item": [
+                {
+                    "name": "Trigger Manual Log Backup to R2",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200\", function () {",
+                                    "    pm.response.to.have.status(200);",
+                                    "});",
+                                    "",
+                                    "pm.test(\"Log backup succeeded to Cloudflare R2\", function () {",
+                                    "    var jsonData = pm.response.json();",
+                                    "    pm.expect(jsonData.status).to.eql(\"SUCCESS\");",
+                                    "    pm.expect(jsonData.storageProvider).to.eql(\"Cloudflare R2\");",
+                                    "    pm.expect(jsonData.objectKey).to.be.a(\"string\");",
+                                    "    pm.expect(jsonData.compressedSizeBytes).to.be.above(0);",
+                                    "});"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/admin/logs/backup",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "admin",
+                                "logs",
+                                "backup"
+                            ]
+                        },
+                        "description": "Disaster Recovery & Ad-Hoc Diagnostic Endpoint:\n- Compresses active speakit-backend.log via in-memory GZIP stream without file locking.\n- Uploads compressed snapshot to Cloudflare R2 under speakit-backend/speakit-backend-{trigger}-{TIMESTAMP}.log.gz.\n- Requires authenticated JWT (Bearer token).\n- Rate limited via RateLimitAction.PUBLIC."
                     }
                 }
             ]
