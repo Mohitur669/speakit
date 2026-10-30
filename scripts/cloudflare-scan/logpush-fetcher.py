@@ -419,7 +419,7 @@ def main():
         "--bucket",
         type=str,
         default=None,
-        help="Override R2 bucket name (default: reads R2_BUCKET_NAME or R2_LOGS_BUCKET_NAME from backend/.env).",
+        help="Override R2 bucket name (default: reads R2_BUCKET_NAME or R2_LOGPUSH_BUCKET_NAME from backend/.env).",
     )
     parser.add_argument(
         "--prefix",
@@ -497,11 +497,11 @@ def main():
     env_vars = load_env_credentials(env_path)
 
     account_id = env_vars.get("R2_ACCOUNT_ID") or os.environ.get("R2_ACCOUNT_ID")
-    access_key = env_vars.get("R2_LOGS_ACCESS_KEY_ID") or os.environ.get("R2_ACCESS_KEY_ID")
-    secret_key = env_vars.get("R2_LOGS_SECRET_ACCESS_KEY") or os.environ.get("R2_SECRET_ACCESS_KEY")
+    access_key = env_vars.get("R2_LOGPUSH_ACCESS_KEY_ID") or os.environ.get("R2_ACCESS_KEY_ID")
+    secret_key = env_vars.get("R2_LOGPUSH_SECRET_ACCESS_KEY") or os.environ.get("R2_SECRET_ACCESS_KEY")
     bucket = (
         args.bucket
-        or env_vars.get("R2_LOGS_BUCKET_NAME")
+        or env_vars.get("R2_LOGPUSH_BUCKET_NAME")
         or env_vars.get("R2_BUCKET_NAME")
         or os.environ.get("R2_BUCKET_NAME")
     )

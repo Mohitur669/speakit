@@ -8,8 +8,8 @@ Comprehensive guide, command references, and architecture documentation for cons
 
 > [!IMPORTANT]
 > **Write access to Cloudflare R2 is NEVER required.**
-> To fetch, stream, filter, and consolidate log files, the credentials only require **Read-Only / Object Read** permissions (`r2:ListBucket` and `r2:GetObject`). 
-> 
+> To fetch, stream, filter, and consolidate log files, the credentials only require **Read-Only / Object Read** permissions (`r2:ListBucket` and `r2:GetObject`).
+>
 > Write (`r2:PutObject`) or Delete (`r2:DeleteObject`) permissions are only needed if you are writing data back to R2. All consolidation files (`cloudflare_requests_log.jsonl` and `cloudflare_requests_log.csv`) and security reports (`reports/`) are generated **locally on disk** in `scripts/cloudflare-scan/data/` and `scripts/cloudflare-scan/reports/`.
 
 ---
@@ -26,8 +26,8 @@ cd /Users/mohitur/Desktop/git-projects/speakit/scripts/cloudflare-scan
 ### Credentials & Configuration
 The scripts automatically read credentials from `backend/.env`:
 - `R2_ACCOUNT_ID`
-- `R2_ACCESS_KEY_ID` (or `R2_LOGS_ACCESS_KEY_ID`)
-- `R2_SECRET_ACCESS_KEY` (or `R2_LOGS_SECRET_ACCESS_KEY`)
+- `R2_ACCESS_KEY_ID` (or `R2_LOGPUSH_ACCESS_KEY_ID`)
+- `R2_SECRET_ACCESS_KEY` (or `R2_LOGPUSH_SECRET_ACCESS_KEY`)
 - `R2_BUCKET_NAME` (or pass `--bucket <name>`)
 
 ---
