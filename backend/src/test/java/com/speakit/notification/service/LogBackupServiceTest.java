@@ -87,7 +87,7 @@ class LogBackupServiceTest {
         assertEquals("scheduled", result.getTrigger());
         assertEquals("test-log-bucket", result.getBucket());
         assertEquals("\"test-etag-123\"", result.getETag());
-        assertTrue(result.getObjectKey().matches("^speakit-backend/\\d{4}/speakit-backend-scheduled-.*\\.log\\.gz$"));
+        assertTrue(result.getObjectKey().matches("^speakit-backend/\\d{4}/\\d{2}-\\d{2}-\\d{4}/speakit-backend-scheduled-.*\\.log\\.gz$"));
         assertTrue(result.getCompressedSizeBytes() > 0);
         assertTrue(result.getCompressedSizeBytes() < result.getOriginalSizeBytes());
 
@@ -123,10 +123,10 @@ class LogBackupServiceTest {
         assertEquals("manual", result.getTrigger());
         assertEquals("test-log-bucket", result.getBucket());
         assertEquals("\"coolify-etag-456\"", result.getETag());
-        assertTrue(result.getObjectKey().matches("^speakit-backend/\\d{4}/speakit-backend-manual-.*\\.log\\.gz$"));
+        assertTrue(result.getObjectKey().matches("^speakit-backend/\\d{4}/\\d{2}-\\d{2}-\\d{4}/speakit-backend-manual-.*\\.log\\.gz$"));
         assertEquals(2, result.getTotalFilesUploaded());
         assertNotNull(result.getArchivedChunksUploaded());
         assertEquals(1, result.getArchivedChunksUploaded().size());
-        assertTrue(result.getArchivedChunksUploaded().get(0).contains("/archive/speakit-backend.log.2026-10-31.0.gz"));
+        assertTrue(result.getArchivedChunksUploaded().get(0).matches("^speakit-backend/\\d{4}/\\d{2}-\\d{2}-\\d{4}/archive/speakit-backend\\.log\\.2026-10-31\\.0\\.gz$"));
     }
 }

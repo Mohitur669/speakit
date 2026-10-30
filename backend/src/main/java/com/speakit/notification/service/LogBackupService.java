@@ -68,6 +68,7 @@ public class LogBackupService {
     private boolean r2Enabled = false;
 
     private static final DateTimeFormatter YEAR_FORMATTER = DateTimeFormatter.ofPattern("yyyy");
+    private static final DateTimeFormatter DAY_MONTH_YEAR_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy");
     private static final DateTimeFormatter TIMESTAMP_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss");
 
     @PostConstruct
@@ -179,9 +180,10 @@ public class LogBackupService {
         }
 
         String year = zdt.format(YEAR_FORMATTER);
+        String dayMonthYear = zdt.format(DAY_MONTH_YEAR_FORMATTER);
         String timestamp = zdt.format(TIMESTAMP_FORMATTER);
-        // Destination format: <bucket_name>/speakit-backend/<YYYY>/speakit-backend-<trigger>-<TIMESTAMP>.log.gz
-        String activeObjectKey = String.format("speakit-backend/%s/speakit-backend-%s-%s.log.gz", year, trigger, timestamp);
+        // Destination format: <bucket_name>/speakit-backend/<YYYY>/<DD-MM-YYYY>/speakit-backend-<trigger>-<TIMESTAMP>.log.gz
+        String activeObjectKey = String.format("speakit-backend/%s/%s/speakit-backend-%s-%s.log.gz", year, dayMonthYear, trigger, timestamp);
 
         try {
             // 1. In-memory streaming gzip compression of active log
@@ -199,8 +201,8 @@ public class LogBackupService {
             double ratio = (1.0 - ((double) compressedSizeBytes / (double) originalSizeBytes)) * 100.0;
             String compressionRatioStr = String.format("%.2f%%", Math.max(0.0, ratio));
 
-            // 2. Sync any historical/exceeded chunks (*.gz) to <bucket_name>/speakit-backend/<YYYY>/archive/<chunk_name>.gz
-            java.util.List<String> archivedKeys = uploadRolledArchives(logFile.getParentFile(), safeBucket, year);
+            // 2. Sync any historical/exceeded chunks (*.gz) to <bucket_name>/speakit-backend/<YYYY>/<DD-MM-YYYY>/archive/<chunk_name>.gz
+            java.util.List<String> archivedKeys = uploadRolledArchives(logFile.getParentFile(), safeBucket, year, dayMonthYear);
 
             long duration = System.currentTimeMillis() - startTime;
             int totalFiles = 1 + archivedKeys.size();
@@ -320,9 +322,9 @@ public class LogBackupService {
 
     /**
      * Finds and uploads any exceeded rollover chunks (*.gz) in the logs directory.
-     * Destination key format: speakit-backend/<YYYY>/archive/<filename>.gz
+     * Destination key format: speakit-backend/<YYYY>/<DD-MM-YYYY>/archive/<filename>.gz
      */
-    private java.util.List<String> uploadRolledArchives(File logDir, String safeBucket, String year) {
+    private java.util.List<String> uploadRolledArchives(File logDir, String safeBucket, String year, String dayMonthYear) {
         java.util.List<String> uploadedKeys = new java.util.ArrayList<>();
         if (logDir == null || !logDir.exists() || !logDir.isDirectory()) {
             return uploadedKeys;
@@ -337,7 +339,7 @@ public class LogBackupService {
 
         for (File chunk : rolledFiles) {
             try {
-                String archiveKey = String.format("speakit-backend/%s/archive/%s", year, chunk.getName());
+                String archiveKey = String.format("speakit-backend/%s/%s/archive/%s", year, dayMonthYear, chunk.getName());
                 PutObjectRequest req = PutObjectRequest.builder()
                         .bucket(safeBucket)
                         .key(archiveKey)
