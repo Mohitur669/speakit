@@ -151,6 +151,32 @@ class LogBackupServiceTest {
     }
 
     @Test
+    void backupActiveLog_whenCoolifyEnvWithDirectory_resolvesLogFileAndUploadsSuccessfully(@TempDir Path tempDir) throws Exception {
+        File dummyLog = tempDir.resolve("speakit-backend.log").toFile();
+        try (FileOutputStream fos = new FileOutputStream(dummyLog)) {
+            fos.write("2026-10-31 00:00:00.000 INFO [speakit-backend] : Coolify dir resolution OK\n".repeat(20)
+                    .getBytes(StandardCharsets.UTF_8));
+        }
+
+        ReflectionTestUtils.setField(logBackupService, "r2Enabled", true);
+        ReflectionTestUtils.setField(logBackupService, "s3Client", s3Client);
+        ReflectionTestUtils.setField(logBackupService, "bucketName", "test-log-bucket");
+        ReflectionTestUtils.setField(logBackupService, "logEnvironment", "coolify");
+        // Provide the DIRECTORY path (e.g. /app/logs), not the direct file path
+        ReflectionTestUtils.setField(logBackupService, "coolifyLogsDir", tempDir.toAbsolutePath().toString());
+
+        PutObjectResponse mockResponse = PutObjectResponse.builder().eTag("\"coolify-dir-etag\"").build();
+        when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class))).thenReturn(mockResponse);
+
+        LogBackupResult result = logBackupService.backupActiveLog("manual");
+
+        assertEquals("Completed", result.getStatus());
+        assertEquals("Manual", result.getTrigger());
+        assertEquals("coolify-dir-etag", result.getETag());
+        assertTrue(result.getCompressedSizeBytes() > 0);
+    }
+
+    @Test
     void backupActiveLog_whenS3Fails_recordsFailureAndReturnsFailedResult(@TempDir Path tempDir) throws Exception {
         File dummyLog = tempDir.resolve("speakit-backend.log").toFile();
         try (FileOutputStream fos = new FileOutputStream(dummyLog)) {
