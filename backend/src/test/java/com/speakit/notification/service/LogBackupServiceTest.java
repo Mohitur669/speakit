@@ -28,11 +28,14 @@ class LogBackupServiceTest {
     @Mock
     private S3Client s3Client;
 
+    @Mock
+    private LogBackupAuditService auditService;
+
     private LogBackupService logBackupService;
 
     @BeforeEach
     void setUp() {
-        logBackupService = new LogBackupService();
+        logBackupService = new LogBackupService(auditService);
     }
 
     @Test
@@ -80,18 +83,24 @@ class LogBackupServiceTest {
 
         PutObjectResponse mockResponse = PutObjectResponse.builder().eTag("\"test-etag-123\"").build();
         when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class))).thenReturn(mockResponse);
+        when(auditService.recordStart(eq("scheduled"), eq("system"), isNull())).thenReturn(999L);
 
         LogBackupResult result = logBackupService.backupActiveLog("scheduled");
 
         assertEquals("SUCCESS", result.getStatus());
+        assertEquals(999L, result.getAuditId());
         assertEquals("scheduled", result.getTrigger());
         assertEquals("test-log-bucket", result.getBucket());
-        assertEquals("\"test-etag-123\"", result.getETag());
+        assertEquals("test-etag-123", result.getETag());
         assertTrue(result.getObjectKey().matches("^speakit-backend/\\d{4}/\\d{2}-\\d{2}-\\d{4}/speakit-backend-scheduled-.*\\.log\\.gz$"));
         assertTrue(result.getCompressedSizeBytes() > 0);
         assertTrue(result.getCompressedSizeBytes() < result.getOriginalSizeBytes());
 
         verify(s3Client, times(1)).putObject(any(PutObjectRequest.class), any(RequestBody.class));
+        verify(auditService).recordStart(eq("scheduled"), eq("system"), isNull());
+        verify(auditService).recordSuccess(eq(999L), eq("Cloudflare R2"), eq("test-log-bucket"), eq(result.getObjectKey()),
+                eq("test-etag-123"), eq(result.getOriginalSizeBytes()), eq(result.getCompressedSizeBytes()),
+                eq(result.getCompressionRatio()), eq(0), anyLong());
     }
 
     @Test
@@ -122,11 +131,36 @@ class LogBackupServiceTest {
         assertEquals("SUCCESS", result.getStatus());
         assertEquals("manual", result.getTrigger());
         assertEquals("test-log-bucket", result.getBucket());
-        assertEquals("\"coolify-etag-456\"", result.getETag());
+        assertEquals("coolify-etag-456", result.getETag());
         assertTrue(result.getObjectKey().matches("^speakit-backend/\\d{4}/\\d{2}-\\d{2}-\\d{4}/speakit-backend-manual-.*\\.log\\.gz$"));
         assertEquals(2, result.getTotalFilesUploaded());
         assertNotNull(result.getArchivedChunksUploaded());
         assertEquals(1, result.getArchivedChunksUploaded().size());
         assertTrue(result.getArchivedChunksUploaded().get(0).matches("^speakit-backend/\\d{4}/\\d{2}-\\d{2}-\\d{4}/archive/speakit-backend\\.log\\.2026-10-31\\.0\\.gz$"));
+    }
+
+    @Test
+    void backupActiveLog_whenS3Fails_recordsFailureAndReturnsFailedResult(@TempDir Path tempDir) throws Exception {
+        File dummyLog = tempDir.resolve("speakit-backend.log").toFile();
+        try (FileOutputStream fos = new FileOutputStream(dummyLog)) {
+            fos.write("dummy-log-content".getBytes(StandardCharsets.UTF_8));
+        }
+
+        ReflectionTestUtils.setField(logBackupService, "r2Enabled", true);
+        ReflectionTestUtils.setField(logBackupService, "s3Client", s3Client);
+        ReflectionTestUtils.setField(logBackupService, "bucketName", "test-log-bucket");
+        ReflectionTestUtils.setField(logBackupService, "localLogsDir", dummyLog.getAbsolutePath());
+
+        when(auditService.recordStart(eq("manual"), eq("mohitur"), eq(10L))).thenReturn(500L);
+        when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
+                .thenThrow(new RuntimeException("Simulated R2 network timeout"));
+
+        LogBackupResult result = logBackupService.backupActiveLog("manual", "mohitur", 10L);
+
+        assertEquals("FAILED", result.getStatus());
+        assertEquals(500L, result.getAuditId());
+        assertTrue(result.getMessage().contains("Simulated R2 network timeout"));
+        verify(auditService).recordFailure(eq(500L), eq("Cloudflare R2"), eq("test-log-bucket"), anyString(),
+                anyLong(), contains("Simulated R2 network timeout"), anyLong());
     }
 }

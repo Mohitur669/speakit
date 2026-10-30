@@ -17,6 +17,7 @@ import java.time.Instant;
 public class LogBackupResult {
 
     private String status;           // SUCCESS, SKIPPED, FAILED
+    private Long auditId;            // Database primary key of the audit record
     private String trigger;          // scheduled, manual
     private String triggeredBy;      // system, username (id: 1)
     private String storageProvider;  // Cloudflare R2

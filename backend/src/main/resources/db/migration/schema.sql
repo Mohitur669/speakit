@@ -598,3 +598,37 @@ CREATE TABLE IF NOT EXISTS live_session_turns (
 );
 
 CREATE INDEX IF NOT EXISTS idx_live_turn_request_id ON live_session_turns(request_id, turn_index);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 11. Log Backup Audit Ledger
+-- Tracks execution lifecycle (IN_PROGRESS, SUCCESS, FAILED, SKIPPED) of automated
+-- and manual log backups to Cloudflare R2 for disaster recovery and operational governance.
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE SEQUENCE IF NOT EXISTS log_backup_audit_seq START WITH 1 INCREMENT BY 50;
+
+CREATE TABLE IF NOT EXISTS log_backup_audits (
+    id                      BIGINT PRIMARY KEY,
+    user_id                 BIGINT REFERENCES users(id) ON DELETE SET NULL,
+    trigger_type            VARCHAR(20) NOT NULL,          -- 'SCHEDULED', 'MANUAL'
+    triggered_by            VARCHAR(100) NOT NULL,         -- 'system' or username
+    status                  VARCHAR(20) NOT NULL,          -- 'IN_PROGRESS', 'SUCCESS', 'FAILED', 'SKIPPED'
+    storage_provider        VARCHAR(50),                   -- 'Cloudflare R2'
+    bucket_name             VARCHAR(100),                  -- e.g. 'speakit-logs'
+    object_key              VARCHAR(500),                  -- R2 key of active log snapshot
+    etag                    VARCHAR(100),                  -- R2 response ETag
+    original_size_bytes     BIGINT,
+    compressed_size_bytes   BIGINT,
+    compression_ratio       VARCHAR(20),                   -- e.g. '98.15%'
+    archived_chunks_count   INTEGER NOT NULL DEFAULT 0,    -- Number of rolled chunks synced
+    execution_duration_ms   BIGINT,                        -- Total runtime in milliseconds
+    error_message           VARCHAR(1000),                 -- Populated only when status = 'FAILED'
+    created_at              TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at              TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    version                 BIGINT NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_log_backup_audits_user_id ON log_backup_audits(user_id);
+CREATE INDEX IF NOT EXISTS idx_log_backup_audits_status ON log_backup_audits(status);
+CREATE INDEX IF NOT EXISTS idx_log_backup_audits_created_at ON log_backup_audits(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_log_backup_audits_trigger ON log_backup_audits(trigger_type, status);
+

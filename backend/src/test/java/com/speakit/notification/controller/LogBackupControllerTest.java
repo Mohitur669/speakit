@@ -46,7 +46,7 @@ class LogBackupControllerTest {
                 .objectKey("speakit-backend/speakit-backend-manual-2026-10-31_00-00-00.log.gz")
                 .build();
 
-        when(logBackupService.backupActiveLog(eq("manual"), eq("mohitur"))).thenReturn(expectedResult);
+        when(logBackupService.backupActiveLog(eq("manual"), eq("mohitur"), eq(42L))).thenReturn(expectedResult);
 
         ResponseEntity<LogBackupResult> response = logBackupController.triggerManualBackup(request, principal);
 
@@ -54,7 +54,7 @@ class LogBackupControllerTest {
         assertEquals("SUCCESS", response.getBody().getStatus());
         assertEquals("manual", response.getBody().getTrigger());
         assertEquals("mohitur", response.getBody().getTriggeredBy());
-        verify(logBackupService, times(1)).backupActiveLog("manual", "mohitur");
+        verify(logBackupService, times(1)).backupActiveLog("manual", "mohitur", 42L);
     }
 
     @Test
@@ -69,12 +69,13 @@ class LogBackupControllerTest {
                 .message("R2 PutObject connection timeout")
                 .build();
 
-        when(logBackupService.backupActiveLog(eq("manual"), eq("mohitur"))).thenReturn(failedResult);
+        when(logBackupService.backupActiveLog(eq("manual"), eq("mohitur"), eq(42L))).thenReturn(failedResult);
 
         ResponseEntity<LogBackupResult> response = logBackupController.triggerManualBackup(request, principal);
 
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
         assertEquals("FAILED", response.getBody().getStatus());
         assertEquals("mohitur", response.getBody().getTriggeredBy());
+        verify(logBackupService, times(1)).backupActiveLog("manual", "mohitur", 42L);
     }
 }
