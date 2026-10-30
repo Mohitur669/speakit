@@ -24,11 +24,22 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.zip.GZIPOutputStream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
+import software.amazon.awssdk.services.s3.model.S3Object;
 
 /**
  * Cloudflare R2 Log Backup Service.
@@ -151,7 +162,7 @@ public class LogBackupService {
 
     /**
      * Executes backup for active speakit-backend.log with explicit actor and user tracking.
-     * Captures transactional IN_PROGRESS, SUCCESS, FAILED, or SKIPPED audit entries.
+     * Captures transactional 'In Progress', 'Completed', 'Failed', or 'Skipped' audit entries.
      *
      * @param trigger     "scheduled" or "manual"
      * @param triggeredBy Actor description (e.g. "system" or "mohitur")
@@ -165,9 +176,10 @@ public class LogBackupService {
         ZonedDateTime zdt = nowUtc.atZone(zoneId);
 
         String safeBucket = (bucketName != null) ? bucketName.trim() : "";
+        String normalizedTrigger = ("scheduled".equalsIgnoreCase(trigger)) ? "Scheduled" : "Manual";
 
-        // 1. Record initial IN_PROGRESS state in audit ledger (commits immediately via REQUIRES_NEW)
-        Long auditId = (auditService != null) ? auditService.recordStart(trigger, triggeredBy, userId) : null;
+        // 1. Record initial In Progress state in audit ledger (commits immediately via REQUIRES_NEW)
+        Long auditId = (auditService != null) ? auditService.recordStart("Upload", normalizedTrigger, triggeredBy, userId) : null;
 
         if (!r2Enabled || s3Client == null) {
             long duration = System.currentTimeMillis() - startTime;
@@ -176,9 +188,10 @@ public class LogBackupService {
                 auditService.recordSkipped(auditId, "Cloudflare R2", safeBucket, msg, duration);
             }
             return LogBackupResult.builder()
-                    .status("SKIPPED")
+                    .status("Skipped")
                     .auditId(auditId)
-                    .trigger(trigger)
+                    .actionType("Upload")
+                    .trigger(normalizedTrigger)
                     .triggeredBy(triggeredBy)
                     .storageProvider("Cloudflare R2")
                     .bucket(safeBucket)
@@ -197,9 +210,10 @@ public class LogBackupService {
                 auditService.recordSkipped(auditId, "Cloudflare R2", safeBucket, msg, duration);
             }
             return LogBackupResult.builder()
-                    .status("SKIPPED")
+                    .status("Skipped")
                     .auditId(auditId)
-                    .trigger(trigger)
+                    .actionType("Upload")
+                    .trigger(normalizedTrigger)
                     .triggeredBy(triggeredBy)
                     .storageProvider("Cloudflare R2")
                     .bucket(safeBucket)
@@ -217,9 +231,10 @@ public class LogBackupService {
                 auditService.recordSkipped(auditId, "Cloudflare R2", safeBucket, msg, duration);
             }
             return LogBackupResult.builder()
-                    .status("SKIPPED")
+                    .status("Skipped")
                     .auditId(auditId)
-                    .trigger(trigger)
+                    .actionType("Upload")
+                    .trigger(normalizedTrigger)
                     .triggeredBy(triggeredBy)
                     .storageProvider("Cloudflare R2")
                     .bucket(safeBucket)
@@ -260,16 +275,17 @@ public class LogBackupService {
             log.info("Successfully uploaded active log snapshot and {} rolled chunks to Cloudflare R2: {} ({} -> {} bytes, -{}, {}ms, triggeredBy: {})",
                     archivedKeys.size(), activeObjectKey, originalSizeBytes, compressedSizeBytes, compressionRatioStr, duration, triggeredBy);
 
-            // 4. Update audit record to SUCCESS in audit ledger
+            // 4. Update audit record to Completed in audit ledger
             if (auditService != null) {
                 auditService.recordSuccess(auditId, "Cloudflare R2", safeBucket, activeObjectKey, sanitizedEtag,
                         originalSizeBytes, compressedSizeBytes, compressionRatioStr, archivedKeys.size(), duration);
             }
 
             return LogBackupResult.builder()
-                    .status("SUCCESS")
+                    .status("Completed")
                     .auditId(auditId)
-                    .trigger(trigger)
+                    .actionType("Upload")
+                    .trigger(normalizedTrigger)
                     .triggeredBy(triggeredBy)
                     .storageProvider("Cloudflare R2")
                     .bucket(safeBucket)
@@ -289,15 +305,16 @@ public class LogBackupService {
             long duration = System.currentTimeMillis() - startTime;
             log.error("Failed to backup log to Cloudflare R2: {}", e.getMessage(), e);
 
-            // 5. Update audit record to FAILED in audit ledger
+            // 5. Update audit record to Failed in audit ledger
             if (auditService != null) {
                 auditService.recordFailure(auditId, "Cloudflare R2", safeBucket, activeObjectKey, originalSizeBytes, e.getMessage(), duration);
             }
 
             return LogBackupResult.builder()
-                    .status("FAILED")
+                    .status("Failed")
                     .auditId(auditId)
-                    .trigger(trigger)
+                    .actionType("Upload")
+                    .trigger(normalizedTrigger)
                     .triggeredBy(triggeredBy)
                     .storageProvider("Cloudflare R2")
                     .bucket(safeBucket)
@@ -448,5 +465,113 @@ public class LogBackupService {
             }
         }
         return ZoneId.of("Asia/Kolkata");
+    }
+
+    public ZoneId getZoneId() {
+        return resolveZoneId();
+    }
+
+    public boolean isR2Enabled() {
+        return this.r2Enabled && this.s3Client != null;
+    }
+
+    /**
+     * Scans Cloudflare R2 for all log objects (.log.gz and rolled archive .gz chunks) matching the given date range.
+     * Searches prefix: speakit-backend/<YYYY>/<DD-MM-YYYY>/
+     */
+    public List<String> findLogKeysForRange(LocalDate startDate, LocalDate endDate) {
+        List<String> matchedKeys = new ArrayList<>();
+        if (!isR2Enabled() || startDate == null || endDate == null) {
+            return matchedKeys;
+        }
+
+        String safeBucket = (bucketName != null) ? bucketName.trim() : "";
+
+        for (LocalDate d = startDate; !d.isAfter(endDate); d = d.plusDays(1)) {
+            String prefix = String.format("speakit-backend/%04d/%s/", d.getYear(), d.format(DAY_MONTH_YEAR_FORMATTER));
+            try {
+                ListObjectsV2Request listReq = ListObjectsV2Request.builder()
+                        .bucket(safeBucket)
+                        .prefix(prefix)
+                        .build();
+
+                ListObjectsV2Response listResp = s3Client.listObjectsV2(listReq);
+                if (listResp.hasContents()) {
+                    for (S3Object s3Object : listResp.contents()) {
+                        if (s3Object.key().endsWith(".gz")) {
+                            matchedKeys.add(s3Object.key());
+                        }
+                    }
+                }
+            } catch (Exception ex) {
+                log.warn("Failed to list objects in Cloudflare R2 for prefix '{}': {}", prefix, ex.getMessage());
+            }
+        }
+        return matchedKeys;
+    }
+
+    /**
+     * Records the start of a manual log download operation in the audit ledger.
+     */
+    public Long recordDownloadAuditStart(String username, Long userId) {
+        if (auditService != null) {
+            return auditService.recordStart("Download", "Manual", username, userId);
+        }
+        return null;
+    }
+
+    /**
+     * Creates a high-efficiency StreamingResponseBody that pipes log objects from R2
+     * directly into the client download socket as a ZIP archive without buffering on server disk.
+     */
+    public StreamingResponseBody createZipStream(List<String> objectKeys, String zipFileName, String username, Long auditId) {
+        String safeBucket = (bucketName != null) ? bucketName.trim() : "";
+        return outputStream -> {
+            long startTime = System.currentTimeMillis();
+            long totalBytesStreamed = 0;
+            int filesStreamed = 0;
+
+            try (ZipOutputStream zos = new ZipOutputStream(outputStream)) {
+                byte[] buffer = new byte[8192];
+
+                for (String key : objectKeys) {
+                    // Structure inside zip: <DD-MM-YYYY>/... (stripping speakit-backend/<YYYY>/)
+                    String entryName = key.replaceFirst("^speakit-backend/\\d{4}/", "");
+                    ZipEntry zipEntry = new ZipEntry(entryName);
+                    zos.putNextEntry(zipEntry);
+
+                    try (InputStream is = s3Client.getObject(GetObjectRequest.builder()
+                            .bucket(safeBucket)
+                            .key(key)
+                            .build())) {
+                        int bytesRead;
+                        while ((bytesRead = is.read(buffer)) != -1) {
+                            zos.write(buffer, 0, bytesRead);
+                            totalBytesStreamed += bytesRead;
+                        }
+                    }
+                    zos.closeEntry();
+                    filesStreamed++;
+                }
+                zos.finish();
+
+                long duration = System.currentTimeMillis() - startTime;
+                if (auditService != null && auditId != null) {
+                    auditService.recordSuccess(auditId, "Cloudflare R2", safeBucket, zipFileName, null,
+                            totalBytesStreamed, totalBytesStreamed, "0.00%", filesStreamed, duration);
+                }
+                log.info("Successfully streamed zip archive of {} log files ({} bytes, {}ms) to user: {}",
+                        filesStreamed, totalBytesStreamed, duration, username);
+
+            } catch (Exception e) {
+                long duration = System.currentTimeMillis() - startTime;
+                log.error("Failed while streaming log download zip for user {}: {}", username, e.getMessage(), e);
+                if (auditService != null && auditId != null) {
+                    auditService.recordFailure(auditId, "Cloudflare R2", safeBucket, zipFileName,
+                            totalBytesStreamed, "Streaming failed: " + e.getMessage(), duration);
+                }
+                throw e;
+            }
+        };
     }
 }

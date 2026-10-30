@@ -1474,7 +1474,7 @@
                                     "",
                                     "pm.test(\"Log backup succeeded to Cloudflare R2\", function () {",
                                     "    var jsonData = pm.response.json();",
-                                    "    pm.expect(jsonData.status).to.eql(\"SUCCESS\");",
+                                    "    pm.expect(jsonData.status).to.be.oneOf([\"Completed\", \"SUCCESS\"]);",
                                     "    pm.expect(jsonData.storageProvider).to.eql(\"Cloudflare R2\");",
                                     "    pm.expect(jsonData.objectKey).to.be.a(\"string\");",
                                     "    pm.expect(jsonData.compressedSizeBytes).to.be.above(0);",
@@ -1511,9 +1511,68 @@
                         },
                         "description": "Disaster Recovery & Ad-Hoc Diagnostic Endpoint:\n- Compresses active speakit-backend.log via in-memory GZIP stream without file locking.\n- Uploads compressed snapshot to Cloudflare R2 under speakit-backend/speakit-backend-{trigger}-{TIMESTAMP}.log.gz.\n- Requires authenticated JWT (Bearer token).\n- Rate limited via RateLimitAction.PUBLIC."
                     }
+                },
+                {
+                    "name": "Download Logs Archive (.zip)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "pm.test(\"Status code is 200 or 404\", function () {",
+                                    "    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+                                    "});",
+                                    "if (pm.response.code === 200) {",
+                                    "    pm.test(\"Content-Type is application/zip\", function () {",
+                                    "        pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/zip\");",
+                                    "    });",
+                                    "}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/admin/logs/download?startDate=24-10-2026&endDate=31-10-2026",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "admin",
+                                "logs",
+                                "download"
+                            ],
+                            "query": [
+                                {
+                                    "key": "startDate",
+                                    "value": "24-10-2026",
+                                    "description": "Start date in DD-MM-YYYY format"
+                                },
+                                {
+                                    "key": "endDate",
+                                    "value": "31-10-2026",
+                                    "description": "End date in DD-MM-YYYY format (max 7 days difference from startDate)"
+                                }
+                            ]
+                        },
+                        "description": "Streams an on-the-fly compressed ZIP archive of log backups from Cloudflare R2 matching the specified date range (startDate to endDate in DD-MM-YYYY format).\n\nUsage in Postman:\n- Click the arrow next to Send -> select \"Send and Download\" to save the zip file directly.\n- Requires authenticated JWT (Bearer token).\n- Enforces max 7-day window to preserve memory.\n- Streams directly from R2 to client socket with zero server disk buffering.\n- Logs transactional audit record in log_backup_audits (action_type: DOWNLOAD)."
+                    }
                 }
             ],
-            "description": "# 11. Administration & Operations\n\nDisaster recovery, operational diagnostics, and administrative maintenance infrastructure. Handles automated midnight and manual active log snapshot backups to Cloudflare R2 with full database audit ledger tracking.\n\n### Available Endpoints in this Folder:\n- **`POST /api/admin/logs/backup`**: Triggers manual ad-hoc backup of the active `speakit-backend.log`. Streams and compresses log via in-memory GZIP, synchronizes exceeded rollover archive chunks, logs execution lifecycle (`IN_PROGRESS` -> `SUCCESS`/`FAILED`) in `log_backup_audits`, and uploads snapshots to Cloudflare R2 under `speakit-backend/<YYYY>/<DD-MM-YYYY>/`."
+            "description": "# 11. Administration & Operations\n\nDisaster recovery, operational diagnostics, and administrative maintenance infrastructure. Handles automated midnight and manual active log snapshot backups to Cloudflare R2, as well as on-the-fly streaming ZIP downloads across custom date ranges with full database audit ledger tracking.\n\n### Available Endpoints in this Folder:\n- **`POST /api/admin/logs/backup`**: Triggers manual ad-hoc backup of the active `speakit-backend.log`. Streams and compresses log via in-memory GZIP, synchronizes exceeded rollover archive chunks, logs execution lifecycle (`IN_PROGRESS` -> `SUCCESS`/`FAILED`, `action_type: UPLOAD`) in `log_backup_audits`, and uploads snapshots to Cloudflare R2 under `speakit-backend/<YYYY>/<DD-MM-YYYY>/`.\n- **`GET /api/admin/logs/download`**: Streams an on-the-fly ZIP archive of logs for a date range (DD-MM-YYYY format, max 7 days window). Pipes chunks directly from Cloudflare R2 to client socket via `StreamingResponseBody` without buffering on server disk, and logs download execution in `log_backup_audits` (`action_type: DOWNLOAD`). Use Postman \"Send and Download\" to save directly to disk."
         }
     ],
     "variable": [

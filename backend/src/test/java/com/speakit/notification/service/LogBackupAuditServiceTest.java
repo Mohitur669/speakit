@@ -47,15 +47,31 @@ class LogBackupAuditServiceTest {
         ArgumentCaptor<LogBackupAudit> captor = ArgumentCaptor.forClass(LogBackupAudit.class);
         verify(auditRepository).save(captor.capture());
         LogBackupAudit captured = captor.getValue();
-        assertEquals("MANUAL", captured.getTriggerType());
+        assertEquals("Manual", captured.getTriggerType());
         assertEquals("testuser", captured.getTriggeredBy());
-        assertEquals("IN_PROGRESS", captured.getStatus());
+        assertEquals("In Progress", captured.getStatus());
+        assertEquals("Upload", captured.getActionType());
         assertEquals(dummyUser, captured.getUser());
     }
 
     @Test
+    void recordStart_withDownloadAction_persistsDownloadActionType() {
+        LogBackupAudit savedEntity = LogBackupAudit.builder().id(105L).status("In Progress").build();
+        when(auditRepository.save(any(LogBackupAudit.class))).thenReturn(savedEntity);
+
+        Long auditId = auditService.recordStart("Download", "Manual", "adminuser", null);
+
+        assertEquals(105L, auditId);
+        ArgumentCaptor<LogBackupAudit> captor = ArgumentCaptor.forClass(LogBackupAudit.class);
+        verify(auditRepository).save(captor.capture());
+        assertEquals("Download", captor.getValue().getActionType());
+        assertEquals("Manual", captor.getValue().getTriggerType());
+        assertEquals("adminuser", captor.getValue().getTriggeredBy());
+    }
+
+    @Test
     void recordStart_scheduledSystem_persistsWithoutUser() {
-        LogBackupAudit savedEntity = LogBackupAudit.builder().id(101L).status("IN_PROGRESS").build();
+        LogBackupAudit savedEntity = LogBackupAudit.builder().id(101L).status("In Progress").build();
         when(auditRepository.save(any(LogBackupAudit.class))).thenReturn(savedEntity);
 
         Long auditId = auditService.recordStart("scheduled", "system", null);
@@ -64,14 +80,14 @@ class LogBackupAuditServiceTest {
         verifyNoInteractions(userRepository);
         ArgumentCaptor<LogBackupAudit> captor = ArgumentCaptor.forClass(LogBackupAudit.class);
         verify(auditRepository).save(captor.capture());
-        assertEquals("SCHEDULED", captor.getValue().getTriggerType());
+        assertEquals("Scheduled", captor.getValue().getTriggerType());
         assertEquals("system", captor.getValue().getTriggeredBy());
         assertNull(captor.getValue().getUser());
     }
 
     @Test
     void recordSuccess_updatesAuditWithSuccessAndTelemetry() {
-        LogBackupAudit existing = LogBackupAudit.builder().id(100L).status("IN_PROGRESS").build();
+        LogBackupAudit existing = LogBackupAudit.builder().id(100L).status("In Progress").build();
         when(auditRepository.findById(100L)).thenReturn(Optional.of(existing));
 
         auditService.recordSuccess(100L, "Cloudflare R2", "speakit-logs", "speakit-backend/2026/active.log.gz",
@@ -80,7 +96,7 @@ class LogBackupAuditServiceTest {
         ArgumentCaptor<LogBackupAudit> captor = ArgumentCaptor.forClass(LogBackupAudit.class);
         verify(auditRepository).save(captor.capture());
         LogBackupAudit updated = captor.getValue();
-        assertEquals("SUCCESS", updated.getStatus());
+        assertEquals("Completed", updated.getStatus());
         assertEquals("Cloudflare R2", updated.getStorageProvider());
         assertEquals("speakit-logs", updated.getBucketName());
         assertEquals("speakit-backend/2026/active.log.gz", updated.getObjectKey());
@@ -94,7 +110,7 @@ class LogBackupAuditServiceTest {
 
     @Test
     void recordFailure_updatesAuditWithFailedAndTruncatedError() {
-        LogBackupAudit existing = LogBackupAudit.builder().id(100L).status("IN_PROGRESS").build();
+        LogBackupAudit existing = LogBackupAudit.builder().id(100L).status("In Progress").build();
         when(auditRepository.findById(100L)).thenReturn(Optional.of(existing));
 
         String longError = "E".repeat(1200);
@@ -104,7 +120,7 @@ class LogBackupAuditServiceTest {
         ArgumentCaptor<LogBackupAudit> captor = ArgumentCaptor.forClass(LogBackupAudit.class);
         verify(auditRepository).save(captor.capture());
         LogBackupAudit updated = captor.getValue();
-        assertEquals("FAILED", updated.getStatus());
+        assertEquals("Failed", updated.getStatus());
         assertEquals(1000, updated.getErrorMessage().length());
         assertTrue(updated.getErrorMessage().endsWith("..."));
         assertEquals(120L, updated.getExecutionDurationMs());
@@ -112,7 +128,7 @@ class LogBackupAuditServiceTest {
 
     @Test
     void recordSkipped_updatesAuditWithSkippedAndReason() {
-        LogBackupAudit existing = LogBackupAudit.builder().id(100L).status("IN_PROGRESS").build();
+        LogBackupAudit existing = LogBackupAudit.builder().id(100L).status("In Progress").build();
         when(auditRepository.findById(100L)).thenReturn(Optional.of(existing));
 
         auditService.recordSkipped(100L, "Cloudflare R2", "speakit-logs", "No active log file found", 15L);
@@ -120,7 +136,7 @@ class LogBackupAuditServiceTest {
         ArgumentCaptor<LogBackupAudit> captor = ArgumentCaptor.forClass(LogBackupAudit.class);
         verify(auditRepository).save(captor.capture());
         LogBackupAudit updated = captor.getValue();
-        assertEquals("SKIPPED", updated.getStatus());
+        assertEquals("Skipped", updated.getStatus());
         assertEquals("No active log file found", updated.getErrorMessage());
         assertEquals(15L, updated.getExecutionDurationMs());
     }

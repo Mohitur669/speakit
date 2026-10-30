@@ -24,16 +24,24 @@ public class LogBackupAuditService {
     private final UserRepository userRepository;
 
     /**
-     * Records the initial IN_PROGRESS audit state before backup execution begins.
+     * Records the initial In Progress audit state before backup execution begins (default action 'Upload').
+     */
+    public Long recordStart(String triggerType, String triggeredBy, Long userId) {
+        return recordStart("Upload", triggerType, triggeredBy, userId);
+    }
+
+    /**
+     * Records the initial In Progress audit state before backup execution begins with explicit actionType ('Upload' or 'Download').
      * Commits immediately in an isolated transaction.
      *
-     * @param triggerType 'SCHEDULED' or 'MANUAL'
+     * @param actionType  'Upload' or 'Download'
+     * @param triggerType 'Scheduled' or 'Manual'
      * @param triggeredBy Actor identifier (e.g. 'system' or username)
      * @param userId      Database primary key of triggering user, or null if scheduled
      * @return Generated audit record ID, or null if database recording encounters an error
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public Long recordStart(String triggerType, String triggeredBy, Long userId) {
+    public Long recordStart(String actionType, String triggerType, String triggeredBy, Long userId) {
         try {
             User userRef = null;
             if (userId != null) {
@@ -41,24 +49,26 @@ public class LogBackupAuditService {
             }
 
             LogBackupAudit audit = LogBackupAudit.builder()
-                    .triggerType(triggerType != null ? triggerType.toUpperCase() : "MANUAL")
+                    .actionType(formatActionType(actionType))
+                    .triggerType(formatTriggerType(triggerType))
                     .triggeredBy(triggeredBy != null ? triggeredBy : "unknown")
                     .user(userRef)
-                    .status("IN_PROGRESS")
+                    .status("In Progress")
                     .archivedChunksCount(0)
                     .build();
 
             LogBackupAudit saved = auditRepository.save(audit);
-            log.info("Initialized log backup audit record ID: {} (trigger: {}, by: {})", saved.getId(), triggerType, triggeredBy);
+            log.info("Initialized log backup audit record ID: {} (action: {}, trigger: {}, by: {})",
+                    saved.getId(), audit.getActionType(), audit.getTriggerType(), triggeredBy);
             return saved.getId();
         } catch (Exception e) {
-            log.error("Failed to persist initial IN_PROGRESS log backup audit record: {}", e.getMessage(), e);
+            log.error("Failed to persist initial In Progress log backup audit record: {}", e.getMessage(), e);
             return null;
         }
     }
 
     /**
-     * Marks the audit record as SUCCESS and records final telemetry metrics.
+     * Marks the audit record as Completed and records final telemetry metrics.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void recordSuccess(Long auditId, String storageProvider, String bucketName, String objectKey,
@@ -70,7 +80,7 @@ public class LogBackupAuditService {
 
         try {
             auditRepository.findById(auditId).ifPresent(audit -> {
-                audit.setStatus("SUCCESS");
+                audit.setStatus("Completed");
                 audit.setStorageProvider(storageProvider);
                 audit.setBucketName(bucketName);
                 audit.setObjectKey(objectKey);
@@ -81,16 +91,16 @@ public class LogBackupAuditService {
                 audit.setArchivedChunksCount(archivedChunksCount);
                 audit.setExecutionDurationMs(durationMs);
                 auditRepository.save(audit);
-                log.info("Completed log backup audit record ID: {} with status SUCCESS (duration: {}ms, key: {})",
+                log.info("Completed log backup audit record ID: {} with status Completed (duration: {}ms, key: {})",
                         auditId, durationMs, objectKey);
             });
         } catch (Exception e) {
-            log.error("Failed to update log backup audit record ID {} to SUCCESS: {}", auditId, e.getMessage(), e);
+            log.error("Failed to update log backup audit record ID {} to Completed: {}", auditId, e.getMessage(), e);
         }
     }
 
     /**
-     * Marks the audit record as FAILED and captures the root-cause failure reason.
+     * Marks the audit record as Failed and captures the root-cause failure reason.
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void recordFailure(Long auditId, String storageProvider, String bucketName, String objectKey,
@@ -101,7 +111,7 @@ public class LogBackupAuditService {
 
         try {
             auditRepository.findById(auditId).ifPresent(audit -> {
-                audit.setStatus("FAILED");
+                audit.setStatus("Failed");
                 audit.setStorageProvider(storageProvider);
                 audit.setBucketName(bucketName);
                 audit.setObjectKey(objectKey);
@@ -115,15 +125,15 @@ public class LogBackupAuditService {
                 audit.setErrorMessage(safeError);
 
                 auditRepository.save(audit);
-                log.warn("Updated log backup audit record ID: {} with status FAILED: {}", auditId, safeError);
+                log.warn("Updated log backup audit record ID: {} with status Failed: {}", auditId, safeError);
             });
         } catch (Exception e) {
-            log.error("Failed to update log backup audit record ID {} to FAILED: {}", auditId, e.getMessage(), e);
+            log.error("Failed to update log backup audit record ID {} to Failed: {}", auditId, e.getMessage(), e);
         }
     }
 
     /**
-     * Marks the audit record as SKIPPED when pre-flight checks fail (e.g. empty log or unconfigured credentials).
+     * Marks the audit record as Skipped when pre-flight checks fail (e.g. empty log or unconfigured credentials).
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void recordSkipped(Long auditId, String storageProvider, String bucketName, String reason, long durationMs) {
@@ -133,7 +143,7 @@ public class LogBackupAuditService {
 
         try {
             auditRepository.findById(auditId).ifPresent(audit -> {
-                audit.setStatus("SKIPPED");
+                audit.setStatus("Skipped");
                 audit.setStorageProvider(storageProvider);
                 audit.setBucketName(bucketName);
                 audit.setExecutionDurationMs(durationMs);
@@ -145,11 +155,23 @@ public class LogBackupAuditService {
                 audit.setErrorMessage(safeReason);
 
                 auditRepository.save(audit);
-                log.info("Updated log backup audit record ID: {} with status SKIPPED: {}", auditId, safeReason);
+                log.info("Updated log backup audit record ID: {} with status Skipped: {}", auditId, safeReason);
             });
         } catch (Exception e) {
-            log.error("Failed to update log backup audit record ID {} to SKIPPED: {}", auditId, e.getMessage(), e);
+            log.error("Failed to update log backup audit record ID {} to Skipped: {}", auditId, e.getMessage(), e);
         }
+    }
+
+    private String formatActionType(String actionType) {
+        if (actionType == null) return "Upload";
+        if (actionType.equalsIgnoreCase("download")) return "Download";
+        return "Upload";
+    }
+
+    private String formatTriggerType(String triggerType) {
+        if (triggerType == null) return "Manual";
+        if (triggerType.equalsIgnoreCase("scheduled")) return "Scheduled";
+        return "Manual";
     }
 
     private String cleanEtag(String rawEtag) {

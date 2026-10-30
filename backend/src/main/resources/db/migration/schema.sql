@@ -609,9 +609,10 @@ CREATE SEQUENCE IF NOT EXISTS log_backup_audit_seq START WITH 1 INCREMENT BY 50;
 CREATE TABLE IF NOT EXISTS log_backup_audits (
     id                      BIGINT PRIMARY KEY,
     user_id                 BIGINT REFERENCES users(id) ON DELETE SET NULL,
-    trigger_type            VARCHAR(20) NOT NULL,          -- 'SCHEDULED', 'MANUAL'
+    action_type             VARCHAR(20) NOT NULL DEFAULT 'Upload', -- 'Upload', 'Download'
+    trigger_type            VARCHAR(20) NOT NULL,          -- 'Scheduled', 'Manual'
     triggered_by            VARCHAR(100) NOT NULL,         -- 'system' or username
-    status                  VARCHAR(20) NOT NULL,          -- 'IN_PROGRESS', 'SUCCESS', 'FAILED', 'SKIPPED'
+    status                  VARCHAR(20) NOT NULL,          -- 'In Progress', 'Completed', 'Failed', 'Skipped'
     storage_provider        VARCHAR(50),                   -- 'Cloudflare R2'
     bucket_name             VARCHAR(100),                  -- e.g. 'speakit-logs'
     object_key              VARCHAR(500),                  -- R2 key of active log snapshot
@@ -631,4 +632,6 @@ CREATE INDEX IF NOT EXISTS idx_log_backup_audits_user_id ON log_backup_audits(us
 CREATE INDEX IF NOT EXISTS idx_log_backup_audits_status ON log_backup_audits(status);
 CREATE INDEX IF NOT EXISTS idx_log_backup_audits_created_at ON log_backup_audits(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_log_backup_audits_trigger ON log_backup_audits(trigger_type, status);
+ALTER TABLE log_backup_audits ADD COLUMN IF NOT EXISTS action_type VARCHAR(20) NOT NULL DEFAULT 'Upload';
+CREATE INDEX IF NOT EXISTS idx_log_backup_audits_action ON log_backup_audits(action_type);
 
