@@ -541,7 +541,7 @@ public class LogBackupService {
             long totalBytesStreamed = 0;
             int filesStreamed = 0;
 
-            try (ZipOutputStream zos = new ZipOutputStream(outputStream)) {
+            try (ZipOutputStream zos = new ZipOutputStream(outputStream, java.nio.charset.StandardCharsets.UTF_8)) {
                 byte[] buffer = new byte[8192];
 
                 for (String key : objectKeys) {
@@ -560,10 +560,12 @@ public class LogBackupService {
                             totalBytesStreamed += bytesRead;
                         }
                     }
+                    zos.flush();
                     zos.closeEntry();
                     filesStreamed++;
                 }
                 zos.finish();
+                zos.flush();
 
                 long duration = System.currentTimeMillis() - startTime;
                 if (auditService != null && auditId != null) {

@@ -163,6 +163,8 @@ public class LogBackupController {
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("application/zip"))
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + zipFilename + "\"")
+                .header(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate")
+                .header("X-Content-Type-Options", "nosniff")
                 .body(responseBody);
     }
 }
