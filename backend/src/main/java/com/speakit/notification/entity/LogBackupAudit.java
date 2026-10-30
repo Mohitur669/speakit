@@ -37,14 +37,18 @@ public class LogBackupAudit extends BaseEntity {
     @JoinColumn(name = "user_id")
     private User user;
 
+    @Column(name = "action_type", nullable = false, length = 20)
+    @Builder.Default
+    private String actionType = "Upload"; // "Upload" or "Download"
+
     @Column(name = "trigger_type", nullable = false, length = 20)
-    private String triggerType; // "SCHEDULED" or "MANUAL"
+    private String triggerType; // "Scheduled" or "Manual"
 
     @Column(name = "triggered_by", nullable = false, length = 100)
     private String triggeredBy; // "system" or username
 
     @Column(name = "status", nullable = false, length = 20)
-    private String status; // "IN_PROGRESS", "SUCCESS", "FAILED", "SKIPPED"
+    private String status; // "In Progress", "Completed", "Failed", "Skipped"
 
     @Column(name = "storage_provider", length = 50)
     private String storageProvider; // "Cloudflare R2"

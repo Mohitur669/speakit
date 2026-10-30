@@ -61,6 +61,7 @@ public class DatabaseMigrationConfig implements BeanFactoryPostProcessor, Enviro
                         CREATE TABLE IF NOT EXISTS log_backup_audits (
                             id BIGINT PRIMARY KEY,
                             user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+                            action_type VARCHAR(20) NOT NULL DEFAULT 'Upload',
                             trigger_type VARCHAR(20) NOT NULL,
                             triggered_by VARCHAR(100) NOT NULL,
                             status VARCHAR(20) NOT NULL,
@@ -83,6 +84,8 @@ public class DatabaseMigrationConfig implements BeanFactoryPostProcessor, Enviro
                     stmt.execute("CREATE INDEX IF NOT EXISTS idx_log_backup_audits_status ON log_backup_audits(status);");
                     stmt.execute("CREATE INDEX IF NOT EXISTS idx_log_backup_audits_created_at ON log_backup_audits(created_at DESC);");
                     stmt.execute("CREATE INDEX IF NOT EXISTS idx_log_backup_audits_trigger ON log_backup_audits(trigger_type, status);");
+                    stmt.execute("ALTER TABLE log_backup_audits ADD COLUMN IF NOT EXISTS action_type VARCHAR(20) NOT NULL DEFAULT 'Upload';");
+                    stmt.execute("CREATE INDEX IF NOT EXISTS idx_log_backup_audits_action ON log_backup_audits(action_type);");
                     stmt.execute("CREATE INDEX IF NOT EXISTS idx_tts_history_user_created ON tts_history(user_id, created_at);");
                     stmt.execute("CREATE INDEX IF NOT EXISTS idx_stt_user_created ON speech_to_text_requests(user_id, created_at);");
                     stmt.execute("CREATE INDEX IF NOT EXISTS idx_payments_user_created ON payments(user_id, created_at DESC);");
