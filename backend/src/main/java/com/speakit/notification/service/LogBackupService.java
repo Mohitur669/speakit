@@ -24,6 +24,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -64,12 +65,26 @@ public class LogBackupService {
     @Value("${cloudflare.r2.logs.environment:local}")
     private String logEnvironment;
 
+    @Value("${cloudflare.r2.logs.timezone:${TZ:Asia/Kolkata}}")
+    private String logTimezone;
+
     private S3Client s3Client;
     private boolean r2Enabled = false;
+
+    private final LogBackupAuditService auditService;
 
     private static final DateTimeFormatter YEAR_FORMATTER = DateTimeFormatter.ofPattern("yyyy");
     private static final DateTimeFormatter DAY_MONTH_YEAR_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy");
     private static final DateTimeFormatter TIMESTAMP_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss");
+
+    public LogBackupService() {
+        this.auditService = null;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public LogBackupService(@org.springframework.beans.factory.annotation.Autowired(required = false) LogBackupAuditService auditService) {
+        this.auditService = auditService;
+    }
 
     @PostConstruct
     public void init() {
@@ -120,62 +135,97 @@ public class LogBackupService {
      * @return LogBackupResult telemetry payload
      */
     public LogBackupResult backupActiveLog(String trigger) {
-        return backupActiveLog(trigger, "scheduled".equalsIgnoreCase(trigger) ? "system" : "unknown");
+        return backupActiveLog(trigger, "scheduled".equalsIgnoreCase(trigger) ? "system" : "unknown", null);
     }
 
     /**
      * Executes backup for active speakit-backend.log with explicit actor tracking.
      *
      * @param trigger     "scheduled" or "manual"
-     * @param triggeredBy Actor description (e.g. "system" or "mohitur (id: 1)")
+     * @param triggeredBy Actor description (e.g. "system" or "mohitur")
      * @return LogBackupResult telemetry payload
      */
     public LogBackupResult backupActiveLog(String trigger, String triggeredBy) {
+        return backupActiveLog(trigger, triggeredBy, null);
+    }
+
+    /**
+     * Executes backup for active speakit-backend.log with explicit actor and user tracking.
+     * Captures transactional IN_PROGRESS, SUCCESS, FAILED, or SKIPPED audit entries.
+     *
+     * @param trigger     "scheduled" or "manual"
+     * @param triggeredBy Actor description (e.g. "system" or "mohitur")
+     * @param userId      Database primary key of triggering user, or null if scheduled
+     * @return LogBackupResult telemetry payload
+     */
+    public LogBackupResult backupActiveLog(String trigger, String triggeredBy, Long userId) {
         long startTime = System.currentTimeMillis();
         Instant nowUtc = Instant.now();
-        ZonedDateTime zdt = nowUtc.atZone(ZoneOffset.UTC);
+        ZoneId zoneId = resolveZoneId();
+        ZonedDateTime zdt = nowUtc.atZone(zoneId);
 
         String safeBucket = (bucketName != null) ? bucketName.trim() : "";
 
+        // 1. Record initial IN_PROGRESS state in audit ledger (commits immediately via REQUIRES_NEW)
+        Long auditId = (auditService != null) ? auditService.recordStart(trigger, triggeredBy, userId) : null;
+
         if (!r2Enabled || s3Client == null) {
+            long duration = System.currentTimeMillis() - startTime;
+            String msg = "R2 Log Backup is disabled because credentials or bucket name are unconfigured.";
+            if (auditService != null) {
+                auditService.recordSkipped(auditId, "Cloudflare R2", safeBucket, msg, duration);
+            }
             return LogBackupResult.builder()
                     .status("SKIPPED")
+                    .auditId(auditId)
                     .trigger(trigger)
                     .triggeredBy(triggeredBy)
                     .storageProvider("Cloudflare R2")
                     .bucket(safeBucket)
-                    .message("R2 Log Backup is disabled because credentials or bucket name are unconfigured.")
+                    .message(msg)
                     .timestamp(nowUtc)
-                    .durationMs(System.currentTimeMillis() - startTime)
+                    .durationMs(duration)
                     .build();
         }
 
         File logFile = resolveActiveLogFile();
         if (logFile == null || !logFile.exists() || !logFile.isFile()) {
+            long duration = System.currentTimeMillis() - startTime;
+            String msg = "No active log file found on disk.";
             log.warn("Active log file not found. Checked locations: coolifyDir='{}', default='logs/speakit-backend.log'", coolifyLogsDir);
+            if (auditService != null) {
+                auditService.recordSkipped(auditId, "Cloudflare R2", safeBucket, msg, duration);
+            }
             return LogBackupResult.builder()
                     .status("SKIPPED")
+                    .auditId(auditId)
                     .trigger(trigger)
                     .triggeredBy(triggeredBy)
                     .storageProvider("Cloudflare R2")
                     .bucket(safeBucket)
-                    .message("No active log file found on disk.")
+                    .message(msg)
                     .timestamp(nowUtc)
-                    .durationMs(System.currentTimeMillis() - startTime)
+                    .durationMs(duration)
                     .build();
         }
 
         long originalSizeBytes = logFile.length();
         if (originalSizeBytes == 0) {
+            long duration = System.currentTimeMillis() - startTime;
+            String msg = "Active log file is currently empty (0 bytes).";
+            if (auditService != null) {
+                auditService.recordSkipped(auditId, "Cloudflare R2", safeBucket, msg, duration);
+            }
             return LogBackupResult.builder()
                     .status("SKIPPED")
+                    .auditId(auditId)
                     .trigger(trigger)
                     .triggeredBy(triggeredBy)
                     .storageProvider("Cloudflare R2")
                     .bucket(safeBucket)
-                    .message("Active log file is currently empty (0 bytes).")
+                    .message(msg)
                     .timestamp(nowUtc)
-                    .durationMs(System.currentTimeMillis() - startTime)
+                    .durationMs(duration)
                     .build();
         }
 
@@ -186,7 +236,7 @@ public class LogBackupService {
         String activeObjectKey = String.format("speakit-backend/%s/%s/speakit-backend-%s-%s.log.gz", year, dayMonthYear, trigger, timestamp);
 
         try {
-            // 1. In-memory streaming gzip compression of active log
+            // 2. In-memory streaming gzip compression of active log
             byte[] compressedBytes = compressGzip(logFile);
             long compressedSizeBytes = compressedBytes.length;
 
@@ -201,16 +251,24 @@ public class LogBackupService {
             double ratio = (1.0 - ((double) compressedSizeBytes / (double) originalSizeBytes)) * 100.0;
             String compressionRatioStr = String.format("%.2f%%", Math.max(0.0, ratio));
 
-            // 2. Sync any historical/exceeded chunks (*.gz) to <bucket_name>/speakit-backend/<YYYY>/<DD-MM-YYYY>/archive/<chunk_name>.gz
+            // 3. Sync any historical/exceeded chunks (*.gz) to <bucket_name>/speakit-backend/<YYYY>/<DD-MM-YYYY>/archive/<chunk_name>.gz
             java.util.List<String> archivedKeys = uploadRolledArchives(logFile.getParentFile(), safeBucket, year, dayMonthYear);
 
             long duration = System.currentTimeMillis() - startTime;
             int totalFiles = 1 + archivedKeys.size();
+            String sanitizedEtag = cleanEtag(response.eTag());
             log.info("Successfully uploaded active log snapshot and {} rolled chunks to Cloudflare R2: {} ({} -> {} bytes, -{}, {}ms, triggeredBy: {})",
                     archivedKeys.size(), activeObjectKey, originalSizeBytes, compressedSizeBytes, compressionRatioStr, duration, triggeredBy);
 
+            // 4. Update audit record to SUCCESS in audit ledger
+            if (auditService != null) {
+                auditService.recordSuccess(auditId, "Cloudflare R2", safeBucket, activeObjectKey, sanitizedEtag,
+                        originalSizeBytes, compressedSizeBytes, compressionRatioStr, archivedKeys.size(), duration);
+            }
+
             return LogBackupResult.builder()
                     .status("SUCCESS")
+                    .auditId(auditId)
                     .trigger(trigger)
                     .triggeredBy(triggeredBy)
                     .storageProvider("Cloudflare R2")
@@ -222,7 +280,7 @@ public class LogBackupService {
                     .compressedSizeBytes(compressedSizeBytes)
                     .compressionRatio(compressionRatioStr)
                     .durationMs(duration)
-                    .eTag(response.eTag())
+                    .eTag(sanitizedEtag)
                     .message(String.format("Log snapshot and %d exceeded archive chunk(s) successfully backed up to Cloudflare R2.", archivedKeys.size()))
                     .timestamp(nowUtc)
                     .build();
@@ -230,8 +288,15 @@ public class LogBackupService {
         } catch (Exception e) {
             long duration = System.currentTimeMillis() - startTime;
             log.error("Failed to backup log to Cloudflare R2: {}", e.getMessage(), e);
+
+            // 5. Update audit record to FAILED in audit ledger
+            if (auditService != null) {
+                auditService.recordFailure(auditId, "Cloudflare R2", safeBucket, activeObjectKey, originalSizeBytes, e.getMessage(), duration);
+            }
+
             return LogBackupResult.builder()
                     .status("FAILED")
+                    .auditId(auditId)
                     .trigger(trigger)
                     .triggeredBy(triggeredBy)
                     .storageProvider("Cloudflare R2")
@@ -359,5 +424,29 @@ public class LogBackupService {
 
     private boolean isConfigured(String val) {
         return val != null && !val.trim().isEmpty();
+    }
+
+    /**
+     * Strips enclosing escaped or literal double quotes from HTTP ETag headers.
+     * e.g. "\"e12c239c...\"" -> "e12c239c..."
+     */
+    private String cleanEtag(String rawEtag) {
+        if (rawEtag == null) return null;
+        return rawEtag.replace("\"", "").trim();
+    }
+
+    /**
+     * Resolves the configured ZoneId for date and timestamp partitioning.
+     * Defaults to Asia/Kolkata if unconfigured or invalid.
+     */
+    private ZoneId resolveZoneId() {
+        if (isConfigured(logTimezone)) {
+            try {
+                return ZoneId.of(cleanEnv(logTimezone));
+            } catch (Exception e) {
+                log.warn("Invalid timezone '{}' specified for log backup. Falling back to Asia/Kolkata.", logTimezone);
+            }
+        }
+        return ZoneId.of("Asia/Kolkata");
     }
 }

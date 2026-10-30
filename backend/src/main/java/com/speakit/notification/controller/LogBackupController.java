@@ -42,12 +42,21 @@ public class LogBackupController {
     @PostMapping("/backup")
     @RateLimited(action = RateLimitAction.PUBLIC)
     public ResponseEntity<LogBackupResult> triggerManualBackup(HttpServletRequest request, Principal principal) {
-        Object userId = request.getAttribute("userId");
+        Object userIdObj = request.getAttribute("userId");
+        Long userId = null;
+        if (userIdObj instanceof Long) {
+            userId = (Long) userIdObj;
+        } else if (userIdObj instanceof String) {
+            try {
+                userId = Long.parseLong((String) userIdObj);
+            } catch (NumberFormatException ignored) {
+            }
+        }
         String username = (principal != null && principal.getName() != null) ? principal.getName() : "authenticated-user";
 
         log.info("Manual log backup triggered by user: {} (username: '{}')", userId, username);
 
-        LogBackupResult result = logBackupService.backupActiveLog("manual", username);
+        LogBackupResult result = logBackupService.backupActiveLog("manual", username, userId);
 
         if ("FAILED".equalsIgnoreCase(result.getStatus())) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(result);
