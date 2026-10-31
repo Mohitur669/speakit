@@ -16,12 +16,25 @@ import org.springframework.transaction.annotation.Transactional;
  * guaranteeing audit trail persistence even if downstream storage uploads fail or terminate.
  */
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class LogBackupAuditService {
 
     private final LogBackupAuditRepository auditRepository;
     private final UserRepository userRepository;
+    private final DiscordService discordService;
+
+    public LogBackupAuditService(LogBackupAuditRepository auditRepository, UserRepository userRepository) {
+        this(auditRepository, userRepository, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public LogBackupAuditService(LogBackupAuditRepository auditRepository,
+                                 UserRepository userRepository,
+                                 @org.springframework.beans.factory.annotation.Autowired(required = false) DiscordService discordService) {
+        this.auditRepository = auditRepository;
+        this.userRepository = userRepository;
+        this.discordService = discordService;
+    }
 
     /**
      * Records the initial In Progress audit state before backup execution begins (default action 'Upload').
@@ -93,6 +106,7 @@ public class LogBackupAuditService {
                 auditRepository.save(audit);
                 log.info("Completed log backup audit record ID: {} with status Completed (duration: {}ms, key: {})",
                         auditId, durationMs, objectKey);
+                notifyDiscordSafely(audit);
             });
         } catch (Exception e) {
             log.error("Failed to update log backup audit record ID {} to Completed: {}", auditId, e.getMessage(), e);
@@ -126,6 +140,7 @@ public class LogBackupAuditService {
 
                 auditRepository.save(audit);
                 log.warn("Updated log backup audit record ID: {} with status Failed: {}", auditId, safeError);
+                notifyDiscordSafely(audit);
             });
         } catch (Exception e) {
             log.error("Failed to update log backup audit record ID {} to Failed: {}", auditId, e.getMessage(), e);
@@ -156,9 +171,20 @@ public class LogBackupAuditService {
 
                 auditRepository.save(audit);
                 log.info("Updated log backup audit record ID: {} with status Skipped: {}", auditId, safeReason);
+                notifyDiscordSafely(audit);
             });
         } catch (Exception e) {
             log.error("Failed to update log backup audit record ID {} to Skipped: {}", auditId, e.getMessage(), e);
+        }
+    }
+
+    private void notifyDiscordSafely(LogBackupAudit audit) {
+        if (discordService != null && audit != null) {
+            try {
+                discordService.sendLogBackupNotification(audit);
+            } catch (Exception e) {
+                log.warn("Failed to dispatch Discord notification for log audit ID {}: {}", audit.getId(), e.getMessage());
+            }
         }
     }
 

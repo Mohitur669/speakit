@@ -26,11 +26,14 @@ class LogBackupAuditServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private DiscordService discordService;
+
     private LogBackupAuditService auditService;
 
     @BeforeEach
     void setUp() {
-        auditService = new LogBackupAuditService(auditRepository, userRepository);
+        auditService = new LogBackupAuditService(auditRepository, userRepository, discordService);
     }
 
     @Test
@@ -52,6 +55,7 @@ class LogBackupAuditServiceTest {
         assertEquals("In Progress", captured.getStatus());
         assertEquals("Upload", captured.getActionType());
         assertEquals(dummyUser, captured.getUser());
+        verifyNoInteractions(discordService);
     }
 
     @Test
@@ -106,6 +110,7 @@ class LogBackupAuditServiceTest {
         assertEquals("80.00%", updated.getCompressionRatio());
         assertEquals(3, updated.getArchivedChunksCount());
         assertEquals(250L, updated.getExecutionDurationMs());
+        verify(discordService, times(1)).sendLogBackupNotification(updated);
     }
 
     @Test
@@ -124,6 +129,7 @@ class LogBackupAuditServiceTest {
         assertEquals(1000, updated.getErrorMessage().length());
         assertTrue(updated.getErrorMessage().endsWith("..."));
         assertEquals(120L, updated.getExecutionDurationMs());
+        verify(discordService, times(1)).sendLogBackupNotification(updated);
     }
 
     @Test
@@ -139,5 +145,6 @@ class LogBackupAuditServiceTest {
         assertEquals("Skipped", updated.getStatus());
         assertEquals("No active log file found", updated.getErrorMessage());
         assertEquals(15L, updated.getExecutionDurationMs());
+        verify(discordService, times(1)).sendLogBackupNotification(updated);
     }
 }
