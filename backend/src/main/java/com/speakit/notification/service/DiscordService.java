@@ -220,25 +220,6 @@ public class DiscordService {
         return trimmed.isEmpty() ? "local" : trimmed;
     }
 
-    @Async
-    public void sendNotification(String name, String email, String subject, String message, String requestId) {
-        if (webhookUrl == null || webhookUrl.isBlank() || restClient == null) {
-            return;
-        }
-
-        Map<String, Object> embed = buildEmbedPayload(name, email, subject, message, requestId);
-        Map<String, Object> payload = Map.of("embeds", List.of(embed));
-
-        executeWithRetry(() -> {
-            restClient.post()
-                    .uri(webhookUrl)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(payload)
-                    .retrieve()
-                    .toBodilessEntity();
-        });
-    }
-
     private Map<String, Object> buildEmbedPayload(String name, String email, String subject, String message, String requestId) {
         String safeName = truncate(name, 250);
         String safeEmail = truncate(email, 250);
