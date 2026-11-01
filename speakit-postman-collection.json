@@ -1306,7 +1306,7 @@
                         },
                         "description": "Retrieves paginated history of transactions and plan subscriptions."
                     }
-                },
+                }
             ],
             "description": "# 6. Billing & Subscriptions\n\nMonetization, tier entitlements, and payment processing integration powered by Razorpay. Manages subscription plans (Free, Pro, Pro Plus, Enterprise), order creation, and payment verification.\n\n### Available Endpoints in this Folder:\n- **`POST /api/v1/payments/create-order`**: Generates a verified Razorpay order for subscription plan upgrade or renewal.\n- **`POST /api/v1/payments/verify`**: Validates cryptographic Razorpay HMAC-SHA256 payment signature and activates plan tier entitlements.\n- **`GET /api/v1/payments/history`**: Retrieves historical payment transactions, order IDs, payment amounts, currencies, and invoice statuses."
         },
