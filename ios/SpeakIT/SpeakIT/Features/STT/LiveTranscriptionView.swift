@@ -150,17 +150,20 @@ final class LocalSpeechSpeaker: NSObject, AVSpeechSynthesizerDelegate {
         // Industry Standard (Apple Audio Session Guidelines for Live Speech):
         // 1. Force audio output to primary loudspeaker (bypassing the telephone earpiece receiver)
         // 2. Use .spokenAudio mode to apply speech-optimized dynamic range compression and loudness normalization
-        let session = AVAudioSession.sharedInstance()
-        do {
-            try session.setCategory(
-                .playAndRecord,
-                mode: .spokenAudio,
-                options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP]
-            )
-            try session.overrideOutputAudioPort(.speaker)
-            try session.setActive(true, options: .notifyOthersOnDeactivation)
-        } catch {
-            print("LocalSpeechSpeaker: Audio session routing failed: \(error)")
+        // 3. Configure audio session asynchronously off the main thread to prevent UI hangs
+        Task.detached(priority: .userInitiated) {
+            let session = AVAudioSession.sharedInstance()
+            do {
+                try session.setCategory(
+                    .playAndRecord,
+                    mode: .spokenAudio,
+                    options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP]
+                )
+                try session.overrideOutputAudioPort(.speaker)
+                try session.setActive(true, options: .notifyOthersOnDeactivation)
+            } catch {
+                print("LocalSpeechSpeaker: Audio session routing failed: \(error)")
+            }
         }
         
         let utterance = AVSpeechUtterance(string: text)

@@ -116,7 +116,9 @@ final class SarvamLiveSTTService {
         webSocketTask?.cancel(with: .normalClosure, reason: nil)
         webSocketTask = nil
         
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        Task.detached(priority: .utility) {
+            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        }
         HapticManager.shared.light()
     }
     
@@ -167,18 +169,20 @@ final class SarvamLiveSTTService {
         // Start listening for inbound transcript events from proxy
         listenForInboundMessages()
         
-        // 2. Configure AVAudioSession
-        let session = AVAudioSession.sharedInstance()
-        do {
-            try session.setCategory(
-                .playAndRecord,
-                mode: .spokenAudio,
-                options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP]
-            )
-            try session.overrideOutputAudioPort(.speaker)
-            try session.setActive(true, options: .notifyOthersOnDeactivation)
-        } catch {
-            print("Failed to configure audio session for Live STT: \(error)")
+        // 2. Configure AVAudioSession asynchronously off the main thread to prevent UI hangs
+        Task.detached(priority: .userInitiated) {
+            let session = AVAudioSession.sharedInstance()
+            do {
+                try session.setCategory(
+                    .playAndRecord,
+                    mode: .spokenAudio,
+                    options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP]
+                )
+                try session.overrideOutputAudioPort(.speaker)
+                try session.setActive(true, options: .notifyOthersOnDeactivation)
+            } catch {
+                print("Failed to configure audio session for Live STT: \(error)")
+            }
         }
         
         // 3. Configure AVAudioEngine Tap (16kHz Mono Int16 PCM)

@@ -237,6 +237,16 @@ public class AuthService {
             throw new org.springframework.security.authentication.BadCredentialsException("Bad credentials");
         }
 
+        if (user.getSessionVersion() == null) {
+            user.setSessionVersion(1L);
+            user = userRepository.save(user);
+        }
+
+        // Evict any stale cache entry for this user immediately upon login
+        if (userSessionCacheService != null) {
+            userSessionCacheService.evictSession(user.getUsername());
+        }
+
         log.info("User {} logged in successfully", user.getUsername());
         return authenticate(user, user.getSessionVersion());
     }
@@ -991,8 +1001,9 @@ public class AuthService {
                 .roles(roleName)
                 .build();
 
+        Long effectiveSessionVersion = (sessionVersion != null) ? sessionVersion : 1L;
         Map<String, Object> claims = new HashMap<>();
-        claims.put("sessionVersion", sessionVersion);
+        claims.put("sessionVersion", effectiveSessionVersion);
         String token = jwtService.generateToken(claims, userDetails);
 
         Integer dailyCount = null;

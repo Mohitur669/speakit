@@ -113,4 +113,31 @@ class TtsServiceTest {
         assertTrue(analytics.getBurnRatePerDay() >= 0);
         assertTrue(analytics.getProjectedDaysRemaining() > 0);
     }
+
+    @Test
+    void getUsageAnalytics_WithPlanExpiry_CalculatesCycleAverageUsage() {
+        java.time.LocalDate currentMonth = java.time.LocalDate.now().withDayOfMonth(1);
+        com.speakit.user.repository.UsageLedgerProjection ledger = mock(com.speakit.user.repository.UsageLedgerProjection.class);
+        when(ledger.getUsageMonth()).thenReturn(currentMonth);
+        when(ledger.getTtsChars()).thenReturn(11202L);
+        when(ledger.getSttChars()).thenReturn(0L);
+        when(userRepository.findUsageLedgerById(1L)).thenReturn(java.util.Optional.of(ledger));
+
+        when(subscriptionService.getMonthlyCharacterLimit(PlanType.PRO_PLUS)).thenReturn(15000);
+
+        // Expiry in 2 days (Nov 3) -> 28 days elapsed in a 30-day cycle
+        java.time.LocalDateTime planExpiry = java.time.LocalDate.now().plusDays(2).atTime(23, 59, 59);
+
+        var analytics = ttsService.getUsageAnalytics(1L, PlanType.PRO_PLUS, planExpiry);
+
+        assertNotNull(analytics);
+        assertEquals("PRO_PLUS", analytics.getPlan());
+        assertEquals(15000L, analytics.getMonthlyLimit());
+        assertEquals(11202L, analytics.getCharactersUsed());
+        assertEquals(3798L, analytics.getCharactersRemaining());
+        // 11202 / 28 = 400.1
+        assertEquals(400.1, analytics.getBurnRatePerDay(), 0.5);
+        assertEquals(2, analytics.getDaysRemainingInMonth());
+        assertTrue(analytics.getProjectedDaysRemaining() >= 9.0);
+    }
 }

@@ -3,11 +3,14 @@
  * text input, audio generation, playback controls,
  * and download functionality.
  */
-import { Component, inject, signal, HostListener, effect, OnInit, DestroyRef } from '@angular/core';
+import { Component, inject, signal, HostListener, effect, OnInit, OnDestroy, DestroyRef } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Subscription, interval } from 'rxjs';
+import { switchMap } from 'rxjs/operators';
 
 import { FormsModule } from '@angular/forms';
-import { TtsService, Voice } from '../../core/services/tts.service';
+import { DecimalPipe } from '@angular/common';
+import { TtsService, Voice, DocumentAnalysisDto, LongFormJobStatusDto } from '../../core/services/tts.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { ToastService } from '../../core/services/toast.service';
 import { FeatureFlagService } from '../../core/services/feature-flag.service';
@@ -27,6 +30,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
   standalone: true,
   imports: [
     FormsModule,
+    DecimalPipe,
     ToastComponent,
     NavbarComponent,
     VoiceSelectorComponent,
@@ -38,7 +42,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
   templateUrl: './tts.component.html',
   styleUrls: ['./tts.component.scss'],
 })
-export class TtsComponent implements OnInit {
+export class TtsComponent implements OnInit, OnDestroy {
   ttsService = inject(TtsService);
   private destroyRef = inject(DestroyRef);
   authService = inject(AuthService);
@@ -47,6 +51,9 @@ export class TtsComponent implements OnInit {
   private toastService = inject(ToastService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+
+  // Mode Selection: 'text' = standard synchronous TTS, 'document' = PDF audiobook synthesis
+  mode = signal<'text' | 'document'>('text');
 
   maxChars = signal<number>(3000);
   usage = signal<any>(null);
@@ -58,6 +65,18 @@ export class TtsComponent implements OnInit {
   loading = signal(false);
   showSettings = signal(false);
   error = signal('');
+
+  // Document to Speech signals
+  selectedFile = signal<File | null>(null);
+  isDragging = signal(false);
+  analyzingDocument = signal(false);
+  documentAnalysis = signal<DocumentAnalysisDto | null>(null);
+  documentError = signal<string | null>(null);
+  activeJob = signal<LongFormJobStatusDto | null>(null);
+  synthesizingJob = signal(false);
+  jobAudioUrl = signal<string | null>(null);
+  jobComplete = signal(false);
+  private pollingSubscription: Subscription | null = null;
 
   constructor() {
     effect(() => {
@@ -260,6 +279,187 @@ export class TtsComponent implements OnInit {
     a.download = `speakit-${Date.now()}.mp3`;
     a.click();
     this.showNotification('Download started');
+  }
+
+  ngOnDestroy(): void {
+    this.stopPolling();
+  }
+
+  switchMode(newMode: 'text' | 'document'): void {
+    this.mode.set(newMode);
+  }
+
+  // --- Document-to-Speech Workflow ---
+
+  onDragOver(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragging.set(true);
+  }
+
+  onDragLeave(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragging.set(false);
+  }
+
+  onFileDropped(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragging.set(false);
+
+    if (event.dataTransfer?.files && event.dataTransfer.files.length > 0) {
+      this.processFile(event.dataTransfer.files[0]);
+    }
+  }
+
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      this.processFile(input.files[0]);
+    }
+  }
+
+  processFile(file: File): void {
+    this.documentError.set(null);
+    this.documentAnalysis.set(null);
+    this.activeJob.set(null);
+    this.jobComplete.set(false);
+    this.jobAudioUrl.set(null);
+
+    // Client-side pre-validation
+    const name = file.name.toLowerCase();
+    if (!name.endsWith('.pdf')) {
+      this.documentError.set('Only PDF documents (.pdf) are supported.');
+      this.showNotification('Only PDF documents are supported.', 'error');
+      return;
+    }
+
+    if (file.size === 0) {
+      this.documentError.set('Uploaded file is empty.');
+      this.showNotification('Uploaded file is empty.', 'error');
+      return;
+    }
+
+    this.selectedFile.set(file);
+    this.analyzingDocument.set(true);
+
+    this.ttsService.analyzeDocument(file).subscribe({
+      next: (analysis) => {
+        this.documentAnalysis.set(analysis);
+        this.analyzingDocument.set(false);
+        this.showNotification('Document analyzed successfully.');
+      },
+      error: (err) => {
+        this.analyzingDocument.set(false);
+        const msg = err.error?.error || err.error?.message || 'Failed to analyze document.';
+        this.documentError.set(msg);
+        this.showNotification(msg, 'error');
+      },
+    });
+  }
+
+  clearDocument(): void {
+    this.selectedFile.set(null);
+    this.documentAnalysis.set(null);
+    this.documentError.set(null);
+    this.activeJob.set(null);
+    this.jobComplete.set(false);
+    this.jobAudioUrl.set(null);
+    this.synthesizingJob.set(false);
+    this.stopPolling();
+  }
+
+  synthesizeDocument(): void {
+    const analysis = this.documentAnalysis();
+    if (!analysis) return;
+
+    if (!this.selectedVoiceId) {
+      this.showNotification('Please select a narrator voice.', 'error');
+      return;
+    }
+
+    this.synthesizingJob.set(true);
+    this.documentError.set(null);
+    const voice = this.selectedVoice;
+
+    const payload = {
+      documentToken: analysis.documentToken,
+      sourceFileName: analysis.fileName,
+      title: analysis.fileName.replace(/\.pdf$/i, ''),
+      voiceId: this.selectedVoiceId,
+      outputFormat: 'mp3',
+      isElevenLabs: !!voice?.isElevenLabs,
+      isSarvam: !!voice?.isSarvam,
+      languageCode: voice?.languageCode,
+    };
+
+    this.ttsService.submitJob(payload).subscribe({
+      next: (job) => {
+        this.activeJob.set(job);
+        this.startPolling(job.jobId);
+        this.showNotification('Audiobook synthesis started.');
+      },
+      error: (err) => {
+        this.synthesizingJob.set(false);
+        const msg = err.error?.error || err.error?.message || 'Failed to submit synthesis job.';
+        this.documentError.set(msg);
+        this.showNotification(msg, 'error');
+      },
+    });
+  }
+
+  private startPolling(jobId: string): void {
+    this.stopPolling();
+    this.pollingSubscription = interval(2500)
+      .pipe(
+        switchMap(() => this.ttsService.getJobStatus(jobId)),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: (job) => {
+          this.activeJob.set(job);
+          if (job.status === 'COMPLETED') {
+            this.stopPolling();
+            this.synthesizingJob.set(false);
+            this.jobComplete.set(true);
+            if (job.audioUrl) {
+              this.jobAudioUrl.set(job.audioUrl);
+            }
+            this.showNotification('Audiobook generated successfully!');
+            this.refreshUsage();
+          } else if (job.status === 'FAILED') {
+            this.stopPolling();
+            this.synthesizingJob.set(false);
+            const msg = job.errorMessage || 'Synthesis job failed.';
+            this.documentError.set(msg);
+            this.showNotification(msg, 'error');
+          }
+        },
+        error: (err) => {
+          this.stopPolling();
+          this.synthesizingJob.set(false);
+          this.documentError.set('Connection lost during status polling.');
+        },
+      });
+  }
+
+  private stopPolling(): void {
+    if (this.pollingSubscription) {
+      this.pollingSubscription.unsubscribe();
+      this.pollingSubscription = null;
+    }
+  }
+
+  downloadAudiobook(): void {
+    const url = this.jobAudioUrl();
+    if (!url) return;
+    const a = document.createElement('a');
+    a.href = url;
+    a.target = '_blank';
+    a.download = `${this.documentAnalysis()?.fileName || 'audiobook'}.mp3`;
+    a.click();
+    this.showNotification('Audiobook download started.');
   }
 
   showNotification(message: string, type: 'success' | 'error' = 'success'): void {

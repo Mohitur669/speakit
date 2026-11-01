@@ -22,6 +22,9 @@ public class LongFormJobStatusDto {
     private String textSnippet;
     private Integer totalCharacters;
     private String voiceId;
+    private String sourceFileName;
+    private String title;
+    private Integer estimatedDurationSeconds;
     private String errorMessage;
     private LocalDateTime createdAt;
     private LocalDateTime completedAt;

@@ -7,6 +7,7 @@ import com.speakit.stt.dto.SpeechToTextResult;
 import com.speakit.stt.provider.ElevenLabsSpeechToTextProvider;
 import com.speakit.stt.provider.SarvamSpeechToTextProvider;
 import com.speakit.stt.repository.SpeechToTextRequestRepository;
+import com.speakit.tts.service.AudioStorageService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -35,6 +36,8 @@ class SttServiceTest {
     private UserRepository userRepository;
     @Mock
     private SystemParameterService systemParameterService;
+    @Mock
+    private AudioStorageService audioStorageService;
 
     @InjectMocks
     private SttService sttService;

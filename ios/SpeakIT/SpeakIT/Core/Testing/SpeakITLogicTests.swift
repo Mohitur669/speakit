@@ -199,6 +199,51 @@ public struct SpeakITLogicTests {
         assert(sampleAnalytics.charactersRemaining == 37_600, "UsageAnalytics charactersRemaining matches sample")
         assert(sampleAnalytics.burnRatePerDay == 413.3, "UsageAnalytics burnRate matches sample")
         
+        // MARK: - 9. Document Analysis & Long-Form Job Models Tests
+        print("▶️ Testing Document Analysis & Long-Form Job Models...")
+        let docAnalysis = DocumentAnalysisResponse(
+            documentToken: "tok-test-456",
+            fileName: "whitepaper.pdf",
+            fileSizeBytes: 2_048_000,
+            pageCount: 15,
+            wordCount: 4_500,
+            characterCount: 28_000,
+            estimatedDurationSeconds: 1800,
+            estimatedDurationFormatted: "30m",
+            validationStatus: "READY"
+        )
+        assert(docAnalysis.documentToken == "tok-test-456", "DocumentAnalysisResponse preserves token")
+        assert(docAnalysis.pageCount == 15, "DocumentAnalysisResponse page count is 15")
+        assert(docAnalysis.wordCount == 4_500, "DocumentAnalysisResponse word count is 4,500")
+        assert(docAnalysis.validationStatus == "READY", "DocumentAnalysisResponse validation status is READY")
+        
+        let job = LongFormJobStatus(
+            jobId: "job-999",
+            status: "PROCESSING",
+            progressPercent: 45,
+            totalChunks: 10,
+            completedChunks: 4,
+            sourceFileName: "whitepaper.pdf"
+        )
+        assert(job.isProcessing, "LongFormJobStatus with PROCESSING isProcessing is true")
+        assert(!job.isComplete, "LongFormJobStatus with PROCESSING isComplete is false")
+        
+        let completedJob = LongFormJobStatus(
+            jobId: "job-999",
+            status: "COMPLETED",
+            progressPercent: 100,
+            totalChunks: 10,
+            completedChunks: 10,
+            audioUrl: "https://r2.speakit.com/audio/book.mp3"
+        )
+        assert(completedJob.isComplete, "LongFormJobStatus with COMPLETED isComplete is true")
+        assert(!completedJob.isProcessing, "LongFormJobStatus with COMPLETED isProcessing is false")
+        assert(completedJob.audioUrl != nil, "LongFormJobStatus audioUrl is present")
+        
+        assert(APIEndpoint.analyzePdfDocument.path == "/api/tts/documents/analyze", "analyzePdfDocument path matches /api/tts/documents/analyze")
+        assert(APIEndpoint.submitTtsJob.path == "/api/tts/jobs", "submitTtsJob path matches /api/tts/jobs")
+        assert(APIEndpoint.getTtsJobStatus(jobId: "abc").path == "/api/tts/jobs/abc", "getTtsJobStatus path matches /api/tts/jobs/abc")
+        
         print("\n==========================================")
         print("🏁 [TEST SUITE SUMMARY]: \(passedCount) Passed, \(failedCount) Failed")
         print("==========================================\n")

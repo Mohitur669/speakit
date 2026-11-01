@@ -55,7 +55,16 @@ final class AudioPlayerManager: NSObject, AVAudioPlayerDelegate {
         stop()
         currentAudioURL = url
         
-        let playerItem = AVPlayerItem(url: url)
+        let playerItem: AVPlayerItem
+        if url.scheme == "http" || url.scheme == "https" {
+            let headers: [String: String] = [
+                "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko)"
+            ]
+            let asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": headers])
+            playerItem = AVPlayerItem(asset: asset)
+        } else {
+            playerItem = AVPlayerItem(url: url)
+        }
         player = AVPlayer(playerItem: playerItem)
         
         setupTimeObserver()
@@ -83,7 +92,13 @@ final class AudioPlayerManager: NSObject, AVAudioPlayerDelegate {
     
     func play() {
         guard let player = player else { return }
-        player.rate = playbackRate
+        Task.detached(priority: .userInitiated) {
+            try? AVAudioSession.sharedInstance().setActive(true)
+        }
+        player.play()
+        if playbackRate != 1.0 {
+            player.rate = playbackRate
+        }
         isPlaying = true
         updateNowPlayingState(isPlaying: true)
     }
@@ -165,6 +180,21 @@ final class AudioPlayerManager: NSObject, AVAudioPlayerDelegate {
             name: AVAudioSession.interruptionNotification,
             object: nil
         )
+        
+        // Item playback end
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handlePlaybackDidEnd),
+            name: .AVPlayerItemDidPlayToEndTime,
+            object: nil
+        )
+    }
+    
+    @objc private func handlePlaybackDidEnd(notification: Notification) {
+        DispatchQueue.main.async {
+            self.pause()
+            self.seek(to: 0)
+        }
     }
     
     @objc private func handleRouteChange(notification: Notification) {

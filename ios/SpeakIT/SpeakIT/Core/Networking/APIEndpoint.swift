@@ -101,6 +101,9 @@ enum APIEndpoint {
     case voices
     case synthesize
     case usageAnalytics
+    case analyzePdfDocument
+    case submitTtsJob
+    case getTtsJobStatus(jobId: String)
     
     // STT
     case transcribeLive
@@ -181,6 +184,12 @@ enum APIEndpoint {
             return "/api/tts/synthesize"
         case .usageAnalytics:
             return "/api/tts/usage/analytics"
+        case .analyzePdfDocument:
+            return "/api/tts/documents/analyze"
+        case .submitTtsJob:
+            return "/api/tts/jobs"
+        case .getTtsJobStatus(let jobId):
+            return "/api/tts/jobs/\(jobId)"
         case .transcribeLive:
             return "/api/stt/transcribe-live"
         case .transcribeFile:

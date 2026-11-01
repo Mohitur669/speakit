@@ -172,11 +172,13 @@ final class ElevenLabsLiveStreamTTSService: NSObject {
     private func setupAudioEngine() {
         guard !isEngineSetup else { return }
 
-        do {
+        Task.detached(priority: .userInitiated) {
             let audioSession = AVAudioSession.sharedInstance()
-            try audioSession.setCategory(.playback, mode: .default)
-            try audioSession.setActive(true)
+            try? audioSession.setCategory(.playback, mode: .default)
+            try? audioSession.setActive(true)
+        }
 
+        do {
             audioEngine.attach(playerNode)
             // Use 44100 Hz stereo to match ElevenLabs mp3_44100_128 output
             let format = AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 2)!
@@ -232,6 +234,8 @@ final class ElevenLabsLiveStreamTTSService: NSObject {
             audioEngine.stop()
             isEngineSetup = false
         }
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        Task.detached(priority: .utility) {
+            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        }
     }
 }
