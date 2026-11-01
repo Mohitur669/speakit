@@ -26,6 +26,8 @@ struct TranscriptionResultSheet: View {
     @State private var isSynthesizingOriginal: Bool = false
     @State private var showCopiedOriginalToast: Bool = false
     @State private var showCopiedTranslationToast: Bool = false
+    @State private var exportedContent: String? = nil
+    @State private var showShareSheet: Bool = false
     
     private var playerManager = AudioPlayerManager.shared
     
@@ -120,6 +122,34 @@ struct TranscriptionResultSheet: View {
                                     Image(systemName: showCopiedOriginalToast ? "checkmark" : "doc.on.doc")
                                         .font(.system(size: 11, weight: .semibold))
                                     Text(showCopiedOriginalToast ? "Copied" : "Copy")
+                                        .font(.system(size: 11, weight: .semibold))
+                                }
+                                .foregroundColor(Color.speakitPrimary)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(Color.speakitBadgeBackground)
+                                .clipShape(Capsule())
+                            }
+
+                            // Export format picker menu
+                            Menu {
+                                Button(action: { exportTranscript(format: "SRT") }) {
+                                    Label("SubRip Subtitle (.srt)", systemImage: "captions.bubble")
+                                }
+                                Button(action: { exportTranscript(format: "VTT") }) {
+                                    Label("WebVTT Subtitle (.vtt)", systemImage: "film")
+                                }
+                                Button(action: { exportTranscript(format: "MARKDOWN") }) {
+                                    Label("Markdown (.md)", systemImage: "doc.text")
+                                }
+                                Button(action: { exportTranscript(format: "TXT") }) {
+                                    Label("Plain Text (.txt)", systemImage: "doc.plaintext")
+                                }
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "square.and.arrow.up")
+                                        .font(.system(size: 11, weight: .semibold))
+                                    Text("Export")
                                         .font(.system(size: 11, weight: .semibold))
                                 }
                                 .foregroundColor(Color.speakitPrimary)
@@ -547,6 +577,11 @@ struct TranscriptionResultSheet: View {
         .task {
             await loadVoicesFromBackend()
         }
+        .sheet(isPresented: $showShareSheet) {
+            if let content = exportedContent {
+                ShareActivityView(activityItems: [content])
+            }
+        }
     }
     
     // MARK: - Voice Filtering
@@ -716,6 +751,29 @@ struct TranscriptionResultSheet: View {
                 }
             }
         }
+    }
+
+    private func exportTranscript(format: String) {
+        HapticManager.shared.light()
+        let fmt = format.uppercased()
+        let text = result.text
+        let language = result.displayLanguage
+        let duration = result.formattedDuration
+        
+        let formatted: String
+        switch fmt {
+        case "SRT":
+            formatted = "1\n00:00:00,000 --> 00:00:10,000\n\(text)\n"
+        case "VTT":
+            formatted = "WEBVTT\n\n1\n00:00:00.000 --> 00:00:10.000\n\(text)\n"
+        case "MARKDOWN", "MD":
+            formatted = "# SpeakIT Transcription\n\n- **Language:** \(language)\n- **Duration:** \(duration)\n\n---\n\n\(text)\n"
+        default:
+            formatted = text
+        }
+        
+        self.exportedContent = formatted
+        self.showShareSheet = true
     }
 }
 

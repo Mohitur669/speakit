@@ -26,15 +26,16 @@ class DiscordServiceTest {
 
     @Test
     void init_whenWebhookUrlBlank_doesNotThrow() {
-        ReflectionTestUtils.setField(discordService, "webhookUrl", "");
+        ReflectionTestUtils.setField(discordService, "contactWebhookUrl", "");
         ReflectionTestUtils.setField(discordService, "backendWebhookUrl", "");
+        ReflectionTestUtils.setField(discordService, "infraWebhookUrl", "");
         assertDoesNotThrow(() -> discordService.init());
         assertNull(ReflectionTestUtils.getField(discordService, "restClient"));
     }
 
     @Test
     void init_whenWebhookUrlValid_initializesRestClient() {
-        ReflectionTestUtils.setField(discordService, "webhookUrl", "https://discord.com/api/webhooks/123/abc");
+        ReflectionTestUtils.setField(discordService, "contactWebhookUrl", "https://discord.com/api/webhooks/123/abc");
         assertDoesNotThrow(() -> discordService.init());
         assertNotNull(ReflectionTestUtils.getField(discordService, "restClient"));
     }
@@ -48,7 +49,7 @@ class DiscordServiceTest {
 
     @Test
     void sendNotification_whenWebhookUrlMissing_returnsSafelyWithoutCallingClient() {
-        ReflectionTestUtils.setField(discordService, "webhookUrl", null);
+        ReflectionTestUtils.setField(discordService, "contactWebhookUrl", null);
         assertDoesNotThrow(() -> discordService.sendNotification(
                 "John Doe", "john@example.com", "billing", "My bill is incorrect", "req-123"
         ));
@@ -56,7 +57,7 @@ class DiscordServiceTest {
 
     @Test
     void sendLogBackupNotification_whenBackendWebhookUrlMissing_returnsSafelyWithoutError() {
-        ReflectionTestUtils.setField(discordService, "backendWebhookUrl", null);
+        ReflectionTestUtils.setField(discordService, "infraWebhookUrl", null);
         LogBackupAudit audit = LogBackupAudit.builder().id(100L).status("Completed").build();
         assertDoesNotThrow(() -> discordService.sendLogBackupNotification(audit));
     }

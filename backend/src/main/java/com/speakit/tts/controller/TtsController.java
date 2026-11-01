@@ -45,8 +45,9 @@ public class TtsController {
     private final SubscriptionService subscriptionService;
     private final UserRepository userRepository;
     private final AudioStorageService audioStorageService;
+    private final com.speakit.tts.service.LongFormSynthesisService longFormSynthesisService;
 
-    public TtsController(PollyService pollyService, ElevenLabsService elevenLabsService, SarvamService sarvamService, TtsService ttsService, SubscriptionService subscriptionService, UserRepository userRepository, AudioStorageService audioStorageService) {
+    public TtsController(PollyService pollyService, ElevenLabsService elevenLabsService, SarvamService sarvamService, TtsService ttsService, SubscriptionService subscriptionService, UserRepository userRepository, AudioStorageService audioStorageService, @org.springframework.beans.factory.annotation.Autowired(required = false) com.speakit.tts.service.LongFormSynthesisService longFormSynthesisService) {
         this.pollyService = pollyService;
         this.elevenLabsService = elevenLabsService;
         this.sarvamService = sarvamService;
@@ -54,6 +55,7 @@ public class TtsController {
         this.subscriptionService = subscriptionService;
         this.userRepository = userRepository;
         this.audioStorageService = audioStorageService;
+        this.longFormSynthesisService = longFormSynthesisService;
     }
 
     private Long resolveUserId(HttpServletRequest request, Principal principal) {
@@ -280,6 +282,18 @@ public class TtsController {
     }
 
     @RateLimited
+    @GetMapping("/usage/analytics")
+    public ResponseEntity<com.speakit.tts.dto.UsageAnalyticsDto> getUsageAnalytics(HttpServletRequest httpRequest, Principal principal) {
+        Long userId = resolveUserId(httpRequest, principal);
+        PlanType planType = (PlanType) httpRequest.getAttribute("planType");
+        if (userId == null) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+        }
+        com.speakit.tts.dto.UsageAnalyticsDto analytics = ttsService.getUsageAnalytics(userId, planType);
+        return ResponseEntity.ok(analytics);
+    }
+
+    @RateLimited
     @GetMapping("/voices")
     public ResponseEntity<List<Map<String, Object>>> getVoices(HttpServletRequest httpRequest, Principal principal) {
         resolveUserId(httpRequest, principal);
@@ -409,6 +423,35 @@ public class TtsController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Sound Effects generation failed: " + e.getMessage()));
         }
+    }
+
+    // MARK: - Long-Form Document & Audiobook Synthesis (Phase 3.1)
+    @RateLimited(action = RateLimitAction.TTS)
+    @PostMapping("/jobs")
+    public ResponseEntity<com.speakit.tts.dto.LongFormJobStatusDto> submitLongFormJob(
+            @Valid @RequestBody TtsRequest request,
+            HttpServletRequest httpRequest,
+            Principal principal) {
+        Long userId = resolveUserId(httpRequest, principal);
+        PlanType planType = (PlanType) httpRequest.getAttribute("planType");
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        com.speakit.tts.dto.LongFormJobStatusDto job = longFormSynthesisService.submitJob(userId, planType, request);
+        return ResponseEntity.ok(job);
+    }
+
+    @GetMapping("/jobs/{jobId}")
+    public ResponseEntity<com.speakit.tts.dto.LongFormJobStatusDto> getLongFormJobStatus(
+            @PathVariable String jobId,
+            HttpServletRequest httpRequest,
+            Principal principal) {
+        Long userId = resolveUserId(httpRequest, principal);
+        com.speakit.tts.dto.LongFormJobStatusDto job = longFormSynthesisService.getJobStatus(jobId, userId);
+        if (job == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(job);
     }
 
     private MediaType getMediaType(String format) {

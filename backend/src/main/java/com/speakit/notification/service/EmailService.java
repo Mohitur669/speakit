@@ -241,6 +241,31 @@ public class EmailService {
     }
 
     /**
+     * Sends Account Deletion confirmation message in compliance with DPDP Act and App Store guidelines.
+     */
+    public void sendAccountDeletionEmail(String to, String username) {
+        String subject = "Your SpeakIT Account Has Been Permanently Deleted";
+        String content = String.format(
+                "<html>" +
+                        "<body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;'>" +
+                        "  <div style='background-color: #ef4444; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;'>" +
+                        "    <h1 style='color: white; margin: 0; font-size: 22px;'>Account Deletion Complete</h1>" +
+                        "  </div>" +
+                        "  <div style='border: 1px solid #e5e7eb; border-top: none; padding: 20px; border-radius: 0 0 8px 8px;'>" +
+                        "    <p>Hello <strong>%s</strong>,</p>" +
+                        "    <p>Your SpeakIT account and associated personal data (voice synthesis history, transcriptions, audio files, and avatar) have been permanently deleted in accordance with your request and the Digital Personal Data Protection (DPDP) Act.</p>" +
+                        "    <p>All active sessions and tokens have been revoked with immediate effect. Any statutory billing transaction records have been detached and anonymized per accounting regulations.</p>" +
+                        "    <p>We are sorry to see you go. If you ever wish to use SpeakIT again, you are always welcome to create a fresh account.</p>" +
+                        "    <hr style='border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;' />" +
+                        "    <p style='font-size: 12px; color: #9ca3af;'>The SpeakIT Privacy & Security Team</p>" +
+                        "  </div>" +
+                        "</body>" +
+                        "</html>",
+                username);
+        sendEmail(to, subject, content);
+    }
+
+    /**
      * Sends Welcome onboarding message.
      */
     public void sendWelcomeEmail(String to, String username) {

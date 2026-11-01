@@ -195,4 +195,19 @@ public class UserController {
         AvatarResponse response = authService.deleteAvatar(username);
         return ResponseEntity.ok(response);
     }
+
+    // MARK: - Permanent Account Deletion (Apple Guideline 5.1.1v & DPDP Act 2023)
+    @RateLimited(action = RateLimitAction.PUBLIC)
+    @DeleteMapping("/me")
+    public ResponseEntity<java.util.Map<String, String>> deleteAccount(
+            @RequestBody(required = false) com.speakit.user.dto.DeleteAccountRequest request,
+            Principal principal) {
+        if (principal == null || principal.getName() == null) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+        }
+        String username = principal.getName();
+        log.info("Account deletion initiated by user: {}", username);
+        java.util.Map<String, String> result = authService.deleteAccount(username, request);
+        return ResponseEntity.ok(result);
+    }
 }

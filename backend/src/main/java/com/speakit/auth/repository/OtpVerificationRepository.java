@@ -31,4 +31,9 @@ public interface OtpVerificationRepository extends JpaRepository<OtpVerification
     @Modifying
     @Query("DELETE FROM OtpVerification o WHERE o.user.id IN (SELECT u.id FROM User u WHERE u.emailVerified = false AND u.createdAt < :cutoff)")
     int deleteOtpsForUnverifiedUsersOlderThan(@Param("cutoff") LocalDateTime cutoff);
+
+    @Modifying
+    @org.springframework.transaction.annotation.Transactional
+    @Query("DELETE FROM OtpVerification o WHERE o.user.id = :userId OR LOWER(TRIM(o.email)) = LOWER(TRIM(:email))")
+    int deleteAllByUserIdOrEmail(@Param("userId") Long userId, @Param("email") String email);
 }

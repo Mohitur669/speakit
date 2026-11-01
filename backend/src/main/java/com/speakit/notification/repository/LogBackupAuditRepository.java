@@ -14,4 +14,9 @@ public interface LogBackupAuditRepository extends JpaRepository<LogBackupAudit, 
     List<LogBackupAudit> findTop10ByOrderByCreatedAtDesc();
 
     Page<LogBackupAudit> findByStatus(String status, Pageable pageable);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.transaction.annotation.Transactional
+    @org.springframework.data.jpa.repository.Query("UPDATE LogBackupAudit a SET a.user = null WHERE a.user.id = :userId")
+    int disassociateUserFromAudits(@org.springframework.data.repository.query.Param("userId") Long userId);
 }

@@ -19,4 +19,9 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     @org.springframework.transaction.annotation.Transactional
     @Query("UPDATE Payment p SET p.status = com.speakit.billing.entity.PaymentStatus.FAILED WHERE p.status = com.speakit.billing.entity.PaymentStatus.PENDING AND p.createdAt < :cutoff")
     int markStalePendingPaymentsAsFailed(@Param("cutoff") java.time.LocalDateTime cutoff);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.transaction.annotation.Transactional
+    @Query("UPDATE Payment p SET p.user = null, p.notes = 'ANONYMIZED_USER_ACCOUNT_DELETED' WHERE p.user.id = :userId")
+    int anonymizePaymentsByUserId(@Param("userId") Long userId);
 }

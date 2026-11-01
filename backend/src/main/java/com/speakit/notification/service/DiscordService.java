@@ -31,10 +31,13 @@ import java.util.Map;
 public class DiscordService {
 
     @Value("${app.discord.contact-form-webhook-url:}")
-    private String webhookUrl;
+    private String contactWebhookUrl;
 
     @Value("${app.discord.backend-webhook-url:}")
     private String backendWebhookUrl;
+
+    @Value("${app.discord.infra-webhook-url:}")
+    private String infraWebhookUrl;
 
     @Value("${cloudflare.r2.logs.environment:${LOG_ENVIRONMENT:local}}")
     private String logEnvironment;
@@ -43,10 +46,11 @@ public class DiscordService {
 
     @PostConstruct
     public void init() {
-        boolean hasContact = webhookUrl != null && !webhookUrl.isBlank();
+        boolean hasContact = contactWebhookUrl != null && !contactWebhookUrl.isBlank();
         boolean hasBackend = backendWebhookUrl != null && !backendWebhookUrl.isBlank();
+        boolean hasInfra = infraWebhookUrl != null && !infraWebhookUrl.isBlank();
 
-        if (!hasContact && !hasBackend) {
+        if (!hasContact && !hasBackend && !hasInfra) {
             log.warn("Discord webhook URLs are missing or blank. Discord notifications disabled.");
             return;
         }
@@ -61,7 +65,7 @@ public class DiscordService {
 
     @Async
     public void sendNotification(String name, String email, String subject, String message, String requestId) {
-        if (webhookUrl == null || webhookUrl.isBlank() || restClient == null) {
+        if (contactWebhookUrl == null || contactWebhookUrl.isBlank() || restClient == null) {
             return;
         }
 
@@ -70,7 +74,7 @@ public class DiscordService {
 
         executeWithRetry(() -> {
             restClient.post()
-                    .uri(webhookUrl)
+                    .uri(contactWebhookUrl)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(payload)
                     .retrieve()
@@ -78,9 +82,51 @@ public class DiscordService {
         });
     }
 
+    /**
+     * Dispatches an operational security alert when a user exercises account deletion (DPDP / Apple 5.1.1v).
+     */
     @Async
+    public void sendAccountDeletionAlert(String username, Long userId, String email, String reason) {
+        if (backendWebhookUrl == null || backendWebhookUrl.isBlank() || restClient == null) {
+            log.debug("Discord backend webhook URL not configured. Skipping account deletion alert.");
+            return;
+        }
+
+        try {
+            Map<String, Object> embed = Map.of(
+                    "title", "🚨 User Account Deleted (DPDP / Apple Guideline 5.1.1v)",
+                    "description", "A user has permanently deleted their account and purged all personal data.",
+                    "color", 0xEF4444, // Red
+                    "fields", List.of(
+                            Map.of("name", "👤 Username", "value", username != null ? username : "N/A", "inline", true),
+                            Map.of("name", "🆔 User ID", "value", String.valueOf(userId), "inline", true),
+                            Map.of("name", "📧 Email", "value", email != null ? email : "N/A", "inline", true),
+                            Map.of("name", "📝 Reason / Mode", "value", (reason != null && !reason.isBlank()) ? reason : "In-App Self Service", "inline", false),
+                            Map.of("name", "🌐 Environment", "value", logEnvironment != null ? logEnvironment.toUpperCase() : "PROD", "inline", true)
+                    ),
+                    "timestamp", Instant.now().toString()
+            );
+
+            Map<String, Object> payload = Map.of(
+                    "username", "SpeakIT Security Sentinel",
+                    "embeds", List.of(embed)
+            );
+
+            restClient.post()
+                    .uri(backendWebhookUrl)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(payload)
+                    .retrieve()
+                    .toBodilessEntity();
+
+            log.info("Successfully dispatched Discord account deletion alert for user: {} (id: {})", username, userId);
+        } catch (Exception ex) {
+            log.warn("Failed to dispatch Discord account deletion alert: {}", ex.getMessage());
+        }
+    }
+
     public void sendLogBackupNotification(LogBackupAudit audit) {
-        if (backendWebhookUrl == null || backendWebhookUrl.isBlank() || restClient == null || audit == null) {
+        if (infraWebhookUrl == null || infraWebhookUrl.isBlank() || restClient == null || audit == null) {
             return;
         }
 
@@ -89,7 +135,7 @@ public class DiscordService {
 
         executeWithRetry(() -> {
             restClient.post()
-                    .uri(backendWebhookUrl)
+                    .uri(infraWebhookUrl)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(payload)
                     .retrieve()

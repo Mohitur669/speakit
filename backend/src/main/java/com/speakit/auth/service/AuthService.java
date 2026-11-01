@@ -66,7 +66,14 @@ public class AuthService {
     private final AvatarStorageService avatarStorageService;
     private final UserAvatarHistoryRepository userAvatarHistoryRepository;
     private final com.speakit.user.service.UserSessionCacheService userSessionCacheService;
+    private final com.speakit.stt.repository.LiveSessionTurnRepository liveSessionTurnRepository;
+    private final com.speakit.billing.repository.SubscriptionRepository subscriptionRepository;
+    private final com.speakit.billing.repository.PaymentRepository paymentRepository;
+    private final com.speakit.notification.repository.LogBackupAuditRepository logBackupAuditRepository;
+    private final com.speakit.notification.service.EmailService emailService;
+    private final com.speakit.notification.service.DiscordService discordService;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public AuthService(
             UserRepository userRepository,
             PendingRegistrationRepository pendingRegistrationRepository,
@@ -82,7 +89,19 @@ public class AuthService {
             AvatarStorageService avatarStorageService,
             UserAvatarHistoryRepository userAvatarHistoryRepository,
             @org.springframework.beans.factory.annotation.Autowired(required = false)
-            com.speakit.user.service.UserSessionCacheService userSessionCacheService
+            com.speakit.user.service.UserSessionCacheService userSessionCacheService,
+            @org.springframework.beans.factory.annotation.Autowired(required = false)
+            com.speakit.stt.repository.LiveSessionTurnRepository liveSessionTurnRepository,
+            @org.springframework.beans.factory.annotation.Autowired(required = false)
+            com.speakit.billing.repository.SubscriptionRepository subscriptionRepository,
+            @org.springframework.beans.factory.annotation.Autowired(required = false)
+            com.speakit.billing.repository.PaymentRepository paymentRepository,
+            @org.springframework.beans.factory.annotation.Autowired(required = false)
+            com.speakit.notification.repository.LogBackupAuditRepository logBackupAuditRepository,
+            @org.springframework.beans.factory.annotation.Autowired(required = false)
+            com.speakit.notification.service.EmailService emailService,
+            @org.springframework.beans.factory.annotation.Autowired(required = false)
+            com.speakit.notification.service.DiscordService discordService
     ) {
         this.userRepository = userRepository;
         this.pendingRegistrationRepository = pendingRegistrationRepository;
@@ -98,6 +117,12 @@ public class AuthService {
         this.avatarStorageService = avatarStorageService;
         this.userAvatarHistoryRepository = userAvatarHistoryRepository;
         this.userSessionCacheService = userSessionCacheService;
+        this.liveSessionTurnRepository = liveSessionTurnRepository;
+        this.subscriptionRepository = subscriptionRepository;
+        this.paymentRepository = paymentRepository;
+        this.logBackupAuditRepository = logBackupAuditRepository;
+        this.emailService = emailService;
+        this.discordService = discordService;
     }
 
     @Value("${auth.session-duration-ms:7200000}")
@@ -1044,6 +1069,107 @@ public class AuthService {
                 .avatarDailyLimit(avatarDailyLimit)
                 .avatarChangeCount(avatarChangesToday)
                 .build();
+    }
+
+    /**
+     * Permanent User Account Deletion & Cascading Purge per DPDP Act 2023 & Apple Guideline 5.1.1(v).
+     *
+     * In-scope cascading actions:
+     * 1. Re-authenticates user when password confirmation is provided.
+     * 2. Writes structured audit log before records are removed.
+     * 3. Dispatches Discord operational alert & confirmation email.
+     * 4. Retains and anonymizes financial/statutory records (payments & subscriptions) per tax audit rules.
+     * 5. Purges personal voice history, transcripts, turns, avatar files, and OTPs.
+     * 6. Evicts cached session tokens and permanently deletes the primary User entity.
+     */
+    @Transactional
+    public Map<String, String> deleteAccount(String username, com.speakit.user.dto.DeleteAccountRequest request) {
+        if (username == null || username.isBlank()) {
+            throw new IllegalArgumentException("Username is required for account deletion");
+        }
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new org.springframework.security.core.userdetails.UsernameNotFoundException("User not found: " + username));
+
+        // 1. Re-authentication validation: If password is provided, verify against password hash
+        if (request != null && request.getPassword() != null && !request.getPassword().isBlank()) {
+            if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+                log.warn("Account deletion failed: invalid password confirmation for user: {}", username);
+                throw new org.springframework.security.authentication.BadCredentialsException("Invalid password confirmation");
+            }
+        }
+
+        Long userId = user.getId();
+        String email = user.getEmail();
+        String reason = (request != null && request.getReason() != null) ? request.getReason() : "In-App Self Service";
+
+        // 2. Structured pre-deletion audit trail
+        log.info("ACCOUNT_DELETION_AUDIT: Initiating cascading purge for userId={}, username={}, email={}, reason='{}' in compliance with DPDP Act 2023 and Apple Guideline 5.1.1(v)",
+                userId, username, email, reason);
+
+        // 3. Operational Discord alert (isolated)
+        if (discordService != null) {
+            try {
+                discordService.sendAccountDeletionAlert(username, userId, email, reason);
+            } catch (Exception e) {
+                log.warn("Failed to dispatch Discord account deletion alert: {}", e.getMessage());
+            }
+        }
+
+        // 4. Dispatch deletion confirmation email via SES / transactional mailer
+        if (emailService != null && email != null) {
+            try {
+                emailService.sendAccountDeletionEmail(email, username);
+            } catch (Exception e) {
+                log.warn("Failed to dispatch account deletion email: {}", e.getMessage());
+            }
+        }
+
+        // 5. Anonymize retained financial / statutory records per DPDP Act 2023 & statutory accounting rules
+        if (paymentRepository != null) {
+            paymentRepository.anonymizePaymentsByUserId(userId);
+        }
+        if (subscriptionRepository != null) {
+            subscriptionRepository.anonymizeSubscriptionsByUserId(userId);
+        }
+        if (logBackupAuditRepository != null) {
+            logBackupAuditRepository.disassociateUserFromAudits(userId);
+        }
+
+        // 6. Cascade purge personal avatar files & history
+        try {
+            if (avatarStorageService != null && user.getAvatarUrl() != null) {
+                avatarStorageService.deleteAvatar(user.getAvatarUrl());
+            }
+        } catch (Exception e) {
+            log.warn("Could not delete avatar file from storage during account deletion: {}", e.getMessage());
+        }
+        userAvatarHistoryRepository.deleteAllByUserId(userId);
+
+        // 7. Cascade purge personal voice jobs & transcriptions
+        ttsHistoryRepository.deleteAllByUserId(userId);
+        if (liveSessionTurnRepository != null) {
+            liveSessionTurnRepository.deleteAllByUserId(userId);
+        }
+        speechToTextRequestRepository.deleteAllByUserId(userId);
+
+        // 8. Cascade purge security OTP verifications
+        otpVerificationRepository.deleteAllByUserIdOrEmail(userId, email);
+
+        // 9. Evict active JWT session from in-memory cache
+        if (userSessionCacheService != null) {
+            userSessionCacheService.evictSession(username);
+        }
+
+        // 10. Permanently remove the User record
+        userRepository.delete(user);
+
+        log.info("ACCOUNT_DELETION_AUDIT: Successfully completed cascading purge for userId={}, username={}", userId, username);
+
+        return Map.of(
+                "message", "Account and associated personal data successfully deleted in compliance with DPDP Act and App Store guidelines.",
+                "status", "DELETED"
+        );
     }
 
     /**

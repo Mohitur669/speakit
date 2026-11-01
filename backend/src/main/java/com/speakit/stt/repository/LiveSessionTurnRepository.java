@@ -15,4 +15,9 @@ public interface LiveSessionTurnRepository extends JpaRepository<LiveSessionTurn
     @Modifying
     @Query("DELETE FROM LiveSessionTurn t WHERE t.request.id = :requestId")
     void deleteByRequestId(@Param("requestId") Long requestId);
+
+    @Modifying
+    @org.springframework.transaction.annotation.Transactional
+    @Query("DELETE FROM LiveSessionTurn t WHERE t.request.user.id = :userId")
+    void deleteAllByUserId(@Param("userId") Long userId);
 }
