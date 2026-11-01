@@ -18,4 +18,11 @@ public interface UserAvatarHistoryRepository extends JpaRepository<UserAvatarHis
     );
 
     List<UserAvatarHistory> findTop10ByUserIdOrderByCreatedAtDesc(Long userId);
+
+    List<UserAvatarHistory> findAllByUserId(Long userId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.transaction.annotation.Transactional
+    @Query("DELETE FROM UserAvatarHistory h WHERE h.user.id = :userId")
+    void deleteAllByUserId(@Param("userId") Long userId);
 }

@@ -46,6 +46,7 @@ struct ActivityView: View {
     @State private var selectedItemIds: Set<Int64> = []
     @State private var showDeleteSelectedConfirmation: Bool = false
     @State private var isDeletingSelected: Bool = false
+    @State private var usageAnalytics: UsageAnalytics? = nil
     
     // Audio Playback Tracking (Lazy-loading on click)
     @State private var playerManager = AudioPlayerManager.shared
@@ -113,6 +114,21 @@ struct ActivityView: View {
                             Text("\(Int(user.usagePercentage * 100))% used")
                                 .font(.system(size: 12, weight: .bold))
                                 .foregroundColor(Color.speakitPrimary)
+                        }
+                        
+                        // Daily Burn Rate
+                        if let analytics = usageAnalytics {
+                            Divider()
+                                .background(Color.speakitBorder)
+                                .padding(.vertical, 4)
+                            
+                            HStack {
+                                Label("Usage: \(Int(analytics.burnRatePerDay)) chars/day", systemImage: "flame.fill")
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundColor(.orange)
+                                
+                                Spacer()
+                            }
                         }
                     }
                     .padding(18)
@@ -343,9 +359,13 @@ struct ActivityView: View {
                 historyItems.removeAll()
                 await loadInitialHistory()
                 await appState.loadCurrentUser()
+                await loadUsageAnalytics()
                 appState.isHistoryDirty = false
             }
             .onAppear {
+                Task {
+                    await loadUsageAnalytics()
+                }
                 if appState.isHistoryDirty {
                     Task {
                         await loadInitialHistory()
@@ -713,11 +733,23 @@ struct ActivityView: View {
     }
     
     private func refreshAll() async {
-        // Refresh history and user profile concurrently to prevent UI re-evaluation cancelling history fetch
+        // Refresh history, user profile and usage analytics concurrently
         async let userTask: Void = appState.loadCurrentUser()
         async let historyTask: Void = loadInitialHistory()
-        _ = await (userTask, historyTask)
+        async let analyticsTask: Void = loadUsageAnalytics()
+        _ = await (userTask, historyTask, analyticsTask)
         appState.isHistoryDirty = false
+    }
+
+    private func loadUsageAnalytics() async {
+        do {
+            let analytics: UsageAnalytics = try await HTTPClient.shared.request(.usageAnalytics)
+            await MainActor.run {
+                self.usageAnalytics = analytics
+            }
+        } catch {
+            print("Failed to load usage analytics: \(error)")
+        }
     }
     
     private func loadInitialHistory() async {

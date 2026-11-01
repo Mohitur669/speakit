@@ -239,6 +239,7 @@ When a rate limit is breached, the API returns HTTP `429 Too Many Requests` alon
   - [6.5 POST /api/v1/users/me/resend-profile-otp — Resend Profile Modification OTP](#65-post-apiv1usersmeresend-profile-otp--resend-profile-modification-otp)
   - [6.6 POST /api/v1/users/password — Change Password for Logged-In User](#66-post-apiv1userspassword--change-password-for-logged-in-user)
   - [6.7 POST /api/v1/users/me/cancel-profile-changes — Cancel Pending Profile Modifications](#67-post-apiv1usersmecancel-profile-changes--cancel-pending-profile-modifications)
+  - [6.8 DELETE /api/v1/users/me — Permanent Account Deletion (Apple Guideline 5.1.1v & DPDP Act 2023)](#68-delete-apiv1usersme--permanent-account-deletion-apple-guideline-511v--dpdp-act-2023)
 - [7. Text-to-Speech (TTS) Synthesis Domain](#7-text-to-speech-tts-synthesis-domain)
   - [7.1 GET /api/tts/voices — Retrieve Plan-Entitled Synthesis Voices](#71-get-apittsvoices--retrieve-plan-entitled-synthesis-voices)
   - [7.2 GET /api/tts/usage — Retrieve Daily Synthesis Quota & Usage](#72-get-apittsusage--retrieve-daily-synthesis-quota--usage)
@@ -961,6 +962,61 @@ sequenceDiagram
 
 ---
 
+### 6.8 `DELETE /api/v1/users/me` — Permanent Account Deletion (Apple Guideline 5.1.1v & DPDP Act 2023)
+**Summary:** Permanently purges user account and all personal data (voice synthesis history, transcriptions, turns, avatar files, and OTPs) in compliance with Apple App Store Review Guideline 5.1.1(v) and the Digital Personal Data Protection (DPDP) Act 2023. Statutory financial audit logs (payments & subscriptions) are detached and anonymized without retaining any PII.  
+**Auth:** Bearer JWT  
+**Rate Limit:** Bucket4j `PUBLIC` (5 requests/minute per client IP)  
+**Request Body (Optional):**
+```json
+{
+    "password": "CurrentPassword123!",
+    "reason": "User closing account"
+}
+```
+**Response (`200 OK`)**:
+```json
+{
+    "message": "Account and associated personal data successfully deleted in compliance with DPDP Act and App Store guidelines.",
+    "status": "DELETED"
+}
+```
+```mermaid
+%%{init: {'theme': 'dark', 'themeVariables': {'textColor': '#ffffff', 'primaryTextColor': '#ffffff', 'actorTextColor': '#ffffff', 'actorBkg': '#1e293b', 'actorBorder': '#38bdf8', 'signalColor': '#94a3b8', 'signalTextColor': '#ffffff', 'labelTextColor': '#ffffff', 'loopTextColor': '#ffffff', 'noteTextColor': '#ffffff', 'noteBkgColor': '#0f172a', 'noteBorderColor': '#475569', 'activationBorderColor': '#38bdf8', 'activationBkgColor': '#334155', 'sequenceNumberColor': '#ffffff'}}}%%
+sequenceDiagram
+    autonumber
+    actor C as Client (iOS / Web)
+    participant UC as UserController
+    participant AS as AuthService
+    participant DB as PostgreSQL
+    participant R2 as Cloudflare R2
+    participant SES as AWS SES / Email
+    participant DS as Discord Webhook
+
+    C->>UC: DELETE /api/v1/users/me [Bearer JWT]
+    UC->>AS: deleteAccount(username, request)
+    opt Password Provided
+        AS->>AS: Verify passwordEncoder.matches()
+    end
+    AS->>DS: sendAccountDeletionAlert(username, userId, email, reason)
+    AS->>SES: sendAccountDeletionEmail(email, username)
+    Note over AS,DB: DPDP Act Anonymization
+    AS->>DB: UPDATE payments SET user_id=NULL, notes='ANONYMIZED'
+    AS->>DB: UPDATE subscriptions SET user_id=NULL, status='CANCELLED'
+    AS->>DB: UPDATE log_backup_audits SET user_id=NULL
+    Note over AS,DB: Personal Data Cascade Purge
+    AS->>R2: deleteAvatar(storageKey)
+    AS->>DB: DELETE FROM user_avatar_history WHERE user_id
+    AS->>DB: DELETE FROM tts_history WHERE user_id
+    AS->>DB: DELETE FROM live_session_turns WHERE request.user_id
+    AS->>DB: DELETE FROM speech_to_text_requests WHERE user_id
+    AS->>DB: DELETE FROM otp_verifications WHERE user_id OR email
+    AS->>DB: DELETE FROM users WHERE id
+    AS->>AS: Evict UserSessionCache
+    UC-->>C: 200 OK ({"status": "DELETED"})
+```
+
+---
+
 ## 7. Text-to-Speech (TTS) Synthesis Domain
 
 The TTS domain is the core audio synthesis engine of SpeakIT. It features dynamic routing across AWS Polly (Standard & Neural engines), ElevenLabs, and Sarvam AI, enforcing character limits, daily synthesis limits, and voice entitlements based on user subscription tiers.
@@ -1130,6 +1186,71 @@ sequenceDiagram
 
 ---
 
+### 7.5 `POST /api/tts/jobs` — Submit Long-Form / Document Synthesis Job
+**Summary:** Submits long-form articles, PDFs, or audiobook text for asynchronous synthesis. Text is split into sentence-aware chunks, processed concurrently, stitched together, and cached in Cloudflare R2 without HTTP timeout risk.  
+**Auth:** Bearer JWT  
+**Rate Limit:** Bucket4j `TTS`  
+**Request Body:**
+```json
+{
+    "text": "Long document text spanning multiple paragraphs...",
+    "voiceId": "Joanna",
+    "outputFormat": "mp3"
+}
+```
+**Response (`200 OK`)**:
+```json
+{
+    "jobId": "80a25081-f485-4a5b-b48d-f3cfb456563a",
+    "userId": 42,
+    "status": "PROCESSING",
+    "progressPercent": 0,
+    "totalChunks": 8,
+    "completedChunks": 0,
+    "totalCharacters": 5400,
+    "voiceId": "Joanna",
+    "createdAt": "2026-11-01T03:30:00"
+}
+```
+
+---
+
+### 7.6 `GET /api/tts/jobs/{jobId}` — Query Long-Form Synthesis Job Status
+**Summary:** Polls the real-time execution progress, status (`QUEUED`, `PROCESSING`, `COMPLETED`, `FAILED`), and Cloudflare R2 audio URL for an in-flight synthesis job.  
+**Auth:** Bearer JWT  
+**Response (`200 OK`)**:
+```json
+{
+    "jobId": "80a25081-f485-4a5b-b48d-f3cfb456563a",
+    "status": "COMPLETED",
+    "progressPercent": 100,
+    "totalChunks": 8,
+    "completedChunks": 8,
+    "audioUrl": "https://r2.speakit.local/audio/doc_1.mp3",
+    "completedAt": "2026-11-01T03:31:15"
+}
+```
+
+### 7.7 `GET /api/tts/usage/analytics` — Observability & Quota Burn-Rate Analytics
+**Summary:** Returns real-time billing month usage directly from the persistent usage ledger (single source of truth with Bucket4j budget kill-switch), daily burn-rate, and days-remaining projection without drift.  
+**Rate Limit Action:** Default  
+**Auth:** Bearer JWT  
+**Response (`200 OK`)**:
+```json
+{
+    "plan": "PRO",
+    "monthlyLimit": 50000,
+    "charactersUsed": 12400,
+    "charactersRemaining": 37600,
+    "usagePercentage": 24.8,
+    "burnRatePerDay": 413.3,
+    "projectedDaysRemaining": 91.0,
+    "daysRemainingInMonth": 19
+}
+```
+
+---
+
 ## 8. Speech-to-Text (STT) & Translation Domain
 
 The STT domain powers automated audio transcription and neural multi-language translation. Uploaded audio files undergo strict MIME-type and magic-byte inspection via `AudioFileValidator` to prevent arbitrary file upload vulnerabilities.
@@ -1244,6 +1365,15 @@ sequenceDiagram
     TranslationService-->>SttController: TranslationResponse
     SttController-->>C: 200 OK
 ```
+
+---
+
+### 8.4 `GET /api/stt/session/{id}/export` — Export Speech Transcription to Standard Formats
+**Summary:** Formats and exports a saved transcription session or multi-speaker dialogue turn into industry-standard caption and document formats (`SRT`, `VTT`, `MARKDOWN`, or `TXT`). Sets appropriate `Content-Disposition` attachment headers for instant file download.  
+**Auth:** Bearer JWT  
+**Query Parameters:**
+- `format` (optional, default `TXT`): `SRT`, `VTT`, `MARKDOWN` (or `MD`), `TXT`.  
+**Response (`200 OK`)**: File stream with content type (`application/x-subrip`, `text/vtt`, `text/markdown`, or `text/plain`).
 
 ---
 

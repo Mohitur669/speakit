@@ -42,6 +42,7 @@ public class SttController {
     private final UserRepository userRepository;
     private final com.speakit.stt.repository.SpeechToTextRequestRepository speechToTextRequestRepository;
     private final com.speakit.stt.repository.LiveSessionTurnRepository liveSessionTurnRepository;
+    private final com.speakit.stt.service.TranscriptExportService transcriptExportService;
 
     /**
       * Secure endpoint for audio transcription.
@@ -413,6 +414,46 @@ public class SttController {
                 ).toList();
 
         return ResponseEntity.ok(turns);
+    }
+
+    /**
+     * Exports a transcription session to standard formats: SRT, VTT, Markdown, or plain TXT.
+     */
+    @GetMapping("/session/{id}/export")
+    public ResponseEntity<String> exportTranscript(
+            @PathVariable("id") Long id,
+            @RequestParam(value = "format", defaultValue = "TXT") String format,
+            HttpServletRequest httpRequest
+    ) {
+        UserSecurityContext context = resolveSecurityContext(httpRequest);
+        Long userId = context.userId();
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        String exported = transcriptExportService.exportTranscript(id, userId, format);
+
+        String fmt = format != null ? format.toUpperCase() : "TXT";
+        String contentType = switch (fmt) {
+            case "SRT" -> "application/x-subrip";
+            case "VTT" -> "text/vtt";
+            case "MARKDOWN", "MD" -> "text/markdown";
+            default -> "text/plain";
+        };
+
+        String ext = switch (fmt) {
+            case "SRT" -> "srt";
+            case "VTT" -> "vtt";
+            case "MARKDOWN", "MD" -> "md";
+            default -> "txt";
+        };
+
+        String filename = "transcript_" + id + "." + ext;
+
+        return ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .contentType(org.springframework.http.MediaType.parseMediaType(contentType))
+                .body(exported);
     }
 
     private UserSecurityContext resolveSecurityContext(HttpServletRequest request) {

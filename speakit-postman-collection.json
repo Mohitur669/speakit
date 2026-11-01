@@ -683,6 +683,50 @@
                         },
                         "description": "Cancels any pending unverified email or profile updates and clears cached OTPs."
                     }
+                },
+                {
+                    "name": "Delete Account Permanently",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"password\": \"{{currentPassword}}\",\n    \"reason\": \"User requested account deletion via settings\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/users/me",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "users",
+                                "me"
+                            ]
+                        },
+                        "description": "Permanently deletes user account and purges personal data in compliance with Apple Guideline 5.1.1(v) and DPDP Act 2023. Financial and billing records are detached and retained in anonymized form for statutory accounting."
+                    }
                 }
             ],
             "description": "# 2. User Profile Management\n\nEndpoints for user profile inspection, avatar management, contact details updates, and password rotation. Sensitive profile modifications (such as email changes) are shielded by a two-phase challenge requiring OTP verification.\n\n### Available Endpoints in this Folder:\n- **`GET /api/user/profile`**: Retrieves complete user profile details, contact information, subscription tier, and account audit metadata.\n- **`POST /api/user/profile/request-update-otp`**: Dispatches an OTP verification challenge to the user prior to committing sensitive profile updates.\n- **`PUT /api/user/profile`**: Applies profile modifications (full name, phone number) and stages pending email changes.\n- **`POST /api/user/profile/verify-email-change`**: Validates email change OTP and promotes the staged email to primary account email.\n- **`POST /api/user/profile/resend-otp`**: Resends profile modification OTP with rate limiting protection.\n- **`POST /api/user/profile/change-password`**: Securely updates account password requiring verification of existing password credentials.\n- **`POST /api/user/profile/cancel-changes`**: Discards unverified pending profile updates and purges staged change records."
@@ -744,6 +788,35 @@
                             ]
                         },
                         "description": "Retrieves current daily synthesis count and daily limit based on the user's plan."
+                    }
+                },
+                {
+                    "name": "Get Usage Analytics (Observability & Burn-Rate)",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/tts/usage/analytics",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "tts",
+                                "usage",
+                                "analytics"
+                            ]
+                        },
+                        "description": "Returns single source-of-truth billing usage, per-engine character distribution (AWS Polly, ElevenLabs, Sarvam), daily burn rate, and projected days until quota exhaustion."
                     }
                 },
                 {
@@ -1233,9 +1306,9 @@
                         },
                         "description": "Retrieves paginated history of transactions and plan subscriptions."
                     }
-                }
+                },
             ],
-            "description": "# 6. Billing & Subscriptions\n\nMonetization, tier entitlements, and payment processing integration powered by Razorpay. Manages subscription plans (Free, Pro, Pro Plus, Enterprise), order creation, and payment verification.\n\n### Available Endpoints in this Folder:\n- **`POST /api/billing/order`**: Generates a verified Razorpay order for subscription plan upgrade, downgrade, or renewal.\n- **`POST /api/billing/verify`**: Validates cryptographic Razorpay HMAC-SHA256 payment signature and activates plan tier entitlements.\n- **`GET /api/billing/history`**: Retrieves historical payment transactions, order IDs, payment amounts, currencies, and invoice statuses."
+            "description": "# 6. Billing & Subscriptions\n\nMonetization, tier entitlements, and payment processing integration powered by Razorpay. Manages subscription plans (Free, Pro, Pro Plus, Enterprise), order creation, and payment verification.\n\n### Available Endpoints in this Folder:\n- **`POST /api/v1/payments/create-order`**: Generates a verified Razorpay order for subscription plan upgrade or renewal.\n- **`POST /api/v1/payments/verify`**: Validates cryptographic Razorpay HMAC-SHA256 payment signature and activates plan tier entitlements.\n- **`GET /api/v1/payments/history`**: Retrieves historical payment transactions, order IDs, payment amounts, currencies, and invoice statuses."
         },
         {
             "name": "7. Webhooks",

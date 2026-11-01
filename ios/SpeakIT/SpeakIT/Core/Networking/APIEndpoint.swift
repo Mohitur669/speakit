@@ -100,6 +100,7 @@ enum APIEndpoint {
     // TTS
     case voices
     case synthesize
+    case usageAnalytics
     
     // STT
     case transcribeLive
@@ -178,6 +179,8 @@ enum APIEndpoint {
             return "/api/tts/voices"
         case .synthesize:
             return "/api/tts/synthesize"
+        case .usageAnalytics:
+            return "/api/tts/usage/analytics"
         case .transcribeLive:
             return "/api/stt/transcribe-live"
         case .transcribeFile:

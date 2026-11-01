@@ -86,6 +86,8 @@ public class DatabaseMigrationConfig implements BeanFactoryPostProcessor, Enviro
                     stmt.execute("CREATE INDEX IF NOT EXISTS idx_log_backup_audits_trigger ON log_backup_audits(trigger_type, status);");
                     stmt.execute("ALTER TABLE log_backup_audits ADD COLUMN IF NOT EXISTS action_type VARCHAR(20) NOT NULL DEFAULT 'Upload';");
                     stmt.execute("CREATE INDEX IF NOT EXISTS idx_log_backup_audits_action ON log_backup_audits(action_type);");
+                    stmt.execute("ALTER TABLE payments ALTER COLUMN user_id DROP NOT NULL;");
+                    stmt.execute("ALTER TABLE subscriptions ALTER COLUMN user_id DROP NOT NULL;");
                     stmt.execute("CREATE INDEX IF NOT EXISTS idx_tts_history_user_created ON tts_history(user_id, created_at);");
                     stmt.execute("CREATE INDEX IF NOT EXISTS idx_stt_user_created ON speech_to_text_requests(user_id, created_at);");
                     stmt.execute("CREATE INDEX IF NOT EXISTS idx_payments_user_created ON payments(user_id, created_at DESC);");

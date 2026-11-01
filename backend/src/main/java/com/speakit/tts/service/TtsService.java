@@ -109,4 +109,34 @@ public class TtsService {
                 })
                 .orElse(0L);
     }
+
+    public com.speakit.tts.dto.UsageAnalyticsDto getUsageAnalytics(Long userId, PlanType planType) {
+        LocalDate today = LocalDate.now();
+        LocalDate currentMonth = today.withDayOfMonth(1);
+        int daysInMonth = today.lengthOfMonth();
+        int dayOfMonth = today.getDayOfMonth();
+        int daysRemainingInMonth = Math.max(0, daysInMonth - dayOfMonth);
+
+        long charactersUsed = sumCharactersUsed(userId, currentMonth.atStartOfDay());
+        long monthlyLimit = subscriptionService.getMonthlyCharacterLimit(planType);
+        long charactersRemaining = Math.max(0, monthlyLimit - charactersUsed);
+        double usagePercentage = monthlyLimit > 0 ? ((double) charactersUsed / monthlyLimit) : 0.0;
+
+        int daysElapsed = Math.max(1, dayOfMonth);
+        double burnRatePerDay = (double) charactersUsed / daysElapsed;
+        double projectedDaysRemaining = burnRatePerDay > 0
+                ? (charactersRemaining / burnRatePerDay)
+                : daysRemainingInMonth;
+
+        return com.speakit.tts.dto.UsageAnalyticsDto.builder()
+                .plan(planType != null ? planType.name() : "FREE")
+                .monthlyLimit(monthlyLimit)
+                .charactersUsed(charactersUsed)
+                .charactersRemaining(charactersRemaining)
+                .usagePercentage(Math.round(usagePercentage * 1000.0) / 10.0)
+                .burnRatePerDay(Math.round(burnRatePerDay * 10.0) / 10.0)
+                .projectedDaysRemaining(Math.round(projectedDaysRemaining * 10.0) / 10.0)
+                .daysRemainingInMonth(daysRemainingInMonth)
+                .build();
+    }
 }

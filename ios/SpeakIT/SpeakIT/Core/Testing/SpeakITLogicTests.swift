@@ -191,6 +191,14 @@ public struct SpeakITLogicTests {
             assert(AppState.shared.isAuthenticated, "AppState isAuthenticated is true")
         }
         
+        // MARK: - 8. Observability & Usage Analytics Tests
+        print("▶️ Testing Observability & Usage Analytics Model...")
+        let sampleAnalytics = UsageAnalytics.sample
+        assert(sampleAnalytics.plan == "PRO", "UsageAnalytics plan is PRO")
+        assert(sampleAnalytics.charactersUsed == 12_400, "UsageAnalytics charactersUsed matches sample")
+        assert(sampleAnalytics.charactersRemaining == 37_600, "UsageAnalytics charactersRemaining matches sample")
+        assert(sampleAnalytics.burnRatePerDay == 413.3, "UsageAnalytics burnRate matches sample")
+        
         print("\n==========================================")
         print("🏁 [TEST SUITE SUMMARY]: \(passedCount) Passed, \(failedCount) Failed")
         print("==========================================\n")

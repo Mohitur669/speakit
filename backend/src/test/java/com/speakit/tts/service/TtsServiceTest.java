@@ -18,7 +18,9 @@ import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -88,5 +90,27 @@ class TtsServiceTest {
 
         assertEquals(400L, total);
         verify(userRepository, times(1)).findUsageLedgerById(1L);
+    }
+
+    @Test
+    void getUsageAnalytics_CalculatesBurnRateAndBreakdown() {
+        java.time.LocalDate currentMonth = java.time.LocalDate.now().withDayOfMonth(1);
+        com.speakit.user.repository.UsageLedgerProjection ledger = mock(com.speakit.user.repository.UsageLedgerProjection.class);
+        when(ledger.getUsageMonth()).thenReturn(currentMonth);
+        when(ledger.getTtsChars()).thenReturn(1500L);
+        when(ledger.getSttChars()).thenReturn(500L);
+        when(userRepository.findUsageLedgerById(1L)).thenReturn(java.util.Optional.of(ledger));
+
+        when(subscriptionService.getMonthlyCharacterLimit(PlanType.PRO)).thenReturn(50000);
+
+        var analytics = ttsService.getUsageAnalytics(1L, PlanType.PRO);
+
+        assertNotNull(analytics);
+        assertEquals("PRO", analytics.getPlan());
+        assertEquals(50000L, analytics.getMonthlyLimit());
+        assertEquals(2000L, analytics.getCharactersUsed());
+        assertEquals(48000L, analytics.getCharactersRemaining());
+        assertTrue(analytics.getBurnRatePerDay() >= 0);
+        assertTrue(analytics.getProjectedDaysRemaining() > 0);
     }
 }

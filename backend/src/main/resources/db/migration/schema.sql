@@ -469,6 +469,15 @@ BEGIN
         ALTER TABLE users ADD COLUMN last_avatar_change_date DATE;
     END IF;
 
+    -- Make user_id nullable on subscriptions and payments for DPDP Act anonymized retention
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='payments' AND column_name='user_id' AND is_nullable='NO') THEN
+        ALTER TABLE payments ALTER COLUMN user_id DROP NOT NULL;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='subscriptions' AND column_name='user_id' AND is_nullable='NO') THEN
+        ALTER TABLE subscriptions ALTER COLUMN user_id DROP NOT NULL;
+    END IF;
+
     -- Ensure full_text exists on tts_history table
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tts_history' AND column_name='full_text') THEN
         ALTER TABLE tts_history ADD COLUMN full_text TEXT;
@@ -634,4 +643,5 @@ CREATE INDEX IF NOT EXISTS idx_log_backup_audits_created_at ON log_backup_audits
 CREATE INDEX IF NOT EXISTS idx_log_backup_audits_trigger ON log_backup_audits(trigger_type, status);
 ALTER TABLE log_backup_audits ADD COLUMN IF NOT EXISTS action_type VARCHAR(20) NOT NULL DEFAULT 'Upload';
 CREATE INDEX IF NOT EXISTS idx_log_backup_audits_action ON log_backup_audits(action_type);
+
 

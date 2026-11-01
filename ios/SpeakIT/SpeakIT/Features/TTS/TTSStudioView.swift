@@ -475,17 +475,6 @@ struct TTSStudioView: View {
     }
 }
 
-// Native Share Sheet Wrapper
-struct ShareActivityView: UIViewControllerRepresentable {
-    let activityItems: [Any]
-    
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
-    }
-    
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
-}
-
 #Preview {
     TTSStudioView()
         .environment(AppState.shared)
