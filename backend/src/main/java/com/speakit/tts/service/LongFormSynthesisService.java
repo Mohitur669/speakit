@@ -18,6 +18,7 @@ import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import software.amazon.awssdk.services.polly.model.Engine;
 
 /**
  * Enterprise Service for asynchronous long-form document and audiobook synthesis.
@@ -149,7 +150,7 @@ public class LongFormSynthesisService {
             int completed = 0;
 
             for (String chunk : chunks) {
-                InputStream chunkStream = synthesizeChunk(chunk, voiceId, format, request);
+                InputStream chunkStream = synthesizeChunk(chunk, voiceId, format, request, planType);
                 if (chunkStream != null) {
                     chunkStream.transferTo(combinedAudio);
                 }
@@ -203,7 +204,7 @@ public class LongFormSynthesisService {
         }
     }
 
-    private InputStream synthesizeChunk(String chunk, String voiceId, String format, TtsRequest request) {
+    private InputStream synthesizeChunk(String chunk, String voiceId, String format, TtsRequest request, PlanType planType) {
         boolean isElevenLabs = (request != null && request.isElevenLabs()) ||
                 (elevenLabsService != null && voiceId != null && elevenLabsService.getAvailableVoices().stream().anyMatch(v -> voiceId.equals(v.get("id"))));
 
@@ -228,7 +229,15 @@ public class LongFormSynthesisService {
             return sarvamService.synthesizeSpeech(chunk, speaker, lang, pace, rate);
         }
 
-        return pollyService.synthesizeSpeech(chunk, voiceId, format, Collections.emptyMap());
+        Engine engine = pollyService.getBestEngineForVoice(voiceId, planType);
+        Map<String, Object> additionalParams = new HashMap<>();
+        if (engine != null) {
+            additionalParams.put("engine", engine);
+        }
+        if (planType != null) {
+            additionalParams.put("planType", planType);
+        }
+        return pollyService.synthesizeSpeech(chunk, voiceId, format, additionalParams);
     }
 
     private String determineVoiceType(String voiceId, TtsRequest request) {
