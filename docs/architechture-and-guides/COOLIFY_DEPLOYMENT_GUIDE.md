@@ -655,40 +655,25 @@ Any automated machine node (like GitHub Actions runners via OIDC, OAuth, or tagg
 
 ---
 
-#### 2.2 Choose Your Authentication Method for GitHub Actions
+#### 2.2 Generate Tailscale Auth Key for CI/CD (Fastest & Officially Recommended)
 
-##### Option A: Workload Identity Federation / OIDC (Industry Gold Standard — Keyless)
-Tailscale supports OpenID Connect (OIDC) across all tiers (including Free):
-1. In Tailscale Admin Console, go to **Settings > Trust credentials**.
-2. Click **Add credential** / **Create OIDC credential**:
-   * **Step 1: Settings**:
-     * **Description**: `speakit-github-coolify-deploy`
-     * **Issuer**: `GitHub`
-     * **Issuer URL**: `https://token.actions.githubusercontent.com`
-     * **Subject**: `repo:Mohitur669/speakit:*`
-     * **Custom claims**: Leave empty / unconfigured.
-     * Click **Next** to proceed to Scopes.
-   * **Step 2: Scopes**:
-     * Under **Keys**, click **Auth Keys** > select **Write** (or Read & Write).
-     * Under **Devices**, click **Core** > select **Write** (or Read & Write).
-     * In the **Tags** selector that appears, choose **`tag:ci`**.
-     * Click **Create credential** (or **Save**).
-3. Copy the generated **Client ID** and **Audience** (`api.tailscale.com/...`) and store them in GitHub Secrets as `TS_OIDC_CLIENT_ID` and `TS_OIDC_AUDIENCE`.
+Using a pre-authorized Tailscale Auth Key is the simplest, most reliable method officially supported by `tailscale/github-action`:
 
-##### Option B: OAuth Client (Under Trust Credentials)
-1. Go to **Settings > Trust credentials** (or **OAuth Clients**).
-2. Click **Generate OAuth Client**.
-3. Select **Devices (Write)** and/or **Auth keys (Write)**, choose tag `tag:ci`, and save.
-4. Store `TS_OAUTH_CLIENT_ID` and `TS_OAUTH_SECRET` in GitHub Secrets.
-
-##### Option C: Ephemeral Auth Key (Simplest Single-Secret Setup)
-1. Go to **Settings > Keys**.
+1. Open the **[Tailscale Admin Console > Settings > Keys](https://login.tailscale.com/admin/settings/keys)**.
 2. Click **Generate auth key...**:
-   * **Reusable**: ✅ Checked.
-   * **Ephemeral**: ✅ Checked.
-   * **Pre-authorized**: ✅ Checked.
+   * **Reusable**: ✅ **Checked** (allows GitHub Actions to reuse it on every push).
+   * **Ephemeral**: ✅ **Checked** (automatically removes the GitHub runner from your Tailscale device list once the build job completes).
+   * **Pre-authorized**: ✅ **Checked**.
    * **Tags**: Assign `tag:ci`.
-3. Copy key and store as GitHub Secret `TAILSCALE_AUTHKEY`.
+3. Click **Generate key**.
+4. Copy the generated key immediately (starts with `tskey-auth-...`).
+5. Store as GitHub Secret: **`TAILSCALE_AUTHKEY`**.
+
+> [!TIP]
+> **Alternative (OAuth Client)**: If your organization mandates OAuth over Auth Keys:
+> 1. Go to **Settings** > **Trust credentials** (or **OAuth Clients**) > **Generate OAuth Client**.
+> 2. Select **Devices (Write)** and/or **Auth Keys (Write)**, choose tag **`tag:ci`**, and save.
+> 3. Store `TS_OAUTH_CLIENT_ID` and `TS_OAUTH_SECRET` in GitHub Secrets.
 
 ---
 
@@ -700,8 +685,7 @@ In your GitHub repository:
 
 | Secret Name | Example / Value | Purpose |
 | :--- | :--- | :--- |
-| **`TS_OIDC_CLIENT_ID`** | `...` | Tailscale OIDC Client ID. |
-| **`TS_OIDC_AUDIENCE`** | `api.tailscale.com/...` | Tailscale OIDC Audience URL. |
+| **`TAILSCALE_AUTHKEY`** | `tskey-auth-...` | Ephemeral reusable Tailscale authentication key. |
 | **`COOLIFY_PROD_DEPLOY_URL`** | `http://<YOUR_SERVER_TAILSCALE_IP>:<COOLIFY_PORT>/api/v1/deploy?uuid=<YOUR_APP_UUID>&force=false` | Private deploy webhook URL. Stores the private IP, port, and app UUID securely. |
 | **`COOLIFY_FQDN_HOST`** | `<YOUR_COOLIFY_FQDN>` (e.g. `coolify.yourdomain.com`) | Injected as the `Host:` header so Coolify's reverse proxy routes the request correctly. |
 | **`COOLIFY_API_TOKEN`** | *[Optional Bearer Token]* | Required only if token-based API authentication is enabled in Coolify. |
@@ -733,16 +717,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
-    # Required for OIDC Workload Identity Federation
-    permissions:
-      id-token: write
-      contents: read
-
     steps:
-      - name: Connect to Tailscale via OIDC
+      - name: Connect to Private Tailnet
         uses: tailscale/github-action@v3
         with:
-          oauth-client-id: ${{ secrets.TS_OIDC_CLIENT_ID }}
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
           audience: ${{ secrets.TS_OIDC_AUDIENCE }}
           tags: tag:ci
 

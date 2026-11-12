@@ -169,26 +169,19 @@ Because Coolify's deploy webhook is an API endpoint (`/api/v1/deploy?...`), Cool
 
 ### 2.3 Choose Your Authentication Method for GitHub Actions
 
-#### Option A: Workload Identity Federation / OIDC (Industry Gold Standard — Keyless)
-Tailscale supports OpenID Connect (OIDC) across all tiers (including the Free tier). This eliminates static long-lived keys:
-1. In Tailscale Admin Console, go to **Settings > Trust credentials**.
-2. Click **Add credential** / **Create OIDC credential**:
-   * **Step 1: Settings**:
-     * **Description**: `speakit-github-coolify-deploy`
-     * **Issuer**: `GitHub`
-     * **Issuer URL**: `https://token.actions.githubusercontent.com`
-     * **Subject**: `repo:Mohitur669/speakit:*`
-     * **Custom claims**: Leave empty / unconfigured.
-     * Click **Next** to proceed to Scopes.
-   * **Step 2: Scopes**:
-     * Under **Keys**, click **Auth Keys** > select **Write** (or Read & Write).
-     * Under **Devices**, click **Core** > select **Write** (or Read & Write).
-     * In the **Tags** selector that appears, choose **`tag:ci`**.
-     * Click **Create credential** (or **Save**).
-3. Copy the generated **Client ID** and **Audience** (`api.tailscale.com/...`).
-4. Add to GitHub Secrets:
-   * **`TS_OIDC_CLIENT_ID`**: Your Tailscale OIDC client ID.
-   * **`TS_OIDC_AUDIENCE`**: Your Tailscale Audience URL.
+#### Option A: Ephemeral Auth Key (Fastest & Officially Recommended)
+Using a pre-authorized Tailscale Auth Key is the simplest, most reliable method officially supported by `tailscale/github-action`:
+
+1. Open **[Tailscale Admin Console > Settings > Keys](https://login.tailscale.com/admin/settings/keys)**.
+2. Click **Generate auth key...**:
+   * **Reusable**: ✅ Checked.
+   * **Ephemeral**: ✅ Checked (automatically removes the GitHub runner from your Tailscale device list once the build job completes).
+   * **Pre-authorized**: ✅ Checked.
+   * **Tags**: Assign `tag:ci`.
+3. Click **Generate key**.
+4. Copy the generated key immediately (`tskey-auth-...`).
+5. Add to GitHub Secrets:
+   * **`TAILSCALE_AUTHKEY`**: `tskey-auth-...`
 
 #### Option B: OAuth Client (Under Trust Credentials)
 1. In Tailscale Admin Console, go to **Settings > Trust credentials** (or **OAuth Clients**).
@@ -199,16 +192,6 @@ Tailscale supports OpenID Connect (OIDC) across all tiers (including the Free ti
    * **`TS_OAUTH_CLIENT_ID`**
    * **`TS_OAUTH_SECRET`**
 
-#### Option C: Ephemeral Auth Key (Simplest Single-Secret Setup)
-1. In Tailscale Admin Console, go to **Settings > Keys**.
-2. Click **Generate auth key...**:
-   * **Reusable**: ✅ Checked.
-   * **Ephemeral**: ✅ Checked.
-   * **Pre-authorized**: ✅ Checked.
-   * **Tags**: Assign `tag:ci`.
-3. Add to GitHub Secrets:
-   * **`TAILSCALE_AUTHKEY`**: `tskey-auth-...`
-
 ---
 
 ### 2.4 Store Secrets in GitHub Repository
@@ -216,8 +199,7 @@ In your GitHub repository > **Settings** > **Secrets and variables** > **Actions
 
 | Secret Name | Value | Description |
 | :--- | :--- | :--- |
-| **`TS_OIDC_CLIENT_ID`** | `...` | Tailscale OIDC Client ID. |
-| **`TS_OIDC_AUDIENCE`** | `api.tailscale.com/...` | Tailscale OIDC Audience URL. |
+| **`TAILSCALE_AUTHKEY`** | `tskey-auth-...` | Tailscale Ephemeral Reusable Auth Key. |
 | **`COOLIFY_PROD_DEPLOY_URL`** | `http://<YOUR_SERVER_TAILSCALE_IP>:<COOLIFY_PORT>/api/v1/deploy?uuid=<YOUR_APP_UUID>&force=false` | Private deploy webhook URL. |
 | **`COOLIFY_FQDN_HOST`** | `<YOUR_COOLIFY_FQDN>` (e.g. `coolify.yourdomain.com`) | Injected as `Host:` header for internal proxy routing. |
 | **`COOLIFY_API_TOKEN`** | *[Optional]* | Bearer token if API authentication is enabled. |
@@ -247,18 +229,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
-    # Required for OIDC Workload Identity Federation
-    permissions:
-      id-token: write
-      contents: read
-
     steps:
-      - name: Connect to Tailscale via OIDC
+      - name: Connect to Private Tailnet
         uses: tailscale/github-action@v3
         with:
-          oauth-client-id: ${{ secrets.TS_OIDC_CLIENT_ID }}
-          audience: ${{ secrets.TS_OIDC_AUDIENCE }}
-          tags: tag:ci
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
 
       - name: Trigger Coolify Backend Deployment
         env:
