@@ -9,16 +9,24 @@ import lombok.Data;
 
 @Data
 public class TtsRequest {
-    @NotBlank(message = "Text cannot be blank")
-    @Size(max = 10000, message = "Text is too long")
     private String text;
+
+    /**
+     * Staging token referencing a pre-validated and extracted PDF document.
+     * When present, text is sourced directly from the server-side staged document cache.
+     */
+    private String documentToken;
+
+    private String sourceFileName;
+
+    private String title;
 
     @NotNull(message = "Voice ID cannot be null")
     @Pattern(regexp = "^[a-zA-Z0-9\\-_:]+$", message = "Invalid Voice ID format")
     private String voiceId = "Joanna";   // AWS Polly voice
 
     @Size(max = 100, message = "Voice name is too long")
-    @Pattern(regexp = "^[a-zA-Z0-9\\-_:\\s().,']+$", message = "Invalid Voice Name format")
+    @Pattern(regexp = "^[\\p{L}0-9\\-_:\\s().,']+$", message = "Invalid Voice Name format")
     private String voiceName;            // Human readable name
 
     @Pattern(regexp = "^(STANDARD|NEURAL|NATURAL|INDIAN)?$", message = "Invalid Voice Type format")

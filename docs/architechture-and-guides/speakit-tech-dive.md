@@ -72,6 +72,8 @@ _An exhaustive architectural handbook, system design review, technical interview
     - 25.2. [Async Telegram RestClient Webhook Flow Diagram](#252-async-telegram-restclient-webhook-flow-diagram)
 26. [AI & Speech Synthesis Providers (Polly, ElevenLabs, Sarvam)](#26-ai--speech-synthesis-providers-polly-elevenlabs-sarvam)
     - 26.3. [Dynamic AI Voice Engine Strategy Router Diagram](#263-dynamic-ai-voice-engine-strategy-router-diagram)
+    - 26.4. [Long-Form PDF & Document Synthesis Lifecycle (Audiobook Pipeline)](#264-long-form-pdf--document-synthesis-lifecycle-audiobook-pipeline)
+    - 26.5. [PDF-to-Audiobook End-to-End Processing Flow Diagram](#265-pdf-to-audiobook-end-to-end-processing-flow-diagram)
 27. [Git Workflow & Commit Conventions](#27-git-workflow--commit-conventions)
 28. [AI Agent Code Mod Rules](#28-ai-agent-code-mod-rules)
 29. [Code Review Checklist](#29-code-review-checklist)
@@ -1122,6 +1124,102 @@ graph TD
     Strategy -->|Engine standard or neural| AWS_Polly["AWS Polly Client"]
     Strategy -->|Engine ElevenLabs| ElevenLabs["ElevenLabs Client"]
     Strategy -->|Engine Sarvam| Sarvam["Sarvam AI Client"]
+```
+
+</div>
+
+### 26.4 Long-Form PDF & Document Synthesis Lifecycle (Audiobook Pipeline)
+
+SpeakIT provides an enterprise-grade document-to-audiobook pipeline designed for synthesizing multi-page PDFs containing 10,000+ words without encountering HTTP gateway timeouts (such as Cloudflare's 100-second limit). The system uses a two-stage decoupled architecture: synchronous pre-validation & text staging, followed by asynchronous chunked synthesis.
+
+#### 1. Security & Deep Document Validation (`PdfDocumentValidator`)
+To prevent malicious payload injections, denial-of-service (Zip-bombs/PDF-bombs), and unentitled usage, incoming documents undergo strict server-side validation:
+* **Binary Magic Byte Verification**: Never relies on client-supplied `Content-Type` headers or file extensions. The validator reads the initial byte stream and verifies the PDF file signature (`%PDF-` in the first 1024 bytes).
+* **Path Traversal & Filename Sanitization**: Strips directory navigation characters (`..`, `/`, `\`) and blocks hidden or executable extensions.
+* **Tier-Based Quota Enforcement**:
+  * `FREE`: 5 MB max file size, up to 10 pages, up to 5,000 words.
+  * `PRO`: 25 MB max file size, up to 100 pages, up to 50,000 words.
+  * `PRO_PLUS`: 50 MB max file size, up to 300 pages, up to 150,000 words.
+
+#### 2. Text Extraction & Pre-Analysis (`PdfProcessingService`)
+* **Apache PDFBox 3.0.4**: Uses `Loader.loadPDF(RandomAccessReadBuffer)` for thread-safe memory management.
+* **Encryption & Password Detection**: Calls `PDDocument.isEncrypted()`. Protected documents are immediately rejected with a clean `400 Bad Request` specifying that encrypted files must be unlocked before synthesis.
+* **Intelligent Text Normalization**: Employs `PDFTextStripper` to extract text while respecting Unicode characters, paragraph boundaries, and whitespace normalization.
+* **Empty & Image-Only Scanned PDF Detection**: If extracted text contains no meaningful words, the system rejects the request with an explicit advisory informing the user that OCR (Optical Character Recognition) is required.
+* **Word Counting & Audio Estimation**: Implements regex `\p{L}+[\p{L}\p{N}'’-]*` to accurately count words across languages. Audio duration is estimated using an industry-standard 150 words per minute (WPM) heuristic.
+
+#### 3. Staged Document Token Architecture
+Uploading multi-megabyte PDFs or passing huge JSON payloads during synthesis request initiation is prone to network failure.
+* `POST /api/tts/documents/analyze` validates and extracts the document, stores the parsed text in a thread-safe `ConcurrentHashMap` with a **30-minute TTL**, and returns a UUID `documentToken` along with document metrics (pages, words, estimated audio duration).
+* Scheduled eviction (`@Scheduled(fixedRate = 300000)`) purges expired tokens automatically to prevent memory leaks.
+
+#### 4. Asynchronous Sentence Chunking & Dynamic Synthesis (`LongFormSynthesisService`)
+* `POST /api/tts/jobs` (or `/api/tts/jobs/document`) receives the `documentToken`, voice parameters, and creates a `LongFormJobStatusDto` in the `QUEUED` state.
+* **Sentence Boundary Splitting**: The engine breaks extracted text using regex `(?<=[.!?])\s+`, packing sentences up to an 800-character ceiling to guarantee that neural speech engines maintain natural cadence and intonation without abrupt mid-sentence cuts.
+* **Multi-Engine Synthesis**: Each chunk is dynamically routed to the matching provider (AWS Polly, ElevenLabs, or Sarvam AI).
+* **Audio Concatenation & Cloud Storage**: Completed audio chunk byte streams are assembled in memory and uploaded to Cloudflare R2 via `AudioStorageService` under dedicated CDN bucket path prefixes:
+  * `translate-audio/`: Standard Text-to-Speech audio (`https://cdn-speakit-audio.mohitur.com/translate-audio/u_{id}_{ts}_{hash}.mp3`)
+  * `transcribe-audio/`: Speech-to-Text recorded/uploaded audio (`https://cdn-speakit-audio.mohitur.com/transcribe-audio/u_{id}_{ts}_{hash}.mp3`)
+  * `pdf-audio/`: Long-form PDF audiobook synthesis (`https://cdn-speakit-audio.mohitur.com/pdf-audio/u_{id}_{ts}_{hash}.mp3`)
+* **Client Recovery & Polling**: Frontend (Angular) and native iOS (SwiftUI) poll `GET /api/tts/jobs/{jobId}` every 2.5 seconds. The iOS app persists active job identifiers in `UserDefaults` to automatically resume tracking across app restarts.
+
+<div class="diagram-container">
+
+### 26.5 PDF-to-Audiobook End-to-End Processing Flow Diagram
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as User (Angular / iOS)
+    participant Client as Client Application
+    participant Gateway as Cloudflare Edge / WAF
+    participant Controller as TtsController
+    participant Validator as PdfDocumentValidator
+    participant Parser as PdfProcessingService
+    participant JobService as LongFormSynthesisService
+    participant AI as TTS Engine (Polly/ElevenLabs/Sarvam)
+    participant Storage as Cloudflare R2 / S3
+
+    Note over User,Parser: Phase 1: Pre-validation & Document Staging
+    User->>Client: Selects / Drops PDF Document
+    Client->>Gateway: POST /api/tts/documents/analyze (Multipart PDF)
+    Gateway->>Controller: Forward Request
+    Controller->>Validator: Validate Magic Bytes (%PDF-), Size, MIME
+    Validator-->>Controller: Validation OK
+    Controller->>Parser: Extract Text, Pages, Word Count
+    Parser->>Parser: PDFBox parse, verify unencrypted, extract Unicode text
+    Parser->>Parser: Stage text with UUID Token (30-min TTL cache)
+    Parser-->>Controller: DocumentAnalysisDto (token, pages, words, duration)
+    Controller-->>Client: 200 OK + Analysis Summary
+    Client-->>User: Display Document Summary (e.g. 86 pages, 24k words, 2h 45m)
+
+    Note over User,Storage: Phase 2: Asynchronous Job Processing
+    User->>Client: Configures Voice & Clicks "Generate Audiobook"
+    Client->>Gateway: POST /api/tts/jobs (documentToken, voiceId, format)
+    Gateway->>Controller: Forward Job Request
+    Controller->>JobService: Claim Token & Enqueue Synthesis Job
+    JobService-->>Controller: Job ID Created (QUEUED)
+    Controller-->>Client: 202 Accepted (jobId)
+    
+    activate JobService
+    JobService->>JobService: Update Status -> PROCESSING
+    JobService->>JobService: Split Text by Sentence Regex (?<=[.!?])\s+ (<=800 chars)
+    loop For each chunk (1 to N)
+        JobService->>AI: Synthesize Audio Chunk (Polly/Eleven/Sarvam)
+        AI-->>JobService: Audio Bytes (MP3)
+        JobService->>JobService: Update progress (currentChunk / totalChunks)
+    end
+    JobService->>JobService: Concatenate Audio Byte Streams
+    JobService->>Storage: Upload Assembled Audiobook (audio/mpeg)
+    Storage-->>JobService: Public / CDN Audio URL
+    JobService->>JobService: Update Status -> COMPLETED
+    deactivate JobService
+
+    loop Poll every 2.5s
+        Client->>Controller: GET /api/tts/jobs/{jobId}
+        Controller-->>Client: LongFormJobStatusDto (progress, status, audioUrl)
+    end
+    Client-->>User: Synthesis Complete! Enable Playback & Download
 ```
 
 </div>

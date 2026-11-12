@@ -95,17 +95,51 @@ public class AudioStorageService {
 
     /**
      * Stores synthesized audio bytes in Cloudflare R2 or local disk fallback.
+     * Defaults to translate-audio/ folder prefix for Text-to-Speech synthesis.
      */
     public StoredAudio storeAudio(Long userId, byte[] audioBytes, String format) throws IOException {
+        return storeTranslateAudio(userId, audioBytes, format);
+    }
+
+    /**
+     * Stores Text-to-Speech / Translate audio under translate-audio/ prefix.
+     */
+    public StoredAudio storeTranslateAudio(Long userId, byte[] audioBytes, String format) throws IOException {
+        return storeAudio(userId, audioBytes, format, "translate-audio");
+    }
+
+    /**
+     * Stores Speech-to-Text / Transcribe audio under transcribe-audio/ prefix.
+     */
+    public StoredAudio storeTranscribeAudio(Long userId, byte[] audioBytes, String format) throws IOException {
+        return storeAudio(userId, audioBytes, format, "transcribe-audio");
+    }
+
+    /**
+     * Stores long-form document/PDF audiobook audio in Cloudflare R2 under pdf-audio/ prefix.
+     */
+    public StoredAudio storePdfAudio(Long userId, byte[] audioBytes, String format) throws IOException {
+        return storeAudio(userId, audioBytes, format, "pdf-audio");
+    }
+
+    /**
+     * Stores synthesized audio in Cloudflare R2 or local disk under a specified folder prefix.
+     */
+    public StoredAudio storeAudio(Long userId, byte[] audioBytes, String format, String folderPrefix) throws IOException {
         if (audioBytes == null || audioBytes.length == 0) {
             throw new IllegalArgumentException("Audio bytes must not be empty");
+        }
+
+        String prefix = (folderPrefix != null && !folderPrefix.isBlank()) ? folderPrefix.trim() : "translate-audio";
+        if (prefix.endsWith("/")) {
+            prefix = prefix.substring(0, prefix.length() - 1);
         }
 
         String extension = getExtension(format);
         String mimeType = getMimeType(format);
         long timestamp = System.currentTimeMillis();
         String uniqueSuffix = UUID.randomUUID().toString().substring(0, 8);
-        String key = String.format("audio/u_%d_%d_%s%s", userId != null ? userId : 0, timestamp, uniqueSuffix, extension);
+        String key = String.format("%s/u_%d_%d_%s%s", prefix, userId != null ? userId : 0, timestamp, uniqueSuffix, extension);
 
         if (r2Enabled && s3Client != null) {
             try {
@@ -132,17 +166,20 @@ public class AudioStorageService {
         }
 
         // Local filesystem fallback
+        Path targetDir = Paths.get("uploads", prefix);
+        Files.createDirectories(targetDir);
+
         String fileName = String.format("u_%d_%d_%s%s", userId != null ? userId : 0, timestamp, uniqueSuffix, extension);
-        Path targetPath = localFallbackDir.resolve(fileName).normalize().toAbsolutePath();
-        if (!targetPath.startsWith(localFallbackDir.toAbsolutePath().normalize())) {
+        Path targetPath = targetDir.resolve(fileName).normalize().toAbsolutePath();
+        if (!targetPath.startsWith(targetDir.toAbsolutePath().normalize())) {
             throw new SecurityException("Path traversal attempt detected in audio filename: " + fileName);
         }
         Files.write(targetPath, audioBytes, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
         log.info("Synthesized audio saved to local storage: {}", targetPath);
 
         return new StoredAudio(
-                "/uploads/audio/" + fileName,
-                "audio/" + fileName,
+                "/uploads/" + prefix + "/" + fileName,
+                prefix + "/" + fileName,
                 audioBytes.length,
                 mimeType
         );
@@ -154,11 +191,13 @@ public class AudioStorageService {
     public @Nullable InputStream getAudioInputStream(String storageKey, String audioUrl) throws IOException {
         String key = storageKey;
         if ((key == null || key.isBlank()) && audioUrl != null && !audioUrl.isBlank()) {
-            if (audioUrl.contains("audio/")) {
-                int index = audioUrl.indexOf("audio/");
-                key = audioUrl.substring(index);
-                if (key.contains("?")) {
-                    key = key.substring(0, key.indexOf("?"));
+            for (String p : new String[]{"translate-audio/", "transcribe-audio/", "pdf-audio/", "audio/"}) {
+                if (audioUrl.contains(p)) {
+                    key = audioUrl.substring(audioUrl.indexOf(p));
+                    if (key.contains("?")) {
+                        key = key.substring(0, key.indexOf("?"));
+                    }
+                    break;
                 }
             }
         }
@@ -175,20 +214,29 @@ public class AudioStorageService {
         }
 
         // Check local storage fallback
-        if (audioUrl != null && audioUrl.contains("/uploads/audio/")) {
-            String rawFileName = audioUrl.substring(audioUrl.lastIndexOf('/') + 1);
+        if (key != null && (key.startsWith("translate-audio/") || key.startsWith("transcribe-audio/") || key.startsWith("pdf-audio/") || key.startsWith("audio/"))) {
+            String prefixPart = key.substring(0, key.indexOf('/'));
+            Path dir = Paths.get("uploads", prefixPart);
+            String rawFileName = key.substring(key.lastIndexOf('/') + 1);
             if (rawFileName.matches("^[a-zA-Z0-9_.-]+$")) {
-                Path path = localFallbackDir.resolve(rawFileName).normalize().toAbsolutePath();
-                if (path.startsWith(localFallbackDir.toAbsolutePath().normalize()) && Files.exists(path)) {
+                Path path = dir.resolve(rawFileName).normalize().toAbsolutePath();
+                if (path.startsWith(dir.toAbsolutePath().normalize()) && Files.exists(path)) {
                     return Files.newInputStream(path);
                 }
             }
-        } else if (key != null && key.startsWith("audio/")) {
-            String rawFileName = key.substring(key.lastIndexOf('/') + 1);
-            if (rawFileName.matches("^[a-zA-Z0-9_.-]+$")) {
-                Path path = localFallbackDir.resolve(rawFileName).normalize().toAbsolutePath();
-                if (path.startsWith(localFallbackDir.toAbsolutePath().normalize()) && Files.exists(path)) {
-                    return Files.newInputStream(path);
+        } else if (audioUrl != null && audioUrl.contains("/uploads/")) {
+            for (String p : new String[]{"/uploads/translate-audio/", "/uploads/transcribe-audio/", "/uploads/pdf-audio/", "/uploads/audio/"}) {
+                if (audioUrl.contains(p)) {
+                    String prefixPart = p.replace("/uploads/", "").replace("/", "");
+                    Path dir = Paths.get("uploads", prefixPart);
+                    String rawFileName = audioUrl.substring(audioUrl.lastIndexOf('/') + 1);
+                    if (rawFileName.matches("^[a-zA-Z0-9_.-]+$")) {
+                        Path path = dir.resolve(rawFileName).normalize().toAbsolutePath();
+                        if (path.startsWith(dir.toAbsolutePath().normalize()) && Files.exists(path)) {
+                            return Files.newInputStream(path);
+                        }
+                    }
+                    break;
                 }
             }
         }
@@ -202,11 +250,13 @@ public class AudioStorageService {
     public void deleteAudio(String storageKey, String audioUrl) {
         String key = storageKey;
         if ((key == null || key.isBlank()) && audioUrl != null && !audioUrl.isBlank()) {
-            if (audioUrl.contains("audio/")) {
-                int index = audioUrl.indexOf("audio/");
-                key = audioUrl.substring(index);
-                if (key.contains("?")) {
-                    key = key.substring(0, key.indexOf("?"));
+            for (String p : new String[]{"translate-audio/", "transcribe-audio/", "pdf-audio/", "audio/"}) {
+                if (audioUrl.contains(p)) {
+                    key = audioUrl.substring(audioUrl.indexOf(p));
+                    if (key.contains("?")) {
+                        key = key.substring(0, key.indexOf("?"));
+                    }
+                    break;
                 }
             }
         }
@@ -218,13 +268,31 @@ public class AudioStorageService {
                         .key(key)
                         .build());
                 log.info("Deleted audio from Cloudflare R2: {}", key);
-            } else if (audioUrl != null && audioUrl.contains("/uploads/audio/")) {
-                String rawFileName = audioUrl.substring(audioUrl.lastIndexOf('/') + 1);
+            } else if (key != null && (key.startsWith("translate-audio/") || key.startsWith("transcribe-audio/") || key.startsWith("pdf-audio/") || key.startsWith("audio/"))) {
+                String prefixPart = key.substring(0, key.indexOf('/'));
+                Path dir = Paths.get("uploads", prefixPart);
+                String rawFileName = key.substring(key.lastIndexOf('/') + 1);
                 if (rawFileName.matches("^[a-zA-Z0-9_.-]+$")) {
-                    Path path = localFallbackDir.resolve(rawFileName).normalize().toAbsolutePath();
-                    if (path.startsWith(localFallbackDir.toAbsolutePath().normalize())) {
+                    Path path = dir.resolve(rawFileName).normalize().toAbsolutePath();
+                    if (path.startsWith(dir.toAbsolutePath().normalize())) {
                         Files.deleteIfExists(path);
                         log.info("Deleted local audio: {}", path);
+                    }
+                }
+            } else if (audioUrl != null && audioUrl.contains("/uploads/")) {
+                for (String p : new String[]{"/uploads/translate-audio/", "/uploads/transcribe-audio/", "/uploads/pdf-audio/", "/uploads/audio/"}) {
+                    if (audioUrl.contains(p)) {
+                        String prefixPart = p.replace("/uploads/", "").replace("/", "");
+                        Path dir = Paths.get("uploads", prefixPart);
+                        String rawFileName = audioUrl.substring(audioUrl.lastIndexOf('/') + 1);
+                        if (rawFileName.matches("^[a-zA-Z0-9_.-]+$")) {
+                            Path path = dir.resolve(rawFileName).normalize().toAbsolutePath();
+                            if (path.startsWith(dir.toAbsolutePath().normalize())) {
+                                Files.deleteIfExists(path);
+                                log.info("Deleted local audio: {}", path);
+                            }
+                        }
+                        break;
                     }
                 }
             }

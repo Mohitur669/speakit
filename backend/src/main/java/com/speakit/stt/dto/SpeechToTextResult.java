@@ -16,4 +16,6 @@ public class SpeechToTextResult {
     private String provider;
     private String transliteration;
     private String mode;
+    private String audioUrl;
+    private String storageKey;
 }

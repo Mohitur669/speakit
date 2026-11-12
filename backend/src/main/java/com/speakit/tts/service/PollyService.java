@@ -69,10 +69,15 @@ public class PollyService implements SpeechProvider {
 
     @Override
     public InputStream synthesizeSpeech(String text, String voiceId, String outputFormat, @Nullable Map<String, Object> additionalParams) {
+        PlanType planType = null;
+        if (additionalParams != null && additionalParams.get("planType") instanceof PlanType pt) {
+            planType = pt;
+        }
+
         // Use provided engine if present, otherwise negotiate
         Engine engine = (additionalParams != null && additionalParams.containsKey("engine")) 
                 ? (Engine) additionalParams.get("engine") 
-                : getBestEngineForVoice(voiceId, null);
+                : getBestEngineForVoice(voiceId, planType);
         
         log.info("Speech Synthesis: Using {} engine for voice={}", engine, voiceId);
         return synthesize(text, voiceId, outputFormat, engine);
@@ -99,6 +104,7 @@ public class PollyService implements SpeechProvider {
                 .orElse(null);
 
         // Security check: Only PRO/PRO_PLUS/ENTERPRISE users can use NEURAL
+        boolean isExplicitFreePlan = (planType == PlanType.FREE);
         boolean isPremiumPlan = planType != null && (
                 planType == PlanType.PRO || 
                 planType == PlanType.PRO_PLUS || 
@@ -108,7 +114,7 @@ public class PollyService implements SpeechProvider {
         if (voice != null) {
             // Check if the voice supports standard engine. If not, it requires a premium plan.
             if (!voice.supportedEngines().contains(Engine.STANDARD)) {
-                if (!isPremiumPlan) {
+                if (isExplicitFreePlan) {
                     throw new SpeechConversionException("Voice '" + voiceId + "' requires a premium subscription (Neural engine only).");
                 }
                 return Engine.NEURAL;

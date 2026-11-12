@@ -80,6 +80,38 @@ export interface PaginatedHistory {
   };
 }
 
+export interface DocumentAnalysisDto {
+  documentToken: string;
+  fileName: string;
+  fileSizeBytes: number;
+  pageCount: number;
+  wordCount: number;
+  characterCount: number;
+  estimatedDurationSeconds: number;
+  estimatedDurationFormatted: string;
+  validationStatus: string;
+  warnings?: string[];
+}
+
+export interface LongFormJobStatusDto {
+  jobId: string;
+  userId: number;
+  status: 'QUEUED' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+  progressPercent: number;
+  totalChunks: number;
+  completedChunks: number;
+  audioUrl?: string;
+  textSnippet?: string;
+  totalCharacters?: number;
+  voiceId?: string;
+  sourceFileName?: string;
+  title?: string;
+  estimatedDurationSeconds?: number;
+  errorMessage?: string;
+  createdAt?: string;
+  completedAt?: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class TtsService {
   private baseUrl: string;
@@ -206,6 +238,40 @@ export class TtsService {
 
   getUsage(): Observable<TtsUsage> {
     return this.http.get<TtsUsage>(`${this.baseUrl}/usage`);
+  }
+
+  /**
+   * Uploads and analyzes a PDF document, extracting text and validating page/word counts.
+   */
+  analyzeDocument(file: File): Observable<DocumentAnalysisDto> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<DocumentAnalysisDto>(`${this.baseUrl}/documents/analyze`, formData);
+  }
+
+  /**
+   * Submits an asynchronous long-form document synthesis or audiobook job.
+   */
+  submitJob(payload: {
+    documentToken?: string;
+    text?: string;
+    voiceId?: string;
+    outputFormat?: string;
+    title?: string;
+    sourceFileName?: string;
+    isElevenLabs?: boolean;
+    isSarvam?: boolean;
+    languageCode?: string;
+    voiceStyle?: string;
+  }): Observable<LongFormJobStatusDto> {
+    return this.http.post<LongFormJobStatusDto>(`${this.baseUrl}/jobs`, payload);
+  }
+
+  /**
+   * Fetches the real-time progress and status of a long-form synthesis job.
+   */
+  getJobStatus(jobId: string): Observable<LongFormJobStatusDto> {
+    return this.http.get<LongFormJobStatusDto>(`${this.baseUrl}/jobs/${jobId}`);
   }
 
   /**

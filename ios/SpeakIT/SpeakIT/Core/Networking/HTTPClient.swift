@@ -79,6 +79,21 @@ final class HTTPClient {
         self.session = URLSession(configuration: configuration)
     }
     
+    // MARK: - Centralized 401 Unauthorized & Session Eviction Handler
+    private func handleUnauthorized(response: HTTPURLResponse) {
+        // Do not broadcast session invalidation for login endpoint (invalid credentials != session evicted)
+        if let path = response.url?.path, path.contains("/api/auth/login") {
+            return
+        }
+        let reason = response.value(forHTTPHeaderField: "X-Logout-Reason")
+        let isMultiLogin = (reason == "MULTI_LOGIN")
+        NotificationCenter.default.post(
+            name: .speakitSessionInvalidated,
+            object: nil,
+            userInfo: ["isMultiLogin": isMultiLogin]
+        )
+    }
+    
     // MARK: - Standard JSON Request
     func request<T: Decodable>(_ endpoint: APIEndpoint, method: String = "GET", body: Data? = nil, headers: [String: String]? = nil) async throws -> T {
         guard let url = endpoint.url else { throw APIError.invalidURL }
@@ -108,7 +123,7 @@ final class HTTPClient {
         }
         
         if httpResponse.statusCode == 401 {
-            NotificationCenter.default.post(name: .speakitSessionInvalidated, object: nil)
+            handleUnauthorized(response: httpResponse)
             throw APIError.unauthorized
         }
         
@@ -161,7 +176,7 @@ final class HTTPClient {
             throw APIError.missingData
         }
         if httpResponse.statusCode == 401 {
-            NotificationCenter.default.post(name: .speakitSessionInvalidated, object: nil)
+            handleUnauthorized(response: httpResponse)
             throw APIError.unauthorized
         }
         if httpResponse.statusCode == 403 {
@@ -195,7 +210,7 @@ final class HTTPClient {
         }
         
         if httpResponse.statusCode == 401 {
-            NotificationCenter.default.post(name: .speakitSessionInvalidated, object: nil)
+            handleUnauthorized(response: httpResponse)
             throw APIError.unauthorized
         }
         
@@ -234,7 +249,7 @@ final class HTTPClient {
         }
         
         if httpResponse.statusCode == 401 {
-            NotificationCenter.default.post(name: .speakitSessionInvalidated, object: nil)
+            handleUnauthorized(response: httpResponse)
             throw APIError.unauthorized
         }
         
@@ -304,7 +319,7 @@ final class HTTPClient {
         }
         
         if httpResponse.statusCode == 401 {
-            NotificationCenter.default.post(name: .speakitSessionInvalidated, object: nil)
+            handleUnauthorized(response: httpResponse)
             throw APIError.unauthorized
         }
         

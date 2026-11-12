@@ -57,6 +57,12 @@ public class SpeechToTextRequest extends BaseEntity {
     @Column(name = "original_filename", length = 255)
     private String originalFilename;
 
+    @Column(name = "audio_url", length = 512)
+    private String audioUrl;
+
+    @Column(name = "storage_key", length = 512)
+    private String storageKey;
+
     @Column(name = "session_id", length = 64)
     private String sessionId;
 

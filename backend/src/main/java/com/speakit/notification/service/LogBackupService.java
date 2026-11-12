@@ -126,9 +126,9 @@ public class LogBackupService {
     }
 
     /**
-     * Nightly scheduled backup running at 12:00 AM (midnight) server time.
+     * Nightly scheduled backup running at 12:00 AM (midnight) in the configured timezone.
      */
-    @Scheduled(cron = "0 0 0 * * *")
+    @Scheduled(cron = "0 0 0 * * *", zone = "${cloudflare.r2.logs.timezone:Asia/Kolkata}")
     public void scheduledMidnightBackup() {
         log.info("Starting scheduled midnight log backup to Cloudflare R2...");
         try {

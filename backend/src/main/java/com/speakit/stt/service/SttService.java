@@ -32,18 +32,21 @@ public class SttService {
     private final SpeechToTextRequestRepository sttRepository;
     private final UserRepository userRepository;
     private final SystemParameterService systemParameterService;
+    private final com.speakit.tts.service.AudioStorageService audioStorageService;
 
     public SttService(
             SarvamSpeechToTextProvider sarvamProvider,
             ElevenLabsSpeechToTextProvider elevenLabsProvider,
             SpeechToTextRequestRepository sttRepository,
             UserRepository userRepository,
-            SystemParameterService systemParameterService) {
+            SystemParameterService systemParameterService,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) com.speakit.tts.service.AudioStorageService audioStorageService) {
         this.sarvamProvider = sarvamProvider;
         this.elevenLabsProvider = elevenLabsProvider;
         this.sttRepository = sttRepository;
         this.userRepository = userRepository;
         this.systemParameterService = systemParameterService;
+        this.audioStorageService = audioStorageService;
     }
 
     // Bounded, auto-expiring deduplication cache (SEC-03 / CWE-770).
@@ -102,9 +105,32 @@ public class SttService {
                 result = attemptTranscription(fallback, audioFile, language, mode);
             }
 
-            // 4. Persistence (Full History & Audit)
+            // 4. Archive Audio to Storage & Persist Metadata
+            String audioUrl = null;
+            String storageKey = null;
+            if (audioStorageService != null && multipartFile != null && !multipartFile.isEmpty()) {
+                try {
+                    String ext = "mp3";
+                    String orig = multipartFile.getOriginalFilename();
+                    if (orig != null && orig.contains(".")) {
+                        ext = orig.substring(orig.lastIndexOf('.') + 1);
+                    }
+                    var stored = audioStorageService.storeTranscribeAudio(userId, multipartFile.getBytes(), ext);
+                    if (stored != null) {
+                        audioUrl = stored.url();
+                        storageKey = stored.storageKey();
+                        if (result != null) {
+                            result.setAudioUrl(audioUrl);
+                            result.setStorageKey(storageKey);
+                        }
+                    }
+                } catch (Exception e) {
+                    log.warn("Could not archive transcribe audio to storage: {}", e.getMessage());
+                }
+            }
+
             String filename = multipartFile != null ? multipartFile.getOriginalFilename() : "audio_memo";
-            saveMetadata(userId, result, multipartFile.getSize(), "SUCCESS", null, startTime, mode, filename);
+            saveMetadata(userId, result, multipartFile.getSize(), "SUCCESS", null, startTime, mode, filename, audioUrl, storageKey);
             
             return result;
 
@@ -114,7 +140,7 @@ public class SttService {
         } catch (Exception e) {
             log.error("STT processing failed for user {}", userId, e);
             String filename = multipartFile != null ? multipartFile.getOriginalFilename() : "audio_memo";
-            saveMetadata(userId, null, multipartFile.getSize(), "FAILED", e.getMessage(), startTime, mode, filename);
+            saveMetadata(userId, null, multipartFile.getSize(), "FAILED", e.getMessage(), startTime, mode, filename, null, null);
             throw new SttException("Speech transcription failed: " + e.getMessage());
         } finally {
             // 5. Guaranteed deletion
@@ -157,7 +183,7 @@ public class SttService {
         }
     }
 
-    private void saveMetadata(Long userId, SpeechToTextResult result, long sizeBytes, String status, String failureReason, LocalDateTime startTime, String mode, String filename) {
+    private void saveMetadata(Long userId, SpeechToTextResult result, long sizeBytes, String status, String failureReason, LocalDateTime startTime, String mode, String filename, String audioUrl, String storageKey) {
         try {
             User user = userRepository.getReferenceById(userId);
             SpeechToTextRequest request = SpeechToTextRequest.builder()
@@ -171,6 +197,8 @@ public class SttService {
                     .transliteration(result != null ? result.getTransliteration() : null)
                     .processingMode(mode != null ? mode : "transcribe")
                     .originalFilename(filename)
+                    .audioUrl(audioUrl)
+                    .storageKey(storageKey)
                     .status(status)
                     .failureReason(failureReason)
                     .completedAt(LocalDateTime.now())

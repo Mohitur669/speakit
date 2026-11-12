@@ -27,7 +27,34 @@ describe('TtsComponent', () => {
 
   const mockTtsService = {
     getVoices: () => of([]),
-    getUsage: () => of({ dailyLimit: 10, dailyCount: 0 })
+    getUsage: () => of({ dailyLimit: 10, dailyCount: 0 }),
+    analyzeDocument: (file: File) => of({
+      documentToken: 'test-token-123',
+      fileName: 'test.pdf',
+      fileSizeBytes: 1024,
+      pageCount: 3,
+      wordCount: 150,
+      characterCount: 900,
+      estimatedDurationSeconds: 60,
+      estimatedDurationFormatted: '1m',
+      validationStatus: 'READY',
+      warnings: []
+    }),
+    submitJob: (payload: any) => of({
+      jobId: 'job-xyz-123',
+      status: 'PROCESSING',
+      progressPercent: 0,
+      totalChunks: 2,
+      completedChunks: 0
+    }),
+    getJobStatus: (id: string) => of({
+      jobId: id,
+      status: 'COMPLETED',
+      progressPercent: 100,
+      totalChunks: 2,
+      completedChunks: 2,
+      audioUrl: 'https://cdn.speakit.com/audio/book.mp3'
+    })
   };
 
   const mockAuthService = {
@@ -90,5 +117,38 @@ describe('TtsComponent', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+    expect(component.mode()).toBe('text');
+  });
+
+  it('should switch between text and document mode', () => {
+    component.switchMode('document');
+    expect(component.mode()).toBe('document');
+    component.switchMode('text');
+    expect(component.mode()).toBe('text');
+  });
+
+  it('should reject non-PDF files during processFile', () => {
+    const fakeFile = new File(['hello'], 'document.docx', { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+    component.processFile(fakeFile);
+    expect(component.documentError()).toContain('Only PDF documents');
+    expect(component.selectedFile()).toBeNull();
+  });
+
+  it('should analyze valid PDF document and store analysis', () => {
+    const validFile = new File(['%PDF-1.4 test'], 'sample.pdf', { type: 'application/pdf' });
+    component.processFile(validFile);
+    expect(component.selectedFile()).toBe(validFile);
+    expect(component.documentAnalysis()).toBeTruthy();
+    expect(component.documentAnalysis()?.fileName).toBe('test.pdf');
+    expect(component.documentAnalysis()?.pageCount).toBe(3);
+  });
+
+  it('should reset document state on clearDocument', () => {
+    const validFile = new File(['%PDF-1.4 test'], 'sample.pdf', { type: 'application/pdf' });
+    component.processFile(validFile);
+    component.clearDocument();
+    expect(component.selectedFile()).toBeNull();
+    expect(component.documentAnalysis()).toBeNull();
+    expect(component.documentError()).toBeNull();
   });
 });

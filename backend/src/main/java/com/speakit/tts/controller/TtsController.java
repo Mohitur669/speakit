@@ -46,8 +46,19 @@ public class TtsController {
     private final UserRepository userRepository;
     private final AudioStorageService audioStorageService;
     private final com.speakit.tts.service.LongFormSynthesisService longFormSynthesisService;
+    private final com.speakit.tts.service.PdfProcessingService pdfProcessingService;
 
-    public TtsController(PollyService pollyService, ElevenLabsService elevenLabsService, SarvamService sarvamService, TtsService ttsService, SubscriptionService subscriptionService, UserRepository userRepository, AudioStorageService audioStorageService, @org.springframework.beans.factory.annotation.Autowired(required = false) com.speakit.tts.service.LongFormSynthesisService longFormSynthesisService) {
+    public TtsController(
+            PollyService pollyService,
+            ElevenLabsService elevenLabsService,
+            SarvamService sarvamService,
+            TtsService ttsService,
+            SubscriptionService subscriptionService,
+            UserRepository userRepository,
+            AudioStorageService audioStorageService,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) com.speakit.tts.service.LongFormSynthesisService longFormSynthesisService,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) com.speakit.tts.service.PdfProcessingService pdfProcessingService
+    ) {
         this.pollyService = pollyService;
         this.elevenLabsService = elevenLabsService;
         this.sarvamService = sarvamService;
@@ -56,6 +67,7 @@ public class TtsController {
         this.userRepository = userRepository;
         this.audioStorageService = audioStorageService;
         this.longFormSynthesisService = longFormSynthesisService;
+        this.pdfProcessingService = pdfProcessingService;
     }
 
     private Long resolveUserId(HttpServletRequest request, Principal principal) {
@@ -286,10 +298,11 @@ public class TtsController {
     public ResponseEntity<com.speakit.tts.dto.UsageAnalyticsDto> getUsageAnalytics(HttpServletRequest httpRequest, Principal principal) {
         Long userId = resolveUserId(httpRequest, principal);
         PlanType planType = (PlanType) httpRequest.getAttribute("planType");
+        LocalDateTime planExpiry = (LocalDateTime) httpRequest.getAttribute("planExpiry");
         if (userId == null) {
             return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
         }
-        com.speakit.tts.dto.UsageAnalyticsDto analytics = ttsService.getUsageAnalytics(userId, planType);
+        com.speakit.tts.dto.UsageAnalyticsDto analytics = ttsService.getUsageAnalytics(userId, planType, planExpiry);
         return ResponseEntity.ok(analytics);
     }
 
@@ -427,18 +440,131 @@ public class TtsController {
 
     // MARK: - Long-Form Document & Audiobook Synthesis (Phase 3.1)
     @RateLimited(action = RateLimitAction.TTS)
+    @PostMapping(value = "/documents/analyze", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> analyzeDocument(
+            @RequestParam("file") MultipartFile file,
+            HttpServletRequest httpRequest,
+            Principal principal
+    ) {
+        Long userId = resolveUserId(httpRequest, principal);
+        PlanType planType = (PlanType) httpRequest.getAttribute("planType");
+        SubscriptionStatus status = (SubscriptionStatus) httpRequest.getAttribute("subscriptionStatus");
+        LocalDateTime expiry = (LocalDateTime) httpRequest.getAttribute("planExpiry");
+
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        if (!subscriptionService.hasDocumentSynthesis(planType, status, expiry)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Document Synthesis is not enabled for your subscription plan."));
+        }
+
+        if (pdfProcessingService == null) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of("error", "Document processing service is temporarily unavailable."));
+        }
+
+        try {
+            com.speakit.tts.dto.DocumentAnalysisDto analysis = pdfProcessingService.analyzeAndStage(file, userId, planType);
+            return ResponseEntity.ok(analysis);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Failed to analyze PDF document for user {}", userId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to process document: " + e.getMessage()));
+        }
+    }
+
+    @RateLimited(action = RateLimitAction.TTS)
+    @PostMapping(value = "/jobs/document", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> submitDocumentJob(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "voiceId", defaultValue = "Joanna") String voiceId,
+            @RequestParam(value = "outputFormat", defaultValue = "mp3") String outputFormat,
+            @RequestParam(value = "title", required = false) String title,
+            @RequestParam(value = "isElevenLabs", defaultValue = "false") boolean isElevenLabs,
+            @RequestParam(value = "isSarvam", defaultValue = "false") boolean isSarvam,
+            @RequestParam(value = "languageCode", required = false) String languageCode,
+            @RequestParam(value = "voiceStyle", required = false) String voiceStyle,
+            HttpServletRequest httpRequest,
+            Principal principal
+    ) {
+        Long userId = resolveUserId(httpRequest, principal);
+        PlanType planType = (PlanType) httpRequest.getAttribute("planType");
+        SubscriptionStatus status = (SubscriptionStatus) httpRequest.getAttribute("subscriptionStatus");
+        LocalDateTime expiry = (LocalDateTime) httpRequest.getAttribute("planExpiry");
+
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        if (!subscriptionService.hasDocumentSynthesis(planType, status, expiry)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Document Synthesis is not enabled for your subscription plan."));
+        }
+
+        if (pdfProcessingService == null || longFormSynthesisService == null) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of("error", "Document synthesis service is temporarily unavailable."));
+        }
+
+        try {
+            com.speakit.tts.dto.DocumentAnalysisDto analysis = pdfProcessingService.analyzeAndStage(file, userId, planType);
+            TtsRequest request = new TtsRequest();
+            request.setDocumentToken(analysis.getDocumentToken());
+            request.setSourceFileName(file.getOriginalFilename());
+            request.setTitle(title != null && !title.isBlank() ? title : file.getOriginalFilename());
+            request.setVoiceId(voiceId);
+            request.setOutputFormat(outputFormat);
+            request.setElevenLabs(isElevenLabs);
+            request.setSarvam(isSarvam);
+            request.setLanguageCode(languageCode);
+            request.setVoiceStyle(voiceStyle);
+
+            com.speakit.tts.dto.LongFormJobStatusDto job = longFormSynthesisService.submitJob(userId, planType, request);
+            return ResponseEntity.ok(job);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Failed to submit document synthesis job for user {}", userId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to submit document job: " + e.getMessage()));
+        }
+    }
+
+    @RateLimited(action = RateLimitAction.TTS)
     @PostMapping("/jobs")
-    public ResponseEntity<com.speakit.tts.dto.LongFormJobStatusDto> submitLongFormJob(
+    public ResponseEntity<?> submitLongFormJob(
             @Valid @RequestBody TtsRequest request,
             HttpServletRequest httpRequest,
             Principal principal) {
         Long userId = resolveUserId(httpRequest, principal);
         PlanType planType = (PlanType) httpRequest.getAttribute("planType");
+        SubscriptionStatus status = (SubscriptionStatus) httpRequest.getAttribute("subscriptionStatus");
+        LocalDateTime expiry = (LocalDateTime) httpRequest.getAttribute("planExpiry");
+
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        com.speakit.tts.dto.LongFormJobStatusDto job = longFormSynthesisService.submitJob(userId, planType, request);
-        return ResponseEntity.ok(job);
+
+        if (!subscriptionService.hasDocumentSynthesis(planType, status, expiry)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Long-Form Synthesis is not enabled for your subscription plan."));
+        }
+
+        if (longFormSynthesisService == null) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of("error", "Long-form synthesis service is temporarily unavailable."));
+        }
+
+        try {
+            com.speakit.tts.dto.LongFormJobStatusDto job = longFormSynthesisService.submitJob(userId, planType, request);
+            return ResponseEntity.ok(job);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 
     @GetMapping("/jobs/{jobId}")

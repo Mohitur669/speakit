@@ -5,12 +5,14 @@ import com.speakit.user.repository.UserSessionProjection;
  * HTTP request filter validating JWT tokens and setting
  * Spring Security context for authenticated users.
  */
+import com.speakit.user.repository.UserRepository;
 import com.speakit.user.service.UserSessionCacheService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -22,10 +24,12 @@ import java.io.IOException;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserSessionCacheService userSessionCacheService;
+    private final UserRepository userRepository;
 
     @Override
     protected void doFilterInternal(
@@ -58,11 +62,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             UserSessionProjection userProj = userSessionCacheService.getUserSession(username).orElse(null);
             Long tokenSessionVersion = jwtService.extractSessionVersion(jwt);
 
-            if (userProj != null && tokenSessionVersion != null) {
-                if (tokenSessionVersion.longValue() != userProj.getSessionVersion().longValue()) {
-                    response.setHeader("X-Logout-Reason", "MULTI_LOGIN");
-                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Multiple logins detected");
-                    return;
+            if (tokenSessionVersion != null) {
+                Long cachedVersion = (userProj != null) ? userProj.getSessionVersion() : null;
+                if (userProj == null || cachedVersion == null || tokenSessionVersion.longValue() != cachedVersion.longValue()) {
+                    // Cache may be stale. Evict and fetch fresh projection directly from database
+                    userSessionCacheService.evictSession(username);
+                    UserSessionProjection freshProj = userRepository.findSessionAndPlanByUsername(username).orElse(null);
+                    Long dbVersion = (freshProj != null) ? freshProj.getSessionVersion() : null;
+                    if (freshProj != null && dbVersion != null && tokenSessionVersion.longValue() != dbVersion.longValue()) {
+                        log.warn("Multi-login session eviction for user {}: tokenVer={}, dbVer={}", username, tokenSessionVersion, dbVersion);
+                        response.setHeader("X-Logout-Reason", "MULTI_LOGIN");
+                        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Multiple logins detected");
+                        return;
+                    }
+                    userProj = freshProj;
                 }
             }
 

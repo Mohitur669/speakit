@@ -111,22 +111,39 @@ public class TtsService {
     }
 
     public com.speakit.tts.dto.UsageAnalyticsDto getUsageAnalytics(Long userId, PlanType planType) {
+        return getUsageAnalytics(userId, planType, null);
+    }
+
+    public com.speakit.tts.dto.UsageAnalyticsDto getUsageAnalytics(Long userId, PlanType planType, @Nullable LocalDateTime planExpiry) {
         LocalDate today = LocalDate.now();
-        LocalDate currentMonth = today.withDayOfMonth(1);
         int daysInMonth = today.lengthOfMonth();
         int dayOfMonth = today.getDayOfMonth();
-        int daysRemainingInMonth = Math.max(0, daysInMonth - dayOfMonth);
 
+        int daysElapsed;
+        int daysRemainingInCycle;
+
+        // When user has an active billing validity, calculate elapsed and remaining days based on their subscription cycle
+        if (planExpiry != null && planExpiry.toLocalDate().isAfter(today.minusDays(30))) {
+            LocalDate expiryDate = planExpiry.toLocalDate();
+            long diffDays = java.time.temporal.ChronoUnit.DAYS.between(today, expiryDate);
+            daysRemainingInCycle = Math.max(0, (int) diffDays);
+            int cycleDuration = 30;
+            daysElapsed = Math.max(1, Math.min(cycleDuration, cycleDuration - daysRemainingInCycle));
+        } else {
+            daysRemainingInCycle = Math.max(0, daysInMonth - dayOfMonth);
+            daysElapsed = Math.max(1, dayOfMonth);
+        }
+
+        LocalDate currentMonth = today.withDayOfMonth(1);
         long charactersUsed = sumCharactersUsed(userId, currentMonth.atStartOfDay());
         long monthlyLimit = subscriptionService.getMonthlyCharacterLimit(planType);
         long charactersRemaining = Math.max(0, monthlyLimit - charactersUsed);
         double usagePercentage = monthlyLimit > 0 ? ((double) charactersUsed / monthlyLimit) : 0.0;
 
-        int daysElapsed = Math.max(1, dayOfMonth);
         double burnRatePerDay = (double) charactersUsed / daysElapsed;
         double projectedDaysRemaining = burnRatePerDay > 0
                 ? (charactersRemaining / burnRatePerDay)
-                : daysRemainingInMonth;
+                : daysRemainingInCycle;
 
         return com.speakit.tts.dto.UsageAnalyticsDto.builder()
                 .plan(planType != null ? planType.name() : "FREE")
@@ -136,7 +153,7 @@ public class TtsService {
                 .usagePercentage(Math.round(usagePercentage * 1000.0) / 10.0)
                 .burnRatePerDay(Math.round(burnRatePerDay * 10.0) / 10.0)
                 .projectedDaysRemaining(Math.round(projectedDaysRemaining * 10.0) / 10.0)
-                .daysRemainingInMonth(daysRemainingInMonth)
+                .daysRemainingInMonth(daysRemainingInCycle)
                 .build();
     }
 }

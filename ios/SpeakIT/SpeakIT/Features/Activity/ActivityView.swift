@@ -123,11 +123,17 @@ struct ActivityView: View {
                                 .padding(.vertical, 4)
                             
                             HStack {
-                                Label("Usage: \(Int(analytics.burnRatePerDay)) chars/day", systemImage: "flame.fill")
+                                Label("Avg. Usage: \(Int(analytics.burnRatePerDay).formatted()) chars/day", systemImage: "chart.line.uptrend.xyaxis")
                                     .font(.system(size: 11, weight: .semibold))
                                     .foregroundColor(.orange)
                                 
                                 Spacer()
+                                
+                                if analytics.daysRemainingInMonth > 0 {
+                                    Text("Renews in \(analytics.daysRemainingInMonth)d")
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundColor(Color.speakitTextSecondary)
+                                }
                             }
                         }
                     }

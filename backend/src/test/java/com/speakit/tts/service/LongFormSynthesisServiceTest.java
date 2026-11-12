@@ -34,6 +34,15 @@ class LongFormSynthesisServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private PdfProcessingService pdfProcessingService;
+
+    @Mock
+    private ElevenLabsService elevenLabsService;
+
+    @Mock
+    private SarvamService sarvamService;
+
     private LongFormSynthesisService longFormSynthesisService;
 
     @BeforeEach
@@ -42,7 +51,10 @@ class LongFormSynthesisServiceTest {
                 pollyService,
                 audioStorageService,
                 ttsHistoryRepository,
-                userRepository
+                userRepository,
+                pdfProcessingService,
+                elevenLabsService,
+                sarvamService
         );
     }
 
@@ -70,8 +82,8 @@ class LongFormSynthesisServiceTest {
         when(pollyService.synthesizeSpeech(anyString(), anyString(), anyString(), anyMap()))
                 .thenReturn(new ByteArrayInputStream(new byte[]{1, 2, 3, 4}));
 
-        when(audioStorageService.storeAudio(anyLong(), any(), anyString()))
-                .thenReturn(new AudioStorageService.StoredAudio("https://r2.speakit.local/audio/doc_1.mp3", "doc_1.mp3", 1024L, "audio/mpeg"));
+        when(audioStorageService.storePdfAudio(anyLong(), any(), anyString()))
+                .thenReturn(new AudioStorageService.StoredAudio("https://cdn-speakit-audio.mohitur.com/pdf-audio/doc_1.mp3", "pdf-audio/doc_1.mp3", 1024L, "audio/mpeg"));
 
         LongFormJobStatusDto job = longFormSynthesisService.submitJob(1L, PlanType.PRO, request);
 
@@ -79,8 +91,39 @@ class LongFormSynthesisServiceTest {
         assertNotNull(job.getJobId());
         assertTrue(job.getTotalChunks() >= 1);
 
-        // Synchronous execution / completion in test
         LongFormJobStatusDto status = longFormSynthesisService.getJobStatus(job.getJobId(), 1L);
         assertNotNull(status);
+    }
+
+    @Test
+    @DisplayName("Submitting with documentToken claims staged text and consumes token")
+    void testSubmitJobWithDocumentToken() throws Exception {
+        TtsRequest request = new TtsRequest();
+        request.setDocumentToken("token-123");
+        request.setVoiceId("Joanna");
+        request.setOutputFormat("mp3");
+
+        PdfProcessingService.StagedDocument staged = new PdfProcessingService.StagedDocument(
+                "token-123",
+                1L,
+                "Report.pdf",
+                "Extracted text from staged document. Another sentence follows for synthesis.",
+                10,
+                2,
+                15,
+                System.currentTimeMillis()
+        );
+
+        when(pdfProcessingService.claimStagedDocument("token-123", 1L)).thenReturn(staged);
+        when(pollyService.synthesizeSpeech(anyString(), anyString(), anyString(), anyMap()))
+                .thenReturn(new ByteArrayInputStream(new byte[]{1, 2, 3, 4}));
+        when(audioStorageService.storePdfAudio(anyLong(), any(), anyString()))
+                .thenReturn(new AudioStorageService.StoredAudio("https://cdn-speakit-audio.mohitur.com/pdf-audio/doc_2.mp3", "pdf-audio/doc_2.mp3", 2048L, "audio/mpeg"));
+
+        LongFormJobStatusDto job = longFormSynthesisService.submitJob(1L, PlanType.PRO, request);
+
+        assertNotNull(job);
+        assertEquals("Report.pdf", job.getSourceFileName());
+        verify(pdfProcessingService).removeStagedDocument("token-123");
     }
 }

@@ -101,7 +101,7 @@ final class AppState {
         // Listen for 401 session eviction from HTTPClient
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(handleSessionInvalidation),
+            selector: #selector(handleSessionInvalidation(_:)),
             name: .speakitSessionInvalidated,
             object: nil
         )
@@ -112,10 +112,13 @@ final class AppState {
         }
     }
     
-    @objc private func handleSessionInvalidation() {
+    @objc private func handleSessionInvalidation(_ notification: Notification) {
+        let isMultiLogin = (notification.userInfo?["isMultiLogin"] as? Bool) ?? false
         Task { @MainActor in
             self.logout()
-            self.showSessionEvictedAlert = true
+            if isMultiLogin {
+                self.showSessionEvictedAlert = true
+            }
         }
     }
     

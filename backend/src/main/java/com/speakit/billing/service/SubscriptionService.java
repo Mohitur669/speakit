@@ -221,4 +221,54 @@ public class SubscriptionService {
             }
         }
     }
+
+    /**
+     * Checks if the user's plan permits access to Long-Form / Document Synthesis.
+     */
+    public boolean hasDocumentSynthesis(PlanType planType, SubscriptionStatus status, LocalDateTime expiry) {
+        boolean docEnabled = Boolean.parseBoolean(systemParameterService.getPlanFeatureParameter("DOCUMENT_SYNTHESIS_ENABLED", "true"));
+        if (!docEnabled) return false;
+        // Available across all plans with plan-governed page and word limits
+        return true;
+    }
+
+    /**
+     * Returns the maximum allowed PDF file size in bytes for a given plan.
+     */
+    public long getPdfMaxFileSizeBytes(PlanType planType) {
+        if (planType == null) planType = PlanType.FREE;
+        long limitMb = switch (planType) {
+            case FREE -> Long.parseLong(systemParameterService.getPlanFeatureParameter("PDF_MAX_FILE_SIZE_MB_FREE", "5"));
+            case PRO -> Long.parseLong(systemParameterService.getPlanFeatureParameter("PDF_MAX_FILE_SIZE_MB_PRO", "25"));
+            case PRO_PLUS -> Long.parseLong(systemParameterService.getPlanFeatureParameter("PDF_MAX_FILE_SIZE_MB_PRO_PLUS", "50"));
+            case ENTERPRISE -> Long.parseLong(systemParameterService.getPlanFeatureParameter("PDF_MAX_FILE_SIZE_MB_ENTERPRISE", "200"));
+        };
+        return limitMb * 1024 * 1024;
+    }
+
+    /**
+     * Returns the maximum allowed PDF page count for a given plan.
+     */
+    public int getPdfMaxPages(PlanType planType) {
+        if (planType == null) planType = PlanType.FREE;
+        return switch (planType) {
+            case FREE -> Integer.parseInt(systemParameterService.getPlanFeatureParameter("PDF_MAX_PAGES_FREE", "5"));
+            case PRO -> Integer.parseInt(systemParameterService.getPlanFeatureParameter("PDF_MAX_PAGES_PRO", "50"));
+            case PRO_PLUS -> Integer.parseInt(systemParameterService.getPlanFeatureParameter("PDF_MAX_PAGES_PRO_PLUS", "200"));
+            case ENTERPRISE -> Integer.parseInt(systemParameterService.getPlanFeatureParameter("PDF_MAX_PAGES_ENTERPRISE", "1000"));
+        };
+    }
+
+    /**
+     * Returns the maximum allowed PDF word count for a given plan.
+     */
+    public int getPdfMaxWords(PlanType planType) {
+        if (planType == null) planType = PlanType.FREE;
+        return switch (planType) {
+            case FREE -> Integer.parseInt(systemParameterService.getPlanFeatureParameter("PDF_MAX_WORDS_FREE", "2500"));
+            case PRO -> Integer.parseInt(systemParameterService.getPlanFeatureParameter("PDF_MAX_WORDS_PRO", "25000"));
+            case PRO_PLUS -> Integer.parseInt(systemParameterService.getPlanFeatureParameter("PDF_MAX_WORDS_PRO_PLUS", "100000"));
+            case ENTERPRISE -> Integer.parseInt(systemParameterService.getPlanFeatureParameter("PDF_MAX_WORDS_ENTERPRISE", "500000"));
+        };
+    }
 }

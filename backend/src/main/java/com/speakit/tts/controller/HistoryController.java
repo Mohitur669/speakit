@@ -186,6 +186,11 @@ public class HistoryController {
                 ? stt.getTranscriptLength()
                 : transcript.length();
 
+        String resolvedSttUrl = stt.getAudioUrl();
+        if (resolvedSttUrl == null && stt.getStorageKey() != null) {
+            resolvedSttUrl = audioStorageService.buildPublicUrl(stt.getStorageKey());
+        }
+
         return TtsHistoryDto.builder()
                 .id(stt.getId())
                 .sessionId(stt.getSessionId())
@@ -196,7 +201,7 @@ public class HistoryController {
                 .characterCount(charCount)
                 .textSnippet(snippet)
                 .fullText(transcript)
-                .audioUrl(null)
+                .audioUrl(resolvedSttUrl)
                 .createdAt(stt.getUpdatedAt() != null ? stt.getUpdatedAt() : stt.getCreatedAt())
                 .engineType(live ? "LIVE" : "STT")
                 .transliteration(stt.getTransliteration())
