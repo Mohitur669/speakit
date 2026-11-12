@@ -20,7 +20,9 @@ jobs:
       - name: Connect to Private Tailnet
         uses: tailscale/github-action@v3
         with:
-          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
 
       - name: Trigger Coolify Backend Deployment
         env:
@@ -45,7 +47,7 @@ jobs:
             AUTH_HEADER_PARAM="-H Authorization: Bearer $COOLIFY_TOKEN"
           fi
 
-          HTTP_STATUS=$(curl -s -o response.json -w "%{http_code}" -X POST "$COOLIFY_DEPLOY_URL" \
+          HTTP_STATUS=$(curl -sS -o response.json -w "%{http_code}" -X POST "$COOLIFY_DEPLOY_URL" \
             $HOST_HEADER_PARAM \
             $AUTH_HEADER_PARAM \
             -H "Content-Type: application/json")

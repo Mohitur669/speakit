@@ -655,25 +655,18 @@ Any automated machine node (like GitHub Actions runners via OIDC, OAuth, or tagg
 
 ---
 
-#### 2.2 Generate Tailscale Auth Key for CI/CD (Fastest & Officially Recommended)
+#### 2.2 Configure Tailscale OAuth Client for CI/CD (Recommended)
 
-Using a pre-authorized Tailscale Auth Key is the simplest, most reliable method officially supported by `tailscale/github-action`:
-
-1. Open the **[Tailscale Admin Console > Settings > Keys](https://login.tailscale.com/admin/settings/keys)**.
-2. Click **Generate auth key...**:
-   * **Reusable**: ✅ **Checked** (allows GitHub Actions to reuse it on every push).
-   * **Ephemeral**: ✅ **Checked** (automatically removes the GitHub runner from your Tailscale device list once the build job completes).
-   * **Pre-authorized**: ✅ **Checked**.
-   * **Tags**: Assign `tag:ci`.
-3. Click **Generate key**.
-4. Copy the generated key immediately (starts with `tskey-auth-...`).
-5. Store as GitHub Secret: **`TAILSCALE_AUTHKEY`**.
+1. Open **[Tailscale Admin Console > Settings > Trust credentials](https://login.tailscale.com/admin/settings/trust-credentials)** (or **OAuth clients**).
+2. Click **Generate OAuth Client**:
+   * **Scopes**: Select **Devices (Write)** and/or **Auth Keys (Write)**.
+   * **Tags**: Assign **`tag:ci`**.
+3. Click **Generate client**.
+4. Copy the generated **Client ID** and **Client Secret**.
+5. Store in GitHub Secrets as **`TS_OAUTH_CLIENT_ID`** and **`TS_OAUTH_SECRET`**.
 
 > [!TIP]
-> **Alternative (OAuth Client)**: If your organization mandates OAuth over Auth Keys:
-> 1. Go to **Settings** > **Trust credentials** (or **OAuth Clients**) > **Generate OAuth Client**.
-> 2. Select **Devices (Write)** and/or **Auth Keys (Write)**, choose tag **`tag:ci`**, and save.
-> 3. Store `TS_OAUTH_CLIENT_ID` and `TS_OAUTH_SECRET` in GitHub Secrets.
+> **Alternative (Auth Key)**: You can also generate an Ephemeral Pre-authorized Auth Key under **Settings > Keys** with tag `tag:ci` and pass `authkey: ${{ secrets.TAILSCALE_AUTHKEY }}`.
 
 ---
 
@@ -685,7 +678,8 @@ In your GitHub repository:
 
 | Secret Name | Example / Value | Purpose |
 | :--- | :--- | :--- |
-| **`TAILSCALE_AUTHKEY`** | `tskey-auth-...` | Ephemeral reusable Tailscale authentication key. |
+| **`TS_OAUTH_CLIENT_ID`** | `k...` | Tailscale OAuth Client ID. |
+| **`TS_OAUTH_SECRET`** | `tskey-client-...` | Tailscale OAuth Client Secret. |
 | **`COOLIFY_PROD_DEPLOY_URL`** | `http://<YOUR_SERVER_TAILSCALE_IP>:<COOLIFY_PORT>/api/v1/deploy?uuid=<YOUR_APP_UUID>&force=false` | Private deploy webhook URL. Stores the private IP, port, and app UUID securely. |
 | **`COOLIFY_FQDN_HOST`** | `<YOUR_COOLIFY_FQDN>` (e.g. `coolify.yourdomain.com`) | Injected as the `Host:` header so Coolify's reverse proxy routes the request correctly. |
 | **`COOLIFY_API_TOKEN`** | *[Optional Bearer Token]* | Required only if token-based API authentication is enabled in Coolify. |
@@ -721,8 +715,8 @@ jobs:
       - name: Connect to Private Tailnet
         uses: tailscale/github-action@v3
         with:
-          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
-          audience: ${{ secrets.TS_OIDC_AUDIENCE }}
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
           tags: tag:ci
 
       - name: Trigger Coolify Backend Deployment
