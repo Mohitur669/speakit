@@ -201,8 +201,8 @@ By default, OCI blocks all incoming connections at the virtual network level (Se
 
 ##### Ingress Rule 3: SSH Traffic (Tailscale Setup - Restricted vs Public)
 > [!WARNING]
-> **Why your connection failed**: Tailscale is a private VPN. When you connect to the OCI instance's **Public IP**, your traffic arrives originating from your home/office **Public ISP IP** (e.g. `203.0.113.50`), **NOT** your Tailscale IP (`100.65.240.58`).
-> If you set OCI's VCN source CIDR strictly to `100.65.240.58/32` before Tailscale is installed on the OCI instance, your SSH connection will be blocked.
+> **Why your connection failed**: Tailscale is a private VPN. When you connect to the OCI instance's **Public IP**, your traffic arrives originating from your home/office **Public ISP IP** (e.g. `203.0.113.50`), **NOT** your local Tailscale IP (`<YOUR_LOCAL_TAILSCALE_IP>`).
+> If you set OCI's VCN source CIDR strictly to `<YOUR_LOCAL_TAILSCALE_IP>/32` before Tailscale is installed on the OCI instance, your SSH connection will be blocked.
 >
 > **To fix this, choose one of these two options:**
 
@@ -216,9 +216,9 @@ By default, OCI blocks all incoming connections at the virtual network level (Se
      sudo tailscale up
      ```
   4. Click the link in the terminal to authenticate the OCI instance into your Tailnet.
-  5. Once connected, your OCI instance will get its own Tailscale IP: **`100.66.182.36`**.
+  5. Once connected, your OCI instance will get its own Tailscale IP: **`<YOUR_SERVER_TAILSCALE_IP>`** (e.g. `100.x.y.z`, find with `tailscale ip`).
   6. From now on, you can SSH directly to the OCI instance using its **Tailscale IP**:
-     `ssh -i /path/to/key ubuntu@100.66.182.36`
+     `ssh -i /path/to/key ubuntu@<YOUR_SERVER_TAILSCALE_IP>`
   7. **Harden OCI Console**: Once SSH over Tailscale is working, go to the OCI Security List, edit Port `22`, and restrict the Source CIDR to **`100.64.0.0/10`** (this allows access from any authenticated device in your Tailnet) and delete all public `0.0.0.0/0` rules for Port 22.
 
 * **Option B: Restrict SSH to your Public ISP IP (If not using Tailscale on the server)**
@@ -271,7 +271,7 @@ Run these commands in order to clean up and apply **rock-hard security**:
 3. **Harden SSH Port 22**:
    * *Before removing global SSH access*, add a rule strictly permitting your local Tailscale IP:
      ```bash
-     sudo ufw allow from 100.65.240.58 to any port 22 proto tcp
+     sudo ufw allow from <YOUR_LOCAL_TAILSCALE_IP> to any port 22 proto tcp
      # (Optional) If not using Tailscale on the server, allow your public ISP IP instead:
      # sudo ufw allow from YOUR_PUBLIC_ISP_IP to any port 22 proto tcp
      ```
@@ -302,8 +302,8 @@ Since port `8000` (Coolify Admin UI) is blocked from public internet access for 
 #### Option A: Direct Access via Tailscale (Recommended)
 If you installed Tailscale on your OCI server (Option A in Step 1):
 1. Ensure Tailscale is connected on both your Mac and the OCI server.
-2. Find the server's private Tailscale IP (which is **`100.66.182.36`**) by running `tailscale ip` on the OCI terminal.
-3. Open your browser and go directly to: **`http://100.66.182.36:8000`**
+2. Find the server's private Tailscale IP (e.g. `100.x.y.z`) by running `tailscale ip` on the OCI terminal.
+3. Open your browser and go directly to: **`http://<YOUR_SERVER_TAILSCALE_IP>:8000`**
    * *Why it works*: Tailscale builds an encrypted virtual network between your Mac and the server. No SSH tunnel is required.
 
 #### Option B: SSH Local Port Forwarding (No Tailscale on Server)
@@ -347,13 +347,13 @@ sudo chmod 700 /opt/speakit/db-data/dev
 ### Step-by-Step UI Guide (Coolify v4):
 
 #### 1. Configure the Production Database (`speakit-prod-db`)
-1. Open your local browser and access the Coolify Dashboard (via Tailscale `http://100.66.182.36:8000` or SSH Tunnel `http://localhost:8000`).
+1. Open your local browser and access the Coolify Dashboard (via Tailscale `http://<YOUR_SERVER_TAILSCALE_IP>:8000` or SSH Tunnel `http://localhost:8000`).
 2. Go to **Projects** in the left sidebar > click on your Project (e.g. `SpeakIT`) > click on your Environment (e.g. `production` or `default`).
 3. Click **"+ Add Resource"** > select **Databases** > select **PostgreSQL**.
 4. Configure the parameters:
    * **Name**: `speakit-prod-db` (Display name for the resource).
    * **Initial Database**: `speakit` (The default schema).
-   * **Username**: `mohitur`
+   * **Username**: `<YOUR_DB_USERNAME>` (e.g. `speakit_user` or `postgres`)
    * **Password**: *[Leave blank to auto-generate a secure random password]*
    * **Do NOT click "Start Database" yet.**
 5. Go to the **Persistent Storage** tab on the left menu:
@@ -370,7 +370,7 @@ sudo chmod 700 /opt/speakit/db-data/dev
 2. Configure the parameters:
    * **Name**: `speakit-dev-db`
    * **Initial Database**: `speakit_dev`
-   * **Username**: `mohitur`
+   * **Username**: `<YOUR_DB_USERNAME>` (e.g. `speakit_user` or `postgres`)
    * **Password**: *[Leave blank to auto-generate a secure random password]*
    * **Do NOT click "Start Database" yet.**
 3. Go to the **Persistent Storage** tab on the left menu:
@@ -482,7 +482,7 @@ The answer is **No. Your data is 100% persistent**:
      2. Create a nightly cron task on your Mac to pull the backups using `rsync` over your private Tailscale tunnel:
         ```bash
         # Run this periodically or schedule it as a crontab on your Mac:
-        rsync -avz -e "ssh -i /path/to/your/private_key" ubuntu@100.66.182.36:/data/coolify/backups/ ~/speakit-backups/
+        rsync -avz -e "ssh -i /path/to/your/private_key" ubuntu@<YOUR_SERVER_TAILSCALE_IP>:/data/coolify/backups/ ~/speakit-backups/
         ```
         *This downloads all database dumps directly to your Mac securely, keeping a local offline copy.*
 
@@ -494,7 +494,7 @@ Since your database ports are blocked from public internet access for security, 
 
 > [!CAUTION]
 > **Why Direct Connection Fails (Connection Refused)**:
-> If you try to connect DBeaver directly using Host `100.66.182.36` and Port `5432` or `3000`, the connection will be **refused**.
+> If you try to connect DBeaver directly using Host `<YOUR_SERVER_TAILSCALE_IP>` and Port `5432` or `3000`, the connection will be **refused**.
 > * The database container runs internally on port `5432` but is NOT exposed to the public Tailscale IP on that port.
 > * The host maps it to port `3000` (e.g. `3000:5432` for production), but this port is only accessible locally (`127.0.0.1`) on the server.
 > * You **must** configure the connection to use an SSH Tunnel so DBeaver can securely authenticate over SSH and route the traffic internally.
@@ -507,12 +507,12 @@ Since your database ports are blocked from public internet access for security, 
    * **Host**: **`localhost`** (Enter the word `localhost` exactly. Once the SSH tunnel connects, the query resolves locally on the OCI host).
    * **Port**: The host port from your Coolify database settings (e.g. **`3000`** for production, or your dev port).
    * **Database**: `speakit` (for Production) or `speakit_dev` (for Development).
-   * **Username**: `mohitur`
+   * **Username**: `<YOUR_DB_USERNAME>` (e.g. `speakit_user` or `postgres`)
    * **Password**: The password generated by Coolify (reveal by clicking the eye icon on the internal Postgres URL in Coolify).
 
 4. Click the **SSH** tab (or **SSH Tunnel** depending on your DBeaver version) at the top of the connection window:
    * Check the **"Use SSH Tunnel"** box.
-   * **Host/IP**: **`100.66.182.36`** (Your OCI server's Tailscale IP).
+   * **Host/IP**: **`<YOUR_SERVER_TAILSCALE_IP>`** (Your OCI server's Tailscale IP, e.g. `100.x.y.z`).
    * **Port**: `22` (SSH port).
    * **Username**: `ubuntu` (OCI non-root user).
    * **Authentication Method**: Select **Public Key** (or Private Key).
@@ -520,158 +520,308 @@ Since your database ports are blocked from public internet access for security, 
    * **Passphrase**: Leave empty (unless your SSH key is encrypted with a passphrase).
 
 5. Click **Test Connection** in the bottom-left corner.
-   * DBeaver will authenticate via SSH to `100.66.182.36`, tunnel into localhost port `3000`, and establish a successful database connection!
+   * DBeaver will authenticate via SSH to `<YOUR_SERVER_TAILSCALE_IP>`, tunnel into localhost port `3000`, and establish a successful database connection!
 6. Click **Finish** to save.
 
 ---
 
-## 7. GitHub Integration & Webhooks for Auto-Deployments
+## 7. Automated Deployments: Zero-Trust GitHub Actions over Tailscale (Pattern A)
 
-To achieve complete automation (zero manual setup during code changes), you must connect Coolify to your GitHub repository via webhooks. This triggers automatic rebuilds on git pushes.
+To achieve complete automation without manual intervention, code pushes to `master` must trigger Coolify to build and deploy the updated application.
 
-### Phase A: Resolve Private Network Webhook Restrictions (Cloudflare WAF Bypass)
-If your compute instance is behind Tailscale (meaning the local URL uses `100.x.x.x` or `localhost`), GitHub's public servers will fail to reach your server, blocking all auto-deployments. To bypass this securely, map a public domain to your Coolify instance so Traefik can proxy webhook payloads securely over port `443`:
+> [!TIP]
+> **Actionable Migration Checklist**: For a fast-track operational runbook covering legacy Cloudflare DNS cleanup, Tailscale OAuth generation, and GitHub secret provisioning, see: [coolify-cleanup.md](file:///Users/mohitur/Desktop/git-projects/speakit/docs/architechture-and-guides/coolify-cleanup.md).
 
-1. **Add Cloudflare DNS Record**:
-   * **Type**: `A`
-   * **Name**: `coolify` (resolves to `coolify.mohitur.com`)
-   * **IPv4 Address**: `YOUR_OCI_PUBLIC_IP` (e.g. `129.154.246.83`)
-   * **Proxy status**: **`Proxied` (Orange Cloud)**.
+### Why Pattern A (Zero-Trust CI/CD over Tailscale)?
 
-2. **Configure Coolify Instance FQDN (Coolify v4 Menu Navigation)**:
-   * Open your Coolify Dashboard.
-   * Click **Settings** (located at the bottom of the left-hand navigation sidebar).
-   * Select the **Instance Settings** tab (under General settings).
-   * Find the field labeled **FQDN (Instance Domain)**.
-   * Enter: **`https://coolify.mohitur.com`** (must include the `https://` prefix to trigger Traefik's Let's Encrypt certificate auto-generation).
-   * Click **Save**.
+1. **No Cloudflare WAF Required**: Cloudflare WAF custom path blocking is a restricted/paid feature and prone to path-mismatch errors (`403 Forbidden`).
+2. **Zero Public Attack Surface**: Coolify's administrative dashboard and API are **never exposed to the public internet**. No public DNS record is needed, and no public inbound ports are opened on OCI.
+3. **100% Parameterized via Environment Variables**: All sensitive network parameters (your private server IP, port, and application UUID) are **stored strictly in GitHub Secrets and injected at runtime as environment variables**. Zero sensitive values ever touch the Git repository.
+4. **End-to-End Encrypted WireGuard**: The GitHub Actions runner connects temporarily to your private Tailscale network (using short-lived machine credentials), invokes Coolify's private deployment webhook over WireGuard, and immediately terminates the connection.
 
-3. **Secure the Dashboard with Cloudflare WAF (Lockdown UI)**:
-   Because we mapped `coolify.mohitur.com` publicly, we must prevent anyone from accessing the Coolify login dashboard via the public web. We do this by setting a firewall block rule that only permits webhook paths:
-   * Log into your **Cloudflare Dashboard** > select your domain **`mohitur.com`**.
-   * Click **Security** > **WAF** (Web Application Firewall) in the left sidebar.
-   * Click the **Custom Rules** tab > click **Create rule**.
-   * Configure the rule parameters:
-     * **Rule name**: `Lockdown Coolify Dashboard`
-     * **If incoming requests match... (Expression Builder)**:
-       * *Field*: `Hostname` ➔ *Operator*: `equals` ➔ *Value*: `coolify.mohitur.com`
-       * Click **And** (to add a second condition).
-       * _Field_: `URI Path` ➔ _Operator_: `does not start with` ➔ _Value_: `/webhooks`
-     * **Choose action**: **`Block`**
-   * Click **Deploy**.
-
-4. **Verify Access Separation**:
-   * **Public Internet Access**: Try opening `https://coolify.mohitur.com` in a browser. Cloudflare must block it immediately with a `403 Forbidden` error screen, proving the login interface is invisible to the public.
-   * **Private Admin Access**: Keep accessing the dashboard locally over your VPN by navigating to:
-     ```text
-     http://100.66.182.36:8000
-     ```
-     This bypasses Cloudflare completely and connects directly to the container over Tailscale.
+```mermaid
+flowchart LR
+    Dev[Developer git push] -->|1. Push to master| GH[GitHub Repository]
+    GH -->|2. Triggers Action| GHA[GitHub Actions Runner]
+    
+    subgraph Private_Tailnet [Encrypted WireGuard Mesh - 100.64.0.0/10]
+        GHA -->|3. Ephemeral Auth via tag:ci| TS_Net[Tailscale Mesh]
+        TS_Net -->|4. Private POST over Tailscale IP:Port| Coolify[Coolify Dashboard / API]
+    end
+    
+    subgraph OCI_Server [Oracle Cloud Instance - Zero Public Inbound]
+        Coolify -->|5. Triggers Docker Build| Backend[speakit-prod-backend]
+    end
+```
 
 ---
 
-### Step 1: Set up the GitHub App Connection (Automatic Webhook Setup)
-1. In the Coolify left sidebar, click **Sources** > click **"+ Add"** > select **GitHub App**.
-2. Configure the **New GitHub App** parameters exactly as follows:
-   * **Name**: `speakit-github`
-   * **Organization (on GitHub)**: *[Leave blank if using your personal account, or enter your GitHub organization name]*
-   * **HTML Url**: `https://github.com` (Keep default)
-   * **API Url**: `https://api.github.com` (Keep default)
-   * **Custom Git User**: `git` (Keep default)
-   * **Custom Git Port**: *[Leave blank - defaults to SSH port 22]*
-3. Click **Save** (or Register).
-4. Coolify will reload the page. Click the **"Register GitHub App"** (or **"Install"**) button.
-5. You will be redirected to GitHub:
-   * Select your personal account or organization.
-   * Under repository access, choose **"Only select repositories"** and select your **`speakit`** repository.
-   * Click **Install & Authorize**.
-6. GitHub will redirect you back to Coolify.
+### Step 1: Configure Coolify API Access, Deploy Token & Webhook URL
+
+Each application in Coolify exposes a unique webhook URL to trigger automated deployments. Because deploy webhooks are API endpoints (`/api/v1/deploy?...`), Coolify requires instance-level API access to be enabled:
+
+#### 1.1 Enable API Access in Coolify
+1. In your Coolify dashboard, navigate to **Settings** > **Advanced** (under **Access and API** > **API and MCP**).
+2. **API access**: Toggle from **Disabled** to **Enabled**.
+3. **Allowed IPs**:
+   * **Leave blank / empty** (recommended, since Coolify is already restricted to private Tailscale), OR
+   * Set to Tailscale's CGNAT CIDR: **`100.64.0.0/10`**.
+   * ⚠️ *Important*: Do NOT leave the example placeholder (`192.168.1.100, 10.0.0.0/8`), or your GitHub Actions runner (connecting via Tailscale `100.x.y.z`) will be rejected with HTTP `403 Forbidden`.
+4. Click **Save**.
+
+#### 1.2 Generate a Scoped Deploy Token
+1. In the main sidebar, go to **Keys & Tokens** > **API tokens** (or click your profile > **API Tokens**).
+2. Click **Create Token** / **New Token**:
+   * **Description**: `github-actions-deploy`
+   * **Permissions**: Check **`deploy`** (grants permission exclusively to trigger application builds).
+3. Click **Create** and **copy the generated token** immediately. Store this as your `COOLIFY_API_TOKEN` secret.
+
+#### 1.3 Retrieve Application Deploy Webhook
+* **Coolify FQDN Format (Displayed in Coolify UI)**:
+  ```text
+  https://<YOUR_COOLIFY_FQDN>/api/v1/deploy?uuid=<YOUR_APP_UUID>&force=false
+  ```
+* **Private Tailscale Format (Executed by GitHub Actions)**:
+  Because Coolify is accessed privately over Tailscale without public DNS, the runner communicates directly with your OCI server's Tailscale IP and port:
+  ```text
+  http://<YOUR_SERVER_TAILSCALE_IP>:<COOLIFY_PORT>/api/v1/deploy?uuid=<YOUR_APP_UUID>&force=false
+  ```
+
+> [!TIP]
+> **Zero Sensitive Data in Code**: You do **not** need to hardcode the IP, port, or UUID in your workflow file. You will store this entire URL (or its components) securely in GitHub Secrets as an environment variable.
 
 ---
 
-### Step 2: Update Webhook URL in GitHub App Settings (Bypass private IP)
-If you are using the GitHub App integration, you must update the Webhook URL in your GitHub settings to point to your new public Coolify domain:
-1. Open GitHub in your browser.
-2. Go to your account **Settings** (click your profile photo in top-right corner > select **Settings**).
-3. Scroll down the left sidebar menu and click **Developer Settings** > select **GitHub Apps**.
-4. Click **Edit** next to your app (usually named `speakit-github-coolify`).
-5. Scroll down to the **Webhook** section:
-   * **Webhook URL**: Enter your new public Coolify domain webhook endpoint:
-     ```text
-     https://coolify.mohitur.com/webhooks/source/github/events
-     ```
-   * **Secret**: Ensure the key matches the webhook secret defined in Coolify.
-   * **Active**: Checked.
-6. Click **Save Changes** at the bottom.
+### Step 2: Tailscale ACL Policy & Authentication Setup
+
+#### 2.1 Update Policy File (ACL)
+Any automated machine node (like GitHub Actions runners via OIDC, OAuth, or tagged Auth Keys) must have an owner defined in Tailscale's access control policy:
+
+1. Open **[Tailscale Admin Console > Settings > Policy file management](https://login.tailscale.com/admin/settings/policy)**.
+2. In your policy JSON:
+   * **Define `tagOwners`**: Grant your admin group permission to manage `tag:ci`.
+   * **(Optional) Add Host Alias**: Under `"hosts"`, add your Coolify server's private Tailscale IP.
+   * **Add Ingress Rule in `acls`**: Allow `tag:ci` to reach Coolify on port `8000`.
+
+```jsonc
+{
+  // Declare static groups of users.
+  "groups": {
+    "group:admin":  ["<YOUR_ADMIN_EMAIL>"],
+    "group:family": ["<YOUR_FAMILY_EMAIL>"],
+  },
+
+  "hosts": {
+    "homeserver": "<YOUR_HOMESERVER_TAILSCALE_IP>",
+    // Replace with your OCI server Tailscale IP (find with 'tailscale ip')
+    "coolify":    "<YOUR_SERVER_TAILSCALE_IP>",
+  },
+
+  // 1. Mandatory tag ownership definition
+  "tagOwners": {
+    "tag:ci": ["group:admin"],
+  },
+
+  "acls": [
+    // 1. Admin full access
+    {
+      "action": "accept",
+      "src":    ["group:admin"],
+      "dst":    ["*:*"],
+    },
+
+    // 2. Allow CI/CD runner to access Coolify port 8000 only
+    {
+      "action": "accept",
+      "src":    ["tag:ci"],
+      "dst":    ["coolify:8000"],
+    },
+  ],
+
+  "grants": [],
+
+  // Define users and devices that can use Tailscale SSH.
+  "ssh": [
+    {
+      "action": "check",
+      "src":    ["autogroup:member"],
+      "dst":    ["autogroup:self"],
+      "users":  ["autogroup:nonroot", "root"],
+    },
+  ],
+}
+```
+3. Save your policy file.
 
 ---
 
-### Step 3: Set up Manual Webhooks (Alternative - If App Integration is not used)
-If you configured a plain repository integration without a GitHub App, you must link it manually:
-1. In Coolify, go to your **GitHub Source** settings (left sidebar **Sources** > click your source).
-2. Copy the **Webhook URL** and **Webhook Secret** displayed on the configuration page.
-3. Open your GitHub Repository in your browser:
-   * Navigate to **Settings** > **Webhooks** (left sidebar).
-   * Click **Add Webhook** (top right).
-4. Configure the Webhook parameters:
-   * **Payload URL**: Use the public domain URL (e.g. `https://coolify.mohitur.com/webhooks/...` instead of the local Tailscale IP).
-   * **Content type**: Change to **`application/json`** (critical).
-   * **Secret**: Paste the Webhook Secret from Coolify.
-   * **Which events**: Select **`Just the push event.`**
-   * **Active**: Checked.
-5. Click **Add webhook**.
-6. Refresh the page after a few seconds and ensure the webhook shows a green checkmark next to the URL.
+#### 2.2 Choose Your Authentication Method for GitHub Actions
+
+##### Option A: Workload Identity Federation / OIDC (Industry Gold Standard — Keyless)
+Tailscale supports OpenID Connect (OIDC) across all tiers (including Free):
+1. In Tailscale Admin Console, go to **Settings > Trust credentials**.
+2. Click **Add credential** / **Create OIDC credential**:
+   * **Step 1: Settings**:
+     * **Description**: `speakit-github-coolify-deploy`
+     * **Issuer**: `GitHub`
+     * **Issuer URL**: `https://token.actions.githubusercontent.com`
+     * **Subject**: `repo:Mohitur669/speakit:*`
+     * **Custom claims**: Leave empty / unconfigured.
+     * Click **Next** to proceed to Scopes.
+   * **Step 2: Scopes**:
+     * Under **Keys**, click **Auth Keys** > select **Write** (or Read & Write).
+     * Under **Devices**, click **Core** > select **Write** (or Read & Write).
+     * In the **Tags** selector that appears, choose **`tag:ci`**.
+     * Click **Create credential** (or **Save**).
+3. Copy the generated **Client ID** and store as GitHub Secret `TS_OIDC_CLIENT_ID`.
+
+##### Option B: OAuth Client (Under Trust Credentials)
+1. Go to **Settings > Trust credentials** (or **OAuth Clients**).
+2. Click **Generate OAuth Client**.
+3. Select **Devices (Write)** and/or **Auth keys (Write)**, choose tag `tag:ci`, and save.
+4. Store `TS_OAUTH_CLIENT_ID` and `TS_OAUTH_SECRET` in GitHub Secrets.
+
+##### Option C: Ephemeral Auth Key (Simplest Single-Secret Setup)
+1. Go to **Settings > Keys**.
+2. Click **Generate auth key...**:
+   * **Reusable**: ✅ Checked.
+   * **Ephemeral**: ✅ Checked.
+   * **Pre-authorized**: ✅ Checked.
+   * **Tags**: Assign `tag:ci`.
+3. Copy key and store as GitHub Secret `TAILSCALE_AUTHKEY`.
 
 ---
 
-### Step 3: Configure "Watch Paths" (Avoid Unnecessary Backend Builds)
-Since both the backend and frontend exist in the same repository (monorepo), a change to frontend code would normally trigger an unnecessary, expensive Java Maven rebuild in Coolify. We prevent this using **Watch Paths**:
-1. Open your application configuration page in Coolify (do this for both `speakit-prod-backend` and `speakit-dev-backend`).
+### Step 3: Configure GitHub Repository Secrets (Environment Variables)
+
+In your GitHub repository:
+1. Navigate to **Settings** > **Secrets and variables** > **Actions**.
+2. Click **New repository secret** and add the following parameters:
+
+| Secret Name | Example / Value | Purpose |
+| :--- | :--- | :--- |
+| **`TAILSCALE_AUTHKEY`** *(or `TS_OIDC_CLIENT_ID`)* | `tskey-auth-...` | Ephemeral reusable Tailscale authentication key or OIDC Client ID. |
+| **`COOLIFY_PROD_DEPLOY_URL`** | `http://<YOUR_SERVER_TAILSCALE_IP>:<COOLIFY_PORT>/api/v1/deploy?uuid=<YOUR_APP_UUID>&force=false` | Private deploy webhook URL. Stores the private IP, port, and app UUID securely. |
+| **`COOLIFY_FQDN_HOST`** | `<YOUR_COOLIFY_FQDN>` (e.g. `coolify.yourdomain.com`) | Injected as the `Host:` header so Coolify's reverse proxy routes the request correctly. |
+| **`COOLIFY_API_TOKEN`** | *[Optional Bearer Token]* | Required only if token-based API authentication is enabled in Coolify. |
+
+---
+
+### Step 4: Add the GitHub Actions Deployment Workflow
+
+Create a new workflow file in your repository at **`.github/workflows/coolify-deploy.yml`**.
+
+Notice how **all sensitive connectivity parameters (IP, port, UUID, host) are read exclusively from environment variables**, keeping the workflow file 100% clean and safe to commit publicly:
+
+```yaml
+name: Coolify Auto-Deploy
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'backend/**'
+      - 'pom.xml'
+      - '.github/workflows/coolify-deploy.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Trigger Coolify Deployment over Tailscale
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    # Required for OIDC Workload Identity Federation
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Connect to Tailscale via OIDC
+        uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TS_OIDC_CLIENT_ID }}
+          tags: tag:ci
+
+      - name: Trigger Coolify Backend Deployment
+        env:
+          COOLIFY_DEPLOY_URL: ${{ secrets.COOLIFY_PROD_DEPLOY_URL }}
+          COOLIFY_HOST_HEADER: ${{ secrets.COOLIFY_FQDN_HOST }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
+        run: |
+          echo "Dispatching private deployment trigger to Coolify..."
+          
+          # Validate that the deploy URL secret is set
+          if [ -z "$COOLIFY_DEPLOY_URL" ]; then
+            echo "Error: COOLIFY_PROD_DEPLOY_URL secret is not configured!"
+            exit 1
+          fi
+          
+          # Prepare optional host header if configured
+          HOST_HEADER_PARAM=""
+          if [ -n "$COOLIFY_HOST_HEADER" ]; then
+            HOST_HEADER_PARAM="-H Host: $COOLIFY_HOST_HEADER"
+          fi
+          
+          # Prepare optional bearer auth token if configured
+          AUTH_HEADER_PARAM=""
+          if [ -n "$COOLIFY_TOKEN" ]; then
+            AUTH_HEADER_PARAM="-H Authorization: Bearer $COOLIFY_TOKEN"
+          fi
+          
+          HTTP_STATUS=$(curl -s -o response.json -w "%{http_code}" -X POST "$COOLIFY_DEPLOY_URL" \
+            $HOST_HEADER_PARAM \
+            $AUTH_HEADER_PARAM \
+            -H "Content-Type: application/json")
+          
+          echo "Coolify HTTP Response Code: $HTTP_STATUS"
+          cat response.json
+          
+          if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
+            echo "Deployment successfully triggered in Coolify!"
+          else
+            echo "Failed to trigger deployment in Coolify!"
+            exit 1
+          fi
+```
+
+---
+
+### Step 5: Configure "Watch Paths" in Coolify
+
+Since both the backend and frontend exist in the same repository (monorepo), a change to frontend code would normally trigger an unnecessary Maven rebuild in Coolify. We prevent this using **Watch Paths**:
+
+1. Open your application configuration in Coolify (**`speakit-prod-backend`**).
 2. Go to **Settings** > scroll down to the **Git Source** / **Watch Paths** section.
 3. In the **Watch Paths** field, enter:
    ```text
    backend/**
    ```
 4. Click **Save**.
-5. **Why it matters**: Now, Coolify will inspect every incoming push webhook. It will only execute a rebuild and deploy if a file inside the `/backend` folder has changed. Frontend-only commits will be skipped entirely.
+5. **Why it matters**: Coolify will only rebuild and deploy if a file inside the `/backend` directory has changed. Frontend-only commits will be skipped automatically.
 
 ---
 
-### Step 4: How to Verify and Troubleshoot Webhook Health
+### Step 6: Full Ingress Lockdown (No Public DNS Needed)
 
-A healthy webhook connection is crucial for auto-deployments. To verify and debug deliveries, use the following step-by-step procedures:
+With Pattern A implemented:
+1. **No Public DNS for Coolify**: You do not need any public DNS record in Cloudflare. You can safely remove it from Cloudflare DNS.
+2. **Zero Inbound Port Exposure**: Coolify's port remains strictly closed to the public internet (`0.0.0.0/0`) on your OCI VCN and UFW firewall. It is reachable exclusively over encrypted WireGuard.
+3. **No WAF Costs**: You avoid all Cloudflare WAF custom rule requirements and eliminate `403 Forbidden` webhook delivery failures.
 
-#### A. Checking Recent Deliveries on GitHub
-1. **For GitHub App Integration**:
-   * Go to your personal GitHub **Settings** ➔ **Developer Settings** ➔ **GitHub Apps** ➔ **Edit** your app.
-   * Click **Advanced** in the left sidebar menu to view **Recent Deliveries**.
-2. **For Repository-specific Webhooks**:
-   * Open your GitHub Repository ➔ **Settings** ➔ **Webhooks** ➔ Click **Edit** next to your webhook.
-   * Scroll down to the **Recent Deliveries** section.
+---
 
-#### B. Debugging Webhook Delivery Errors
+### Step 7: How to Verify Deployment Health
 
-##### 🔴 Error: 403 Forbidden (Cloudflare WAF Block)
-* **Symptoms**: The delivery logs show `Response 403`, completed very quickly (under `0.05 seconds`), and headers show `Server: cloudflare`.
-* **Diagnostic**:
-  1. Open your **Cloudflare Dashboard** ➔ Go to your domain **`mohitur.com`**.
-  2. Click **Security** ➔ **Events** in the left sidebar.
-  3. Look for a blocked request where the path is `/api/v1/webhooks/github` and user-agent is `GitHub-Hookshot`.
-  4. Expand the event and look at the **Description** (e.g., `Lockdown Coolify Dashboard`).
-* **Root Cause**: The request path does not match your Cloudflare WAF allow rule. If you changed your WAF rule to allow `/webhooks` but your GitHub settings are still configured with the old `/api/v1/webhooks` path, Cloudflare blocks it.
-* **Resolution**: Go to your GitHub App settings and update the **Webhook URL** to `https://coolify.mohitur.com/webhooks/source/github/events` so it starts with `/webhooks`.
-
-##### 🟡 Error: 404 Not Found (Invalid Endpoint Route)
-* **Symptoms**: The delivery logs show `Response 404`, completed in `1.3 - 1.5 seconds`, and headers contain `X-Ratelimit-Limit: 200` and `Access-Control-Allow-Origin: *`.
-* **Diagnostic**: The request successfully bypassed Cloudflare (meaning it reached your OCI server), but Coolify's Laravel router returned a `404 Not Found` because the route doesn't exist.
-* **Root Cause**: The URL on GitHub is pointing to the old API format `/api/v1/webhooks/...` or ends in an incorrect `/events` sub-path.
-* **Resolution**: Remove any `/api/v1` prefix. Ensure the path is exactly:
-  ```text
-  https://coolify.mohitur.com/webhooks/source/github/events
-  ```
-
-##### 🟢 Success: 200 OK (Deployment Triggered)
-* **Verify**: The delivery shows a green checkmark with `200 OK` in GitHub. Inside Coolify, go to your application deployments page to confirm a new build has started automatically.
+1. **Verify in GitHub Actions**:
+   * Navigate to your GitHub Repository > **Actions** tab.
+   * Click on the **Coolify Auto-Deploy** workflow run.
+   * Expand the **Trigger Coolify Backend Deployment** step: it should display `Coolify HTTP Response Code: 200` with confirmation that the build has been queued.
+2. **Verify in Coolify Dashboard**:
+   * Open your Coolify Dashboard locally over Tailscale (`http://<YOUR_SERVER_TAILSCALE_IP>:<COOLIFY_PORT>`).
+   * Navigate to **`speakit-prod-backend`** > **Deployments**.
+   * A new deployment build will be actively running with live Docker build logs.
 
 ---
 
@@ -729,18 +879,18 @@ To save time and avoid clicking "Add Variable" 20+ times, you can add all enviro
 2. In the top-right corner, click **Developer View** (this toggles the interface into a single large text box).
 3. Copy the entire raw `.env` block below, paste it directly into the text box, edit the placeholder values, and click **Save**. Coolify will automatically parse all the variables into separate entries!
 
-### 1. Production Backend Variables (`speakit-prod-api.mohitur.com`)
+### 1. Production Backend Variables (`speakit-prod-api.yourdomain.com`)
 
 #### Raw Copy-Pasteable `.env` Block:
 ```env
 SPRING_DATASOURCE_URL=jdbc:postgresql://speakit-prod-db:5432/speakit
-SPRING_DATASOURCE_USERNAME=mohitur
+SPRING_DATASOURCE_USERNAME=speakit_user
 SPRING_DATASOURCE_PASSWORD=your_speakit_prod_db_password
 SPRING_DATASOURCE_MAX_POOL_SIZE=10
 SPRING_DATASOURCE_MIN_IDLE=5
 JWT_SECRET=your_production_jwt_secret_hash_value
 JWT_EXPIRATION=86400000
-CORS_ALLOWED_ORIGINS=https://speakit.mohitur.com
+CORS_ALLOWED_ORIGINS=https://speakit.yourdomain.com
 AWS_ACCESS_KEY_ID=your_aws_access_key
 AWS_SECRET_ACCESS_KEY=your_aws_secret_key
 AWS_REGION=ap-south-1
@@ -753,7 +903,7 @@ MAIL_HOST=email-smtp.ap-south-1.amazonaws.com
 MAIL_PORT=587
 MAIL_USERNAME=your_ses_smtp_username
 MAIL_PASSWORD=your_ses_smtp_password
-MAIL_FROM=noreply@mohitur.com
+MAIL_FROM=noreply@yourdomain.com
 EMAIL_PROVIDER=SMTP
 OTP_EXPIRY_MINUTES=10
 ```
@@ -763,13 +913,13 @@ OTP_EXPIRY_MINUTES=10
 | Variable Key | Value / Example | Why it Matters & What it Means |
 | :--- | :--- | :--- |
 | **`SPRING_DATASOURCE_URL`** | `jdbc:postgresql://speakit-prod-db:5432/speakit` | JDBC (Java Database Connectivity) connection string pointing to the production database container name on the internal Docker network. |
-| **`SPRING_DATASOURCE_USERNAME`** | `mohitur` | The restricted owner username configured for the production database. |
+| **`SPRING_DATASOURCE_USERNAME`** | `speakit_user` | The restricted owner username configured for the production database. |
 | **`SPRING_DATASOURCE_PASSWORD`** | `your_speakit_prod_db_password` | The strong password generated for the production database container. |
 | **`SPRING_DATASOURCE_MAX_POOL_SIZE`** | `10` | The maximum number of active database connections HikariCP maintains. Capped to prevent connection saturation. |
 | **`SPRING_DATASOURCE_MIN_IDLE`** | `5` | The minimum number of idle database connections HikariCP keeps alive to handle sudden traffic spikes. |
 | **`JWT_SECRET`** | `your_production_jwt_secret_hash_value` | A 256-bit cryptographically secure hexadecimal string used to sign and verify JSON Web Tokens. Must be kept secret. |
 | **`JWT_EXPIRATION`** | `86400000` | Expiration time of the JWT in milliseconds (e.g., `86400000` = 24 hours). |
-| **`CORS_ALLOWED_ORIGINS`** | `https://speakit.mohitur.com` | Strictly permits only your production frontend hosted on Vercel to make cross-origin API requests to the backend. |
+| **`CORS_ALLOWED_ORIGINS`** | `https://speakit.yourdomain.com` | Strictly permits only your production frontend hosted on Vercel to make cross-origin API requests to the backend. |
 | **`AWS_ACCESS_KEY_ID`** | `your_aws_access_key` | AWS IAM Access Key ID required to access AWS Polly (for voice synthesis) and AWS SES (for transactional emails). |
 | **`AWS_SECRET_ACCESS_KEY`** | `your_aws_secret_key` | AWS IAM Secret Access Key matching the Access Key ID. |
 | **`AWS_REGION`** | `ap-south-1` | The AWS region where your Polly and SES services run (e.g., `ap-south-1` for Mumbai). |
@@ -782,24 +932,24 @@ OTP_EXPIRY_MINUTES=10
 | **`MAIL_PORT`** | `587` | Standard port for secure email transmission using STARTTLS. |
 | **`MAIL_USERNAME`** | `your_ses_smtp_username` | SMTP credentials generated from your AWS IAM console. |
 | **`MAIL_PASSWORD`** | `your_ses_smtp_password` | SMTP password generated from your AWS IAM console. |
-| **`MAIL_FROM`** | `noreply@mohitur.com` | The verified sender email address in your Amazon SES account. |
+| **`MAIL_FROM`** | `noreply@yourdomain.com` | The verified sender email address in your Amazon SES account. |
 | **`EMAIL_PROVIDER`** | `SMTP` | Configures the email engine strategy (SMTP or SES_API). |
 | **`OTP_EXPIRY_MINUTES`** | `10` | The lifespan of sign-up and password reset verification codes. |
 
 ---
 
-### 2. Development Backend Variables (`speakit-dev-api.mohitur.com`)
+### 2. Development Backend Variables (`speakit-dev-api.yourdomain.com`)
 
 #### Raw Copy-Pasteable `.env` Block:
 ```env
 SPRING_DATASOURCE_URL=jdbc:postgresql://speakit-dev-db:5432/speakit_dev
-SPRING_DATASOURCE_USERNAME=mohitur
+SPRING_DATASOURCE_USERNAME=speakit_user
 SPRING_DATASOURCE_PASSWORD=your_speakit_dev_db_password
 SPRING_DATASOURCE_MAX_POOL_SIZE=5
 SPRING_DATASOURCE_MIN_IDLE=2
 JWT_SECRET=your_development_jwt_secret_hash_value
 JWT_EXPIRATION=86400000
-CORS_ALLOWED_ORIGINS=http://localhost:4200,https://speakit-dev.mohitur.com
+CORS_ALLOWED_ORIGINS=http://localhost:4200,https://speakit-dev.yourdomain.com
 AWS_ACCESS_KEY_ID=your_dev_aws_key
 AWS_SECRET_ACCESS_KEY=your_dev_aws_secret
 AWS_REGION=ap-south-1
@@ -812,7 +962,7 @@ MAIL_HOST=email-smtp.ap-south-1.amazonaws.com
 MAIL_PORT=587
 MAIL_USERNAME=your_ses_smtp_username
 MAIL_PASSWORD=your_ses_smtp_password
-MAIL_FROM=noreply@mohitur.com
+MAIL_FROM=noreply@yourdomain.com
 EMAIL_PROVIDER=SMTP
 OTP_EXPIRY_MINUTES=10
 ```
@@ -821,13 +971,13 @@ OTP_EXPIRY_MINUTES=10
 | Variable Key | Value / Example | Why it Matters & What it Means |
 | :--- | :--- | :--- |
 | **`SPRING_DATASOURCE_URL`** | `jdbc:postgresql://speakit-dev-db:5432/speakit_dev` | JDBC connection string pointing to the development database container name. |
-| **`SPRING_DATASOURCE_USERNAME`** | `mohitur` | The restricted owner username configured for the development database. |
+| **`SPRING_DATASOURCE_USERNAME`** | `speakit_user` | The restricted owner username configured for the development database. |
 | **`SPRING_DATASOURCE_PASSWORD`** | `your_speakit_dev_db_password` | The password generated for the development database container. |
 | **`SPRING_DATASOURCE_MAX_POOL_SIZE`** | `5` | Lower connection pool limit to save RAM on the OCI instance. |
 | **`SPRING_DATASOURCE_MIN_IDLE`** | `2` | Lower idle pool limit to minimize resource footprints. |
 | **`JWT_SECRET`** | `your_development_jwt_secret_hash_value` | Separate secret key used for development tokens. |
 | **`JWT_EXPIRATION`** | `86400000` | Expiration time of dev tokens (24 hours). |
-| **`CORS_ALLOWED_ORIGINS`** | `http://localhost:4200,https://speakit-dev.mohitur.com` | Allows both your local development environment (`localhost:4200`) and your Vercel preview domain to access this API. |
+| **`CORS_ALLOWED_ORIGINS`** | `http://localhost:4200,https://speakit-dev.yourdomain.com` | Allows both your local development environment (`localhost:4200`) and your Vercel preview domain to access this API. |
 | **`AWS_ACCESS_KEY_ID`** | `your_dev_aws_key` | Development/sandbox AWS IAM Access Key. |
 | **`AWS_SECRET_ACCESS_KEY`** | `your_dev_aws_secret` | Development/sandbox AWS IAM Secret Key. |
 | **`AWS_REGION`** | `ap-south-1` | AWS region. |
@@ -840,7 +990,7 @@ OTP_EXPIRY_MINUTES=10
 | **`MAIL_PORT`** | `587` | SMTP port. |
 | **`MAIL_USERNAME`** | `your_ses_smtp_username` | SMTP username. |
 | **`MAIL_PASSWORD`** | `your_ses_smtp_password` | SMTP password. |
-| **`MAIL_FROM`** | `noreply@mohitur.com` | Email sender address. |
+| **`MAIL_FROM`** | `noreply@yourdomain.com` | Email sender address. |
 | **`EMAIL_PROVIDER`** | `SMTP` | Email strategy. |
 | **`OTP_EXPIRY_MINUTES`** | `10` | Verification code lifespan. |
 
