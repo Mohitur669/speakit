@@ -16,18 +16,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
-    # Required for OIDC Workload Identity Federation
-    permissions:
-      id-token: write
-      contents: read
-
     steps:
-      - name: Connect to Tailscale via OIDC
+      - name: Connect to Private Tailnet
         uses: tailscale/github-action@v3
         with:
-          oauth-client-id: ${{ secrets.TS_OIDC_CLIENT_ID }}
-          audience: ${{ secrets.TS_OIDC_AUDIENCE }}
-          tags: tag:ci
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
 
       - name: Trigger Coolify Backend Deployment
         env:
