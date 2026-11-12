@@ -1,0 +1,67 @@
+name: Coolify Auto-Deploy
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'backend/**'
+      - 'pom.xml'
+      - '.github/workflows/coolify-deploy.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Trigger Coolify Deployment over Tailscale
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    # Required for OIDC Workload Identity Federation
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Connect to Tailscale via OIDC
+        uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TS_OIDC_CLIENT_ID }}
+          tags: tag:ci
+
+      - name: Trigger Coolify Backend Deployment
+        env:
+          COOLIFY_DEPLOY_URL: ${{ secrets.COOLIFY_PROD_DEPLOY_URL }}
+          COOLIFY_HOST_HEADER: ${{ secrets.COOLIFY_FQDN_HOST }}
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
+        run: |
+          echo "Dispatching private deployment trigger to Coolify..."
+
+          if [ -z "$COOLIFY_DEPLOY_URL" ]; then
+            echo "Error: COOLIFY_PROD_DEPLOY_URL secret is not configured!"
+            exit 1
+          fi
+
+          HOST_HEADER_PARAM=""
+          if [ -n "$COOLIFY_HOST_HEADER" ]; then
+            HOST_HEADER_PARAM="-H Host: $COOLIFY_HOST_HEADER"
+          fi
+
+          AUTH_HEADER_PARAM=""
+          if [ -n "$COOLIFY_TOKEN" ]; then
+            AUTH_HEADER_PARAM="-H Authorization: Bearer $COOLIFY_TOKEN"
+          fi
+
+          HTTP_STATUS=$(curl -s -o response.json -w "%{http_code}" -X POST "$COOLIFY_DEPLOY_URL" \
+            $HOST_HEADER_PARAM \
+            $AUTH_HEADER_PARAM \
+            -H "Content-Type: application/json")
+
+          echo "Coolify HTTP Response Code: $HTTP_STATUS"
+          cat response.json
+
+          if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
+            echo "Deployment successfully triggered in Coolify!"
+          else
+            echo "Failed to trigger deployment in Coolify!"
+            exit 1
+          fi
