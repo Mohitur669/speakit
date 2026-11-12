@@ -185,9 +185,10 @@ Tailscale supports OpenID Connect (OIDC) across all tiers (including the Free ti
      * Under **Devices**, click **Core** > select **Write** (or Read & Write).
      * In the **Tags** selector that appears, choose **`tag:ci`**.
      * Click **Create credential** (or **Save**).
-3. Copy the generated **Client ID** / **Audience**.
+3. Copy the generated **Client ID** and **Audience** (`api.tailscale.com/...`).
 4. Add to GitHub Secrets:
    * **`TS_OIDC_CLIENT_ID`**: Your Tailscale OIDC client ID.
+   * **`TS_OIDC_AUDIENCE`**: Your Tailscale Audience URL.
 
 #### Option B: OAuth Client (Under Trust Credentials)
 1. In Tailscale Admin Console, go to **Settings > Trust credentials** (or **OAuth Clients**).
@@ -215,7 +216,8 @@ In your GitHub repository > **Settings** > **Secrets and variables** > **Actions
 
 | Secret Name | Value | Description |
 | :--- | :--- | :--- |
-| **`TAILSCALE_AUTHKEY`** *(or `TS_OIDC_CLIENT_ID`)* | `tskey-auth-...` | Tailscale Ephemeral Auth Key or OIDC Client ID. |
+| **`TS_OIDC_CLIENT_ID`** | `...` | Tailscale OIDC Client ID. |
+| **`TS_OIDC_AUDIENCE`** | `api.tailscale.com/...` | Tailscale OIDC Audience URL. |
 | **`COOLIFY_PROD_DEPLOY_URL`** | `http://<YOUR_SERVER_TAILSCALE_IP>:<COOLIFY_PORT>/api/v1/deploy?uuid=<YOUR_APP_UUID>&force=false` | Private deploy webhook URL. |
 | **`COOLIFY_FQDN_HOST`** | `<YOUR_COOLIFY_FQDN>` (e.g. `coolify.yourdomain.com`) | Injected as `Host:` header for internal proxy routing. |
 | **`COOLIFY_API_TOKEN`** | *[Optional]* | Bearer token if API authentication is enabled. |
@@ -255,6 +257,7 @@ jobs:
         uses: tailscale/github-action@v3
         with:
           oauth-client-id: ${{ secrets.TS_OIDC_CLIENT_ID }}
+          audience: ${{ secrets.TS_OIDC_AUDIENCE }}
           tags: tag:ci
 
       - name: Trigger Coolify Backend Deployment
