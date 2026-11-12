@@ -72,7 +72,7 @@ public class DiscordService {
         Map<String, Object> embed = buildEmbedPayload(name, email, subject, message, requestId);
         Map<String, Object> payload = Map.of("embeds", List.of(embed));
 
-        executeWithRetry(() -> {
+        executeWithRetry("contact", () -> {
             restClient.post()
                     .uri(contactWebhookUrl)
                     .contentType(MediaType.APPLICATION_JSON)
@@ -125,15 +125,26 @@ public class DiscordService {
         }
     }
 
+    @Async
     public void sendLogBackupNotification(LogBackupAudit audit) {
-        if (infraWebhookUrl == null || infraWebhookUrl.isBlank() || restClient == null || audit == null) {
+        if (audit == null) {
+            return;
+        }
+
+        if (infraWebhookUrl == null || infraWebhookUrl.isBlank()) {
+            log.warn("Discord infra webhook URL is not configured (app.discord.infra-webhook-url / DISCORD_INFRA_WEBHOOK_URL). Skipping Discord notification for audit ID: {}", audit.getId());
+            return;
+        }
+
+        if (restClient == null) {
+            log.warn("Discord RestClient is not initialized. Skipping Discord notification for audit ID: {}", audit.getId());
             return;
         }
 
         Map<String, Object> embed = buildLogBackupEmbedPayload(audit);
         Map<String, Object> payload = Map.of("embeds", List.of(embed));
 
-        executeWithRetry(() -> {
+        executeWithRetry("log backup", () -> {
             restClient.post()
                     .uri(infraWebhookUrl)
                     .contentType(MediaType.APPLICATION_JSON)
@@ -307,19 +318,19 @@ public class DiscordService {
         return text.substring(0, Math.max(0, maxLength - 3)) + "...";
     }
 
-    private void executeWithRetry(Runnable action) {
+    private void executeWithRetry(String channelName, Runnable action) {
         int maxRetries = 3;
         long backoffMs = 1000;
 
         for (int i = 0; i < maxRetries; i++) {
             try {
                 action.run();
-                log.info("Discord contact notification dispatched successfully.");
+                log.info("Discord {} notification dispatched successfully.", channelName);
                 return;
             } catch (Exception e) {
-                log.warn("Discord notification attempt {} failed: {}", i + 1, e.getMessage());
+                log.warn("Discord {} notification attempt {} failed: {}", channelName, i + 1, e.getMessage());
                 if (i == maxRetries - 1) {
-                    log.error("Discord notification failed after all retries.");
+                    log.error("Discord {} notification failed after all retries.", channelName);
                     break;
                 }
                 try {
