@@ -86,7 +86,7 @@ Overall, the repository is in an **excellent state** with clean separation of la
 ---
 
 ## 10. Documentation Findings
-- **Guides:** Detailed documentation is present, including `EMAIL_SETUP_GUIDE.md`, `ORACLE_CLOUD_DEPLOYMENT_GUIDE.md`, and `RAZORPAY_INTEGRATION.md`.
+- **Guides:** Detailed documentation is present, including `Email-Setup-Guide.md`, `ORACLE_CLOUD_DEPLOYMENT_GUIDE.md`, and `Razorpay-Integration.md`.
 - **README & rules:** We updated `README.md` and `agents.md` to document the new `com.speakit.shared` architecture.
 
 ---
@@ -122,5 +122,5 @@ Overall, the repository is in an **excellent state** with clean separation of la
   - `docker-compose.yml`: Corrected healthcheck endpoint to `/api/auth/ping`.
   - `backend/src/main/java/com/speakit/stt/service/SttService.java`: Removed `@Transactional` from `transcribe()` to prevent pool exhaustion.
 - **Added:**
-  - `Repository_Audit_Report.md`: This comprehensive audit report.
+  - `Repository-Audit-Report.md`: This comprehensive audit report.
 - **Files Requiring Manual Review:** None (all changes are minor, backwards-compatible, and fully compile/test passing).

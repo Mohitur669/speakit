@@ -6,7 +6,7 @@ Please read our [AGENTS.md](./agents.md) for a deep dive into our engineering st
 
 ---
 
-## ⚖️ Legal & Licensing
+## ️ Legal & Licensing
 
 SpeakIT is distributed under a **Dual-Licensing Model** (AGPLv3 + Commercial).
 
@@ -17,7 +17,7 @@ By contributing to this repository, you agree that:
 
 ---
 
-## 🛠 Engineering Standards
+##  Engineering Standards
 
 All contributions must adhere to the following core principles:
 
@@ -36,7 +36,7 @@ All contributions must adhere to the following core principles:
 
 ---
 
-## 🔄 Development Workflow
+##  Development Workflow
 
 1. **Fork** the repository and create your feature branch:
    ```bash
@@ -60,7 +60,7 @@ All contributions must adhere to the following core principles:
 
 ---
 
-## 🧪 Testing Requirements
+##  Testing Requirements
 
 - **Bug Fixes:** Include a regression test case or reproduction script.
 - **Features:** Provide unit tests for core business logic in the service layer.
@@ -68,7 +68,7 @@ All contributions must adhere to the following core principles:
 
 ---
 
-## 💬 Community & Help
+##  Community & Help
 
 - **Code of Conduct:** Please follow our [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md).
 - **Issues:** Use GitHub Issues for bug reports and feature requests.

@@ -15,8 +15,8 @@ SpeakIT is a production-grade full-stack text-to-speech (TTS) and speech-to-text
 A comprehensive, evidence-based security and open-source publication readiness audit was conducted across the codebase, infrastructure configuration, build pipelines, test suites, and Git revision history.
 
 ### Readiness Status
-- **Initial Status:** 🔴 **NOT READY** (Multiple critical credential exposures, payment bypasses, build bugs, and historical secrets detected)
-- **Remediated Working Tree Status:** 🟡 **READY AFTER CREDENTIAL ROTATION & GIT HISTORY SCRUBBING**
+- **Initial Status:** [Critical] **NOT READY** (Multiple critical credential exposures, payment bypasses, build bugs, and historical secrets detected)
+- **Remediated Working Tree Status:** [Warning] **READY AFTER CREDENTIAL ROTATION & GIT HISTORY SCRUBBING**
 
 All working tree vulnerabilities, hardcoded passwords, production CDN links, build configuration defects, and security disclosure policies have been resolved. The remaining mandatory actions require the repository owner to rotate exposed cloud credentials and scrub historical commits before flipping the repository visibility to public.
 
@@ -26,24 +26,24 @@ All working tree vulnerabilities, hardcoded passwords, production CDN links, bui
 
 | Finding ID | Severity | Category | Target Component | Status | Resolution Summary |
 |---|---|---|---|---|---|
-| **SEC-01** | **Critical** | Credential Exposure | `ios/.../SpeakITLogicTests.swift` | ✅ Remediated | Removed hardcoded live credentials (`mohitur` / `DUMMY_PASSWORD_PLACEHOLDER`) and live network login test; replaced with safe offline test fixtures. |
-| **SEC-02** | **Critical** | Credential Exposure | `scripts/application/speakit-api-load-tester.py` | ✅ Remediated | Replaced hardcoded password `DUMMY_PASSWORD_PLACEHOLDER` with `os.getenv("TEST_AUTH_PASSWORD")` and placeholder fallback. |
-| **SEC-03** | **Critical** | Historical Exposure | `.git` (Commit `2c354a9` / `.example.env`) | ⚠️ Action Required | Supabase host `db.dummy-supabase-project.supabase.co` and key `sb_publishable_PRJA...7M20` committed historically. Rotation & `git-filter-repo` scrubbing documented. |
-| **SEC-04** | **High** | Sensitive Data Leak | `reports/audit/` | ✅ Remediated | Internal security reports detailing local privilege escalation exploit payloads and host filesystem paths (`/home/cyberbully/...`) untracked from Git. |
-| **SEC-05** | **High** | Threat Intelligence Leak | `scripts/cloudflare-scan/reports/cloudflare-security-report.md` | ✅ Remediated | Production SOC threat audit detailing attacker IPs, honeypot probe trails, and perimeter domain targets untracked and excluded. |
-| **SEC-06** | **High** | PII / Asset Exposure | `scripts/cloudflare-scan/bucket-protection.py` | ✅ Remediated | Replaced hardcoded production user avatar URL (`.../avatars/u_1_1790504326272.jpg`) with sample placeholder. |
-| **SEC-07** | **High** | Payment Bypass | `backend/.../RazorpayService.java` | ✅ Remediated | Gated simulation subscription auto-validation (`sub_sim_`) behind `rzp_test_placeholder` verification to prevent bypasses against configured payment gateways. |
-| **SEC-08** | **High** | Auth Bypass | `ios/.../LoginView.swift` | ✅ Remediated | Removed offline fallback that automatically provisioned authenticated sessions with `mock-offline-token` on network failure. |
-| **SEC-09** | **Medium** | Security Governance | `SECURITY.md` | ✅ Remediated | Replaced guidance to report vulnerabilities via public GitHub issues with private GitHub Security Advisories and secure email instructions. |
-| **SEC-10** | **Medium** | Broken Build Script | `frontend/package.json` | ✅ Remediated | Fixed `"vercel-build"` target referencing non-existent `generate-runtime.js` to call `generate-runtime-env.js`. |
-| **SEC-11** | **Medium** | Broken Dockerfile | `frontend/Dockerfile` | ✅ Remediated | Changed `npm ci --omit=dev` to `npm ci` so `@angular/cli` and `typescript` are available in Stage 1 build. |
-| **SEC-12** | **Medium** | CSWSH / Origin Trust | `backend/.../WebSocketConfig.java` | ✅ Remediated | Replaced wildcard `.setAllowedOriginPatterns("*")` with dynamic array parsed from `cors.allowed-origins`. |
-| **SEC-13** | **Medium** | Script Duplication | `scripts/application/test-cdn-scraping.py` | ✅ Remediated | Deleted redundant 1,037-line duplicate of `bucket-protection.py`. |
-| **SEC-14** | **Low** | Configuration Leak | `ios/SpeakIT/Config/Config.xcconfig` | ✅ Remediated | Replaced hardcoded domain `speakit.mohitur.com` with generic `speakit.example.com`. |
-| **SEC-15** | **Low** | Licensing Ambiguity | `LICENSE` | ✅ Remediated | Populated placeholder notice at line 633 with copyright year `2026` and author name `Mohd Mohitur Rahaman`. |
-| **SEC-16** | **Low** | PII in Examples | `speakit-postman-collection.json` | ✅ Remediated | Replaced real emails (`test@mohitur.com`), phone numbers (`+919876543210`), and author names with generic test fixtures. |
-| **SEC-17** | **Low** | Mail Defaults | `backend/.../application.properties` | ✅ Remediated | Converted `app.mail.reply-to` and `resend.from-address` to configurable properties with generic fallbacks. |
-| **SEC-18** | **Informational** | Secret Isolation | `backend/.env`, `frontend/.env`, `Local.xcconfig` | ✅ Remediated | Verified existing `.gitignore` coverage and hardened root `.gitignore` to prevent future leaks. |
+| **SEC-01** | **Critical** | Credential Exposure | `ios/.../SpeakITLogicTests.swift` | [x] Remediated | Removed hardcoded live credentials (`mohitur` / `DUMMY_PASSWORD_PLACEHOLDER`) and live network login test; replaced with safe offline test fixtures. |
+| **SEC-02** | **Critical** | Credential Exposure | `scripts/application/speakit-api-load-tester.py` | [x] Remediated | Replaced hardcoded password `DUMMY_PASSWORD_PLACEHOLDER` with `os.getenv("TEST_AUTH_PASSWORD")` and placeholder fallback. |
+| **SEC-03** | **Critical** | Historical Exposure | `.git` (Commit `2c354a9` / `.example.env`) | WARNING: Action Required | Supabase host `db.dummy-supabase-project.supabase.co` and key `sb_publishable_PRJA...7M20` committed historically. Rotation & `git-filter-repo` scrubbing documented. |
+| **SEC-04** | **High** | Sensitive Data Leak | `reports/audit/` | [x] Remediated | Internal security reports detailing local privilege escalation exploit payloads and host filesystem paths (`/home/cyberbully/...`) untracked from Git. |
+| **SEC-05** | **High** | Threat Intelligence Leak | `scripts/cloudflare-scan/reports/cloudflare-security-report.md` | [x] Remediated | Production SOC threat audit detailing attacker IPs, honeypot probe trails, and perimeter domain targets untracked and excluded. |
+| **SEC-06** | **High** | PII / Asset Exposure | `scripts/cloudflare-scan/bucket-protection.py` | [x] Remediated | Replaced hardcoded production user avatar URL (`.../avatars/u_1_1790504326272.jpg`) with sample placeholder. |
+| **SEC-07** | **High** | Payment Bypass | `backend/.../RazorpayService.java` | [x] Remediated | Gated simulation subscription auto-validation (`sub_sim_`) behind `rzp_test_placeholder` verification to prevent bypasses against configured payment gateways. |
+| **SEC-08** | **High** | Auth Bypass | `ios/.../LoginView.swift` | [x] Remediated | Removed offline fallback that automatically provisioned authenticated sessions with `mock-offline-token` on network failure. |
+| **SEC-09** | **Medium** | Security Governance | `SECURITY.md` | [x] Remediated | Replaced guidance to report vulnerabilities via public GitHub issues with private GitHub Security Advisories and secure email instructions. |
+| **SEC-10** | **Medium** | Broken Build Script | `frontend/package.json` | [x] Remediated | Fixed `"vercel-build"` target referencing non-existent `generate-runtime.js` to call `generate-runtime-env.js`. |
+| **SEC-11** | **Medium** | Broken Dockerfile | `frontend/Dockerfile` | [x] Remediated | Changed `npm ci --omit=dev` to `npm ci` so `@angular/cli` and `typescript` are available in Stage 1 build. |
+| **SEC-12** | **Medium** | CSWSH / Origin Trust | `backend/.../WebSocketConfig.java` | [x] Remediated | Replaced wildcard `.setAllowedOriginPatterns("*")` with dynamic array parsed from `cors.allowed-origins`. |
+| **SEC-13** | **Medium** | Script Duplication | `scripts/application/test-cdn-scraping.py` | [x] Remediated | Deleted redundant 1,037-line duplicate of `bucket-protection.py`. |
+| **SEC-14** | **Low** | Configuration Leak | `ios/SpeakIT/Config/Config.xcconfig` | [x] Remediated | Replaced hardcoded domain `speakit.mohitur.com` with generic `speakit.example.com`. |
+| **SEC-15** | **Low** | Licensing Ambiguity | `LICENSE` | [x] Remediated | Populated placeholder notice at line 633 with copyright year `2026` and author name `Mohd Mohitur Rahaman`. |
+| **SEC-16** | **Low** | PII in Examples | `speakit-postman-collection.json` | [x] Remediated | Replaced real emails (`test@mohitur.com`), phone numbers (`+919876543210`), and author names with generic test fixtures. |
+| **SEC-17** | **Low** | Mail Defaults | `backend/.../application.properties` | [x] Remediated | Converted `app.mail.reply-to` and `resend.from-address` to configurable properties with generic fallbacks. |
+| **SEC-18** | **Informational** | Secret Isolation | `backend/.env`, `frontend/.env`, `Local.xcconfig` | [x] Remediated | Verified existing `.gitignore` coverage and hardened root `.gitignore` to prevent future leaks. |
 
 ---
 

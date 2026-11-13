@@ -31,24 +31,24 @@
 
 ### Detailed Advisory and Evidence Reference
 
-- **Apache Tomcat (11.0.24 → 11.0.27):**
+- **Apache Tomcat (11.0.24 -> 11.0.27):**
   - [Apache Tomcat Security / OSV](https://api.osv.dev/v1/vulns/CVE-2026-65637). Fixed in Tomcat 11.0.27 (commits `5da21b1`, `4f33a9e`, `8fc613d`). Patched SNI validation bypass, role constraint bypass, and HTTP/2 allocation leaks.
   - [Tomcat WebSocket Security](https://api.osv.dev/v1/vulns/CVE-2026-73180). Fixed in Tomcat 11.0.27. Resolves authenticated WebSocket session persistence past HTTP session expiration.
-- **Apache Commons Text (1.3 → 1.15.0):**
+- **Apache Commons Text (1.3 -> 1.15.0):**
   - Upgraded from ancient 1.3 release (2018) to modern 1.15.0 line via `<dependencyManagement>`. Hardens string lookup and interpolation against remote code execution / interpolation flaws (CVE-2025-46295).
-- **Netty HTTP & HTTP/2 (4.2.17.Final → 4.2.19.Final):**
+- **Netty HTTP & HTTP/2 (4.2.17.Final -> 4.2.19.Final):**
   - [GHSA-hcvj-94mj-jp5c](https://github.com/advisories/GHSA-hcvj-94mj-jp5c). Fixes HTTP Request Smuggling via Transfer-Encoding (CVE-2026-89044) and unbounded concurrent stream DoS (CVE-2026-93488).
-- **Jackson Core & Databind 2.x and 3.x (2.21.5 → 2.21.7 / 3.1.5 → 3.1.7):**
+- **Jackson Core & Databind 2.x and 3.x (2.21.5 -> 2.21.7 / 3.1.5 -> 3.1.7):**
   - [GHSA-p6pp-m3f8-5c89](https://github.com/advisories/GHSA-p6pp-m3f8-5c89), [GHSA-7hhh-6rmp-j9qf](https://github.com/advisories/GHSA-7hhh-6rmp-j9qf). Fixes ReDoS in NumberInput.PATTERN_FLOAT and unbounded error token string allocation.
   - [GHSA-q4xh-88c3-wmh7](https://github.com/advisories/GHSA-q4xh-88c3-wmh7), [GHSA-gx83-3vf8-gh7j](https://github.com/advisories/GHSA-gx83-3vf8-gh7j), [GHSA-wjgm-6hv5-3cvf](https://github.com/advisories/GHSA-wjgm-6hv5-3cvf). Fixes unbounded numeric parse in Duration/XMLGregorianCalendar, unsafe base type limiting, and Path deserialization URI scheme resolution.
-- **PostgreSQL JDBC Driver (42.7.13 → 42.7.14):**
+- **PostgreSQL JDBC Driver (42.7.13 -> 42.7.14):**
   - [GHSA-rhp9-mr79-r74h](https://github.com/pgjdbc/pgjdbc/security/advisories/GHSA-rhp9-mr79-r74h), [GHSA-f64h-wr5q-3qf3](https://github.com/pgjdbc/pgjdbc/security/advisories/GHSA-f64h-wr5q-3qf3). Fixes requireAuth bypass (SQLState 08004 returned on invalid list) and send buffer statement padding leakage.
-- **OW2 ASM (9.7.1 → 9.11, Test Scope):**
+- **OW2 ASM (9.7.1 -> 9.11, Test Scope):**
   - [OSV CVE-2026-110257](https://api.osv.dev/v1/vulns/CVE-2026-110257). Uncontrolled memory/CPU allocation in Bytecode parser/analyzer before 9.11.
-- **Okio & OkHttp (Okio 1.14.0 → 1.17.6, OkHttp 3.10.0 → 4.12.0):**
+- **Okio & OkHttp (Okio 1.14.0 -> 1.17.6, OkHttp 3.10.0 -> 4.12.0):**
   - [GHSA-w33c-445m-f8w7](https://github.com/advisories/GHSA-w33c-445m-f8w7). GzipSource malformed buffer unhandled exception denial of service. Fixed in 1.17.6 without requiring Kotlin runtime migration.
   - [CVE-2023-0833 / RHSA-2023:1241](https://nvd.nist.gov/vuln/detail/CVE-2023-0833). Red Hat AMQ-Streams header exception info disclosure flaw. Fixed in OkHttp 4.9.2+. OkHttp 4.12.0 maintains 100% public API compatibility with Razorpay Java SDK.
-- **Logback Classic (1.5.38 → 1.6.5):**
+- **Logback Classic (1.5.38 -> 1.6.5):**
   - [Logback GitHub Release Notes v_1.6.3/v_1.6.5](https://github.com/qos-ch/logback/releases/tag/v_1.6.5). Fixes path traversal vulnerability (CVE-2026-19880 / CVE-2026-104721) where `MDCBasedDiscriminator` in `SiftingAppender` accepted unstripped `/` and `\` slashes in MDC keys. Patched in Logback 1.6.3 and hardened in 1.6.5.
 
 ---

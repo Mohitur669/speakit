@@ -17,7 +17,7 @@ If you are coming from full-stack web development (Java Spring Boot, Angular, Ty
 |---|---|---|
 | `package.json` / `pom.xml` | **Swift Package Manager (SPM)** or `project.pbxproj` | Manages external libraries (e.g., Keychain, Sentry). |
 | `environment.ts` / `.env` | **Configuration Settings (`.xcconfig`)** / Swift `Environment` structs | Manages API URLs (`http://localhost:8080`, production URLs). |
-| `npm start` / `ng serve` | **Product → Run (`Cmd + R`)** | Builds the code, installs it onto the simulator or physical iPhone, and attaches the debugger. |
+| `npm start` / `ng serve` | **Product -> Run (`Cmd + R`)** | Builds the code, installs it onto the simulator or physical iPhone, and attaches the debugger. |
 | Browser DevTools Console | **Debug Area / Console (`Cmd + Shift + Y`)** | Shows application logs (`print()`), network errors, and runtime crashes. |
 | `localhost:8080` | **`http://localhost:8080` (Simulator) vs. LAN IP (Physical)** | **Crucial Difference:**<br>• On **iOS Simulator**, `http://localhost:8080` works directly because it shares your Mac's network.<br>• On **Physical iPhone**, `localhost` refers to the phone itself — you must use your Mac's LAN IP (`http://192.168.x.x:8080`) or deployed URL. |
 | LocalStorage / Cookies | **Apple Keychain (`KeychainAccess`)** | Secure hardware-encrypted storage for JWT tokens and sensitive session data. |
@@ -91,9 +91,9 @@ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 
 ### Step 3.2: Link Your Apple ID to Xcode
 1. Open **Xcode**.
-2. In the top Mac menu bar, click **Xcode → Settings...** (or press `Cmd + ,`).
+2. In the top Mac menu bar, click **Xcode -> Settings...** (or press `Cmd + ,`).
 3. Click the **Accounts** tab at the top.
-4. Click the **+** (plus button) in the lower left corner → select **Apple ID** → click **Continue**.
+4. Click the **+** (plus button) in the lower left corner -> select **Apple ID** -> click **Continue**.
 5. Sign in with your standard Apple ID (the same one on your iPhone).
 6. Once signed in, you will see your name listed under teams as:  
    `Your Name (Personal Team)` — **Role: User (Free)**.
@@ -121,7 +121,7 @@ On modern iOS, Developer Mode is disabled by default for security:
 7. Tap **Turn On**, then enter your iPhone passcode.
 
 ### Step 4.3: Verify iPhone in Xcode
-1. In Xcode, click **Window → Devices and Simulators** (or press `Cmd + Shift + 2`).
+1. In Xcode, click **Window -> Devices and Simulators** (or press `Cmd + Shift + 2`).
 2. Under **Connected**, select your iPhone.
 3. You will see a green dot next to your iPhone name with the message *"Connected"*.
 4. (Optional) Check **Connect via network** to allow running apps over your home Wi-Fi without needing the cable plugged in.
@@ -150,7 +150,7 @@ For everyday UI building, SwiftUI rapid prototyping, and API testing, the **iOS 
 
 #### Installing iOS Runtimes via Xcode
 If Xcode did not install the iOS 17 or iOS 18 runtime by default:
-1. Open **Xcode → Settings...** (`Cmd + ,`).
+1. Open **Xcode -> Settings...** (`Cmd + ,`).
 2. Click the **Platforms** tab at the top.
 3. If iOS is missing or marked "Not Installed", click the **Get** button next to **iOS 17.x** or **iOS 18.x**.
 4. Once downloaded, Xcode creates default simulators for the latest iPhone models automatically.
@@ -200,7 +200,7 @@ By default, the iOS Simulator routes your Mac's default microphone into the simu
 2. When SpeakIT requests microphone permission for Speech-to-Text (`POST /api/stt/transcribe-live`), tap **OK** on the simulated prompt.
 3. macOS will then display a system prompt asking: *"Simulator would like to access the microphone"*. Click **Allow**.
 4. To choose which physical microphone the Simulator uses (e.g. Mac Built-in Mic vs. USB Studio Mic), go to the Mac top menu bar:
-   **I/O → Audio Input → [Select Microphone]**.
+   **I/O -> Audio Input -> [Select Microphone]**.
 
 #### B. Testing Background Audio Playback & Lock-Screen Transport Controls
 One of SpeakIT's primary requirements is uninterrupted voice synthesis playback when the phone locks:
@@ -211,19 +211,19 @@ One of SpeakIT's primary requirements is uninterrupted voice synthesis playback 
 
 #### C. Simulating Incoming Audio Interruptions
 SpeakIT's `AudioPlayerService` must gracefully pause when an interruption occurs (e.g., an incoming phone call) and resume or stay paused cleanly:
-1. While audio is playing, in the Simulator menu bar click **Features → In-Call Status Bar** (or trigger a simulated call via `xcrun simctl openurl booted tel://1234567890`).
+1. While audio is playing, in the Simulator menu bar click **Features -> In-Call Status Bar** (or trigger a simulated call via `xcrun simctl openurl booted tel://1234567890`).
 2. Verify audio pauses cleanly and does not crash the `AVAudioSession`.
 
 #### D. Testing StoreKit 2 Subscriptions Locally (Free & Offline)
 Apple allows you to test in-app subscriptions (`PRO`, `PRO_PLUS`) completely inside Xcode without connecting to App Store servers:
-1. In Xcode, select **File → New → File...** (`Cmd + N`).
+1. In Xcode, select **File -> New -> File...** (`Cmd + N`).
 2. Search for and select **StoreKit Configuration File**. Click **Next**.
 3. Name it `SpeakITSubscriptions.storekit` and ensure *"Sync this file with an App Store Connect app"* is **unchecked**.
 4. Add Auto-Renewable Subscriptions matching SpeakIT's product IDs:
    * `com.speakit.subscription.pro.monthly`
    * `com.speakit.subscription.proplus.monthly`
    * `com.speakit.subscription.enterprise.monthly`
-5. In Xcode's top toolbar, click **Product → Scheme → Edit Scheme...** (`Cmd + <`).
+5. In Xcode's top toolbar, click **Product -> Scheme -> Edit Scheme...** (`Cmd + <`).
 6. Select **Run** in the left sidebar, click the **Options** tab, and set **StoreKit Configuration** to `SpeakITSubscriptions.storekit`.
 7. When you run the app on the Simulator, subscription purchase buttons will pop up local Apple test sheets and issue valid mock signed JWS transaction tokens for your testing!
 
@@ -234,7 +234,7 @@ Apple allows you to test in-app subscriptions (`PRO`, `PRO_PLUS`) completely ins
 When creating the native iOS application within this repository:
 
 ### Step 6.1: Create Project Scaffolding
-1. In Xcode, select **File → New → Project...** (or press `Cmd + Shift + N`).
+1. In Xcode, select **File -> New -> Project...** (or press `Cmd + Shift + N`).
 2. In the template chooser:
    * Select the **iOS** tab at the top.
    * Under Application, select **App**.
@@ -304,7 +304,7 @@ ios/SpeakIT/
 Instead of `npm install`, Xcode uses Swift Package Manager:
 
 ### 8.1 How to Add a Swift Package
-1. In Xcode, click **File → Add Package Dependencies...**.
+1. In Xcode, click **File -> Add Package Dependencies...**.
 2. In the search box in the upper right corner, paste the GitHub URL of the library:
    * **KeychainAccess:** `https://github.com/kishikawakatsumi/KeychainAccess.git` (Dependency Rule: Up to Next Major Version).
    * **Sentry-Cocoa:** `https://github.com/getsentry/sentry-cocoa.git` (Dependency Rule: Up to Next Major Version).
@@ -324,7 +324,7 @@ Because SpeakIT records audio (for STT) and plays audio (for TTS) in the backgro
 4. Click the **+ Capability** button (top left of the tab).
 5. Search for and double-click **Background Modes**.
 6. In the Background Modes checklist, check:
-   * ✅ **Audio, AirPlay, and Picture in Picture**  
+   * [x] **Audio, AirPlay, and Picture in Picture**  
    *(This allows synthesized voice playback to continue when the iPhone screen is locked).*
 
 ### 9.2 Microphone Permission in `Info.plist`
@@ -353,9 +353,9 @@ Apple requires a descriptive explanation why the app accesses the microphone:
 4. Xcode compiles the Swift code, signs the binary with your free personal certificate, and transfers the app to your iPhone.
 5. **First-Time Security Alert on your iPhone:**  
    If an alert appears stating *"Untrusted Developer"* or *"Developer App Not Trusted"*:
-   * On your iPhone, open **Settings → General → VPN & Device Management**.
+   * On your iPhone, open **Settings -> General -> VPN & Device Management**.
    * Under Developer App, tap your Apple ID email.
-   * Tap **Trust "[Your Name/Email]"** → tap **Trust** again.
+   * Tap **Trust "[Your Name/Email]"** -> tap **Trust** again.
 6. Tap the SpeakIT icon on your iPhone home screen — the app launches!
 
 ---
@@ -364,7 +364,7 @@ Apple requires a descriptive explanation why the app accesses the microphone:
 
 ### 1. "Failed to register bundle identifier / No profiles for 'com.speakit.SpeakIT' were found"
 * **Cause:** Bundle Identifiers must be globally unique across all Apple developers. `com.speakit.SpeakIT` might already be reserved by another developer.
-* **Fix:** Change the Bundle Identifier in Target Settings → General → Identity to something unique (e.g., `com.mohitur.speakit`).
+* **Fix:** Change the Bundle Identifier in Target Settings -> General -> Identity to something unique (e.g., `com.mohitur.speakit`).
 
 ### 2. "Could not connect to the server (Network error)"
 * **On Physical iPhone:**
@@ -379,11 +379,11 @@ Apple requires a descriptive explanation why the app accesses the microphone:
 
 ### 3. "Microphone Access Denied on Simulator"
 * **Cause:** macOS blocked the Simulator app from accessing the Mac's physical microphone.
-* **Fix:** On your Mac, open **System Settings → Privacy & Security → Microphone**, and ensure the toggle next to **Simulator** is switched to **ON**.
+* **Fix:** On your Mac, open **System Settings -> Privacy & Security -> Microphone**, and ensure the toggle next to **Simulator** is switched to **ON**.
 
 ### 4. "Simulator Glitch / Stuck Cache / Phantom Keychain Data"
 * **Cause:** Simulators retain Keychain tokens and app data between builds, which can lead to stale JWT sessions.
-* **Fix:** In the Simulator top menu bar, click **Device → Erase All Content and Settings...**, or run from your Mac terminal:
+* **Fix:** In the Simulator top menu bar, click **Device -> Erase All Content and Settings...**, or run from your Mac terminal:
   ```bash
   xcrun simctl erase all
   ```
