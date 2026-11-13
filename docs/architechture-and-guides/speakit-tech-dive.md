@@ -104,11 +104,13 @@ SpeakIT is a production-grade, full-stack Text-to-Speech (TTS) and Speech-to-Tex
 * **Zero Downtime**: Support zero-downtime, immutable GitOps deployments.
 
 ### 1.3 High-Level System Overview
-SpeakIT is built on a decoupled architecture:
-* **Frontend**: Angular 21 Single Page Application (SPA), served statically via Vercel's Edge Network for global low-latency page delivery.
-* **Backend**: Spring Boot 3.5 REST API running Java 21 inside a secure Docker container, hosted on Oracle Cloud Infrastructure (OCI) via Coolify.
-* **Database**: PostgreSQL hosted on Supabase, connected through a PgBouncer connection pooler to prevent containerized connection exhaust.
-* **AI Integrations**: AWS Polly (Neural & Standard engines), ElevenLabs, and Sarvam AI for text-to-speech, speech-to-text, and translation pipelines.
+SpeakIT is built on a decoupled, multi-surface architecture:
+* **Web Frontend**: Angular 21 Single Page Application (SPA) utilizing Signals, Standalone Components, and Tailwind CSS, served statically via Vercel's Edge Network for global low-latency page delivery.
+* **Native iOS Client**: Native SwiftUI application built for iOS 17.0+ on Swift 6, featuring hardware-backed Keychain security, AVFoundation audio engine (`AVAudioEngine`, `AVAudioSession`, `AVAudioPlayer`), real-time recording visualizer, and Apple StoreKit 2 in-app purchases.
+* **Backend Application Layer**: Spring Boot 4.x REST and WebSocket API running Java 25 inside a hardened Docker container, hosted on Oracle Cloud Infrastructure (OCI) via Coolify.
+* **Database & Persistence**: PostgreSQL 16+ managed through Flyway migrations (`V1__init_schema.sql`, `V2__add_stt_audio_storage.sql`), pooling connections via HikariCP and PgBouncer to prevent containerized connection exhaustion.
+* **Object Storage**: Cloudflare R2 multi-bucket architecture providing zero-egress-fee storage for user avatars, synthesized audio files, and encrypted disaster-recovery log backups.
+* **AI Speech Integrations**: AWS Polly (Neural & Standard engines), ElevenLabs (Natural AI, Audio Isolation, Sound Effects), and Sarvam AI (Saaras STT, Bulbul Indic TTS across 10 Indian languages, Translation, and Transliteration).
 
 ### 1.4 Future Direction
 * Custom voice cloning pipelines.
@@ -135,7 +137,7 @@ Refer to this reference dashboard for a quick description of the entire applicat
 * **Stateless JWT Session Management**: Decoupled access/refresh tokens mapped to user records. Decoded payloads are validated against a database-backed `sessionVersion` value, enabling instant global session invalidation.
 * **WAF Admin Panel Lockdown**: Hides the administration dashboard (`coolify.mohitur.com`) from the public internet using a Cloudflare WAF block rule. Webhook events bypass the firewall automatically, while admin UI access is restricted strictly to a private **Tailscale VPN overlay** on port `8000`.
 * **Jsoup Input Sanitization**: Processes all incoming client text through strict Jsoup parser configurations to strip out HTML/JS code before hitting AI synthesis engines, neutralizing XSS attacks and character-quota probing.
-* **Cascading Delete Database Integrity**: Prunes child data tables before parent user records (`otp_verifications` ➔ `tts_history` ➔ `payments` ➔ `subscriptions` ➔ `users`) via clean cascading Python scripts, avoiding DB constraint faults.
+* **Cascading Delete Database Integrity**: Prunes child data tables before parent user records (`otp_verifications` -> `tts_history` -> `payments` -> `subscriptions` -> `users`) via clean cascading Python scripts, avoiding DB constraint faults.
 * **AWS Cost Control Budget Shield**: Employs AWS Cloudwatch budgets linked to a Lambda function to immediately strip Polly permissions from the application IAM user if spending exceeds set limits, degrading the system gracefully (HTTP 503) to prevent runaway billing.
 
 #### 3. Continuous Deployment (CI/CD) & Webhook Pipeline
@@ -172,7 +174,7 @@ Every contributor must adhere to the following software engineering guidelines:
 |---|---|
 | **S**ingle Responsibility | Controllers handle HTTP; Services handle logic; Repos handle data. Each class has one reason to change. |
 | **O**pen-Closed | `@RateLimited` aspect — protect new endpoints by annotation addition, not code modification. |
-| **L**iskov Substitution | Repository interfaces can swap implementations (JPA → JDBC) without breaking service layer. |
+| **L**iskov Substitution | Repository interfaces can swap implementations (JPA -> JDBC) without breaking service layer. |
 | **I**nterface Segregation | `UserSessionProjection` exposes only 3 fields; controllers never see the full `User` entity's 12 fields. |
 | **D**ependency Inversion | Services depend on repository interfaces (`UserRepository`), not concrete Hibernate classes. Spring DI wire the implementations. |
 
@@ -210,26 +212,32 @@ graph TD
 
 ```
 / (Workspace Root)
-├── .github/                 → GitHub Actions configuration
-├── backend/                 → Spring Boot 3.5 Backend Project
-│   ├── src/main/java/       → Java source files (com.speakit.*)
-│   ├── src/main/resources/  → application.properties and logback-spring.xml
-│   └── pom.xml              → Maven build specification
-├── frontend/                → Angular 21 Frontend Project
-│   ├── src/app/             → Angular application components and core modules
-│   ├── public/              → Static assets and runtime-env.js
-│   └── package.json         → npm build dependencies
-├── deployment/              → Docker and system configuration files
-├── docs/                    → Engineering manuals and tech guides
-├── manage-user.py           → Python database administration tool
-└── docker-compose.yml       → Local system configuration
+├── .github/                 -> GitHub Actions workflows and security scripts
+├── backend/                 -> Spring Boot 4.x / Java 25 Backend Project
+│   ├── src/main/java/       -> Java domain modules (com.speakit.*)
+│   ├── src/main/resources/  -> application.properties, Flyway migrations, logback
+│   └── pom.xml              -> Maven build specification (Java 25, Spring Boot 4.1.1)
+├── frontend/                -> Angular 21 Frontend Project (Signals, Standalone Components)
+│   ├── src/app/             -> Angular application modules (core, features, shared)
+│   ├── public/              -> Static assets and runtime-env.js
+│   └── package.json         -> npm build dependencies
+├── ios/                     -> Native iOS Client Application (Swift 6, SwiftUI)
+│   └── SpeakIT/
+│       ├── Config/          -> xcconfig build configurations (Config.xcconfig, Local.xcconfig)
+│       ├── SpeakIT/         -> Core, DesignSystem, Features, Models, and Assets
+│       └── SpeakIT.xcodeproj-> Xcode project configuration
+├── deployment/              -> Production deployment manifests (Systemd, Nginx, UFW scripts)
+├── docs/                    -> Technical architecture specifications and manuals
+├── scripts/                 -> Operational administration scripts (manage-user.py, Cloudflare scans)
+└── docker-compose.yml       -> Local multi-container orchestration
 ```
 
 ### 3.1 Folder Constraints
 * **`backend/`**: No frontend files or compiled assets.
 * **`frontend/`**: No java scripts, backend models, or raw databases.
+* **`ios/`**: Native Swift 6 code only; no cross-compiled web frameworks.
 * **`docs/`**: Only documentation files. No source code.
-* **`shared/`**: Must contain only packages imported by both subfolders.
+* **`shared/`**: Must contain only packages imported across multiple submodules.
 
 <div class="diagram-container">
 
@@ -239,11 +247,14 @@ graph TD
 graph TD
     Root[/Workspace Root/] --> BE["backend/"]
     Root --> FE["frontend/"]
+    Root --> IOS["ios/SpeakIT/"]
     Root --> Docs["docs/"]
     Root --> Dep["deployment/"]
+    Root --> Scripts["scripts/"]
     
     BE --> BESrc["src/main/java/com/speakit/"]
     FE --> FESrc["src/app/core/ & src/app/features/"]
+    IOS --> IOSSrc["SpeakIT/Core/, Features/, DesignSystem/"]
 ```
 
 </div>
@@ -431,12 +442,12 @@ The OCI Virtual Cloud Network security list and the local OS firewall (UFW) are 
 * **Allowed Publicly**: Ports 80 (HTTP) and 443 (HTTPS) to allow proxy routing.
 * **Allowed Privately (Tailscale Interfaces only)**:
   * Port 22 (SSH) is blocked publicly and restricted strictly to Tailscale IP subnet ranges (`100.64.0.0/10`).
-  * Port 8000 (Coolify Admin dashboard) is blocked from public ingress. Access is resolved strictly over the secure Tailscale interface: `http://100.66.182.36:8000`.
+  * Port 8000 (Coolify Admin dashboard) is blocked from public ingress. Access is resolved strictly over the secure Tailscale interface: `http://<tailscale-ip>:8000`.
 
 ### 6.3 SSH Tunneling for Database Connections (DBeaver)
 Database ports (`3000` for prod, `3001` for dev) bind locally to the OCI host loopback (`127.0.0.1`). To connect to the databases from your local Mac using DBeaver:
 1. Enable the **SSH Tunnel** tab in your DBeaver connection settings.
-2. Target the OCI SSH Server: Host `100.66.182.36`, Port `22`, User `ubuntu`, and select your private key.
+2. Target the OCI SSH Server: Host `<tailscale-ip>`, Port `22`, User `ubuntu`, and select your private key.
 3. Configure the DB parameters under the Main tab: Host `localhost`, Port `3000` (for prod) or `3001` (for dev), schema `speakit`.
 4. DBeaver will securely tunnel SQL queries through SSH, bypassing public port exposure.
 
@@ -448,7 +459,7 @@ Database ports (`3000` for prod, `3001` for dev) bind locally to the OCI host lo
 
 The backend enforces a strict layered design pattern:
 ```
-[Filter Chain] ➔ [Controller] ➔ [Service] ➔ [Repository] ➔ [Database]
+[Filter Chain] -> [Controller] -> [Service] -> [Repository] -> [Database]
 ```
 
 ### 7.1 Layer Responsibilities
@@ -516,29 +527,194 @@ graph LR
 
 <div style="page-break-before: always;"></div>
 
+## 8B. NATIVE IOS ARCHITECTURE & AVFOUNDATION SUBSYSTEM
+
+The native iOS client (`ios/SpeakIT/`) is engineered using Swift 6, SwiftUI, and Apple's AVFoundation framework, maintaining exact feature, capability, and legal parity with the web platform.
+
+### 8B.1 MVVM & Reactive State Architecture
+- **Global State Coordination (`AppState.swift`)**: Centralizes authenticated user identity, active subscription tier, live quota metrics, and network reachability.
+- **Hardware-Backed Credential Security (`KeychainHelper.swift`)**: Stores JWT access tokens, refresh tokens, and session identifiers in the iOS Keychain using `kSecAttrAccessibleAfterFirstUnlock`. No secrets or tokens are ever written to `UserDefaults`.
+- **Dynamic Endpoint Resolution (`APIEndpoint.swift`)**: Automatically detects execution environments:
+  - iOS Simulator: Configurable via `IOS_SIMULATOR_BASE_URL` in `Local.xcconfig` or Xcode Scheme environment variables (defaults to `http://localhost:8080`).
+  - Physical Devices: Reads `IOS_API_BASE_URL` from `Config.xcconfig` / `Local.xcconfig`, falling back to `IOS_API_BASE_BACKUP_URL`.
+
+### 8B.2 AVFoundation Audio Pipelines
+- **Audio Playback Subsystem (`AudioPlayerManager.swift`)**:
+  - Configures `AVAudioSession` with category `.playback` and mode `.spokenAudio` to allow background playback through the iOS Control Center and lock screen Now Playing widget.
+  - Implements remote URL streaming, local file playback, seek scrubbing, rate modulation (0.75x to 2.0x), and automatic audio session ducking.
+- **Audio Capture & Real-Time Metering (`AudioRecordingManager.swift`)**:
+  - Utilizes `AVAudioEngine` and `AVAudioInputNode` configured at a 16kHz or 44.1kHz sample rate for high-fidelity speech capture.
+  - Computes root-mean-square (RMS) decibel levels from input audio buffers at 60 FPS, feeding real-time audio amplitude values directly to the UI visualizer.
+- **Recording Visualizer (`SpeakITRecordingVisualizer.swift`)**:
+  - Renders a multi-bar reactive waveform utilizing SwiftUI animations linked directly to live mic dB levels.
+
+### 8B.3 Dual-Channel Monetization & StoreKit 2
+- **Apple In-App Purchases (`StoreKitService.swift`)**:
+  - Interacts with the App Store via StoreKit 2 (`Product.purchase()`, `Transaction.updates`).
+  - Upon successful transaction, sends signed App Store JWS receipts to backend `/api/v1/payments/apple/verify` for server-side cryptographic validation.
+- **Web Billing Fallback**:
+  - Physical devices provide deep-links to the web billing checkout portal when preferred, while in-app upgrades are handled natively.
+
+### 8B.4 Content & Legal Sheet Parity
+To comply with App Store Review Guidelines and ensure unified policy enforcement, the iOS application includes native SwiftUI modal sheets for:
+- Terms of Service (`TermsOfServiceSheet.swift`)
+- Privacy Policy (`PrivacyPolicySheet.swift`)
+- About SpeakIT (`AboutSpeakITSheet.swift`)
+- Contact Support (`ContactSupportSheet.swift`)
+- Product Changelog & Blog Updates (`BlogUpdatesSheet.swift`)
+
+All legal and support content is synchronized in lockstep with `frontend/src/app/features/marketing/`.
+
+<div class="diagram-container">
+
+### 8B.5 iOS Audio Pipeline & Network Architecture Diagram
+
+```mermaid
+flowchart TD
+    subgraph UI["SwiftUI Interface Layer"]
+        TTSView["TTSStudioView / VoiceCatalogSheet"]
+        STTView["STTStudioView / LiveTranscriptionView"]
+        Visualizer["SpeakITRecordingVisualizer (60 FPS Metering)"]
+        Paywall["SubscriptionPaywallView (StoreKit 2)"]
+    end
+
+    subgraph AudioEngine["AVFoundation Audio Core"]
+        AVSession["AVAudioSession (.playback / .playAndRecord)"]
+        Player["AudioPlayerManager (AVAudioPlayer / Streaming)"]
+        Recorder["AudioRecordingManager (AVAudioEngine / InputNode)"]
+    end
+
+    subgraph SecurityState["State & Security"]
+        AppState["AppState (@Observable / EnvironmentObject)"]
+        Keychain["KeychainHelper (kSecAttrAccessibleAfterFirstUnlock)"]
+    end
+
+    subgraph Network["Core Networking Layer"]
+        HTTP["HTTPClient (URLSession, Auto-Retry, Auth Header)"]
+        Endpoints["APIEndpoint (Dynamic Environment Resolver)"]
+        StoreKit["StoreKitService (App Store Receipts)"]
+    end
+
+    subgraph BackendAPI["Backend Cloud Services"]
+        SpringAPI["Spring Boot API (/api/tts, /api/stt, /api/v1/users)"]
+        R2CDN["Cloudflare R2 Audio CDN"]
+        AppleVerify["/api/v1/payments/apple/verify"]
+    end
+
+    TTSView --> Player
+    STTView --> Recorder
+    Recorder --> Visualizer
+    STTView --> Visualizer
+    Paywall --> StoreKit
+
+    Player --> AVSession
+    Recorder --> AVSession
+
+    TTSView --> HTTP
+    STTView --> HTTP
+    AppState --> Keychain
+    HTTP --> Endpoints
+    HTTP --> SpringAPI
+    Player -->|Stream Audio Bytes| R2CDN
+    StoreKit -->|Verify Receipt JWS| AppleVerify
+```
+
+</div>
+
+---
+
+<div style="page-break-before: always;"></div>
+
 ## 9. API DESIGN STANDARDS & ENDPOINT MAPPING
 
-All API endpoints must follow strict RESTful conventions:
+All API endpoints follow strict RESTful conventions and versioning (`/api/v1/*` or module routes `/api/*`):
 
 ### 9.1 General Rules
-* **Resource Pluralization**: Use plural nouns (`/api/v1/users`, `/api/v1/subscriptions`).
-* **Naming**: Use kebab-case for paths (`/api/v1/system-parameters`).
+* **Resource Pluralization**: Use plural nouns (`/api/v1/users`, `/api/v1/payments`).
+* **Naming**: Use kebab-case for resource paths (`/api/system-parameters`, `/api/tts/synthesize-stream`).
 * **HTTP Verbs**:
-  * `GET`: Fetch resources. Safe and idempotent.
-  * `POST`: Create a resource. Non-idempotent.
-  * `PUT`: Replace a resource. Idempotent.
-  * `PATCH`: Update fields of a resource. Non-idempotent.
-  * `DELETE`: Remove a resource. Idempotent.
+  * `GET`: Safe, idempotent resource retrieval.
+  * `POST`: Creation of entities or triggering non-idempotent workflows (synthesis, verification).
+  * `PUT`: Idempotent replacement or complete field update.
+  * `DELETE`: Removal of resources (cascade-isolated).
 
-### 9.2 Endpoint Inventory
-* **Auth Endpoints (`/api/auth`):** `POST /register`, `POST /login`, `GET /me`, `GET /ping` (Health check), `POST /logout` (Session Invalidation), `POST /ws-ticket` (WebSocket Handshake).
-* **TTS Endpoints (`/api/tts`):**
-  * `POST /synthesize`: Buffered audio generation.
-  * `POST /synthesize-stream`: Chunked audio streaming (AWS Polly only).
-  *   `GET /voices`: Fetches metadata for AWS Polly, ElevenLabs, and Sarvam AI voices (Plan-restricted).
-  * `GET /usage`: Returns daily synthesis counts and plan limits.
-* **Payment Endpoints (`/api/v1/payments`):** `POST /create-order` and `POST /verify` for Razorpay integration.
-* **System Parameters (`/api/system-parameters`):** `GET /bulk` and `GET /live/{name}` for feature flags and dynamic config (limits, prices, status).
+### 9.2 Complete Endpoint Inventory
+
+#### 1. Authentication (`/api/auth`)
+* `POST /api/auth/register`: Initiate user registration and dispatch verification OTP.
+* `POST /api/auth/verify-email`: Verify OTP and activate user account.
+* `POST /api/auth/login`: Authenticate credentials; returns signed JWT and profile payload.
+* `POST /api/auth/forgot-password`: Request password reset OTP.
+* `POST /api/auth/reset-password`: Set new password with verified OTP token.
+* `POST /api/auth/resend-otp`: Resend registration or verification OTP.
+* `POST /api/auth/logout`: Invalidate session globally by incrementing database `session_version`.
+* `POST /api/auth/ws-ticket`: Issue temporary single-use token for WebSocket authentication.
+* `GET /api/auth/me`: Fetch current authenticated principal.
+* `GET /api/auth/ping`: Public health check endpoint for monitoring and uptime probes.
+* `GET /api/auth/check-username`: Live availability check for username during signup.
+* `GET /api/auth/check-email`: Live availability check for email address.
+* `GET /api/auth/check-phone`: Live validation and uniqueness check for phone numbers.
+
+#### 2. User Profile & Account Management (`/api/v1/users`)
+* `GET /api/v1/users/me`: Return authenticated profile, plan type, quota, and avatar URL.
+* `PUT /api/v1/users/profile`: Update user biographical details.
+* `PUT /api/v1/users/full-name`: Update user display name.
+* `PUT /api/v1/users/username`: Modify username (enforcing unique constraints).
+* `PUT /api/v1/users/phone-number`: Update contact phone number.
+* `POST /api/v1/users/email/request-otp`: Request security OTP for email address change.
+* `PUT /api/v1/users/email`: Confirm email update with verified OTP.
+* `POST /api/v1/users/password/request-otp`: Request OTP for in-app password changes.
+* `POST /api/v1/users/password`: Update user password with verification.
+* `POST /api/v1/users/avatar`: Multipart image upload (JPEG/PNG/WebP), resized and stored in Cloudflare R2 bucket `speakit-avatars`.
+* `DELETE /api/v1/users/avatar`: Delete user profile picture from R2 and reset profile record.
+* `DELETE /api/v1/users/me`: Hard delete user account and cascade purge all child records across 12 tables.
+
+#### 3. Text-to-Speech Engine (`/api/tts`)
+* `GET /api/tts/voices`: Return catalog of available voices across AWS Polly, ElevenLabs, and Sarvam AI, filtered by active user plan.
+* `POST /api/tts/synthesize`: Convert text to speech (buffered output uploaded to Cloudflare R2).
+* `POST /api/tts/synthesize-stream`: Stream raw audio bytes directly to the caller.
+* `GET /api/tts/usage`: Fetch remaining daily character limits and total syntheses.
+* `GET /api/tts/usage/analytics`: Detailed usage breakdown, voice distribution, and 30-day metrics.
+* `POST /api/tts/documents/analyze`: Multipart PDF upload; extracts text using Apache PDFBox, verifies size, and returns estimated audio duration.
+* `POST /api/tts/jobs`: Enqueue long-form document synthesis job using sentence chunking.
+* `GET /api/tts/jobs/{jobId}`: Poll async document synthesis progress, completion status, and CDN download URL.
+* `POST /api/tts/audio-isolation`: Isolate speech from background noise via ElevenLabs audio tools.
+* `POST /api/tts/speech-to-speech`: Transform speech audio into a target voice profile.
+* `POST /api/tts/sound-effects`: Generate custom SFX clips from descriptive text prompts.
+
+#### 4. Speech-to-Text & Live Transcription (`/api/stt`)
+* `POST /api/stt/transcribe`: Transcribe uploaded audio file via Sarvam Saaras model.
+* `POST /api/stt/transcribe-live`: Transcribe audio chunk recorded during a live microphone session.
+* `POST /api/stt/translate`: Translate speech audio or transcript into English or target Indic language.
+* `POST /api/stt/transliterate`: Transliterate text across supported scripts (e.g. Latin to Devanagari).
+* `POST /api/stt/live/session`: Save complete live conversation session with metadata.
+* `GET /api/stt/live/session/{id}/turns`: Retrieve conversation turns for a saved session.
+* `GET /api/stt/session/{id}/export`: Export transcript in TXT, SRT, or VTT format.
+
+#### 5. Synthesis History (`/api/history`)
+* `GET /api/history`: Paginated history of TTS and STT operations with filtering by generation type.
+* `GET /api/history/{id}/audio`: Secure streaming proxy or signed URL redirect for saved audio.
+* `DELETE /api/history/delete`: Batch delete selected history records by ID list.
+* `DELETE /api/history/clear-all`: Purge entire synthesis history for the authenticated user.
+
+#### 6. Billing, Subscriptions & Webhooks (`/api/v1/payments` & `/api/v1/webhooks`)
+* `GET /api/v1/payments/proration-quote`: Calculate prorated cost when upgrading between tiers.
+* `POST /api/v1/payments/create-order`: Generate Razorpay payment order for subscription upgrade.
+* `POST /api/v1/payments/verify`: Verify Razorpay HMAC-SHA256 signature and provision new subscription.
+* `POST /api/v1/payments/apple/verify`: Verify Apple StoreKit 2 transaction receipt on App Store Server.
+* `POST /api/v1/payments/downgrade-free`: Revert user subscription to Free tier.
+* `POST /api/v1/payments/downgrade`: Schedule end-of-period plan downgrade.
+* `POST /api/v1/payments/cancel`: Cancel active recurring subscription.
+* `GET /api/v1/payments/history`: Paginated payment receipt and invoice history.
+* `POST /api/v1/webhooks/razorpay`: Public signed webhook receiver for asynchronous Razorpay events.
+
+#### 7. Dynamic Parameters, Contact & Administration
+* `GET /api/system-parameters/bulk`: Fetch batch runtime configuration values (limits, prices, flags).
+* `GET /api/system-parameters/cached/{name}`: Fetch single cached configuration value.
+* `GET /api/system-parameters/live/{name}`: Direct database read bypassing application cache.
+* `POST /api/contact`: Submit contact inquiry; triggers Discord webhook dispatch and email notifications.
+* `POST /api/admin/logs/backup`: Trigger manual encrypted log backup to Cloudflare R2 bucket `speakit-logs`.
+* `GET /api/admin/logs/download`: Admin stream of archived log backup files.
 
 ---
 
@@ -571,45 +747,144 @@ public record LoginRequest(
 
 ## 11. DATABASE STANDARDS & SCHEMA DESIGN
 
-The database is powered by **PostgreSQL 16**, accessed via Hibernate/JPA, and modeled for high-volume analytics tracking and robust consistency.
+The persistence layer is powered by **PostgreSQL 16+**, accessed via Spring Data JPA and Hibernate, and governed by versioned **Flyway migrations** (`backend/src/main/resources/db/migration/`).
 
-### 11.1 Schema Philosophy
-All tables follow a standardized physical column ordering for DBA readability and enterprise norm alignment:
-```sql
-CREATE TABLE tts_history (
-    -- 1. Primary Key
-    id              BIGINT          NOT NULL PRIMARY KEY,
+### 11.1 Schema Architecture & Flyway Migration Strategy
+The schema is strictly version-controlled to guarantee identical migration reproducibility across development, preview, and production environments:
+- **`V1__init_schema.sql`**: Initial relational baseline provisioning 13 production tables, primary key sequences with pooled allocation (`allocationSize = 50`), foreign key constraints, and b-tree indexes.
+- **`V2__add_stt_audio_storage.sql`**: Schema evolution adding `audio_url VARCHAR(512)` and `storage_key VARCHAR(255)` to `speech_to_text_requests` for persistent audio playback and Cloudflare R2 CDN delivery.
 
-    -- 2. Foreign Keys (always indexed)
-    user_id         BIGINT          NOT NULL REFERENCES users(id),
+### 11.2 Complete Table Inventory
 
-    -- 3. Core Business Columns
-    voice_id        VARCHAR(100)    NOT NULL,
-    text_snippet    VARCHAR(500)    NOT NULL,
-    output_format   VARCHAR(10)     NOT NULL,
-    character_count INTEGER         NOT NULL,
-    engine_used     VARCHAR(20)     NOT NULL,
+| Table Name | Primary Key | Key Columns | Purpose |
+| :--- | :--- | :--- | :--- |
+| `users` | `id` (BIGINT) | `email`, `username`, `password_hash`, `plan_type`, `session_version`, `role` | Core user identity, credentials, plan tier, and atomic session version. |
+| `tts_history` | `id` (BIGINT) | `user_id`, `text_snippet`, `voice_id`, `character_count`, `audio_url`, `storage_key` | Historical record of synthesized text-to-speech audio outputs. |
+| `subscriptions` | `id` (BIGINT) | `user_id`, `plan_type`, `status`, `razorpay_subscription_id`, `current_period_end` | Active subscription state, billing period boundaries, and auto-renewal status. |
+| `payments` | `id` (BIGINT) | `user_id`, `razorpay_order_id`, `razorpay_payment_id`, `amount`, `status`, `currency` | Immutable audit trail of completed billing transactions and invoices. |
+| `webhook_events` | `id` (BIGINT) | `event_id`, `event_type`, `payload`, `status`, `processed_at` | Idempotency log for incoming Razorpay and third-party webhook payloads. |
+| `system_parameters` | `id` (BIGINT) | `name`, `value`, `description`, `data_type`, `is_active` | Dynamic database-backed configuration for character limits, pricing, and toggles. |
+| `contact_submissions` | `id` (BIGINT) | `name`, `email`, `subject`, `message`, `status`, `ip_address` | Customer support submissions linked to Discord and email dispatch queues. |
+| `speech_to_text_requests` | `id` (BIGINT) | `user_id`, `audio_duration_seconds`, `model_used`, `transcription_text`, `audio_url` | Transcribed audio files and live recording transcriptions with R2 storage keys. |
+| `otp_verifications` | `id` (BIGINT) | `user_id`, `email`, `otp_hash`, `type`, `attempts`, `expires_at` | Short-lived security OTP hashes for password resets, email updates, and signups. |
+| `pending_registrations` | `id` (BIGINT) | `email`, `username`, `password_hash`, `otp_hash`, `expires_at` | Staged user registrations awaiting initial email confirmation. |
+| `user_avatar_history` | `id` (BIGINT) | `user_id`, `avatar_url`, `storage_key`, `file_size_bytes`, `content_type` | Audit and CDN reference history for uploaded user profile pictures. |
+| `live_session_turns` | `id` (BIGINT) | `session_id`, `user_id`, `turn_index`, `speaker`, `text`, `start_time_ms` | Granular conversational dialogue turns recorded during live STT sessions. |
+| `log_backup_audits` | `id` (BIGINT) | `backup_filename`, `storage_key`, `file_size_bytes`, `sha256_hash`, `status` | Disaster recovery tracking for encrypted nightly log backups archived in R2. |
 
-    -- 4. Status Flags
-    is_successful   BOOLEAN         NOT NULL DEFAULT TRUE,
+<div class="diagram-container">
 
-    -- 5. Audit Fields
-    created_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+### 11.3 Entity-Relationship (ER) Architecture Diagram
 
-    -- 6. Optimistic Locking
-    version         BIGINT          NOT NULL DEFAULT 0
-);
+```mermaid
+erDiagram
+    users ||--o{ tts_history : "generates"
+    users ||--o{ subscriptions : "owns"
+    users ||--o{ payments : "makes"
+    users ||--o{ speech_to_text_requests : "transcribes"
+    users ||--o{ otp_verifications : "verifies"
+    users ||--o{ user_avatar_history : "uploads"
+    users ||--o{ live_session_turns : "speaks"
 
-CREATE INDEX idx_tts_history_user_id ON tts_history(user_id);
+    users {
+        bigint id PK
+        varchar username UK
+        varchar email UK
+        varchar password_hash
+        varchar plan_type
+        varchar role
+        integer session_version
+        boolean is_active
+        boolean is_verified
+        timestamptz created_at
+    }
+
+    tts_history {
+        bigint id PK
+        bigint user_id FK
+        varchar text_snippet
+        varchar voice_id
+        varchar voice_type
+        integer character_count
+        varchar audio_url
+        varchar storage_key
+        varchar status
+        timestamptz created_at
+    }
+
+    subscriptions {
+        bigint id PK
+        bigint user_id FK
+        varchar plan_type
+        varchar status
+        varchar razorpay_subscription_id
+        timestamptz current_period_start
+        timestamptz current_period_end
+        boolean cancel_at_period_end
+    }
+
+    payments {
+        bigint id PK
+        bigint user_id FK
+        varchar razorpay_order_id
+        varchar razorpay_payment_id
+        integer amount
+        varchar currency
+        varchar status
+        varchar plan_type
+        timestamptz created_at
+    }
+
+    speech_to_text_requests {
+        bigint id PK
+        bigint user_id FK
+        integer audio_duration_seconds
+        varchar language_code
+        varchar model_used
+        text transcription_text
+        varchar audio_url
+        varchar storage_key
+        timestamptz created_at
+    }
+
+    live_session_turns {
+        bigint id PK
+        varchar session_id
+        bigint user_id FK
+        integer turn_index
+        varchar speaker
+        text text
+        integer start_time_ms
+        integer end_time_ms
+        timestamptz created_at
+    }
+
+    user_avatar_history {
+        bigint id PK
+        bigint user_id FK
+        varchar avatar_url
+        varchar storage_key
+        bigint file_size_bytes
+        timestamptz created_at
+    }
 ```
 
-### 11.2 Database Backups Configuration
-Database persistence is protected against disaster using **S3-Compatible Oracle Object Storage** backups:
-* **Namespace**: `ax3xyz`
-* **Access Configuration**: Customer Secret Keys linked to an S3 Storage Destination in Coolify.
-* **Endpoint**: `https://<namespace>.compat.objectstorage.<region>.oraclecloud.com/`
-* **Retention Policy**: Nightly cron executions with automatic local file pruning.
+</div>
+
+### 11.4 Schema Design Philosophy
+All tables adhere to a standardized column sequence ensuring consistent database maintenance:
+1. Primary Key (`id BIGINT PRIMARY KEY`)
+2. Foreign Keys (`user_id BIGINT REFERENCES users(id)`)
+3. Domain Data Columns
+4. Status & State Indicators
+5. Audit Timestamps (`created_at`, `updated_at TIMESTAMPTZ`)
+6. Optimistic Locking Version (`version BIGINT NOT NULL DEFAULT 0`)
+
+### 11.5 Database Backups & Disaster Recovery Configuration
+Database persistence is protected against disaster using automated S3-compatible backups configured via Coolify and Cloudflare R2:
+* **Storage Destination**: S3-Compatible Bucket `speakit-backups`
+* **Encryption**: AES-256 client-side encrypted tarballs
+* **Retention Policy**: Nightly cron schedules with rolling 30-day retention and automated local temp-file cleanup.
 
 ---
 
@@ -710,13 +985,13 @@ On every request:
   Filter reads sessionVersion from JWT (no DB call yet)
   Filter fetches UserSessionProjection from DB (ONE indexed query)
   Filter compares: JWT.sessionVersion == DB.session_version?
-    → Match: proceed
-    → Mismatch: 401 Unauthorized
+    -> Match: proceed
+    -> Mismatch: 401 Unauthorized
 
 On "Logout from all devices":
   UPDATE users SET session_version = session_version + 1 WHERE id = 42
-  → All old tokens (with version 7) are instantly invalid
-  → No Redis. No token blacklist. One DB update.
+  -> All old tokens (with version 7) are instantly invalid
+  -> No Redis. No token blacklist. One DB update.
 ```
 
 ### 15.2 Input Sanitization & Password Security
@@ -736,9 +1011,9 @@ SpeakIT builds a **composite identity profile** per request, not a single IP loo
 ```
 Resolution logic in RateLimitAspect:
   if (authenticated):
-    key = "user:" + userId          ← JWT-bound. Proxy rotation irrelevant.
+    key = "user:" + userId          <- JWT-bound. Proxy rotation irrelevant.
   else:
-    key = "anon:" + hash(CF-IP + User-Agent)   ← Lightweight fingerprint
+    key = "anon:" + hash(CF-IP + User-Agent)   <- Lightweight fingerprint
 ```
 
 ### 16.2 AOP Implementation — @RateLimited Annotation
@@ -1012,7 +1287,7 @@ SpeakIT manages transactional and inbound/outbound emails through a secure deliv
 graph TD
     subgraph Inbound Emails
         Sender["Customer / Internet"] -->|Send email to support@mohitur.com| CF["Cloudflare Email Routing"]
-        CF -->|Auto-forward| Gmail["yourpersonalgmail@gmail.com"]
+        CF -->|Auto-forward| Destination["admin-inbox@example.com"]
     end
 
     subgraph Outbound Emails
@@ -1070,7 +1345,7 @@ The backend leverages `com.speakit.notification.service.TelegramService` to comm
 * **Asynchronous Processing**: The service method is annotated with `@Async` to dispatch alerts in the background, preventing thread blocks in the main request path.
 * **Strict Timeouts**: Instantiates a JdkClientHttpRequestFactory limiting read/connection timeouts to `5` seconds.
 * **Message Formatting & Escaping**: The alert body is encoded using `MarkdownV2`. The service runs a custom escaping utility (`escapeMarkdown`) to parse and escape characters (e.g. `_`, `*`, `[`, `]`, `.`, `!`), avoiding payload injection issues.
-* **Exponential Backoff**: If an HTTP request fails, the service executes a retry loop up to 3 times, doubling wait times between retry loops (1s ➔ 2s ➔ 4s) before logging final dispatch errors.
+* **Exponential Backoff**: If an HTTP request fails, the service executes a retry loop up to 3 times, doubling wait times between retry loops (1s -> 2s -> 4s) before logging final dispatch errors.
 
 <div class="diagram-container">
 
@@ -1107,23 +1382,43 @@ SpeakIT dynamically matches speech generation requests against three API vendors
 
 ### 26.1 Vendor Strategy Mapping
 * **AWS Polly (Neural & Standard)**: Ground layer. Standard engines serve `FREE` users; `NEURAL` engine profiles are restricted to `PRO` and `PRO_PLUS` subscribers.
-* **ElevenLabs**: Premium natural voice synthesis. REST endpoint routing is configured strictly for high-end `PRO_PLUS` users.
-* **Sarvam AI**: Indian dialects and translations. Expressly leverages the `bulbul:v3` model via endpoint `https://api.sarvam.ai/text-to-speech` authenticated via `api-subscription-key`. It is mapped to `PRO` and `PRO_PLUS` users, and dynamically toggled using the system parameter `SARVAM_ENABLED`.
+* **ElevenLabs**: Premium natural voice synthesis. REST endpoint routing is configured strictly for high-end `PRO_PLUS` users. Additionally provides audio isolation (noise removal), speech-to-speech transformation, and AI sound effects.
+* **Sarvam AI**: High-accuracy synthesis for Indic languages and regional dialects. Expressly leverages the `bulbul:v3` model via endpoint `https://api.sarvam.ai/text-to-speech` authenticated via `api-subscription-key`. It is mapped to `PRO` and `PRO_PLUS` users, and dynamically toggled using the system parameter `SARVAM_ENABLED`.
 
-### 26.2 Speech-to-Text and Translation
-* `SarvamSpeechToTextProvider` processes Indian dialect transcriptions.
-* `TranslationService` integrates the translation engine (`sarvam-translate:v1`) to automatically translate transcriptions into multiple languages.
+### 26.2 Speech-to-Text & Live Audio Transcription Engine
+* **Sarvam Saaras STT (`SarvamSpeechToTextProvider`)**: Processes regional and multilingual speech with exceptional dialect accuracy:
+  * Batch Audio Upload (`POST /api/stt/transcribe`): Transcribes uploaded audio files (WAV, MP3, FLAC, OGG, AAC) with automatic language detection or explicit locale selection.
+  * Live Chunk Transcription (`POST /api/stt/transcribe-live`): Ingests audio slices recorded in real-time from web or iOS microphones, returning low-latency partial and finalized transcripts.
+  * Live Session & Dialogue Turns (`POST /api/stt/live/session`): Persists full session metadata and individual dialogue turns (`live_session_turns`) with millisecond timestamps and speaker labels.
+  * Transcript Export: Generates downloadable formatted exports in plain text (TXT), SubRip Subtitle (SRT), and WebVTT (VTT) formats.
+* **Translation & Transliteration Services**:
+  * Translation (`sarvam-translate:v1`): Translates recognized speech or arbitrary text between 10 Indian regional languages and English.
+  * Transliteration: Converts phonetics across native Indic scripts (e.g., Devanagari, Bengali, Tamil, Telugu) and Latin alphabets.
+
+### 26.3 Cloudflare R2 Multi-Bucket Object Storage Topology
+Audio and asset storage is architected across three independent, dedicated Cloudflare R2 buckets using S3-compatible APIs via the AWS SDK for Java:
+* **Bucket 1 (`speakit-avatars`)**: User profile pictures. Subject to strict file-type validation (JPEG, PNG, WebP) and daily upload limit enforcement (`AVATAR_DAILY_LIMIT = 2`). Served via dedicated CDN domain.
+* **Bucket 2 (`speakit-audio`)**: Synthesized TTS audio generations, recorded STT audio clips, and long-form audiobook outputs. Partitioned under clean prefix namespaces:
+  * `translate-audio/`: Text-to-speech audio files (`u_{userId}_{timestamp}_{hash}.mp3`).
+  * `transcribe-audio/`: Speech-to-text recorded input clips.
+  * `pdf-audio/`: Assembled long-form audiobook outputs.
+* **Bucket 3 (`speakit-logs`)**: Nightly encrypted application log backups (`logs/speakit-backend.log`) stored with SHA256 checksum audit records in `log_backup_audits`.
 
 <div class="diagram-container">
 
-### 26.3 Dynamic AI Voice Engine Strategy Router Diagram
+### 26.4 Dynamic AI Voice Engine Strategy Router Diagram
 
 ```mermaid
 graph TD
     Req["Synthesis Request / API"] -->|Inspect requested voice parameters| Strategy{"Strategy Router"}
-    Strategy -->|Engine standard or neural| AWS_Polly["AWS Polly Client"]
-    Strategy -->|Engine ElevenLabs| ElevenLabs["ElevenLabs Client"]
-    Strategy -->|Engine Sarvam| Sarvam["Sarvam AI Client"]
+    Strategy -->|Engine: Standard or Neural| AWS_Polly["AWS Polly Client"]
+    Strategy -->|Engine: ElevenLabs| ElevenLabs["ElevenLabs Client\n(TTS / Isolation / STS / SFX)"]
+    Strategy -->|Engine: Sarvam Indic| Sarvam["Sarvam AI Client\n(Bulbul TTS / Saaras STT / Translate)"]
+    
+    AWS_Polly --> Storage["Cloudflare R2 Object Storage"]
+    ElevenLabs --> Storage
+    Sarvam --> Storage
+    Storage --> CDN["Cloudflare Audio CDN (Zero Egress Fees)"]
 ```
 
 </div>
@@ -1309,8 +1604,8 @@ flowchart TD
 ## 32. REPOSITORY CONVENTIONS
 
 * **Folder Ownership**:
-  * `/backend` ➔ Backend Engineers (Java/Maven).
-  * `/frontend` ➔ Frontend Engineers (Angular/npm).
+  * `/backend` -> Backend Engineers (Java/Maven).
+  * `/frontend` -> Frontend Engineers (Angular/npm).
 * **Imports**: Backend classes must never import from other modules if it creates a circular dependency. Extract dependencies to `shared` packages.
 
 ---
@@ -1382,8 +1677,8 @@ This hits a **primary key index** — PostgreSQL B-tree index lookup is O(log n)
 
 **A:** No. The `JwtAuthenticationFilter` executes a `SELECT` projection to read the current `sessionVersion`. This is a point-in-time check under PostgreSQL's `READ COMMITTED` isolation level.
 Scenario: User is logging out (UPDATE) while a concurrent request is being validated (SELECT).
-- If the SELECT sees the OLD version and the JWT also has the old version → request proceeds.
-- If the SELECT sees the NEW version (post-commit) and the JWT has the old version → 401.
+- If the SELECT sees the OLD version and the JWT also has the old version -> request proceeds.
+- If the SELECT sees the NEW version (post-commit) and the JWT has the old version -> 401.
 - The UPDATE (`SET version = version + 1`) is inherently atomic in PostgreSQL.
 
 **Q: You're using `getReferenceById` to avoid a SELECT. What happens if the user was deleted between JWT validation and the history insert?**
@@ -1417,7 +1712,7 @@ If the user is hard-deleted in that window:
 graph TD
     Req["Browser Speech Request"] -->|Text + Voice settings hash lookup| Cache{"Is Synthesized Audio Cached?"}
     Cache -->|Yes: Cost is $0| S3["Deliver S3 Audio URL instantly"]
-    Cache -->|No| Engine["Acquire Rate Limit token ➔ Forward to Polly/ElevenLabs/Sarvam API"]
+    Cache -->|No| Engine["Acquire Rate Limit token -> Forward to Polly/ElevenLabs/Sarvam API"]
 ```
 
 </div>

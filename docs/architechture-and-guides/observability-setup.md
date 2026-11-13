@@ -168,7 +168,7 @@ Log aggregation is handled externally by the Coolify host container engine. Inst
      * **3 full platform users** (upgraded from 1).
 2. **Retrieve Your License Key**:
    * Log in to your upgraded [NewRelic.com](https://newrelic.com) account.
-   * In the bottom-left corner of the sidebar, click on your **User Profile Name/Avatar** ➔ **API Keys**.
+   * In the bottom-left corner of the sidebar, click on your **User Profile Name/Avatar** -> **API Keys**.
    * On the API Keys dashboard page, locate the key type labeled **INGEST - LICENSE** (often named `default` or `original` license key).
    * Copy the key string (e.g., `NRAL-XXXX...XXXX`). Write this down as `NEW_RELIC_LICENSE_KEY`.
 3. To view incoming records, click **Logs** in the left sidebar of your New Relic console.

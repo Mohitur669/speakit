@@ -143,6 +143,6 @@ Each module contains its own internal `controller`, `service`, `repository`, `en
   - `backend/src/main/java/com/speakit/stt/service/SttService.java` (Removed blocking transaction during I/O)
   - Relocated and updated imports in 50+ backend files.
 - **Added:**
-  - `Architecture_Review.md` (This report)
-  - `Repository_Audit_Report.md` (General security/scalability report)
+  - `Architecture-Review.md` (This report)
+  - `Repository-Audit-Report.md` (General security/scalability report)
 - **Files Requiring Manual Review:** None.
