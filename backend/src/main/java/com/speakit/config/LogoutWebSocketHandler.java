@@ -1,5 +1,6 @@
 package com.speakit.config;
 
+import com.speakit.security.JwtService;
 import com.speakit.tts.service.WSTicketService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -19,10 +20,12 @@ import java.util.concurrent.CopyOnWriteArraySet;
 public class LogoutWebSocketHandler extends TextWebSocketHandler {
 
     private final WSTicketService wsTicketService;
+    private final JwtService jwtService;
     private final Map<String, Set<WebSocketSession>> userSessions = new ConcurrentHashMap<>();
 
-    public LogoutWebSocketHandler(WSTicketService wsTicketService) {
+    public LogoutWebSocketHandler(WSTicketService wsTicketService, JwtService jwtService) {
         this.wsTicketService = wsTicketService;
+        this.jwtService = jwtService;
     }
 
     public void notifyLogout(String username) {
@@ -47,23 +50,35 @@ public class LogoutWebSocketHandler extends TextWebSocketHandler {
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws IOException {
         String query = session.getUri() != null ? session.getUri().getQuery() : null;
-        if (query != null && query.startsWith("ticket=")) {
-            String ticket = query.substring(7);
-            try {
-                String username = wsTicketService.consumeTicket(ticket);
+        String username = resolveUsername(query);
 
-                if (username != null) {
-                    userSessions.computeIfAbsent(username, k -> new CopyOnWriteArraySet<>()).add(session);
-                    log.info("WS Connected: {} (Total sessions: {})", username, userSessions.get(username).size());
-                } else {
-                    session.close(CloseStatus.BAD_DATA);
-                }
-            } catch (Exception e) {
+        if (username != null) {
+            userSessions.computeIfAbsent(username, k -> new CopyOnWriteArraySet<>()).add(session);
+            log.info("WS Connected: {} (Total sessions: {})", username, userSessions.get(username).size());
+        } else {
+            log.warn("Unauthorized Logout WebSocket handshake attempt from IP {}", session.getRemoteAddress());
+            session.close(CloseStatus.POLICY_VIOLATION.withReason("Authentication required (valid ticket)"));
+        }
+    }
+
+    private String resolveUsername(String query) {
+        if (query == null) return null;
+        for (String param : query.split("&")) {
+            if (param.startsWith("ticket=")) {
+                String ticket = param.substring(7);
                 try {
-                    session.close(CloseStatus.SERVER_ERROR);
-                } catch (IOException ignored) {}
+                    return wsTicketService.consumeTicket(ticket);
+                } catch (Exception e) {
+                    log.error("Error validating WebSocket ticket: {}", e.getMessage());
+                }
+            } else if (param.startsWith("token=")) {
+                String token = param.substring(6);
+                try {
+                    return jwtService.extractUsername(token);
+                } catch (Exception ignored) {}
             }
         }
+        return null;
     }
 
     @Override

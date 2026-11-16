@@ -39,6 +39,9 @@ public class SecurityConfig {
     @Value("${cors.allowed-origins:http://localhost:4200,http://127.0.0.1:4200}")
     private String allowedOrigins;
 
+    @Value("${security.csp.policy-directives:}")
+    private String customCspDirectives;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -51,7 +54,7 @@ public class SecurityConfig {
                     .cacheControl(cache -> cache.disable())
                     .frameOptions(frame -> frame.deny())
                     .contentSecurityPolicy(csp -> csp
-                        .policyDirectives("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' http://localhost:8080 http://127.0.0.1:8080 http://localhost:4200;")
+                        .policyDirectives(buildCspDirectives())
                     )
                 )
                 .exceptionHandling(exceptions -> exceptions
@@ -115,5 +118,23 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
+    }
+
+    private String buildCspDirectives() {
+        if (customCspDirectives != null && !customCspDirectives.isBlank()) {
+            return customCspDirectives;
+        }
+        StringBuilder sb = new StringBuilder("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:;");
+        sb.append(" connect-src 'self'");
+        if (allowedOrigins != null && !allowedOrigins.isBlank()) {
+            for (String origin : allowedOrigins.split(",")) {
+                String trimmed = origin.trim();
+                if (!trimmed.isEmpty() && !trimmed.equals("'self'")) {
+                    sb.append(" ").append(trimmed);
+                }
+            }
+        }
+        sb.append("; frame-ancestors 'none'; object-src 'none';");
+        return sb.toString();
     }
 }

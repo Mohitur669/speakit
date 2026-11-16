@@ -63,8 +63,6 @@ services:
     environment:
       # Runtime Configuration (Injected via public/runtime-env.js)
       - API_URL=${API_URL:-http://localhost:8080}
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_KEY=${SUPABASE_KEY}
       - NODE_ENV=production
     depends_on:
       backend:
