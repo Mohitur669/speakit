@@ -58,13 +58,13 @@ public class LogBackupService {
     @Value("${cloudflare.r2.logs.account-id:${cloudflare.r2.account-id:}}")
     private String accountId;
 
-    @Value("${cloudflare.r2.logs.bucket-name:}")
+    @Value("${cloudflare.r2.logs.bucket-name:${cloudflare.r2.bucket-name:}}")
     private String bucketName;
 
-    @Value("${cloudflare.r2.logs.access-key-id:}")
+    @Value("${cloudflare.r2.logs.access-key-id:${cloudflare.r2.access-key-id:}}")
     private String accessKeyId;
 
-    @Value("${cloudflare.r2.logs.secret-access-key:}")
+    @Value("${cloudflare.r2.logs.secret-access-key:${cloudflare.r2.secret-access-key:}}")
     private String secretAccessKey;
 
     @Value("${cloudflare.r2.logs.coolify-dir:/app/logs}")
@@ -120,7 +120,12 @@ public class LogBackupService {
                 this.r2Enabled = false;
             }
         } else {
-            log.info("Cloudflare R2 Log Backup credentials not fully configured. Automatic and manual backups disabled.");
+            List<String> missing = new ArrayList<>();
+            if (!isConfigured(accountId)) missing.add("R2_ACCOUNT_ID");
+            if (!isConfigured(bucketName)) missing.add("R2_LOG_BUCKET_NAME");
+            if (!isConfigured(accessKeyId)) missing.add("R2_LOG_ACCESS_KEY_ID");
+            if (!isConfigured(secretAccessKey)) missing.add("R2_LOG_SECRET_ACCESS_KEY");
+            log.info("Cloudflare R2 Log Backup disabled. Missing configuration: {}", String.join(", ", missing));
             this.r2Enabled = false;
         }
     }
@@ -183,7 +188,15 @@ public class LogBackupService {
 
         if (!r2Enabled || s3Client == null) {
             long duration = System.currentTimeMillis() - startTime;
-            String msg = "R2 Log Backup is disabled because credentials or bucket name are unconfigured.";
+            List<String> missing = new ArrayList<>();
+            if (!isConfigured(accountId)) missing.add("R2_ACCOUNT_ID");
+            if (!isConfigured(bucketName)) missing.add("R2_LOG_BUCKET_NAME");
+            if (!isConfigured(accessKeyId)) missing.add("R2_LOG_ACCESS_KEY_ID");
+            if (!isConfigured(secretAccessKey)) missing.add("R2_LOG_SECRET_ACCESS_KEY");
+
+            String msg = missing.isEmpty()
+                    ? "R2 Log Backup is disabled because credentials or bucket name are unconfigured."
+                    : "R2 Log Backup is disabled: missing credentials [" + String.join(", ", missing) + "].";
             if (auditService != null) {
                 auditService.recordSkipped(auditId, "Cloudflare R2", safeBucket, msg, duration);
             }
