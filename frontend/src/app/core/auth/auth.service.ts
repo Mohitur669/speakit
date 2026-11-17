@@ -76,14 +76,32 @@ export class AuthService implements OnDestroy {
   private setupWebSocket(): void {
     if (this.ws) {
       this.ws.close();
+      this.ws = undefined;
     }
     const token = this.token();
     if (!token) return;
-    let wsUrl = environment.apiUrl.startsWith('http') ? environment.apiUrl.replace(/^http/, 'ws') : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}${environment.apiUrl}`;
-    wsUrl += '/ws/logout?token=' + token;
-    this.ws = new WebSocket(wsUrl);
-    this.ws.onmessage = (event) => { if (event.data === 'LOGOUT') this.logout('Another login detected'); };
-    this.ws.onclose = () => { if (this.isLoggedIn() && !this.isLoggingOut) setTimeout(() => this.setupWebSocket(), 5000); };
+
+    this.http.post<{ ticket: string }>(`${this.apiUrl}/ws-ticket`, {}).subscribe({
+      next: (res) => {
+        if (!res?.ticket || !this.token()) return;
+        let wsUrl = environment.apiUrl.startsWith('http')
+          ? environment.apiUrl.replace(/^http/, 'ws')
+          : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}${environment.apiUrl}`;
+        wsUrl += '/ws/logout?ticket=' + encodeURIComponent(res.ticket);
+        this.ws = new WebSocket(wsUrl);
+        this.ws.onmessage = (event) => {
+          if (event.data === 'LOGOUT') this.logout('Another login detected');
+        };
+        this.ws.onclose = () => {
+          if (this.isLoggedIn() && !this.isLoggingOut) {
+            setTimeout(() => this.setupWebSocket(), 5000);
+          }
+        };
+      },
+      error: (err) => {
+        this.logger.warn('Failed to obtain WebSocket ticket:', err);
+      }
+    });
   }
 
   private setupBroadcastListener(): void {
@@ -171,7 +189,10 @@ export class AuthService implements OnDestroy {
   private clearSession(): void {
     if (this.timeoutId) clearTimeout(this.timeoutId);
     if (this.idleTimeoutId) clearTimeout(this.idleTimeoutId);
-    this.ws?.close();
+    if (this.ws) {
+      this.ws.close();
+      this.ws = undefined;
+    }
     this.removeActivityListeners();
     if (this.visibilityCallback) document.removeEventListener('visibilitychange', this.visibilityCallback);
     
