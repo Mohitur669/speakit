@@ -34,7 +34,7 @@ on:
       confirm:
         required: true
         type: choice
-        default: "Yes"
+        default: "No"
         options:
           - "Yes"
           - "No"
@@ -62,7 +62,7 @@ jobs:
           PYTHON="${{ inputs.python }}"
           ACTIONS="${{ inputs.actions }}"
           SWIFT="${{ inputs.swift }}"
-          
+
           if [ "$EVENT" = "workflow_dispatch" ]; then
             if [ "$CONFIRM" != "Yes" ]; then
               MODE="⛔ **Cancelled by User** (\`confirm: $CONFIRM\`)"
