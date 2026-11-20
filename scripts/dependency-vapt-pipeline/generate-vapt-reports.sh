@@ -172,7 +172,8 @@ pip install -r .github/scripts/requirements.txt --quiet
 echo "[OK] Python dependencies installed."
 
 # 5. Generate Reports
-export GITHUB_TOKEN=$(gh auth token)
+GITHUB_TOKEN="$(gh auth token)"
+export GITHUB_TOKEN
 
 echo "Generating Dependabot VAPT reports..."
 python .github/scripts/dependabot_report.py --repo "$REPO"
