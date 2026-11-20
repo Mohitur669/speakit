@@ -13,23 +13,27 @@ on:
     - cron: '0 2 * * 1' # Mondays 07:30 IST (02:00 UTC)
   workflow_dispatch:
     inputs:
-      language:
-        description: "Select language or code quality check to run"
+      profile:
+        description: "Select CodeQL profile"
         required: true
         type: choice
         default: "all"
         options:
-          - all
-          - java-kotlin
-          - javascript-typescript
-          - python
-          - actions
-          - swift
-      confirm_run:
-        description: "Confirm execution (check box to proceed)"
+          - "all"
+          - "java"
+          - "java-kotlin"
+          - "javascript/typescript"
+          - "python"
+          - "actions"
+          - "swift"
+      confirm:
+        description: "Confirm"
         required: true
-        type: boolean
-        default: true
+        type: choice
+        default: "Yes"
+        options:
+          - "Yes"
+          - "No"
 
 permissions:
   contents: read
@@ -43,7 +47,7 @@ jobs:
     name: Analyze (${{ matrix.language }})
     if: >-
       !github.event.repository.private &&
-      (github.event_name != 'workflow_dispatch' || inputs.confirm_run == true)
+      (github.event_name != 'workflow_dispatch' || inputs.confirm == 'Yes')
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
@@ -63,9 +67,21 @@ jobs:
       - name: Check if language is selected
         id: filter
         run: |
-          if [ "${{ github.event_name }}" != "workflow_dispatch" ] || \
-             [ "${{ inputs.language }}" = "all" ] || \
-             [ "${{ inputs.language }}" = "${{ matrix.language }}" ]; then
+          if [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          
+          P="${{ inputs.profile }}"
+          L="${{ matrix.language }}"
+          
+          if [ "$P" = "all" ]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          elif { [ "$P" = "java" ] || [ "$P" = "java-kotlin" ]; } && [ "$L" = "java-kotlin" ]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          elif { [ "$P" = "javascript/typescript" ] || [ "$P" = "javascript-typescript" ]; } && [ "$L" = "javascript-typescript" ]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          elif [ "$P" = "$L" ]; then
             echo "should_run=true" >> "$GITHUB_OUTPUT"
           else
             echo "should_run=false" >> "$GITHUB_OUTPUT"
@@ -111,7 +127,7 @@ jobs:
       !github.event.repository.private &&
       (
         (github.event_name == 'schedule') ||
-        (github.event_name == 'workflow_dispatch' && inputs.confirm_run == true && (inputs.language == 'swift' || inputs.language == 'all'))
+        (github.event_name == 'workflow_dispatch' && inputs.confirm == 'Yes' && (inputs.profile == 'swift' || inputs.profile == 'all'))
       )
     timeout-minutes: 60
 
