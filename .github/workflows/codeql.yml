@@ -13,19 +13,34 @@ on:
     - cron: '0 2 * * 1' # Mondays 07:30 IST (02:00 UTC)
   workflow_dispatch:
     inputs:
-      profile:
-        description: "Select CodeQL profile"
-        required: true
-        type: choice
-        default: "all"
-        options:
-          - "all"
-          - "java"
-          - "java-kotlin"
-          - "javascript/typescript"
-          - "python"
-          - "actions"
-          - "swift"
+      all:
+        description: "All languages (Full repository scan)"
+        type: boolean
+        default: true
+      java:
+        description: "Java"
+        type: boolean
+        default: false
+      java_kotlin:
+        description: "Java & Kotlin"
+        type: boolean
+        default: false
+      javascript_typescript:
+        description: "JavaScript / TypeScript"
+        type: boolean
+        default: false
+      python:
+        description: "Python"
+        type: boolean
+        default: false
+      actions:
+        description: "GitHub Actions workflows"
+        type: boolean
+        default: false
+      swift:
+        description: "Swift (macOS runner)"
+        type: boolean
+        default: false
       confirm:
         description: "Confirm"
         required: true
@@ -41,6 +56,95 @@ permissions:
   actions: read
 
 jobs:
+  # 0. Execution Summary (Renders rich markdown table to GitHub Step Summary)
+  summary:
+    name: "Execution Summary"
+    if: "!github.event.repository.private"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Generate Run Summary
+        run: |
+          EVENT="${{ github.event_name }}"
+          CONFIRM="${{ inputs.confirm }}"
+          ALL="${{ inputs.all }}"
+          JAVA="${{ inputs.java }}"
+          JAVA_KOTLIN="${{ inputs.java_kotlin }}"
+          JS_TS="${{ inputs.javascript_typescript }}"
+          PYTHON="${{ inputs.python }}"
+          ACTIONS="${{ inputs.actions }}"
+          SWIFT="${{ inputs.swift }}"
+          
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            if [ "$CONFIRM" != "Yes" ]; then
+              MODE="⛔ **Cancelled by User** (\`confirm: $CONFIRM\`)"
+              STATUS_JAVA="⛔ Skipped"
+              STATUS_JSTS="⛔ Skipped"
+              STATUS_PY="⛔ Skipped"
+              STATUS_ACT="⛔ Skipped"
+              STATUS_SWIFT="⛔ Skipped"
+            elif [ "$ALL" = "true" ]; then
+              MODE="🚀 **Full Repository Scan** (\`all=true\` overrides individual selections)"
+              STATUS_JAVA="✅ Enabled (via \`all\`)"
+              STATUS_JSTS="✅ Enabled (via \`all\`)"
+              STATUS_PY="✅ Enabled (via \`all\`)"
+              STATUS_ACT="✅ Enabled (via \`all\`)"
+              STATUS_SWIFT="✅ Enabled (via \`all\`)"
+            else
+              MODE="🎯 **Selective Multi-Language Scan**"
+              if [ "$JAVA" = "true" ] || [ "$JAVA_KOTLIN" = "true" ]; then STATUS_JAVA="✅ Enabled"; else STATUS_JAVA="⏭️ Skipped"; fi
+              if [ "$JS_TS" = "true" ]; then STATUS_JSTS="✅ Enabled"; else STATUS_JSTS="⏭️ Skipped"; fi
+              if [ "$PYTHON" = "true" ]; then STATUS_PY="✅ Enabled"; else STATUS_PY="⏭️ Skipped"; fi
+              if [ "$ACTIONS" = "true" ]; then STATUS_ACT="✅ Enabled"; else STATUS_ACT="⏭️ Skipped"; fi
+              if [ "$SWIFT" = "true" ]; then STATUS_SWIFT="✅ Enabled"; else STATUS_SWIFT="⏭️ Skipped"; fi
+            fi
+          elif [ "$EVENT" = "schedule" ]; then
+            MODE="⏰ **Scheduled Weekly Scan** (Full scan across all targets including Swift)"
+            STATUS_JAVA="✅ Enabled"
+            STATUS_JSTS="✅ Enabled"
+            STATUS_PY="✅ Enabled"
+            STATUS_ACT="✅ Enabled"
+            STATUS_SWIFT="✅ Enabled"
+            CONFIRM="N/A (Schedule)"
+            ALL="N/A"
+            JAVA_KOTLIN="N/A"
+            JS_TS="N/A"
+            PYTHON="N/A"
+            ACTIONS="N/A"
+            SWIFT="N/A"
+          else
+            MODE="⚡ **Automated CI Scan** (\`$EVENT\` — Swift bypassed for fast feedback)"
+            STATUS_JAVA="✅ Enabled"
+            STATUS_JSTS="✅ Enabled"
+            STATUS_PY="✅ Enabled"
+            STATUS_ACT="✅ Enabled"
+            STATUS_SWIFT="⏭️ Skipped (PR/Push fast CI)"
+            CONFIRM="N/A ($EVENT)"
+            ALL="N/A"
+            JAVA_KOTLIN="N/A"
+            JS_TS="N/A"
+            PYTHON="N/A"
+            ACTIONS="N/A"
+            SWIFT="N/A"
+          fi
+
+          {
+            echo "### 🛡️ CodeQL Advanced Security — Execution Summary"
+            echo ""
+            echo "> **Trigger Event:** \`$EVENT\` &bull; **Actor:** \`@${{ github.actor }}\` &bull; **Ref:** \`${{ github.ref }}\`"
+            echo "> **Scan Mode:** $MODE"
+            echo ""
+            echo "| Input / Profile | Selected Value | Resolution | Target Runner |"
+            echo "| :--- | :---: | :---: | :--- |"
+            echo "| **All Languages (\`all\`)** | \`$ALL\` | $([ \"$ALL\" = \"true\" ] && echo '✅ Enabled' || echo '⚪ Custom / N/A') | All Matrix Runners + macOS |"
+            echo "| **Java & Kotlin (\`java_kotlin\`)** | \`$JAVA_KOTLIN\` | $STATUS_JAVA | Ubuntu (\`java-kotlin\`) |"
+            echo "| **JavaScript & TypeScript (\`javascript_typescript\`)** | \`$JS_TS\` | $STATUS_JSTS | Ubuntu (\`javascript-typescript\`) |"
+            echo "| **Python (\`python\`)** | \`$PYTHON\` | $STATUS_PY | Ubuntu (\`python\`) |"
+            echo "| **GitHub Actions (\`actions\`)** | \`$ACTIONS\` | $STATUS_ACT | Ubuntu (\`actions\`) |"
+            echo "| **Swift / iOS (\`swift\`)** | \`$SWIFT\` | $STATUS_SWIFT | macOS (\`swift\`) |"
+            echo "| **Confirmation (\`confirm\`)** | \`$CONFIRM\` | $([ \"$CONFIRM\" = \"Yes\" ] && echo '✅ Confirmed' || echo '⛔ Cancelled / Skipped') | Execution Gate |"
+          } >> "\$GITHUB_STEP_SUMMARY"
+
   # 1. Non-Swift Languages (Fast Linux Runner via CodeQL)
   # Skipped on private repos — CodeQL requires GHAS license for private repositories.
   analyze-general:
@@ -71,19 +175,29 @@ jobs:
             echo "should_run=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          
-          P="${{ inputs.profile }}"
+
+          if [ "${{ inputs.all }}" = "true" ]; then
+            echo "Full scan enabled ('all=true'). Running analysis regardless of individual checkboxes."
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           L="${{ matrix.language }}"
-          
-          if [ "$P" = "all" ]; then
+
+          if [ "$L" = "java-kotlin" ] && { [ "${{ inputs.java }}" = "true" ] || [ "${{ inputs.java_kotlin }}" = "true" ]; }; then
+            echo "Targeting Java/Kotlin per manual profile selection."
             echo "should_run=true" >> "$GITHUB_OUTPUT"
-          elif { [ "$P" = "java" ] || [ "$P" = "java-kotlin" ]; } && [ "$L" = "java-kotlin" ]; then
+          elif [ "$L" = "javascript-typescript" ] && [ "${{ inputs.javascript_typescript }}" = "true" ]; then
+            echo "Targeting JavaScript/TypeScript per manual profile selection."
             echo "should_run=true" >> "$GITHUB_OUTPUT"
-          elif { [ "$P" = "javascript/typescript" ] || [ "$P" = "javascript-typescript" ]; } && [ "$L" = "javascript-typescript" ]; then
+          elif [ "$L" = "python" ] && [ "${{ inputs.python }}" = "true" ]; then
+            echo "Targeting Python per manual profile selection."
             echo "should_run=true" >> "$GITHUB_OUTPUT"
-          elif [ "$P" = "$L" ]; then
+          elif [ "$L" = "actions" ] && [ "${{ inputs.actions }}" = "true" ]; then
+            echo "Targeting GitHub Actions per manual profile selection."
             echo "should_run=true" >> "$GITHUB_OUTPUT"
           else
+            echo "Language '$L' not selected. Skipping analysis."
             echo "should_run=false" >> "$GITHUB_OUTPUT"
           fi
 
@@ -127,7 +241,7 @@ jobs:
       !github.event.repository.private &&
       (
         (github.event_name == 'schedule') ||
-        (github.event_name == 'workflow_dispatch' && inputs.confirm == 'Yes' && (inputs.profile == 'swift' || inputs.profile == 'all'))
+        (github.event_name == 'workflow_dispatch' && inputs.confirm == 'Yes' && (inputs.all == true || inputs.swift == true))
       )
     timeout-minutes: 60
 
