@@ -8,7 +8,6 @@ set -e
 
 JAR_FILE="$1"
 APP_DIR="/opt/speakit/backend"
-CONFIG_DIR="/opt/speakit/config"
 BACKUP_DIR="/opt/speakit/backup"
 SERVICE_NAME="speakit-backend"
 

@@ -5,7 +5,6 @@
 #
 
 LOG_FILE="/opt/speakit/monitor.log"
-ALERT_EMAIL="your-email@example.com"
 
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOG_FILE"
