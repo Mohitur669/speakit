@@ -1,6 +1,6 @@
 name: "CodeQL Advanced Security"
 # NOTE: CodeQL Advanced Security requires a GitHub Advanced Security (GHAS) license
-# for private repositories. All jobs below are gated on the repo being public.
+# for private repositories. Both jobs below are gated on the repo being public.
 # If the repo is made public again, scanning resumes automatically — no config changes needed.
 # To enable on a private repo, purchase GHAS: https://github.com/features/security
 
@@ -42,23 +42,31 @@ permissions:
   actions: read
 
 jobs:
-  # ── Stage 1 ─────────────────────────────────────────────────────────────────
-  # GitHub Actions Analysis
-  # Always runs on confirm=Yes (or non-dispatch) to render the Execution Summary.
-  # CodeQL steps only execute when 'actions' is selected (or for push/PR/schedule).
-  analyze-actions:
-    name: Analyze (actions)
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
+  # 1. Non-Swift Languages (Fast parallel Linux runners via CodeQL matrix)
+  # Skipped on private repos — CodeQL requires GHAS license for private repositories.
+  analyze-general:
+    name: Analyze (${{ matrix.language }})
     if: >-
       !github.event.repository.private &&
-      (
-        github.event_name != 'workflow_dispatch' ||
-        inputs.confirm == 'Yes'
-      )
+      (github.event_name != 'workflow_dispatch' || inputs.confirm == 'Yes')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: actions
+            build-mode: none
+          - language: java-kotlin
+            build-mode: none
+          - language: javascript-typescript
+            build-mode: none
+          - language: python
+            build-mode: none
 
     steps:
-      - name: Execution Summary
+      - name: Check if language is selected
+        id: filter
         run: |
           EVENT="${{ github.event_name }}"
           CONFIRM="${{ inputs.confirm }}"
@@ -67,95 +75,87 @@ jobs:
           PYTHON="${{ inputs.python }}"
           ACTIONS="${{ inputs.actions }}"
           SWIFT="${{ inputs.swift }}"
+          L="${{ matrix.language }}"
 
-          if [ "$EVENT" = "workflow_dispatch" ]; then
-            MODE="🎯 **Selective Multi-Language Scan**"
-            if [ "$JAVA" = "true" ]; then STATUS_JAVA="✅ Enabled"; else STATUS_JAVA="⏭️ Skipped"; fi
-            if [ "$JS_TS" = "true" ]; then STATUS_JSTS="✅ Enabled"; else STATUS_JSTS="⏭️ Skipped"; fi
-            if [ "$PYTHON" = "true" ]; then STATUS_PY="✅ Enabled"; else STATUS_PY="⏭️ Skipped"; fi
-            if [ "$ACTIONS" = "true" ]; then STATUS_ACT="✅ Enabled"; else STATUS_ACT="⏭️ Skipped"; fi
-            if [ "$SWIFT" = "true" ]; then STATUS_SWIFT="✅ Enabled"; else STATUS_SWIFT="⏭️ Skipped"; fi
-          elif [ "$EVENT" = "schedule" ]; then
-            MODE="⏰ **Scheduled Full Scan** (Mondays 12:00 PM IST — all languages active with Confirm=Yes)"
-            STATUS_JAVA="✅ Enabled"
-            STATUS_JSTS="✅ Enabled"
-            STATUS_PY="✅ Enabled"
-            STATUS_ACT="✅ Enabled"
-            STATUS_SWIFT="✅ Enabled"
-            CONFIRM="Yes (Scheduled)"
-            JAVA="true"
-            JS_TS="true"
-            PYTHON="true"
-            ACTIONS="true"
-            SWIFT="true"
-          else
-            MODE="⚡ **Automated CI Scan** (\`$EVENT\` — Swift bypassed for fast feedback)"
-            STATUS_JAVA="✅ Enabled"
-            STATUS_JSTS="✅ Enabled"
-            STATUS_PY="✅ Enabled"
-            STATUS_ACT="✅ Enabled"
-            STATUS_SWIFT="⏭️ Skipped (PR/Push fast CI)"
-            CONFIRM="N/A ($EVENT)"
-            JAVA="N/A"
-            JS_TS="N/A"
-            PYTHON="N/A"
-            ACTIONS="N/A"
-            SWIFT="N/A"
+          # Render execution summary table to step log and Step Summary (actions runner only)
+          if [ "$L" = "actions" ]; then
+            if [ "$EVENT" = "workflow_dispatch" ]; then
+              MODE="🎯 **Selective Multi-Language Scan**"
+              if [ "$JAVA" = "true" ]; then STATUS_JAVA="✅ Enabled"; else STATUS_JAVA="⏭️ Skipped"; fi
+              if [ "$JS_TS" = "true" ]; then STATUS_JSTS="✅ Enabled"; else STATUS_JSTS="⏭️ Skipped"; fi
+              if [ "$PYTHON" = "true" ]; then STATUS_PY="✅ Enabled"; else STATUS_PY="⏭️ Skipped"; fi
+              if [ "$ACTIONS" = "true" ]; then STATUS_ACT="✅ Enabled"; else STATUS_ACT="⏭️ Skipped"; fi
+              if [ "$SWIFT" = "true" ]; then STATUS_SWIFT="✅ Enabled"; else STATUS_SWIFT="⏭️ Skipped"; fi
+            elif [ "$EVENT" = "schedule" ]; then
+              MODE="⏰ **Scheduled Full Scan** (Mondays 12:00 PM IST — all languages active with Confirm=Yes)"
+              STATUS_JAVA="✅ Enabled"
+              STATUS_JSTS="✅ Enabled"
+              STATUS_PY="✅ Enabled"
+              STATUS_ACT="✅ Enabled"
+              STATUS_SWIFT="✅ Enabled"
+              CONFIRM="Yes (Scheduled)"
+              JAVA="true"
+              JS_TS="true"
+              PYTHON="true"
+              ACTIONS="true"
+              SWIFT="true"
+            else
+              MODE="⚡ **Automated CI Scan** (\`$EVENT\` — Swift bypassed for fast feedback)"
+              STATUS_JAVA="✅ Enabled"
+              STATUS_JSTS="✅ Enabled"
+              STATUS_PY="✅ Enabled"
+              STATUS_ACT="✅ Enabled"
+              STATUS_SWIFT="⏭️ Skipped (PR/Push fast CI)"
+              CONFIRM="N/A ($EVENT)"
+              JAVA="N/A"
+              JS_TS="N/A"
+              PYTHON="N/A"
+              ACTIONS="N/A"
+              SWIFT="N/A"
+            fi
+
+            {
+              echo "### 🛡️ CodeQL Advanced Security — Execution Summary"
+              echo ""
+              echo "> **Trigger Event:** \`$EVENT\` &bull; **Actor:** \`@${{ github.actor }}\` &bull; **Ref:** \`${{ github.ref }}\`"
+              echo "> **Scan Mode:** $MODE"
+              echo ""
+              echo "| Input / Profile | Selected Value | Resolution | Target Runner |"
+              echo "| :--- | :---: | :---: | :--- |"
+              echo "| **GitHub Actions (\`actions\`)** | \`$ACTIONS\` | $STATUS_ACT | Ubuntu (\`actions\`) |"
+              echo "| **Java & Kotlin (\`java\`)** | \`$JAVA\` | $STATUS_JAVA | Ubuntu (\`java-kotlin\`) |"
+              echo "| **JavaScript & TypeScript (\`javascript_typescript\`)** | \`$JS_TS\` | $STATUS_JSTS | Ubuntu (\`javascript-typescript\`) |"
+              echo "| **Python (\`python\`)** | \`$PYTHON\` | $STATUS_PY | Ubuntu (\`python\`) |"
+              echo "| **Swift / iOS (\`swift\`)** | \`$SWIFT\` | $STATUS_SWIFT | macOS (\`swift\`) |"
+              echo "| **Confirmation (\`confirm\`)** | \`$CONFIRM\` | $([ \"$CONFIRM\" = \"Yes\" ] || [ \"$EVENT\" = \"schedule\" ] && echo '✅ Confirmed' || echo '⛔ Cancelled / Skipped') | Execution Gate |"
+            } | tee -a "$GITHUB_STEP_SUMMARY"
           fi
 
-          {
-            echo "### 🛡️ CodeQL Advanced Security — Execution Summary"
-            echo ""
-            echo "> **Trigger Event:** \`$EVENT\` &bull; **Actor:** \`@${{ github.actor }}\` &bull; **Ref:** \`${{ github.ref }}\`"
-            echo "> **Scan Mode:** $MODE"
-            echo ""
-            echo "| Input / Profile | Selected Value | Resolution | Target Runner |"
-            echo "| :--- | :---: | :---: | :--- |"
-            echo "| **GitHub Actions (\`actions\`)** | \`$ACTIONS\` | $STATUS_ACT | Ubuntu (\`actions\`) |"
-            echo "| **Java & Kotlin (\`java\`)** | \`$JAVA\` | $STATUS_JAVA | Ubuntu (\`java-kotlin\`) |"
-            echo "| **JavaScript & TypeScript (\`javascript_typescript\`)** | \`$JS_TS\` | $STATUS_JSTS | Ubuntu (\`javascript-typescript\`) |"
-            echo "| **Python (\`python\`)** | \`$PYTHON\` | $STATUS_PY | Ubuntu (\`python\`) |"
-            echo "| **Swift / iOS (\`swift\`)** | \`$SWIFT\` | $STATUS_SWIFT | macOS (\`swift\`) |"
-            echo "| **Confirmation (\`confirm\`)** | \`$CONFIRM\` | $([ \"$CONFIRM\" = \"Yes\" ] || [ \"$EVENT\" = \"schedule\" ] && echo '✅ Confirmed' || echo '⛔ Cancelled / Skipped') | Execution Gate |"
-          } | tee -a "$GITHUB_STEP_SUMMARY"
+          # Decide whether this matrix leg should run CodeQL analysis
+          if [ "$EVENT" != "workflow_dispatch" ]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "$L" = "java-kotlin" ] && [ "$JAVA" = "true" ]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          elif [ "$L" = "javascript-typescript" ] && [ "$JS_TS" = "true" ]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          elif [ "$L" = "python" ] && [ "$PYTHON" = "true" ]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          elif [ "$L" = "actions" ] && [ "$ACTIONS" = "true" ]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Language '$L' not selected. Skipping analysis."
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Checkout repository
-        if: github.event_name != 'workflow_dispatch' || inputs.actions == true
-        uses: actions/checkout@v6
-
-      - name: Initialize CodeQL
-        if: github.event_name != 'workflow_dispatch' || inputs.actions == true
-        uses: github/codeql-action/init@v4
-        with:
-          languages: actions
-          build-mode: none
-
-      - name: Perform CodeQL Analysis
-        if: github.event_name != 'workflow_dispatch' || inputs.actions == true
-        uses: github/codeql-action/analyze@v4
-        with:
-          category: "/language:actions"
-
-  # ── Stage 2 ─────────────────────────────────────────────────────────────────
-  # Java & Kotlin Analysis
-  analyze-java:
-    name: Analyze (java-kotlin)
-    needs: [analyze-actions]
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    if: >-
-      always() &&
-      !github.event.repository.private &&
-      (
-        github.event_name != 'workflow_dispatch' ||
-        (inputs.confirm == 'Yes' && inputs.java == true)
-      )
-
-    steps:
-      - name: Checkout repository
+        if: steps.filter.outputs.should_run == 'true'
         uses: actions/checkout@v6
 
       - name: Set up JDK 25
+        if: steps.filter.outputs.should_run == 'true' && matrix.language == 'java-kotlin'
         uses: actions/setup-java@v5
         with:
           java-version: '25'
@@ -163,88 +163,27 @@ jobs:
           cache: maven
 
       - name: Initialize CodeQL
+        if: steps.filter.outputs.should_run == 'true'
         uses: github/codeql-action/init@v4
         with:
-          languages: java-kotlin
-          build-mode: none
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
 
       - name: Perform CodeQL Analysis
+        if: steps.filter.outputs.should_run == 'true'
         uses: github/codeql-action/analyze@v4
         with:
-          category: "/language:java-kotlin"
+          category: "/language:${{ matrix.language }}"
 
-  # ── Stage 3 ─────────────────────────────────────────────────────────────────
-  # JavaScript & TypeScript Analysis
-  analyze-javascript:
-    name: Analyze (javascript-typescript)
-    needs: [analyze-java]
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    if: >-
-      always() &&
-      !github.event.repository.private &&
-      (
-        github.event_name != 'workflow_dispatch' ||
-        (inputs.confirm == 'Yes' && inputs.javascript_typescript == true)
-      )
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
-        with:
-          languages: javascript-typescript
-          build-mode: none
-
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v4
-        with:
-          category: "/language:javascript-typescript"
-
-  # ── Stage 4 ─────────────────────────────────────────────────────────────────
-  # Python Analysis
-  analyze-python:
-    name: Analyze (python)
-    needs: [analyze-javascript]
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    if: >-
-      always() &&
-      !github.event.repository.private &&
-      (
-        github.event_name != 'workflow_dispatch' ||
-        (inputs.confirm == 'Yes' && inputs.python == true)
-      )
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
-        with:
-          languages: python
-          build-mode: none
-
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v4
-        with:
-          category: "/language:python"
-
-  # ── Stage 5 ─────────────────────────────────────────────────────────────────
-  # Swift / iOS Analysis (macOS Runner with Custom xcodebuild)
-  # SKIPPED on push/pull_request to ensure fast CI turnaround.
+  # 2. Swift / iOS Analysis (macOS Runner with Custom xcodebuild)
+  # SKIPPED when a PR is raised (pull_request) or merged (push) to ensure fast CI turnaround.
   # Runs ONLY on manual workflow_dispatch when 'swift' is selected, and on scheduled weekly scans.
   # Skipped on private repos — CodeQL requires GHAS license for private repositories.
   analyze-swift:
     name: Analyze (swift)
-    needs: [analyze-python]
     runs-on: macos-latest
     timeout-minutes: 60
     if: >-
-      always() &&
       !github.event.repository.private &&
       (
         (github.event_name == 'schedule') ||
