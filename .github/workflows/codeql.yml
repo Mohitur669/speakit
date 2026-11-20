@@ -12,6 +12,25 @@ on:
   schedule:
     - cron: '0 2 * * 1' # Mondays 07:30 IST (02:00 UTC)
   workflow_dispatch:
+    inputs:
+      language:
+        description: "Select language or code quality check to run"
+        required: true
+        type: choice
+        default: "all"
+        options:
+          - all
+          - java-kotlin
+          - javascript-typescript
+          - python
+          - actions
+          - shell
+          - swift
+      confirm_run:
+        description: "Confirm execution (check box to proceed)"
+        required: true
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -19,11 +38,13 @@ permissions:
   actions: read
 
 jobs:
-  # 1. Non-Swift Languages (Fast Linux Runner)
+  # 1. Non-Swift Languages (Fast Linux Runner via CodeQL)
   # Skipped on private repos — CodeQL requires GHAS license for private repositories.
   analyze-general:
     name: Analyze (${{ matrix.language }})
-    if: ${{ !github.event.repository.private }}
+    if: >-
+      !github.event.repository.private &&
+      (github.event_name != 'workflow_dispatch' || inputs.confirm_run == true)
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
@@ -40,11 +61,23 @@ jobs:
             build-mode: none
 
     steps:
+      - name: Check if language is selected
+        id: filter
+        run: |
+          if [ "${{ github.event_name }}" != "workflow_dispatch" ] || \
+             [ "${{ inputs.language }}" = "all" ] || \
+             [ "${{ inputs.language }}" = "${{ matrix.language }}" ]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout repository
+        if: steps.filter.outputs.should_run == 'true'
         uses: actions/checkout@v4
 
       - name: Set up JDK 25
-        if: matrix.language == 'java-kotlin'
+        if: steps.filter.outputs.should_run == 'true' && matrix.language == 'java-kotlin'
         uses: actions/setup-java@v5
         with:
           java-version: '25'
@@ -52,27 +85,54 @@ jobs:
           cache: maven
 
       - name: Initialize CodeQL
+        if: steps.filter.outputs.should_run == 'true'
         uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
 
-      - if: matrix.build-mode == 'autobuild'
+      - if: steps.filter.outputs.should_run == 'true' && matrix.build-mode == 'autobuild'
         name: Autobuild
         uses: github/codeql-action/autobuild@v4
 
       - name: Perform CodeQL Analysis
+        if: steps.filter.outputs.should_run == 'true'
         uses: github/codeql-action/analyze@v4
         with:
           category: "/language:${{ matrix.language }}"
 
-  # 2. Swift Analysis (macOS Runner with Custom xcodebuild)
-  # Runs ONLY on scheduled weekly scans (Mondays) and manual dispatch, skipping all pushes/PRs for sub-2m CI turnaround.
+  # 2. Shell Script Code Quality & Static Analysis
+  # Runs on ubuntu-latest using ShellCheck (no GHAS license needed)
+  check-shell:
+    name: Code Quality (shell script)
+    if: >-
+      github.event_name != 'workflow_dispatch' ||
+      (inputs.confirm_run == true && (inputs.language == 'all' || inputs.language == 'shell'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run ShellCheck Analysis
+        run: |
+          echo "Scanning all repository shell scripts..."
+          find . -name "*.sh" -not -path "*/.venv/*" -not -path "*/node_modules/*" -exec shellcheck --severity=warning {} +
+
+  # 3. Swift Analysis (macOS Runner with Custom xcodebuild)
+  # SKIPPED when a PR is raised (pull_request) or merged (push) to ensure fast CI turnaround.
+  # Runs ONLY on manual workflow_dispatch when 'swift' is selected (or 'all'), and on scheduled weekly scans.
   # Skipped on private repos — CodeQL requires GHAS license for private repositories.
   analyze-swift:
     name: Analyze (swift)
     runs-on: macos-latest
-    if: ${{ !github.event.repository.private && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') }}
+    if: >-
+      !github.event.repository.private &&
+      (
+        (github.event_name == 'schedule') ||
+        (github.event_name == 'workflow_dispatch' && inputs.confirm_run == true && (inputs.language == 'swift' || inputs.language == 'all'))
+      )
     timeout-minutes: 60
 
     steps:
