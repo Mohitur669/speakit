@@ -14,35 +14,24 @@ on:
   workflow_dispatch:
     inputs:
       all:
-        description: "All languages (Full repository scan)"
         type: boolean
         default: true
       java:
-        description: "Java"
-        type: boolean
-        default: false
-      java_kotlin:
-        description: "Java & Kotlin"
         type: boolean
         default: false
       javascript_typescript:
-        description: "JavaScript / TypeScript"
         type: boolean
         default: false
       python:
-        description: "Python"
         type: boolean
         default: false
       actions:
-        description: "GitHub Actions workflows"
         type: boolean
         default: false
       swift:
-        description: "Swift (macOS runner)"
         type: boolean
         default: false
       confirm:
-        description: "Confirm"
         required: true
         type: choice
         default: "Yes"
@@ -69,7 +58,6 @@ jobs:
           CONFIRM="${{ inputs.confirm }}"
           ALL="${{ inputs.all }}"
           JAVA="${{ inputs.java }}"
-          JAVA_KOTLIN="${{ inputs.java_kotlin }}"
           JS_TS="${{ inputs.javascript_typescript }}"
           PYTHON="${{ inputs.python }}"
           ACTIONS="${{ inputs.actions }}"
@@ -92,7 +80,7 @@ jobs:
               STATUS_SWIFT="✅ Enabled (via \`all\`)"
             else
               MODE="🎯 **Selective Multi-Language Scan**"
-              if [ "$JAVA" = "true" ] || [ "$JAVA_KOTLIN" = "true" ]; then STATUS_JAVA="✅ Enabled"; else STATUS_JAVA="⏭️ Skipped"; fi
+              if [ "$JAVA" = "true" ]; then STATUS_JAVA="✅ Enabled"; else STATUS_JAVA="⏭️ Skipped"; fi
               if [ "$JS_TS" = "true" ]; then STATUS_JSTS="✅ Enabled"; else STATUS_JSTS="⏭️ Skipped"; fi
               if [ "$PYTHON" = "true" ]; then STATUS_PY="✅ Enabled"; else STATUS_PY="⏭️ Skipped"; fi
               if [ "$ACTIONS" = "true" ]; then STATUS_ACT="✅ Enabled"; else STATUS_ACT="⏭️ Skipped"; fi
@@ -107,7 +95,7 @@ jobs:
             STATUS_SWIFT="✅ Enabled"
             CONFIRM="N/A (Schedule)"
             ALL="N/A"
-            JAVA_KOTLIN="N/A"
+            JAVA="N/A"
             JS_TS="N/A"
             PYTHON="N/A"
             ACTIONS="N/A"
@@ -121,7 +109,7 @@ jobs:
             STATUS_SWIFT="⏭️ Skipped (PR/Push fast CI)"
             CONFIRM="N/A ($EVENT)"
             ALL="N/A"
-            JAVA_KOTLIN="N/A"
+            JAVA="N/A"
             JS_TS="N/A"
             PYTHON="N/A"
             ACTIONS="N/A"
@@ -137,7 +125,7 @@ jobs:
             echo "| Input / Profile | Selected Value | Resolution | Target Runner |"
             echo "| :--- | :---: | :---: | :--- |"
             echo "| **All Languages (\`all\`)** | \`$ALL\` | $([ \"$ALL\" = \"true\" ] && echo '✅ Enabled' || echo '⚪ Custom / N/A') | All Matrix Runners + macOS |"
-            echo "| **Java & Kotlin (\`java_kotlin\`)** | \`$JAVA_KOTLIN\` | $STATUS_JAVA | Ubuntu (\`java-kotlin\`) |"
+            echo "| **Java & Kotlin (\`java\`)** | \`$JAVA\` | $STATUS_JAVA | Ubuntu (\`java-kotlin\`) |"
             echo "| **JavaScript & TypeScript (\`javascript_typescript\`)** | \`$JS_TS\` | $STATUS_JSTS | Ubuntu (\`javascript-typescript\`) |"
             echo "| **Python (\`python\`)** | \`$PYTHON\` | $STATUS_PY | Ubuntu (\`python\`) |"
             echo "| **GitHub Actions (\`actions\`)** | \`$ACTIONS\` | $STATUS_ACT | Ubuntu (\`actions\`) |"
@@ -184,7 +172,7 @@ jobs:
 
           L="${{ matrix.language }}"
 
-          if [ "$L" = "java-kotlin" ] && { [ "${{ inputs.java }}" = "true" ] || [ "${{ inputs.java_kotlin }}" = "true" ]; }; then
+          if [ "$L" = "java-kotlin" ] && [ "${{ inputs.java }}" = "true" ]; then
             echo "Targeting Java/Kotlin per manual profile selection."
             echo "should_run=true" >> "$GITHUB_OUTPUT"
           elif [ "$L" = "javascript-typescript" ] && [ "${{ inputs.javascript_typescript }}" = "true" ]; then
