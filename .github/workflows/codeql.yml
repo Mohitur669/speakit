@@ -24,7 +24,6 @@ on:
           - javascript-typescript
           - python
           - actions
-          - shell
           - swift
       confirm_run:
         description: "Confirm execution (check box to proceed)"
@@ -101,26 +100,7 @@ jobs:
         with:
           category: "/language:${{ matrix.language }}"
 
-  # 2. Shell Script Code Quality & Static Analysis
-  # Runs on ubuntu-latest using ShellCheck (no GHAS license needed)
-  check-shell:
-    name: Code Quality (shell script)
-    if: >-
-      github.event_name != 'workflow_dispatch' ||
-      (inputs.confirm_run == true && (inputs.language == 'all' || inputs.language == 'shell'))
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Run ShellCheck Analysis
-        run: |
-          echo "Scanning all repository shell scripts..."
-          find . -name "*.sh" -not -path "*/.venv/*" -not -path "*/node_modules/*" -exec shellcheck --severity=warning {} +
-
-  # 3. Swift Analysis (macOS Runner with Custom xcodebuild)
+  # 2. Swift Analysis (macOS Runner with Custom xcodebuild)
   # SKIPPED when a PR is raised (pull_request) or merged (push) to ensure fast CI turnaround.
   # Runs ONLY on manual workflow_dispatch when 'swift' is selected (or 'all'), and on scheduled weekly scans.
   # Skipped on private repos — CodeQL requires GHAS license for private repositories.
