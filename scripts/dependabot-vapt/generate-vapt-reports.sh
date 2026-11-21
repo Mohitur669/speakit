@@ -145,7 +145,7 @@ if [[ "$ENV_CHOICE" == "2" ]]; then
             while true; do
                 read -rp "Select an environment [1-${#CONDA_ENVS[@]}] (default: 1): " ENV_IDX
                 ENV_IDX=${ENV_IDX:-1}
-                if [[ "$ENV_IDX" =~ ^[0-9]+$ ]] && [ "$ENV_IDX" -ge 1 ] && [ "$ENV_IDX" -le "${#CONDA_ENVS[@]}" ]; then
+                if [[ "$ENV_IDX" =~ ^[0-9]+$ ]] && [[ "$ENV_IDX" -ge 1 ]] && [[ "$ENV_IDX" -le "${#CONDA_ENVS[@]}" ]]; then
                     TARGET_ENV="${CONDA_ENVS[$((ENV_IDX-1))]}"
                     break
                 else
@@ -168,7 +168,7 @@ else
 fi
 
 echo "Installing required Python dependencies..."
-pip install -r .github/scripts/requirements.txt --quiet
+pip install --only-binary :all: -r .github/scripts/requirements.txt --quiet || pip install -r .github/scripts/requirements.txt --quiet
 echo "[OK] Python dependencies installed."
 
 # 5. Generate Reports

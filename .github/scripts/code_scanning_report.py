@@ -411,7 +411,14 @@ def main() -> int:
     alerts = [a for a in (normalise(x) for x in raw) if sev_rank(a) <= cutoff]
     alerts.sort(key=lambda a: (sev_rank(a), a["number"]))
 
-    out = Path(args.out)
+    repo_root = Path(__file__).resolve().parent.parent.parent
+    candidate_out = (repo_root / args.out).resolve()
+    try:
+        candidate_out.relative_to(repo_root)
+        out = candidate_out
+    except ValueError:
+        out = repo_root / "reports" / "dependabot-vapt"
+
     out.mkdir(parents=True, exist_ok=True)
 
     # Clean up obsolete agent directory and scattered markdown files
@@ -450,10 +457,11 @@ def main() -> int:
     if not args.no_pdf:
         write_pdf(html, out / "report.pdf")
 
-    # Export CSV to reports/alerts/code-scanning-alerts.csv as well
-    export_csv(alerts, Path("reports/alerts/code-scanning-alerts.csv"))
+    # Export CSV alongside other reports
+    csv_path = out / "code-scanning-alerts.csv"
+    export_csv(alerts, csv_path)
 
-    print(f"[OK] {len(alerts)} Code Scanning alert(s) consolidated into {out / 'fix-code-scanning-alerts.md'} and reports/alerts/code-scanning-alerts.csv")
+    print(f"[OK] {len(alerts)} Code Scanning alert(s) consolidated into {out / 'fix-code-scanning-alerts.md'} and {csv_path}")
     for a in alerts:
         print(f"  {a['severity'].upper():8} #{a['number']} {a['rule_id']} in {a['path']}:{a['start_line']}")
 

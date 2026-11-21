@@ -103,7 +103,7 @@ import { isPasswordValid } from '../../../shared';
     </div>
 
     @if (showPolicyModal()) {
-      <app-password-policy-modal [password]="password" (close)="showPolicyModal.set(false)">
+      <app-password-policy-modal [password]="password" (closed)="showPolicyModal.set(false)">
       </app-password-policy-modal>
     }
   `

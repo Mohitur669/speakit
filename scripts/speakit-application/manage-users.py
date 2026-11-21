@@ -20,13 +20,16 @@ def load_env(env_path):
         paths_to_try = [env_path, "../../backend/.env", ".env"]
         found = False
         for p in paths_to_try:
-            if os.path.exists(p):
-                env_path = p
+            resolved_p = os.path.abspath(p)
+            if os.path.exists(resolved_p):
+                env_path = resolved_p
                 found = True
                 break
         if not found:
             print(f"Error: Environment file not found at {env_path}")
             sys.exit(1)
+    else:
+        env_path = os.path.abspath(env_path)
 
     with open(env_path, 'r') as f:
         for line in f:
@@ -85,8 +88,8 @@ def execute_sql(env, query, params=None):
         return None, e.stderr.strip()
 
 def hash_password(password):
-    # Hash password with BCrypt (rounds=10) matching Spring Security Encoder
-    salt = bcrypt.gensalt(10)
+    # Hash password with BCrypt (rounds=12) matching strong security parameters
+    salt = bcrypt.gensalt(rounds=12)
     hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
     return hashed.decode('utf-8')
 

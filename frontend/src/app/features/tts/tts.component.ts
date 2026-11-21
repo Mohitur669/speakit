@@ -111,7 +111,7 @@ export class TtsComponent implements OnInit, OnDestroy {
 
         // Only clear params if we are still on the same page
         if (!redirected) {
-          this.router.navigate([], {
+          await this.router.navigate([], {
             relativeTo: this.route,
             queryParams: { autostart: null },
             queryParamsHandling: 'merge',
@@ -168,7 +168,7 @@ export class TtsComponent implements OnInit, OnDestroy {
 
   async invokeUpgrade(plan: string): Promise<boolean> {
     if (plan === 'ENTERPRISE') {
-      this.router.navigate(['/contact']);
+      await this.router.navigate(['/contact']);
       return true;
     }
 

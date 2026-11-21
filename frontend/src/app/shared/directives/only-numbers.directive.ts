@@ -30,7 +30,7 @@ export class OnlyNumbersDirective {
     }
 
     // Ensure that it is a number and stop the keypress
-    if (key === ' ' || isNaN(Number(key))) {
+    if (key === ' ' || Number.isNaN(Number(key))) {
       event.preventDefault();
     }
   }

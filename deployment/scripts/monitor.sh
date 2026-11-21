@@ -19,13 +19,13 @@ fi
 
 # Check disk space (alert if > 90%)
 DISK_USAGE=$(df / | tail -1 | awk '{print $5}' | sed 's/%//')
-if [ "$DISK_USAGE" -gt 90 ]; then
+if [[ "$DISK_USAGE" -gt 90 ]]; then
     log "ALERT: Disk usage at ${DISK_USAGE}%"
 fi
 
 # Check RAM usage (alert if > 90%)
 RAM_USAGE=$(free | grep Mem | awk '{printf("%.0f"), $3/$2 * 100}')
-if [ "$RAM_USAGE" -gt 90 ]; then
+if [[ "$RAM_USAGE" -gt 90 ]]; then
     log "ALERT: RAM usage at ${RAM_USAGE}%"
 fi
 

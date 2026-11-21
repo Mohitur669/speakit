@@ -11,12 +11,12 @@ APP_DIR="/opt/speakit/backend"
 BACKUP_DIR="/opt/speakit/backup"
 SERVICE_NAME="speakit-backend"
 
-if [ -z "$JAR_FILE" ]; then
+if [[ -z "$JAR_FILE" ]]; then
     echo "Usage: $0 <path-to-jar-file>"
     exit 1
 fi
 
-if [ ! -f "$JAR_FILE" ]; then
+if [[ ! -f "$JAR_FILE" ]]; then
     echo "Error: JAR file not found: $JAR_FILE"
     exit 1
 fi
@@ -32,7 +32,7 @@ echo "Stopping $SERVICE_NAME..."
 sudo systemctl stop "$SERVICE_NAME"
 
 # Backup current JAR
-if [ -f "$APP_DIR/TextToSpeechApplication-0.0.1-SNAPSHOT.jar" ]; then
+if [[ -f "$APP_DIR/TextToSpeechApplication-0.0.1-SNAPSHOT.jar" ]]; then
     TIMESTAMP=$(date +%Y%m%d_%H%M%S)
     cp "$APP_DIR/TextToSpeechApplication-0.0.1-SNAPSHOT.jar" \
        "$BACKUP_DIR/TextToSpeechApplication-$TIMESTAMP.jar"

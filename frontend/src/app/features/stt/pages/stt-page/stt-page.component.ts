@@ -718,7 +718,7 @@ export class SttPageComponent implements OnInit, OnDestroy {
   selectRecordTab(): void {
     if (!this.isProPlusOrAbove()) {
       this.toast.show('Voice recording is a Pro Plus feature. Please upgrade to unlock.', 'info');
-      this.invokeUpgrade('PRO_PLUS');
+      void this.invokeUpgrade('PRO_PLUS');
       return;
     }
     this.activeTab.set('record');
@@ -781,12 +781,18 @@ export class SttPageComponent implements OnInit, OnDestroy {
 
   togglePlayback(player: HTMLAudioElement): void {
     if (!player) return;
-    this.isPlaying() ? player.pause() : player.play();
+    if (this.isPlaying()) {
+      player.pause();
+    } else {
+      void player.play().catch(() => {
+        this.isPlaying.set(false);
+      });
+    }
   }
 
   onTimeUpdate(player: HTMLAudioElement): void {
     this.currentTime.set(player.currentTime);
-    if (player.duration && isFinite(player.duration)) {
+    if (player.duration && Number.isFinite(player.duration)) {
       this.duration.set(player.duration);
     } else if (this.recordedDuration() > 0) {
       this.duration.set(this.recordedDuration());
@@ -794,7 +800,7 @@ export class SttPageComponent implements OnInit, OnDestroy {
   }
 
   onLoadedMetadata(player: HTMLAudioElement): void {
-    if (player.duration && isFinite(player.duration)) {
+    if (player.duration && Number.isFinite(player.duration)) {
       this.duration.set(player.duration);
     } else if (this.recordedDuration() > 0) {
       this.duration.set(this.recordedDuration());
@@ -806,7 +812,7 @@ export class SttPageComponent implements OnInit, OnDestroy {
     if (player) {
       const rect = bar.getBoundingClientRect();
       const clickX = event.clientX - rect.left;
-      const totalDuration = (isFinite(player.duration) && player.duration > 0) ? player.duration : this.recordedDuration();
+      const totalDuration = (Number.isFinite(player.duration) && player.duration > 0) ? player.duration : this.recordedDuration();
       if (totalDuration > 0) {
         player.currentTime = (clickX / rect.width) * totalDuration;
       }
@@ -814,7 +820,7 @@ export class SttPageComponent implements OnInit, OnDestroy {
   }
 
   formatTime(secs: number): string {
-    if (isNaN(secs) || !isFinite(secs)) return '0:00';
+    if (Number.isNaN(secs) || !Number.isFinite(secs)) return '0:00';
     const minutes = Math.floor(secs / 60);
     const seconds = Math.floor(secs % 60);
     return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;

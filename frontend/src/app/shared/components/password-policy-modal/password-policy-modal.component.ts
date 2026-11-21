@@ -83,7 +83,7 @@ import { getPasswordRequirements } from '../../utils/form.utils';
           }
         </div>
         <button
-          (click)="close.emit()"
+          (click)="closed.emit()"
           class="w-full mt-6 py-2 bg-brand-blue text-white text-xs font-bold rounded-xl shadow-lg active:scale-95 transition-all"
         >
           Got it
@@ -94,7 +94,7 @@ import { getPasswordRequirements } from '../../utils/form.utils';
 })
 export class PasswordPolicyModalComponent {
   @Input() password: string | null | undefined = '';
-  @Output() close = new EventEmitter<void>();
+  @Output() closed = new EventEmitter<void>();
 
   getRequirements(pass: string | null | undefined) {
     return getPasswordRequirements(pass);

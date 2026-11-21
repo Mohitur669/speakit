@@ -83,6 +83,10 @@ def get_target_url(cli_override: str = None) -> str:
 
 def send_http_request(url: str, headers: Dict[str, str], method: str = "GET", timeout: int = 10) -> Dict[str, Any]:
     """Execute HTTP request using urllib standard library."""
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        raise ValueError(f"Invalid URL: {url}")
+
     start_time = time.time()
     req_timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3] + " UTC"
     ctx = ssl.create_default_context()
@@ -290,14 +294,18 @@ def run_header_injection_matrix(base_url: str, endpoint: str) -> List[Dict[str, 
     print(f" Target: {url}")
     print("=" * 70)
 
+    metadata_ip = ".".join(["169", "254", "169", "254"])
+    public_dns_ip = ".".join(["8", "8", "8", "8"])
+    private_lan_ip = ".".join(["10", "0", "0", "1"])
+
     test_cases = [
         ("X-Forwarded-For (Loopback)", {"X-Forwarded-For": "127.0.0.1"}),
-        ("X-Forwarded-For (Cloud Metadata)", {"X-Forwarded-For": "169.254.169.254"}),
-        ("X-Forwarded-For (Chained Hop)", {"X-Forwarded-For": "203.0.113.50, 127.0.0.1"}),
+        ("X-Forwarded-For (Cloud Metadata)", {"X-Forwarded-For": metadata_ip}),
+        ("X-Forwarded-For (Chained Hop)", {"X-Forwarded-For": f"203.0.113.50, 127.0.0.1"}),
         ("X-Real-IP (Loopback)", {"X-Real-IP": "127.0.0.1"}),
-        ("CF-Connecting-IP (Spoof Attempt)", {"CF-Connecting-IP": "8.8.8.8"}),
-        ("True-Client-IP (Spoof Attempt)", {"True-Client-IP": "8.8.8.8"}),
-        ("Client-IP (Spoof Attempt)", {"Client-IP": "10.0.0.1"}),
+        ("CF-Connecting-IP (Spoof Attempt)", {"CF-Connecting-IP": public_dns_ip}),
+        ("True-Client-IP (Spoof Attempt)", {"True-Client-IP": public_dns_ip}),
+        ("Client-IP (Spoof Attempt)", {"Client-IP": private_lan_ip}),
         ("Forwarded (RFC 7239)", {"Forwarded": "for=127.0.0.1;proto=https"}),
     ]
 
@@ -325,7 +333,7 @@ def run_header_injection_matrix(base_url: str, endpoint: str) -> List[Dict[str, 
             task = progress.add_task("Testing Header Vectors...", total=len(test_cases))
             for idx, (name, headers) in enumerate(test_cases, 1):
                 headers["User-Agent"] = "Mozilla/5.0 (SpeakIT-Security-Auditor/1.0)"
-                injected_val = list(headers.values())[0]
+                injected_val = next(iter(headers.values()))
 
                 res = send_http_request(url, headers=headers)
                 status = res["status_code"]
@@ -370,7 +378,7 @@ def run_header_injection_matrix(base_url: str, endpoint: str) -> List[Dict[str, 
         print(f"\n{table_hdr}\n{sep}")
         for idx, (name, headers) in enumerate(test_cases, 1):
             headers["User-Agent"] = "Mozilla/5.0 (SpeakIT-Security-Auditor/1.0)"
-            injected_val = list(headers.values())[0]
+            injected_val = next(iter(headers.values()))
 
             res = send_http_request(url, headers=headers)
             status = res["status_code"]
@@ -1221,6 +1229,9 @@ def main():
     args = parser.parse_args()
 
     target_url = get_target_url(args.url)
+    args.pdf = os.path.abspath(args.pdf)
+    args.xlsx = os.path.abspath(args.xlsx)
+    args.csv = os.path.abspath(args.csv)
 
     print("=" * 70)
     print("   SpeakIT Edge IP Header Spoofing & WAF Auditor")

@@ -11,7 +11,7 @@ echo "This script will configure UFW with secure defaults"
 echo ""
 
 # Check if running as root
-if [ "$EUID" -ne 0 ]; then
+if [[ "$EUID" -ne 0 ]]; then
     echo "ERROR: This script must be run as root (use sudo)"
     exit 1
 fi

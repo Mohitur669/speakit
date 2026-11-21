@@ -179,10 +179,10 @@ export class AuthService implements OnDestroy {
     if (!isExternal) this.logoutChannel.postMessage({ type: 'LOGOUT', reason });
     if (reason || isExternal) {
       this.toastService.info(reason || 'Session expired. Please log in again', 2000);
-      setTimeout(() => this.router.navigate(['/login']), 1500);
+      setTimeout(() => { void this.router.navigate(['/login']); }, 1500);
     } else {
       this.toastService.success('Successfully logged out');
-      setTimeout(() => this.router.navigate(['/login']), 500);
+      setTimeout(() => { void this.router.navigate(['/login']); }, 500);
     }
   }
 
@@ -211,8 +211,12 @@ export class AuthService implements OnDestroy {
 
     // 3. Clear Browser Cache (Best effort via Service Worker if present, or simply reload)
     if ('caches' in window) {
-      caches.keys().then(names => {
-        for (let name of names) caches.delete(name);
+      void caches.keys().then(names => {
+        for (const name of names) {
+          void caches.delete(name);
+        }
+      }).catch(err => {
+        this.logger.warn('Failed to clear cache keys:', err);
       });
     }
   }

@@ -25,7 +25,7 @@ import argparse
 import sys
 import logging
 import io
-import random
+import secrets
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -135,7 +135,7 @@ async def call(client, method, path, json=None, headers=None, label="", test_nam
     h = {}
 
     # Enable IP Rotation for every request
-    rotated_ip = random.choice(IP_POOL)
+    rotated_ip = secrets.choice(IP_POOL)
     h["X-Forwarded-For"] = rotated_ip
     h["CF-Connecting-IP"] = rotated_ip
 
@@ -243,7 +243,7 @@ async def run_contact_suite(client):
     # 3. Honeypot Trap
     await call(client, "POST", "/api/contact", label="Bot Trap (Expect Silent Success)", json={
         "firstName": "Bot", "lastName": "Scraper", "email": "bot@spam.com",
-        "topic": "feedback", "message": "I am a bot.", "website": "http://evil.com" # Honeypot filled
+        "topic": "feedback", "message": "I am a bot.", "website": "https://evil.com" # Honeypot filled
     })
 
 async def run_payment_suite(client):

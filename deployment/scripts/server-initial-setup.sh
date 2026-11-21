@@ -12,7 +12,7 @@ echo "This script will perform initial server hardening"
 echo ""
 
 # Check if running as root
-if [ "$EUID" -ne 0 ]; then
+if [[ "$EUID" -ne 0 ]]; then
     echo "ERROR: This script must be run as root (use sudo)"
     exit 1
 fi
@@ -41,7 +41,7 @@ fi
 # Step 3: Copy SSH Keys
 # ============================================
 echo "Step 3: Setting up SSH keys for deploy user..."
-if [ -f /home/opc/.ssh/authorized_keys ]; then
+if [[ -f /home/opc/.ssh/authorized_keys ]]; then
     mkdir -p /home/deploy/.ssh
     cp /home/opc/.ssh/authorized_keys /home/deploy/.ssh/
     chmod 700 /home/deploy/.ssh
@@ -147,14 +147,14 @@ echo "Step 10: Copying deployment scripts..."
 
 # Copy deploy script
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [ -f "$SCRIPT_DIR/deploy.sh" ]; then
+if [[ -f "$SCRIPT_DIR/deploy.sh" ]]; then
     cp "$SCRIPT_DIR/deploy.sh" /opt/speakit/deploy.sh
     chmod 750 /opt/speakit/deploy.sh
     chown root:deploy /opt/speakit/deploy.sh
 fi
 
 # Copy monitor script
-if [ -f "$SCRIPT_DIR/monitor.sh" ]; then
+if [[ -f "$SCRIPT_DIR/monitor.sh" ]]; then
     cp "$SCRIPT_DIR/monitor.sh" /opt/speakit/monitor.sh
     chmod 750 /opt/speakit/monitor.sh
     chown root:root /opt/speakit/monitor.sh

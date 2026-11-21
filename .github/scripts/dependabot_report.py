@@ -705,7 +705,14 @@ def main() -> int:
     # Sort groups: pending updates first, then by worst severity
     groups.sort(key=lambda g: (1 if g.get("is_locally_patched") else 0, SEVERITY_ORDER.get(g["worst_severity"], 9), -len(g["alerts"])))
 
-    out = Path(args.out)
+    repo_root = Path(__file__).resolve().parent.parent.parent
+    candidate_out = (repo_root / args.out).resolve()
+    try:
+        candidate_out.relative_to(repo_root)
+        out = candidate_out
+    except ValueError:
+        out = repo_root / "reports" / "dependabot-vapt"
+
     out.mkdir(parents=True, exist_ok=True)
 
     # Clean up obsolete agent directory and scattered markdown files

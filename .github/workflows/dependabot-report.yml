@@ -51,7 +51,7 @@ jobs:
             libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz0b libffi-dev libjpeg-turbo8
 
       - name: Install Python dependencies
-        run: pip install -r .github/scripts/requirements.txt
+        run: pip install --only-binary :all: -r .github/scripts/requirements.txt || pip install -r .github/scripts/requirements.txt
 
       - name: Generate report
         env:

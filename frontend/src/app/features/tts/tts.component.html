@@ -270,8 +270,10 @@
             [class]="isDragging() ? 'border-brand-blue bg-brand-blue/5 dark:bg-brand-blue/10 scale-[1.01]' : 'border-primary-300 dark:border-primary-700 hover:border-brand-blue/60'"
             class="relative rounded-2xl border-2 border-dashed p-8 md:p-12 text-center transition-all bg-white dark:bg-primary-900 cursor-pointer shadow-sm group"
           >
+            <label for="pdf-document-upload" class="sr-only">Upload PDF document</label>
             <input
               type="file"
+              id="pdf-document-upload"
               accept=".pdf,application/pdf"
               (change)="onFileSelected($event)"
               class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
@@ -446,7 +448,7 @@
         <!-- Body with scroll area -->
         <div class="p-6 overflow-y-auto space-y-6 flex-1">
           <div>
-            <label class="block text-xs font-bold text-primary-500 mb-2 tracking-wider">VOICE SELECTION</label>
+            <div class="block text-xs font-bold text-primary-500 mb-2 tracking-wider">VOICE SELECTION</div>
             <app-voice-selector
               [voices]="voices"
               [voiceId]="selectedVoiceId"

@@ -130,6 +130,7 @@ SCRAPER_PROFILES = {
 
 def load_urls(file_path: str) -> List[str]:
     """Load and sanitize target URLs from the text file. Auto-creates file if missing."""
+    file_path = os.path.abspath(file_path)
     file_dir = os.path.dirname(file_path)
     if file_dir:
         os.makedirs(file_dir, exist_ok=True)
@@ -359,6 +360,7 @@ def generate_pure_pdf(report_path: str, results: List[Dict[str, Any]], stats: Di
     pdf_parts.append(xref_table.encode("ascii"))
     pdf_parts.append(trailer.encode("ascii"))
 
+    report_path = os.path.abspath(report_path)
     report_dir = os.path.dirname(report_path)
     if report_dir:
         os.makedirs(report_dir, exist_ok=True)
@@ -390,6 +392,7 @@ def compute_stats(results: List[Dict[str, Any]]) -> Dict[str, Any]:
 
 def generate_report(results: List[Dict[str, Any]], output_pdf: str, stats: Dict[str, Any] = None):
     """Generate the PDF audit report."""
+    output_pdf = os.path.abspath(output_pdf)
     report_dir = os.path.dirname(output_pdf)
     if report_dir:
         os.makedirs(report_dir, exist_ok=True)
@@ -512,6 +515,7 @@ def generate_pure_xlsx(output_xlsx: str, results: List[Dict[str, Any]], stats: D
     import zipfile
     import xml.sax.saxutils as saxutils
 
+    output_xlsx = os.path.abspath(output_xlsx)
     xlsx_dir = os.path.dirname(output_xlsx)
     if xlsx_dir:
         os.makedirs(xlsx_dir, exist_ok=True)
@@ -662,6 +666,7 @@ def generate_pure_xlsx(output_xlsx: str, results: List[Dict[str, Any]], stats: D
 
 def generate_excel_report(results: List[Dict[str, Any]], stats: Dict[str, Any], output_xlsx: str):
     """Generate executive C-Suite Excel (.xlsx) dashboard across two specialized sheets."""
+    output_xlsx = os.path.abspath(output_xlsx)
     xlsx_dir = os.path.dirname(output_xlsx)
     if xlsx_dir:
         os.makedirs(xlsx_dir, exist_ok=True)
@@ -1002,6 +1007,7 @@ def generate_excel_report(results: List[Dict[str, Any]], stats: Dict[str, Any], 
 def generate_csv_report(results: List[Dict[str, Any]], output_csv: str):
     """Generate RFC 4180 compliant CSV audit report with full telemetry."""
     import csv
+    output_csv = os.path.abspath(output_csv)
     csv_dir = os.path.dirname(output_csv)
     if csv_dir:
         os.makedirs(csv_dir, exist_ok=True)
@@ -1073,6 +1079,11 @@ def main():
     parser.add_argument("--xlsx", default=os.path.join(DEFAULT_REPORTS_DIR, "cdn-scraping-report.xlsx"), help="Path to generate Excel report")
     parser.add_argument("--pdf", default=os.path.join(DEFAULT_REPORTS_DIR, "cdn-scraping-report.pdf"), help="Path to generate PDF report")
     args, _ = parser.parse_known_args()
+
+    args.urls = os.path.abspath(args.urls)
+    args.csv = os.path.abspath(args.csv)
+    args.xlsx = os.path.abspath(args.xlsx)
+    args.pdf = os.path.abspath(args.pdf)
 
     urls = load_urls(args.urls)
     if not urls:
