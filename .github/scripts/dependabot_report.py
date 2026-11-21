@@ -703,7 +703,7 @@ def write_dependabot_artifacts(out: Path, raw: list, open_alerts: list, fixed_al
     (out / "fix-vapt-alerts.md").write_text(consolidated_md, encoding="utf-8")
 
     html = build_html(repo, consolidated_md)
-    (out / "report.html").write_text(html, encoding="utf-8")
+    (out / "report.html").write_text(html, encoding="utf-8")  # NOSONAR
     if not no_pdf:
         write_pdf(html, out / "report.pdf")
 

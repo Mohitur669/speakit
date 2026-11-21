@@ -41,10 +41,10 @@ export class AuthService implements OnDestroy {
     return type || 'FREE';
   });
 
-  currentSessionVersion = signal<number>(parseInt(localStorage.getItem('sessionVersion') || '0', 10));
+  currentSessionVersion = signal<number>(Number.parseInt(localStorage.getItem('sessionVersion') || '0', 10));
 
-  private sessionDuration = parseInt(localStorage.getItem('sessionDurationMs') || String(DEFAULT_SESSION_DURATION), 10);
-  private idleTimeout = parseInt(localStorage.getItem('idleTimeoutMs') || String(DEFAULT_IDLE_TIMEOUT), 10);
+  private sessionDuration = Number.parseInt(localStorage.getItem('sessionDurationMs') || String(DEFAULT_SESSION_DURATION), 10);
+  private idleTimeout = Number.parseInt(localStorage.getItem('idleTimeoutMs') || String(DEFAULT_IDLE_TIMEOUT), 10);
 
   private ttsService = inject(TtsService);
   private toastService = inject(ToastService);
@@ -287,7 +287,7 @@ export class AuthService implements OnDestroy {
   private checkSessionValidity(): void {
     const loginTimestamp = localStorage.getItem('loginTimestamp');
     if (loginTimestamp) {
-      const elapsed = Date.now() - parseInt(loginTimestamp, 10);
+      const elapsed = Date.now() - Number.parseInt(loginTimestamp, 10);
       if (elapsed >= this.sessionDuration) this.clearSession();
       else this.startSessionTimer(this.sessionDuration - elapsed);
     }

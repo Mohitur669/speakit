@@ -168,7 +168,7 @@ else
 fi
 
 echo "Installing required Python dependencies..."
-pip install --only-binary :all: -r .github/scripts/requirements.txt --quiet || pip install -r .github/scripts/requirements.txt --quiet
+pip install --only-binary :all: -r .github/scripts/requirements.txt --quiet
 echo "[OK] Python dependencies installed."
 
 # 5. Generate Reports
