@@ -3,6 +3,7 @@
 .env.*
 
 *.log
+.agents/reports
 reports/
 scripts/**/reports/
 scripts/**/data/*

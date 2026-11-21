@@ -1250,7 +1250,7 @@ def markdown_report(
 def main() -> int:
     p = argparse.ArgumentParser(description="Analyze Cloudflare HTTP logs (CSV or JSONL), score threats using industry decision logic, and recommend IPs to block.")
     p.add_argument("log_file", nargs="?", type=Path, default=None, help="Cloudflare log export path (.csv, .jsonl, or .log.gz). Auto-detects data/cloudflare_requests_log.csv or .jsonl by default.")
-    p.add_argument("--out", type=Path, default=Path("reports/cloudflare-security-report.md"), help="Target path for the consolidated markdown document (default: reports/cloudflare-security-report.md).")
+    p.add_argument("--out", type=Path, default=Path("reports/cloudflare-scan/log-security-auditor/cloudflare-security-report.md"), help="Target path for the consolidated markdown document (default: reports/cloudflare-scan/log-security-auditor/cloudflare-security-report.md).")
     p.add_argument("--split-files", action="store_true", help="Also generate separate legacy files (blocklist_ips.txt, waf_rules.txt, etc.) in addition to the consolidated report.")
     p.add_argument("-v", "--verbose", action="store_true")
 

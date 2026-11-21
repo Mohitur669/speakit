@@ -39,7 +39,7 @@ Prerequisites:
 
 Output Deliverable:
     A presentation-grade multi-sheet Excel workbook at:
-    reports/speakit/voice-module-test.xlsx
+    reports/speakit-application/voice-module-tester/voice-module-test.xlsx
 ====================================================================================================
 """
 
@@ -192,7 +192,7 @@ def get_config() -> Dict[str, Any]:
 
     base_url = get_var("SPEAKIT_BASE_URL", "http://localhost:8080").rstrip("/")
     sample_pdf = Path(get_var("SPEAKIT_SAMPLE_PDF", "/Users/mohitur/Downloads/Sample.pdf"))
-    output_excel = repo_root / get_var("SPEAKIT_REPORT_PATH", "reports/speakit/voice-module-test.xlsx")
+    output_excel = repo_root / get_var("SPEAKIT_REPORT_PATH", "reports/speakit-application/voice-module-tester/voice-module-test.xlsx")
     backend_log = repo_root / get_var("SPEAKIT_BACKEND_LOG", "backend/logs/speakit-backend.log")
     concurrency = int(get_var("SPEAKIT_CONCURRENCY", "4"))
 

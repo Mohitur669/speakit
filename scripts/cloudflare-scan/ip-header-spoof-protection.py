@@ -38,6 +38,7 @@ except ImportError:
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "../.."))
 BACKEND_ENV_PATH = os.path.join(PROJECT_ROOT, "backend", ".env")
+DEFAULT_REPORTS_DIR = os.path.join(PROJECT_ROOT, "reports", "cloudflare-scan", "ip-header-spoof-protection")
 
 
 def format_time_col(ts_str: str) -> str:
@@ -1211,11 +1212,11 @@ def main():
                         help="Rate-limited endpoint to probe (default: /api/auth/check-username?username=spoof_rate_test_probe)")
     parser.add_argument("--requests", type=int, default=15, help="Number of IP rotation requests to send (default: 15)")
     parser.add_argument("--delay", type=float, default=0.1, help="Delay between requests in seconds (default: 0.1)")
-    parser.add_argument("--pdf", default=os.path.join(SCRIPT_DIR, "reports", "ip-header-spoof-report.pdf"),
+    parser.add_argument("--pdf", default=os.path.join(DEFAULT_REPORTS_DIR, "ip-header-spoof-report.pdf"),
                         help="Path to generate the output PDF report")
-    parser.add_argument("--xlsx", default=os.path.join(SCRIPT_DIR, "reports", "ip-header-spoof-report.xlsx"),
+    parser.add_argument("--xlsx", default=os.path.join(DEFAULT_REPORTS_DIR, "ip-header-spoof-report.xlsx"),
                         help="Path to generate the output Excel report")
-    parser.add_argument("--csv", default=os.path.join(SCRIPT_DIR, "reports", "ip-header-spoof-report.csv"),
+    parser.add_argument("--csv", default=os.path.join(DEFAULT_REPORTS_DIR, "ip-header-spoof-report.csv"),
                         help="Path to generate the output CSV report")
     args = parser.parse_args()
 

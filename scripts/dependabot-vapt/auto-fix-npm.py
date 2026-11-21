@@ -39,7 +39,9 @@ def update_package_json(pkg, target):
         f.write("\n")
 
 def main():
-    queue_path = Path("reports/dependabot/agent-queue.json")
+    queue_path = Path("reports/dependabot-vapt/agent-queue.json")
+    if not queue_path.exists():
+        queue_path = Path("reports/dependabot/agent-queue.json")
     if not queue_path.exists():
         print("Queue file not found. Exiting.")
         sys.exit(1)

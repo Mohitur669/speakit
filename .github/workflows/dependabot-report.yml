@@ -64,16 +64,16 @@ jobs:
             --repo "${{ github.repository }}" \
             --state "${{ inputs.state || 'all' }}" \
             --min-severity "${{ inputs.min_severity || 'low' }}" \
-            --out reports/dependabot
+            --out reports/dependabot-vapt
 
       - name: Job summary
         if: always()
-        run: cat reports/dependabot/fix-vapt-alerts.md >> "$GITHUB_STEP_SUMMARY" || true
+        run: cat reports/dependabot-vapt/fix-vapt-alerts.md >> "$GITHUB_STEP_SUMMARY" || true
 
       - name: Upload report bundle
         uses: actions/upload-artifact@v4
         with:
           name: dependabot-report-${{ github.run_number }}
-          path: reports/dependabot/
+          path: reports/dependabot-vapt/
           retention-days: 90
           if-no-files-found: error

@@ -462,7 +462,7 @@ def build_consolidated_plan(
         "7. **Safety Rules & Constraints**:",
         "   - Never downgrade any package version.",
         "   - Never suppress, skip, or remove failing tests to bypass verification.",
-        "   - **IMPORTANT**: Completely ignore `scripts/dependency-vapt-pipeline/fix-alerts.py`. Do not run, edit, or interact with this script.",
+        "   - **IMPORTANT**: Completely ignore `scripts/dependabot-vapt/fix-alerts.py`. Do not run, edit, or interact with this script.",
         "   - If an upgrade encounters unresolvable breaking changes or has no safe patched version available, document the manual mitigation required in the progress log below and proceed to the next group.",
         "",
         "---",
@@ -657,7 +657,7 @@ def main() -> int:
     ap.add_argument("--repo", default=os.environ.get("GITHUB_REPOSITORY"), help="owner/name")
     ap.add_argument("--state", default="all", choices=["open", "fixed", "dismissed", "auto_dismissed", "all"])
     ap.add_argument("--min-severity", default="low", choices=["low", "medium", "high", "critical"])
-    ap.add_argument("--out", default="reports/dependabot")
+    ap.add_argument("--out", default="reports/dependabot-vapt")
     ap.add_argument("--no-pdf", action="store_true")
     ap.add_argument("--no-images", action="store_true", help="do not attempt to embed advisory screenshots")
     ap.add_argument("--fail-on", default=None, choices=["low", "medium", "high", "critical"])

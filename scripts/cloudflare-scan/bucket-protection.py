@@ -40,7 +40,9 @@ except ImportError:
 
 # Configuration
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(os.path.dirname(SCRIPT_DIR))
 DEFAULT_INPUT_FILE = os.path.join(SCRIPT_DIR, "data/cdn-url-list.txt")
+DEFAULT_REPORTS_DIR = os.path.join(PROJECT_ROOT, "reports", "cloudflare-scan", "bucket-protection")
 
 
 def format_time_col(ts_str: str) -> str:
@@ -1067,9 +1069,9 @@ def main():
     parser = argparse.ArgumentParser(description="SpeakIT CDN Anti-Scraping & Edge Security Auditor")
     parser.add_argument("--profile", "-p", choices=[str(i) for i in range(10)], help="Simulation profile (1-8 for specific, 9 for ALL, 0 to exit)")
     parser.add_argument("--urls", "-u", default=DEFAULT_INPUT_FILE, help="Path to URL list file")
-    parser.add_argument("--csv", default=os.path.join(SCRIPT_DIR, "reports/cdn-scraping-report.csv"), help="Path to generate CSV report")
-    parser.add_argument("--xlsx", default=os.path.join(SCRIPT_DIR, "reports/cdn-scraping-report.xlsx"), help="Path to generate Excel report")
-    parser.add_argument("--pdf", default=os.path.join(SCRIPT_DIR, "reports/cdn-scraping-report.pdf"), help="Path to generate PDF report")
+    parser.add_argument("--csv", default=os.path.join(DEFAULT_REPORTS_DIR, "cdn-scraping-report.csv"), help="Path to generate CSV report")
+    parser.add_argument("--xlsx", default=os.path.join(DEFAULT_REPORTS_DIR, "cdn-scraping-report.xlsx"), help="Path to generate Excel report")
+    parser.add_argument("--pdf", default=os.path.join(DEFAULT_REPORTS_DIR, "cdn-scraping-report.pdf"), help="Path to generate PDF report")
     args, _ = parser.parse_known_args()
 
     urls = load_urls(args.urls)
