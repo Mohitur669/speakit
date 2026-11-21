@@ -4,7 +4,6 @@ import com.speakit.notification.entity.LogBackupAudit;
 import com.speakit.notification.repository.LogBackupAuditRepository;
 import com.speakit.user.entity.User;
 import com.speakit.user.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;

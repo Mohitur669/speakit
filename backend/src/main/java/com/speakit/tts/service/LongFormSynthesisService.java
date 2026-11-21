@@ -7,7 +7,6 @@ import com.speakit.tts.dto.TtsRequest;
 import com.speakit.tts.entity.TtsHistory;
 import com.speakit.tts.repository.TtsHistoryRepository;
 import com.speakit.user.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
@@ -39,7 +38,6 @@ public class LongFormSynthesisService {
 
     private final Map<String, LongFormJobStatusDto> jobRegistry = new ConcurrentHashMap<>();
 
-    @Autowired
     public LongFormSynthesisService(
             PollyService pollyService,
             AudioStorageService audioStorageService,

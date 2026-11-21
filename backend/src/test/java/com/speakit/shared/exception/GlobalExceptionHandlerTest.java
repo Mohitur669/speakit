@@ -1,7 +1,6 @@
 package com.speakit.shared.exception;
 
 import com.speakit.shared.dto.ApiErrorResponse;
-import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;

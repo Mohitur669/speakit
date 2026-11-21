@@ -73,7 +73,6 @@ public class AuthService {
     private final com.speakit.notification.service.EmailService emailService;
     private final com.speakit.notification.service.DiscordService discordService;
 
-    @org.springframework.beans.factory.annotation.Autowired
     public AuthService(
             UserRepository userRepository,
             PendingRegistrationRepository pendingRegistrationRepository,
