@@ -7,6 +7,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -83,6 +85,34 @@ public class GlobalExceptionHandler {
                 "Required request parameter '" + ex.getParameterName() + "' is missing",
                 request);
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ApiErrorResponse> handleHttpMediaTypeNotSupported(
+            HttpMediaTypeNotSupportedException ex,
+            HttpServletRequest request) {
+        log.warn("Unsupported Media Type: {} for request URI: {}", ex.getContentType(), request.getRequestURI());
+        captureHandledException(ex, SentryLevel.INFO);
+        ApiErrorResponse response = buildResponse(
+                HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+                "Unsupported Media Type",
+                "Content-Type '" + ex.getContentType() + "' is not supported. Supported media types: " + ex.getSupportedMediaTypes(),
+                request);
+        return new ResponseEntity<>(response, HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiErrorResponse> handleHttpRequestMethodNotSupported(
+            HttpRequestMethodNotSupportedException ex,
+            HttpServletRequest request) {
+        log.warn("Method Not Allowed: {} for request URI: {}", ex.getMethod(), request.getRequestURI());
+        captureHandledException(ex, SentryLevel.INFO);
+        ApiErrorResponse response = buildResponse(
+                HttpStatus.METHOD_NOT_ALLOWED,
+                "Method Not Allowed",
+                "HTTP method '" + ex.getMethod() + "' is not supported for this endpoint",
+                request);
+        return new ResponseEntity<>(response, HttpStatus.METHOD_NOT_ALLOWED);
     }
 
     @ExceptionHandler(RateLimitExceededException.class)
