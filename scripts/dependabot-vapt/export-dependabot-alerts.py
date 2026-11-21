@@ -7,7 +7,7 @@ import sys
 from collections import Counter
 
 REPO = "Mohitur669/speakit"
-OUTPUT_DIR = "reports/alerts"
+OUTPUT_DIR = "reports/dependabot-vapt"
 OUTPUT_FILE = os.path.join(OUTPUT_DIR, "dependabot-alerts-report.csv")
 
 def get_alerts():

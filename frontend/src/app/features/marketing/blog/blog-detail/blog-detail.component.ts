@@ -1,11 +1,9 @@
-// fallow-ignore-file security-sink
 import { Component, OnInit, inject } from '@angular/core';
 
 import { RouterLink, ActivatedRoute } from '@angular/router';
 import { NavbarComponent } from '../../../../shared/components/navbar/navbar.component';
 import { FooterComponent } from '../../../../shared/components/footer/footer.component';
 import { BLOG_POSTS, BlogPost } from '../blog.data';
-import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 
 @Component({
   selector: 'app-blog-detail',
@@ -70,7 +68,7 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
             </div>
             <div
               class="prose prose-primary dark:prose-invert prose-lg max-w-none animate-slide-up stagger-1 text-primary-600 dark:text-primary-300"
-              [innerHTML]="safeContent"
+              [innerHTML]="post.content"
             ></div>
             <!-- Share / Tags -->
             <div
@@ -149,19 +147,13 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 })
 export class BlogDetailComponent implements OnInit {
   private route = inject(ActivatedRoute);
-  private sanitizer = inject(DomSanitizer);
 
   post: BlogPost | undefined;
-  safeContent: SafeHtml | undefined;
 
   ngOnInit() {
     this.route.paramMap.subscribe((params) => {
       const slug = params.get('slug');
       this.post = BLOG_POSTS.find((p) => p.slug === slug);
-      if (this.post) {
-        // fallow-ignore-next-line security-sink
-        this.safeContent = this.sanitizer.bypassSecurityTrustHtml(this.post.content);
-      }
     });
   }
 }

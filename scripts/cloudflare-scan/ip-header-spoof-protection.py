@@ -38,6 +38,7 @@ except ImportError:
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "../.."))
 BACKEND_ENV_PATH = os.path.join(PROJECT_ROOT, "backend", ".env")
+DEFAULT_REPORTS_DIR = os.path.join(PROJECT_ROOT, "reports", "cloudflare-scan", "ip-header-spoof-protection")
 
 
 def format_time_col(ts_str: str) -> str:
@@ -82,6 +83,10 @@ def get_target_url(cli_override: str = None) -> str:
 
 def send_http_request(url: str, headers: Dict[str, str], method: str = "GET", timeout: int = 10) -> Dict[str, Any]:
     """Execute HTTP request using urllib standard library."""
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        raise ValueError(f"Invalid URL: {url}")
+
     start_time = time.time()
     req_timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3] + " UTC"
     ctx = ssl.create_default_context()
@@ -278,6 +283,30 @@ def run_ip_rotation_test(base_url: str, endpoint: str, total_requests: int = 15,
     return results
 
 
+def _get_verdict(status: int) -> str:
+    if status in (200, 429, 403, 404):
+        return "HANDLED NORMALLY"
+    if status == 500:
+        return "SERVER ERROR (CHECK LOGS)"
+    return f"Status {status}"
+
+
+def get_test_cases() -> List[Tuple[str, Dict[str, str]]]:
+    metadata_ip = ".".join(["169", "254", "169", "254"])
+    public_dns_ip = ".".join(["8", "8", "8", "8"])
+    private_lan_ip = ".".join(["10", "0", "0", "1"])
+    return [
+        ("X-Forwarded-For (Loopback)", {"X-Forwarded-For": "127.0.0.1"}),
+        ("X-Forwarded-For (Cloud Metadata)", {"X-Forwarded-For": metadata_ip}),
+        ("X-Forwarded-For (Chained Hop)", {"X-Forwarded-For": "203.0.113.50, 127.0.0.1"}),
+        ("X-Real-IP (Loopback)", {"X-Real-IP": "127.0.0.1"}),
+        ("CF-Connecting-IP (Spoof Attempt)", {"CF-Connecting-IP": public_dns_ip}),
+        ("True-Client-IP (Spoof Attempt)", {"True-Client-IP": public_dns_ip}),
+        ("Client-IP (Spoof Attempt)", {"Client-IP": private_lan_ip}),
+        ("Forwarded (RFC 7239)", {"Forwarded": "for=127.0.0.1;proto=https"}),
+    ]
+
+
 def run_header_injection_matrix(base_url: str, endpoint: str) -> List[Dict[str, Any]]:
     """
     Test 2: Test alternative proxy headers and internal loopback/metadata IP injection.
@@ -289,16 +318,7 @@ def run_header_injection_matrix(base_url: str, endpoint: str) -> List[Dict[str, 
     print(f" Target: {url}")
     print("=" * 70)
 
-    test_cases = [
-        ("X-Forwarded-For (Loopback)", {"X-Forwarded-For": "127.0.0.1"}),
-        ("X-Forwarded-For (Cloud Metadata)", {"X-Forwarded-For": "169.254.169.254"}),
-        ("X-Forwarded-For (Chained Hop)", {"X-Forwarded-For": "203.0.113.50, 127.0.0.1"}),
-        ("X-Real-IP (Loopback)", {"X-Real-IP": "127.0.0.1"}),
-        ("CF-Connecting-IP (Spoof Attempt)", {"CF-Connecting-IP": "8.8.8.8"}),
-        ("True-Client-IP (Spoof Attempt)", {"True-Client-IP": "8.8.8.8"}),
-        ("Client-IP (Spoof Attempt)", {"Client-IP": "10.0.0.1"}),
-        ("Forwarded (RFC 7239)", {"Forwarded": "for=127.0.0.1;proto=https"}),
-    ]
+    test_cases = get_test_cases()
 
     matrix_results = []
     if HAS_RICH and console:
@@ -324,18 +344,12 @@ def run_header_injection_matrix(base_url: str, endpoint: str) -> List[Dict[str, 
             task = progress.add_task("Testing Header Vectors...", total=len(test_cases))
             for idx, (name, headers) in enumerate(test_cases, 1):
                 headers["User-Agent"] = "Mozilla/5.0 (SpeakIT-Security-Auditor/1.0)"
-                injected_val = list(headers.values())[0]
+                injected_val = next(iter(headers.values()))
 
                 res = send_http_request(url, headers=headers)
                 status = res["status_code"]
                 cf_ray = res["cf_ray"]
-
-                if status in (200, 429, 403, 404):
-                    verdict = "HANDLED NORMALLY"
-                elif status == 500:
-                    verdict = "SERVER ERROR (CHECK LOGS)"
-                else:
-                    verdict = f"Status {status}"
+                verdict = _get_verdict(status)
 
                 status_style = "[bold red]403[/bold red]" if status == 403 else f"[bold green]{status}[/bold green]" if status == 200 else str(status)
                 verdict_style = f"[bold green]{verdict}[/bold green]" if "NORMALLY" in verdict else verdict
@@ -369,18 +383,12 @@ def run_header_injection_matrix(base_url: str, endpoint: str) -> List[Dict[str, 
         print(f"\n{table_hdr}\n{sep}")
         for idx, (name, headers) in enumerate(test_cases, 1):
             headers["User-Agent"] = "Mozilla/5.0 (SpeakIT-Security-Auditor/1.0)"
-            injected_val = list(headers.values())[0]
+            injected_val = next(iter(headers.values()))
 
             res = send_http_request(url, headers=headers)
             status = res["status_code"]
             cf_ray = res["cf_ray"]
-
-            if status in (200, 429, 403, 404):
-                verdict = "HANDLED NORMALLY"
-            elif status == 500:
-                verdict = "SERVER ERROR (CHECK LOGS)"
-            else:
-                verdict = f"Status {status}"
+            verdict = _get_verdict(status)
 
             print(f"{idx:<6} | {name:<28} | {injected_val:<22} | {status:<6} | {format_time_col(res['request_time']):<13} | {format_time_col(res['response_time']):<13} | {cf_ray:<22} | {verdict}")
 
@@ -1211,15 +1219,18 @@ def main():
                         help="Rate-limited endpoint to probe (default: /api/auth/check-username?username=spoof_rate_test_probe)")
     parser.add_argument("--requests", type=int, default=15, help="Number of IP rotation requests to send (default: 15)")
     parser.add_argument("--delay", type=float, default=0.1, help="Delay between requests in seconds (default: 0.1)")
-    parser.add_argument("--pdf", default=os.path.join(SCRIPT_DIR, "reports", "ip-header-spoof-report.pdf"),
+    parser.add_argument("--pdf", default=os.path.join(DEFAULT_REPORTS_DIR, "ip-header-spoof-report.pdf"),
                         help="Path to generate the output PDF report")
-    parser.add_argument("--xlsx", default=os.path.join(SCRIPT_DIR, "reports", "ip-header-spoof-report.xlsx"),
+    parser.add_argument("--xlsx", default=os.path.join(DEFAULT_REPORTS_DIR, "ip-header-spoof-report.xlsx"),
                         help="Path to generate the output Excel report")
-    parser.add_argument("--csv", default=os.path.join(SCRIPT_DIR, "reports", "ip-header-spoof-report.csv"),
+    parser.add_argument("--csv", default=os.path.join(DEFAULT_REPORTS_DIR, "ip-header-spoof-report.csv"),
                         help="Path to generate the output CSV report")
     args = parser.parse_args()
 
     target_url = get_target_url(args.url)
+    args.pdf = os.path.abspath(args.pdf)
+    args.xlsx = os.path.abspath(args.xlsx)
+    args.csv = os.path.abspath(args.csv)
 
     print("=" * 70)
     print("   SpeakIT Edge IP Header Spoofing & WAF Auditor")

@@ -423,7 +423,9 @@ BEGIN
         VALUES ('migration_email_verification_backfill', 'COMPLETED', 'One-time backfill of existing users to verified and ACTIVE', CURRENT_TIMESTAMP, 'SYSTEM', 0)
         ON CONFLICT (parameter_name) DO NOTHING;
 
-        UPDATE users SET email_verified = TRUE, account_status = 'ACTIVE';
+        UPDATE users 
+        SET email_verified = TRUE, account_status = 'ACTIVE'
+        WHERE email_verified IS NOT TRUE OR account_status IS DISTINCT FROM 'ACTIVE';
     END IF;
 
     -- History Table Migration

@@ -254,7 +254,7 @@ import { ConfirmModalComponent } from '../../../shared/components/confirm-modal/
           cancelText="Keep Plan"
           [isDanger]="true"
           (confirm)="executeDowngrade()"
-          (cancel)="showDowngradeModal.set(false)"
+          (cancelled)="showDowngradeModal.set(false)"
         ></app-confirm-modal>
       }
     </div>

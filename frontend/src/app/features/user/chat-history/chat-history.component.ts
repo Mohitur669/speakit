@@ -399,7 +399,7 @@ import {
           [isDanger]="true"
           confirmText="Confirm"
           (confirm)="executeConfirmedAction()"
-          (cancel)="showConfirm.set(false)"
+          (cancelled)="showConfirm.set(false)"
         >
         </app-confirm-modal>
       }

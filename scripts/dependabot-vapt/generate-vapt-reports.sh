@@ -16,7 +16,7 @@ done
 if [[ ! -f ".github/scripts/dependabot_report.py" || ! -f ".github/scripts/code_scanning_report.py" ]]; then
     echo "[ERROR] Error: Script must be run from the repository root."
     echo "   Please 'cd' to the root of the project and run:"
-    echo "   ./scripts/dependency-vapt-pipeline/generate-vapt-reports.sh"
+    echo "   ./scripts/dependabot-vapt/generate-vapt-reports.sh"
     exit 1
 fi
 echo "[OK] Directory check passed."
@@ -145,7 +145,7 @@ if [[ "$ENV_CHOICE" == "2" ]]; then
             while true; do
                 read -rp "Select an environment [1-${#CONDA_ENVS[@]}] (default: 1): " ENV_IDX
                 ENV_IDX=${ENV_IDX:-1}
-                if [[ "$ENV_IDX" =~ ^[0-9]+$ ]] && [ "$ENV_IDX" -ge 1 ] && [ "$ENV_IDX" -le "${#CONDA_ENVS[@]}" ]; then
+                if [[ "$ENV_IDX" =~ ^[0-9]+$ ]] && [[ "$ENV_IDX" -ge 1 ]] && [[ "$ENV_IDX" -le "${#CONDA_ENVS[@]}" ]]; then
                     TARGET_ENV="${CONDA_ENVS[$((ENV_IDX-1))]}"
                     break
                 else
@@ -168,7 +168,7 @@ else
 fi
 
 echo "Installing required Python dependencies..."
-pip install -r .github/scripts/requirements.txt --quiet
+pip install --only-binary :all: -r .github/scripts/requirements.txt --quiet || pip install -r .github/scripts/requirements.txt --quiet
 echo "[OK] Python dependencies installed."
 
 # 5. Generate Reports
@@ -176,29 +176,20 @@ GITHUB_TOKEN="$(gh auth token)"
 export GITHUB_TOKEN
 
 echo "Generating Dependabot VAPT reports..."
-python .github/scripts/dependabot_report.py --repo "$REPO"
-echo "[OK] Reports successfully generated in reports/dependabot/"
-
-echo "Generating Code Scanning (CodeQL) VAPT reports..."
-if gh api "/repos/$REPO/code-scanning/alerts" --silent 2>/dev/null; then
-    python .github/scripts/code_scanning_report.py --repo "$REPO"
-    echo "[OK] Reports successfully generated in reports/code-scanning/"
-else
-    echo "[SKIP] Skipping Code Scanning reports due to API access limitations."
-fi
+python .github/scripts/dependabot_report.py --repo "$REPO" --out "reports/dependabot-vapt"
+echo "[OK] Reports successfully generated in reports/dependabot-vapt/"
 
 # 6. Auto-Fix NPM Packages
 if [[ "$SKIP_AUTOFIX" == "true" ]]; then
     echo "Skipping automated NPM fast-track fixes (--reports-only specified)."
 else
     echo "Starting automated NPM fast-track fixes..."
-    ./scripts/dependency-vapt-pipeline/auto-fix-npm.py
+    ./scripts/dependabot-vapt/auto-fix-npm.py
 fi
 
 echo ""
 echo "[DONE] Setup, Report Generation, and NPM Fast-Tracking Complete!"
 echo "Consolidated AI Remediation Plan generated:"
-echo "  - Dependabot:    reports/dependabot/fix-vapt-alerts.md"
-echo "  - Code Scanning: reports/code-scanning/fix-code-scanning-alerts.md"
+echo "  - Dependabot:    reports/dependabot-vapt/fix-vapt-alerts.md"
 echo ""
-echo "Feed 'reports/dependabot/fix-vapt-alerts.md' to the AI agent to begin processing the remaining vulnerabilities."
+echo "Feed 'reports/dependabot-vapt/fix-vapt-alerts.md' to the AI agent to begin processing the remaining vulnerabilities."

@@ -428,7 +428,9 @@ export class TranscriptCardComponent implements OnInit, OnDestroy {
 
   copyToClipboard(text: string) {
     if (!text) return;
-    navigator.clipboard.writeText(text);
+    void navigator.clipboard.writeText(text).catch(() => {
+      this.toast.show('Failed to copy to clipboard', 'error');
+    });
     this.toast.show('Copied to clipboard', 'success');
   }
 

@@ -12,5 +12,9 @@
             "path": "/Library/Java/JavaVirtualMachines/jdk-25.jdk/Contents/Home",
             "default": true
         }
-    ]
+    ],
+    "sonarlint.connectedMode.project": {
+        "connectionId": "speakit-vscode",
+        "projectKey": "Mohitur669_speakit"
+    }
 }

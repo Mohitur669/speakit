@@ -295,7 +295,7 @@ export class AudioRecorderComponent implements OnDestroy {
       this.source.disconnect();
     }
     if (this.audioCtx && this.audioCtx.state !== 'closed') {
-      this.audioCtx.close();
+      void this.audioCtx.close();
     }
     if (this.mediaStream) {
       this.mediaStream.getTracks().forEach(track => track.stop());

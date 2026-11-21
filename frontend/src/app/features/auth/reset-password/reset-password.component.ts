@@ -131,7 +131,7 @@ import { PasswordPolicyModalComponent } from '../../../shared/components/passwor
     </div>
 
     @if (showPolicyModal()) {
-      <app-password-policy-modal [password]="newPassword" (close)="showPolicyModal.set(false)">
+      <app-password-policy-modal [password]="newPassword" (closed)="showPolicyModal.set(false)">
       </app-password-policy-modal>
     }
   `

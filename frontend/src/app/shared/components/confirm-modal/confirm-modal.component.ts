@@ -8,7 +8,7 @@ import { CommonModule } from '@angular/common';
   template: `
     <div
       class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
-      (click)="cancel.emit()"
+      (click)="cancelled.emit()"
     >
       <div
         class="bg-white dark:bg-primary-900 rounded-2xl p-6 w-full max-w-sm border border-primary-200 dark:border-primary-700 shadow-2xl animate-scale-up"
@@ -54,7 +54,7 @@ import { CommonModule } from '@angular/common';
         <!-- Actions -->
         <div class="flex flex-col sm:flex-row items-center gap-3 mt-8">
           <button
-            (click)="cancel.emit()"
+            (click)="cancelled.emit()"
             class="w-full sm:flex-1 py-3 px-4 bg-primary-100 dark:bg-primary-800 hover:bg-primary-200 dark:hover:bg-primary-700 text-primary-700 dark:text-primary-200 text-sm font-bold rounded-xl transition-all active:scale-95"
           >
             {{ cancelText }}
@@ -83,5 +83,5 @@ export class ConfirmModalComponent {
   @Input() isDanger = false;
 
   @Output() confirm = new EventEmitter<void>();
-  @Output() cancel = new EventEmitter<void>();
+  @Output() cancelled = new EventEmitter<void>();
 }

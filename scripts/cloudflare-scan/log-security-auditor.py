@@ -375,7 +375,7 @@ def redact_excerpt(text: str, limit: int = 240) -> str:
                   r"\s*[:=]\s*[\"']?[^\"'\s,;]+", r"\1=[REDACTED]", text)
     text = re.sub(r"\bAKIA[0-9A-Z]{16}\b", "AKIA[REDACTED]", text)
     text = re.sub(r"(?i)aws_secret_access_key\s*=\s*[^\s]+", "aws_secret_access_key=[REDACTED]", text)
-    text = re.sub(r"-----BEGIN .*?PRIVATE KEY-----.*?-----END .*?PRIVATE KEY-----",
+    text = re.sub(r"-----BEGIN [A-Z ]*PRIVATE KEY-----[^-]+-----END [A-Z ]*PRIVATE KEY-----",
                   "[PRIVATE KEY REDACTED]", text, flags=re.S)
     return re.sub(r"\s+", " ", text).strip()[:limit]
 
@@ -803,7 +803,8 @@ def load_allowlist(ips: List[str], files: List[Path]) -> List[ipaddress._BaseNet
     nets: List[ipaddress._BaseNetwork] = []
     entries = list(ips)
     for f in files:
-        for line in f.read_text(encoding="utf-8").splitlines():
+        f_resolved = f.resolve()
+        for line in f_resolved.read_text(encoding="utf-8").splitlines():
             line = line.split("#", 1)[0].strip()
             if line:
                 entries.append(line)
@@ -957,6 +958,7 @@ def suspicious_asns(sugs: List[IPSuggestion], min_ips: int = 5) -> List[Tuple[st
 
 def write_cloudflare_artifacts(out_dir: Path, sugs: List[IPSuggestion], list_name: str) -> None:
     """Optional exporter for legacy split files when --split-files is given."""
+    out_dir = out_dir.resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
     block = [s for s in sugs if s.tier == "BLOCK"]
     chal = [s for s in sugs if s.tier == "CHALLENGE"]
@@ -1250,7 +1252,7 @@ def markdown_report(
 def main() -> int:
     p = argparse.ArgumentParser(description="Analyze Cloudflare HTTP logs (CSV or JSONL), score threats using industry decision logic, and recommend IPs to block.")
     p.add_argument("log_file", nargs="?", type=Path, default=None, help="Cloudflare log export path (.csv, .jsonl, or .log.gz). Auto-detects data/cloudflare_requests_log.csv or .jsonl by default.")
-    p.add_argument("--out", type=Path, default=Path("reports/cloudflare-security-report.md"), help="Target path for the consolidated markdown document (default: reports/cloudflare-security-report.md).")
+    p.add_argument("--out", type=Path, default=Path("reports/cloudflare-scan/log-security-auditor/cloudflare-security-report.md"), help="Target path for the consolidated markdown document (default: reports/cloudflare-scan/log-security-auditor/cloudflare-security-report.md).")
     p.add_argument("--split-files", action="store_true", help="Also generate separate legacy files (blocklist_ips.txt, waf_rules.txt, etc.) in addition to the consolidated report.")
     p.add_argument("-v", "--verbose", action="store_true")
 

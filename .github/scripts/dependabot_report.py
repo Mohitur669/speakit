@@ -462,7 +462,7 @@ def build_consolidated_plan(
         "7. **Safety Rules & Constraints**:",
         "   - Never downgrade any package version.",
         "   - Never suppress, skip, or remove failing tests to bypass verification.",
-        "   - **IMPORTANT**: Completely ignore `scripts/dependency-vapt-pipeline/fix-alerts.py`. Do not run, edit, or interact with this script.",
+        "   - **IMPORTANT**: Completely ignore `scripts/dependabot-vapt/fix-alerts.py`. Do not run, edit, or interact with this script.",
         "   - If an upgrade encounters unresolvable breaking changes or has no safe patched version available, document the manual mitigation required in the progress log below and proceed to the next group.",
         "",
         "---",
@@ -652,12 +652,68 @@ def write_pdf(html: str, path: Path) -> bool:
 # -------------------------------------------------------------------------- main
 
 
+def resolve_output_dir(path_str: str) -> Path:
+    repo_root = Path(__file__).resolve().parent.parent.parent
+    candidate = (repo_root / path_str).resolve()
+    try:
+        candidate.relative_to(repo_root)
+        return candidate
+    except ValueError:
+        return repo_root / "reports" / "dependabot-vapt"
+
+
+def cleanup_output_dir(out: Path) -> None:
+    if (out / "agent").exists():
+        shutil.rmtree(out / "agent", ignore_errors=True)
+    for stale in ("summary.md", "report.md", "fix-log.md"):
+        stale_path = out / stale
+        if stale_path.exists():
+            stale_path.unlink()
+
+
+def write_dependabot_artifacts(out: Path, raw: list, open_alerts: list, fixed_alerts: list,
+                               groups: list, group_for: dict, repo: str, branch_name: str, no_pdf: bool) -> None:
+    out.mkdir(parents=True, exist_ok=True)
+    cleanup_output_dir(out)
+    (out / "alerts.json").write_text(json.dumps(raw, indent=2), encoding="utf-8")
+
+    queue = [
+        {
+            "order": i,
+            "alert_number": a["number"],
+            "severity": a["severity"],
+            "package": a["package"],
+            "ecosystem": a["ecosystem"],
+            "manifest": a["manifest"],
+            "current_range": a["vulnerable_range"],
+            "target_version": group_for[a["number"]]["target_version"],
+            "local_version": group_for[a["number"]]["local_version"],
+            "is_locally_patched": group_for[a["number"]]["is_locally_patched"],
+            "closes_alerts": [x["number"] for x in group_for[a["number"]]["alerts"]],
+            "ghsa_id": a["ghsa_id"],
+            "cve_id": a["cve_id"],
+            "brief": "fix-vapt-alerts.md",
+            "alert_url": a["html_url"],
+        }
+        for i, a in enumerate(open_alerts, 1)
+    ]
+    (out / "agent-queue.json").write_text(json.dumps(queue, indent=2), encoding="utf-8")
+
+    consolidated_md = build_consolidated_plan(repo, open_alerts, fixed_alerts, groups, branch_name)
+    (out / "fix-vapt-alerts.md").write_text(consolidated_md, encoding="utf-8")
+
+    html = build_html(repo, consolidated_md)
+    (out / "report.html").write_text(html, encoding="utf-8")
+    if not no_pdf:
+        write_pdf(html, out / "report.pdf")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Generate a Dependabot alert report.")
     ap.add_argument("--repo", default=os.environ.get("GITHUB_REPOSITORY"), help="owner/name")
     ap.add_argument("--state", default="all", choices=["open", "fixed", "dismissed", "auto_dismissed", "all"])
     ap.add_argument("--min-severity", default="low", choices=["low", "medium", "high", "critical"])
-    ap.add_argument("--out", default="reports/dependabot")
+    ap.add_argument("--out", default="reports/dependabot-vapt")
     ap.add_argument("--no-pdf", action="store_true")
     ap.add_argument("--no-images", action="store_true", help="do not attempt to embed advisory screenshots")
     ap.add_argument("--fail-on", default=None, choices=["low", "medium", "high", "critical"])
@@ -705,49 +761,8 @@ def main() -> int:
     # Sort groups: pending updates first, then by worst severity
     groups.sort(key=lambda g: (1 if g.get("is_locally_patched") else 0, SEVERITY_ORDER.get(g["worst_severity"], 9), -len(g["alerts"])))
 
-    out = Path(args.out)
-    out.mkdir(parents=True, exist_ok=True)
-
-    # Clean up obsolete agent directory and scattered markdown files
-    if (out / "agent").exists():
-        shutil.rmtree(out / "agent", ignore_errors=True)
-    for stale in ("summary.md", "report.md", "fix-log.md"):
-        stale_path = out / stale
-        if stale_path.exists():
-            stale_path.unlink()
-
-    (out / "alerts.json").write_text(json.dumps(raw, indent=2), encoding="utf-8")
-
-    queue = [
-        {
-            "order": i,
-            "alert_number": a["number"],
-            "severity": a["severity"],
-            "package": a["package"],
-            "ecosystem": a["ecosystem"],
-            "manifest": a["manifest"],
-            "current_range": a["vulnerable_range"],
-            "target_version": group_for[a["number"]]["target_version"],
-            "local_version": group_for[a["number"]]["local_version"],
-            "is_locally_patched": group_for[a["number"]]["is_locally_patched"],
-            "closes_alerts": [x["number"] for x in group_for[a["number"]]["alerts"]],
-            "ghsa_id": a["ghsa_id"],
-            "cve_id": a["cve_id"],
-            "brief": "fix-vapt-alerts.md",
-            "alert_url": a["html_url"],
-        }
-        for i, a in enumerate(open_alerts, 1)
-    ]
-    (out / "agent-queue.json").write_text(json.dumps(queue, indent=2), encoding="utf-8")
-
-    # Generate single consolidated AI remediation plan and protocol
-    consolidated_md = build_consolidated_plan(args.repo, open_alerts, fixed_alerts, groups, branch_name)
-    (out / "fix-vapt-alerts.md").write_text(consolidated_md, encoding="utf-8")
-
-    html = build_html(args.repo, consolidated_md)
-    (out / "report.html").write_text(html, encoding="utf-8")
-    if not args.no_pdf:
-        write_pdf(html, out / "report.pdf")
+    out = resolve_output_dir(args.out)
+    write_dependabot_artifacts(out, raw, open_alerts, fixed_alerts, groups, group_for, args.repo, branch_name, args.no_pdf)
 
     pct_fixed = f"{(len(fixed_alerts) / len(alerts) * 100):.1f}%" if alerts else "100.0%"
     pct_open = f"{(len(open_alerts) / len(alerts) * 100):.1f}%" if alerts else "0.0%"

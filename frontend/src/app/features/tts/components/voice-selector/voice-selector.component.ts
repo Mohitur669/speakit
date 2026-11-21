@@ -390,8 +390,11 @@ export class VoiceSelectorComponent {
     const langs = new Map<string, string>();
     indianVoices.forEach((v) => {
       if (v.languageCode) {
-        const match = v.name.match(/\(([^)]+)\)/);
-        const name = match ? match[1] : v.languageCode;
+        const start = v.name.indexOf('(');
+        const end = v.name.indexOf(')', start + 1);
+        const name = (start !== -1 && end !== -1)
+          ? v.name.slice(start + 1, end).trim()
+          : v.languageCode;
         langs.set(v.languageCode, name);
       }
     });

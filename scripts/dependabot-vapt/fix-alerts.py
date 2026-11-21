@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
 """
-Destination: scripts/dependency-vapt-pipeline/fix-alerts.py   (chmod +x)
+Destination: scripts/dependabot-vapt/fix-alerts.py   (chmod +x)
 
 Walks the Dependabot queue produced by .github/scripts/dependabot_report.py and
 hands each alert, one at a time, to a local agent that has the whole codebase in
 context. One branch per fix, verification after each, human approval before commit.
 
 Usage:
-  ./scripts/dependency-vapt-pipeline/fix-alerts.py                       # interactive, full queue
-  ./scripts/dependency-vapt-pipeline/fix-alerts.py --dry-run             # print what would run
-  ./scripts/dependency-vapt-pipeline/fix-alerts.py --only 24             # a single alert number
-  ./scripts/dependency-vapt-pipeline/fix-alerts.py --from 3 --auto       # resume at #3, no prompts
-  ./scripts/dependency-vapt-pipeline/fix-alerts.py --refresh             # regenerate the report first
+  ./scripts/dependabot-vapt/fix-alerts.py                       # interactive, full queue
+  ./scripts/dependabot-vapt/fix-alerts.py --dry-run             # print what would run
+  ./scripts/dependabot-vapt/fix-alerts.py --only 24             # a single alert number
+  ./scripts/dependabot-vapt/fix-alerts.py --from 3 --auto       # resume at #3, no prompts
+  ./scripts/dependabot-vapt/fix-alerts.py --refresh             # regenerate the report first
 
 Environment Variables:
   AGENT_CMD     agent invocation, prompt arrives on stdin   (default: agy)
   VERIFY_CMD    build/test command                          (default: auto-detected)
-  REPORT_DIR    where the report lives                      (default: reports/dependabot)
+  REPORT_DIR    where the report lives                      (default: reports/dependabot-vapt)
   GITHUB_TOKEN  needed only with --refresh
 """
 
@@ -44,7 +44,7 @@ def main():
     args = parser.parse_args()
 
     agent_cmd = os.environ.get("AGENT_CMD", "agy")
-    report_dir = os.environ.get("REPORT_DIR", "reports/dependabot")
+    report_dir = os.environ.get("REPORT_DIR", "reports/dependabot-vapt")
     queue_file = os.path.join(report_dir, "agent-queue.json")
     log_file = os.path.join(report_dir, "fix-log.md")
 

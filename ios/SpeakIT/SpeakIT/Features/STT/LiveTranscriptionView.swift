@@ -1735,7 +1735,7 @@ struct LiveTranscriptionView: View {
                     // Original text (dimmer — what was actually said)
                     Text(bubble.originalText)
                         .font(.system(size: 14))
-                        .foregroundColor(isSpeakerA ? Color.speakitTextPrimary.opacity(0.75) : Color.speakitTextPrimary.opacity(0.75))
+                        .foregroundColor(Color.speakitTextPrimary.opacity(0.75))
                         .fixedSize(horizontal: false, vertical: true)
                         .textSelection(.enabled)
 
