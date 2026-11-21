@@ -280,6 +280,16 @@ def get_local_version(package: str, manifest: str) -> str | None:
                 m = re.search(rf"<artifactId>{re.escape(package)}</artifactId>\s*<version>(.*?)</version>", text)
                 if m:
                     return m.group(1)
+        elif "requirements" in manifest or manifest.endswith(".txt"):
+            req_path = Path(manifest)
+            if not req_path.exists():
+                req_path = Path(".github/scripts/requirements.txt")
+            if req_path.exists():
+                for line in req_path.read_text(encoding="utf-8").splitlines():
+                    line = line.strip()
+                    if line.lower().startswith(package.lower()) and "==" in line:
+                        _, ver = line.split("==", 1)
+                        return ver.strip()
     except Exception:
         pass
     return None
