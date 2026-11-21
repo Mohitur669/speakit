@@ -1071,6 +1071,25 @@ def print_menu():
     print("  [0] Exit")
 
 
+def get_selected_profiles(choice: str) -> List[Dict[str, Any]]:
+    if choice in SCRAPER_PROFILES:
+        return [SCRAPER_PROFILES[choice]]
+    if choice == "9":
+        return list(SCRAPER_PROFILES.values())
+    return []
+
+
+def prompt_choice(choice: Optional[str]) -> str:
+    if choice:
+        return choice
+    print_menu()
+    try:
+        return input("\nEnter choice [0-9]: ").strip()
+    except (EOFError, KeyboardInterrupt):
+        print("\nExiting audit. Goodbye!")
+        sys.exit(0)
+
+
 def main():
     parser = argparse.ArgumentParser(description="SpeakIT CDN Anti-Scraping & Edge Security Auditor")
     parser.add_argument("--profile", "-p", choices=[str(i) for i in range(10)], help="Simulation profile (1-8 for specific, 9 for ALL, 0 to exit)")
@@ -1093,25 +1112,15 @@ def main():
 
     choice = args.profile
     while True:
-        if not choice:
-            print_menu()
-            try:
-                choice = input("\nEnter choice [0-9]: ").strip()
-            except (EOFError, KeyboardInterrupt):
-                print("\nExiting audit. Goodbye!")
-                sys.exit(0)
-
+        choice = prompt_choice(choice)
         if choice == "0":
             print("\nExiting audit. Goodbye!")
             sys.exit(0)
 
-        selected_profiles = []
-        if choice in SCRAPER_PROFILES:
-            selected_profiles = [SCRAPER_PROFILES[choice]]
-        elif choice == "9":
-            selected_profiles = list(SCRAPER_PROFILES.values())
-        else:
+        selected_profiles = get_selected_profiles(choice)
+        if not selected_profiles:
             print("[!] Invalid option. Please select 0 to 9.")
+            choice = None
             continue
 
         total_requests = len(selected_profiles) * len(urls)

@@ -8,7 +8,7 @@ import { CommonModule } from '@angular/common';
   template: `
     <div
       class="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
-      (click)="cancel.emit()"
+      (click)="cancelled.emit()"
     >
       <div
         class="bg-white dark:bg-primary-900 rounded-2xl p-6 w-full max-w-sm border border-primary-200 dark:border-primary-700 shadow-2xl animate-scale-up"

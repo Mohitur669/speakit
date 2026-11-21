@@ -13,30 +13,22 @@ except ImportError:
     print("Please install it by running: pip install bcrypt")
     sys.exit(1)
 
-def load_env(env_path):
-    env_vars = {}
-    if not os.path.exists(env_path):
-        # Fall back to alternative paths if not found directly
-        paths_to_try = [env_path, "../../backend/.env", ".env"]
-        found = False
-        for p in paths_to_try:
-            resolved_p = os.path.abspath(p)
-            if os.path.exists(resolved_p):
-                env_path = resolved_p
-                found = True
-                break
-        if not found:
-            print(f"Error: Environment file not found at {env_path}")
-            sys.exit(1)
-    else:
-        env_path = os.path.abspath(env_path)
+def resolve_env_file(env_path: str) -> str:
+    for candidate in [env_path, "../../backend/.env", ".env"]:
+        resolved = os.path.abspath(candidate)
+        if os.path.exists(resolved):
+            return resolved
+    print(f"Error: Environment file not found at {env_path}")
+    sys.exit(1)
 
-    with open(env_path, 'r') as f:
+
+def load_env(env_path):
+    target = resolve_env_file(env_path)
+    env_vars = {}
+    with open(target, 'r') as f:
         for line in f:
             line = line.strip()
-            if not line or line.startswith('#'):
-                continue
-            if '=' in line:
+            if line and not line.startswith('#') and '=' in line:
                 key, val = line.split('=', 1)
                 env_vars[key.strip()] = val.strip()
     return env_vars

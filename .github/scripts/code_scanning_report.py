@@ -380,6 +380,61 @@ def export_csv(alerts: list[dict], path: Path) -> None:
             writer.writerow([sev.capitalize(), closed_counts.get(sev, 0), "", "", "", "", "", "", "", "", ""])
 
 
+def resolve_output_dir(path_str: str) -> Path:
+    repo_root = Path(__file__).resolve().parent.parent.parent
+    candidate = (repo_root / path_str).resolve()
+    try:
+        candidate.relative_to(repo_root)
+        return candidate
+    except ValueError:
+        return repo_root / "reports" / "dependabot-vapt"
+
+
+def cleanup_output_dir(out: Path) -> None:
+    if (out / "agent").exists():
+        shutil.rmtree(out / "agent", ignore_errors=True)
+    for stale in ("summary.md", "report.md"):
+        stale_path = out / stale
+        if stale_path.exists():
+            stale_path.unlink()
+
+
+def write_artifacts(out: Path, raw: list, alerts: list, repo: str, state: str, no_pdf: bool) -> Path:
+    out.mkdir(parents=True, exist_ok=True)
+    cleanup_output_dir(out)
+    (out / "alerts.json").write_text(json.dumps(raw, indent=2), encoding="utf-8")
+
+    queue = [
+        {
+            "order": i,
+            "alert_number": a["number"],
+            "severity": a["severity"],
+            "rule_id": a["rule_id"],
+            "path": a["path"],
+            "start_line": a["start_line"],
+            "end_line": a["end_line"],
+            "message": a["message"],
+            "cwes": a["cwes"],
+            "brief": "fix-code-scanning-alerts.md",
+            "alert_url": a["html_url"],
+        }
+        for i, a in enumerate(alerts, 1)
+    ]
+    (out / "agent-queue.json").write_text(json.dumps(queue, indent=2), encoding="utf-8")
+
+    body_md = build_markdown(repo, alerts, state)
+    (out / "fix-code-scanning-alerts.md").write_text(body_md, encoding="utf-8")
+
+    html = build_html(repo, body_md)
+    (out / "report.html").write_text(html, encoding="utf-8")
+    if not no_pdf:
+        write_pdf(html, out / "report.pdf")
+
+    csv_path = out / "code-scanning-alerts.csv"
+    export_csv(alerts, csv_path)
+    return csv_path
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Generate a Code Scanning (CodeQL) alert report.")
     ap.add_argument("--repo", default=os.environ.get("GITHUB_REPOSITORY"), help="owner/name")
@@ -411,55 +466,8 @@ def main() -> int:
     alerts = [a for a in (normalise(x) for x in raw) if sev_rank(a) <= cutoff]
     alerts.sort(key=lambda a: (sev_rank(a), a["number"]))
 
-    repo_root = Path(__file__).resolve().parent.parent.parent
-    candidate_out = (repo_root / args.out).resolve()
-    try:
-        candidate_out.relative_to(repo_root)
-        out = candidate_out
-    except ValueError:
-        out = repo_root / "reports" / "dependabot-vapt"
-
-    out.mkdir(parents=True, exist_ok=True)
-
-    # Clean up obsolete agent directory and scattered markdown files
-    if (out / "agent").exists():
-        shutil.rmtree(out / "agent", ignore_errors=True)
-    for stale in ("summary.md", "report.md"):
-        stale_path = out / stale
-        if stale_path.exists():
-            stale_path.unlink()
-
-    (out / "alerts.json").write_text(json.dumps(raw, indent=2), encoding="utf-8")
-
-    queue = [
-        {
-            "order": i,
-            "alert_number": a["number"],
-            "severity": a["severity"],
-            "rule_id": a["rule_id"],
-            "path": a["path"],
-            "start_line": a["start_line"],
-            "end_line": a["end_line"],
-            "message": a["message"],
-            "cwes": a["cwes"],
-            "brief": "fix-code-scanning-alerts.md",
-            "alert_url": a["html_url"],
-        }
-        for i, a in enumerate(alerts, 1)
-    ]
-    (out / "agent-queue.json").write_text(json.dumps(queue, indent=2), encoding="utf-8")
-
-    body_md = build_markdown(args.repo, alerts, args.state)
-    (out / "fix-code-scanning-alerts.md").write_text(body_md, encoding="utf-8")
-
-    html = build_html(args.repo, body_md)
-    (out / "report.html").write_text(html, encoding="utf-8")
-    if not args.no_pdf:
-        write_pdf(html, out / "report.pdf")
-
-    # Export CSV alongside other reports
-    csv_path = out / "code-scanning-alerts.csv"
-    export_csv(alerts, csv_path)
+    out = resolve_output_dir(args.out)
+    csv_path = write_artifacts(out, raw, alerts, args.repo, args.state, args.no_pdf)
 
     print(f"[OK] {len(alerts)} Code Scanning alert(s) consolidated into {out / 'fix-code-scanning-alerts.md'} and {csv_path}")
     for a in alerts:

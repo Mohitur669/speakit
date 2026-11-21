@@ -9,7 +9,7 @@ import { getPasswordRequirements } from '../../utils/form.utils';
   template: `
     <div
       class="fixed inset-0 z-200 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in"
-      (click)="close.emit()"
+      (click)="closed.emit()"
     >
       <div
         class="bg-white dark:bg-primary-900 rounded-2xl p-6 w-full max-w-xs border border-primary-200 dark:border-primary-700 shadow-2xl animate-scale-up"
@@ -20,7 +20,7 @@ import { getPasswordRequirements } from '../../utils/form.utils';
             Password Policy
           </h3>
           <button
-            (click)="close.emit()"
+            (click)="closed.emit()"
             class="p-1 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-800 transition-colors"
           >
             <svg

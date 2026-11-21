@@ -283,6 +283,30 @@ def run_ip_rotation_test(base_url: str, endpoint: str, total_requests: int = 15,
     return results
 
 
+def _get_verdict(status: int) -> str:
+    if status in (200, 429, 403, 404):
+        return "HANDLED NORMALLY"
+    if status == 500:
+        return "SERVER ERROR (CHECK LOGS)"
+    return f"Status {status}"
+
+
+def get_test_cases() -> List[Tuple[str, Dict[str, str]]]:
+    metadata_ip = ".".join(["169", "254", "169", "254"])
+    public_dns_ip = ".".join(["8", "8", "8", "8"])
+    private_lan_ip = ".".join(["10", "0", "0", "1"])
+    return [
+        ("X-Forwarded-For (Loopback)", {"X-Forwarded-For": "127.0.0.1"}),
+        ("X-Forwarded-For (Cloud Metadata)", {"X-Forwarded-For": metadata_ip}),
+        ("X-Forwarded-For (Chained Hop)", {"X-Forwarded-For": "203.0.113.50, 127.0.0.1"}),
+        ("X-Real-IP (Loopback)", {"X-Real-IP": "127.0.0.1"}),
+        ("CF-Connecting-IP (Spoof Attempt)", {"CF-Connecting-IP": public_dns_ip}),
+        ("True-Client-IP (Spoof Attempt)", {"True-Client-IP": public_dns_ip}),
+        ("Client-IP (Spoof Attempt)", {"Client-IP": private_lan_ip}),
+        ("Forwarded (RFC 7239)", {"Forwarded": "for=127.0.0.1;proto=https"}),
+    ]
+
+
 def run_header_injection_matrix(base_url: str, endpoint: str) -> List[Dict[str, Any]]:
     """
     Test 2: Test alternative proxy headers and internal loopback/metadata IP injection.
@@ -294,20 +318,7 @@ def run_header_injection_matrix(base_url: str, endpoint: str) -> List[Dict[str, 
     print(f" Target: {url}")
     print("=" * 70)
 
-    metadata_ip = ".".join(["169", "254", "169", "254"])
-    public_dns_ip = ".".join(["8", "8", "8", "8"])
-    private_lan_ip = ".".join(["10", "0", "0", "1"])
-
-    test_cases = [
-        ("X-Forwarded-For (Loopback)", {"X-Forwarded-For": "127.0.0.1"}),
-        ("X-Forwarded-For (Cloud Metadata)", {"X-Forwarded-For": metadata_ip}),
-        ("X-Forwarded-For (Chained Hop)", {"X-Forwarded-For": f"203.0.113.50, 127.0.0.1"}),
-        ("X-Real-IP (Loopback)", {"X-Real-IP": "127.0.0.1"}),
-        ("CF-Connecting-IP (Spoof Attempt)", {"CF-Connecting-IP": public_dns_ip}),
-        ("True-Client-IP (Spoof Attempt)", {"True-Client-IP": public_dns_ip}),
-        ("Client-IP (Spoof Attempt)", {"Client-IP": private_lan_ip}),
-        ("Forwarded (RFC 7239)", {"Forwarded": "for=127.0.0.1;proto=https"}),
-    ]
+    test_cases = get_test_cases()
 
     matrix_results = []
     if HAS_RICH and console:
@@ -338,13 +349,7 @@ def run_header_injection_matrix(base_url: str, endpoint: str) -> List[Dict[str, 
                 res = send_http_request(url, headers=headers)
                 status = res["status_code"]
                 cf_ray = res["cf_ray"]
-
-                if status in (200, 429, 403, 404):
-                    verdict = "HANDLED NORMALLY"
-                elif status == 500:
-                    verdict = "SERVER ERROR (CHECK LOGS)"
-                else:
-                    verdict = f"Status {status}"
+                verdict = _get_verdict(status)
 
                 status_style = "[bold red]403[/bold red]" if status == 403 else f"[bold green]{status}[/bold green]" if status == 200 else str(status)
                 verdict_style = f"[bold green]{verdict}[/bold green]" if "NORMALLY" in verdict else verdict
@@ -383,13 +388,7 @@ def run_header_injection_matrix(base_url: str, endpoint: str) -> List[Dict[str, 
             res = send_http_request(url, headers=headers)
             status = res["status_code"]
             cf_ray = res["cf_ray"]
-
-            if status in (200, 429, 403, 404):
-                verdict = "HANDLED NORMALLY"
-            elif status == 500:
-                verdict = "SERVER ERROR (CHECK LOGS)"
-            else:
-                verdict = f"Status {status}"
+            verdict = _get_verdict(status)
 
             print(f"{idx:<6} | {name:<28} | {injected_val:<22} | {status:<6} | {format_time_col(res['request_time']):<13} | {format_time_col(res['response_time']):<13} | {cf_ray:<22} | {verdict}")
 
