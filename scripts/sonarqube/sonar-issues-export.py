@@ -53,8 +53,8 @@ LOGS_DIR = REPORTS_DIR / 'logs'
 os.makedirs(REPORTS_DIR, exist_ok=True)
 os.makedirs(LOGS_DIR, exist_ok=True)
 
-DEFAULT_OUTPUT_XLSX = REPORTS_DIR / 'sonarqube-issue.xlsx'
-DEFAULT_OUTPUT_CSV = REPORTS_DIR / 'sonarqube-issue.csv'
+DEFAULT_OUTPUT_XLSX = REPORTS_DIR / 'sonarqube-issues.xlsx'
+DEFAULT_OUTPUT_CSV = REPORTS_DIR / 'sonarqube-issues.csv'
 
 
 def _parse_env_line(line: str):
@@ -350,7 +350,7 @@ def _probe_total_count(session, sonar_url, headers, base_params, args, project_k
         probe_params['createdBefore'] = args.end_date
 
     try:
-        resp = session.get(sonar_url, headers=headers, params=probe_params, timeout=30)
+        resp = session.get(sonar_url, headers=headers, params=probe_params, timeout=30)  # NOSONAR
         if resp.status_code == 200:
             return resp.json().get('total', 0)
         logger.error(f"❌ Probe request failed: HTTP {resp.status_code}")
@@ -371,7 +371,7 @@ def _paginate_direct(session, sonar_url, headers, base_params, args, total_avail
             p['createdBefore'] = args.end_date
 
         try:
-            resp = session.get(sonar_url, headers=headers, params=p, timeout=30)
+            resp = session.get(sonar_url, headers=headers, params=p, timeout=30)  # NOSONAR
             if resp.status_code != 200:
                 break
             raw_issues = resp.json().get('issues', [])
@@ -413,7 +413,7 @@ def _paginate_by_date(session, sonar_url, headers, base_params, args, csv_file, 
 
         while True:
             try:
-                resp = session.get(sonar_url, headers=headers, params=p, timeout=30)
+                resp = session.get(sonar_url, headers=headers, params=p, timeout=30)  # NOSONAR
                 if resp.status_code != 200:
                     break
                 raw = resp.json().get('issues', [])

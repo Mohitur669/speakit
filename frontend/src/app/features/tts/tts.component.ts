@@ -85,9 +85,9 @@ export class TtsComponent implements OnInit, OnDestroy {
       const plan = this.authService.currentPlanType();
 
       if (isLoggedIn) {
-        this.refreshVoices();
-        this.refreshLimits();
-        this.refreshUsage();
+        void this.refreshVoices();
+        void this.refreshLimits();
+        void this.refreshUsage();
       }
     });
   }
@@ -103,7 +103,7 @@ export class TtsComponent implements OnInit, OnDestroy {
   }
 
   async ngOnInit() {
-    this.checkAutostart();
+    await this.checkAutostart();
     this.route.queryParams.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(async (params) => {
       const autostart = params['autostart'];
       if (autostart) {
@@ -232,7 +232,7 @@ export class TtsComponent implements OnInit, OnDestroy {
           this.audioUrl.set(URL.createObjectURL(audioBlob));
           this.loading.set(false);
           this.showNotification('Audio generated successfully');
-          this.refreshUsage();
+          void this.refreshUsage();
         },
         error: (err) => this.handleError(err),
       });
@@ -427,7 +427,7 @@ export class TtsComponent implements OnInit, OnDestroy {
               this.jobAudioUrl.set(job.audioUrl);
             }
             this.showNotification('Audiobook generated successfully!');
-            this.refreshUsage();
+            void this.refreshUsage();
           } else if (job.status === 'FAILED') {
             this.stopPolling();
             this.synthesizingJob.set(false);

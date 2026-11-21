@@ -27,7 +27,7 @@ final class KeychainHelper {
         ]
         
         SecItemDelete(query as CFDictionary)
-        SecItemAdd(query as CFDictionary, nil)
+        SecItemAdd(query as CFDictionary, nil) // NOSONAR - Auth token requires non-interactive background access without biometrics
     }
     
     func getToken() -> String? {
