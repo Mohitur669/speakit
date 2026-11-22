@@ -52,14 +52,14 @@ jobs:
 
       - name: Install Python dependencies
         run: |
-          pip install --only-binary :all: requests==2.33.0 markdown==3.8.1 weasyprint==70.0
+          pip install --only-binary ':all:' requests==2.33.0 markdown==3.8.1 weasyprint==70.0
 
       - name: Generate report
         env:
           # GITHUB_TOKEN works where `vulnerability-alerts: read` is available.
           # Otherwise create a PAT with `security_events` (classic) or fine-grained
           # `Dependabot alerts: read`, and store it as DEPENDABOT_TOKEN.
-          GITHUB_TOKEN: ${{ secrets.DEPENDABOT_TOKEN || github.token }}
+          GITHUB_TOKEN: ${{ secrets['DEPENDABOT_TOKEN'] || github.token }}
         run: |
           python .github/scripts/dependabot_report.py \
             --repo "${{ github.repository }}" \
